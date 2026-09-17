@@ -29,6 +29,19 @@ a list of **segments**. We never call a hosted ASR service.
 timings are what evidence spans are built from, so they are part of the answer,
 not just an intermediate.
 
+**Window** — a contiguous run of words with an exact span, built from the word
+timestamps by splitting on sentence punctuation, pauses and segment bounds. It
+is the unit the verifier scores and the decision context for localization.
+*Phrase-level*, i.e. clause-sized, not segment-sized.
+
+**Proposition** — a question rewritten as a declarative statement
+(`Should the daily dose be 100 mg?` → `The daily dose is 100 mg.`). The
+hypothesis an NLI verifier tests against a window.
+
+**Sub-range localization** — the step that chooses the returned evidence span:
+the tightest contiguous word range inside the winning window ± one neighbouring
+window. The span is *not* the window itself (ADR-0001).
+
 **Evidence span** — the `[start, end]` interval (seconds from the start of the
 audio) that supports a *yes* answer. A *no* answer has no span: both timestamps
 are `null`. Also called a **prediction** once returned.
