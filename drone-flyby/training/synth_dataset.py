@@ -1,0 +1,299 @@
+"""Build a synthetic training set: challenge sprites pasted onto aerial backgrounds.
+
+Why: the supplied training scene is one Helsinki flight (forest and lake), so the
+detector memorises it and calls city roads and roofs "hangar". The objects are the
+same 3D models in every scene, so the fix is to keep the objects and vary the
+ground under them.
+
+The recorded validation frames are deliberately NOT used as backgrounds: they are
+the only honest test set we have until the model has been submitted.
+
+    python training/fetch_backgrounds.py                 # aerial backgrounds first
+    python training/extract_sprites.py                   # sprite cut-outs (once)
+    python training/synth_dataset.py                     # -> datasets/synth_yolo
+    python training/synth_dataset.py --frames 400 --with-helsinki
+    python training/synth_dataset.py --preview 3         # full frames to eyeball
+
+Each synthetic frame is a 3840x2160 background with 8-30 objects pasted on it,
+then cut into Level 0/1/2 views exactly like the evaluator sends them.
+"""
+
+import argparse
+import json
+import math
+import random
+import shutil
+import sys
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from dtos import OBJECT_CLASSES  # noqa: E402
+from make_dataset import (  # noqa: E402
+    CLASS_INDEX,
+    crop_view,
+    labels_for_region,
+    view_centres,
+)
+from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
+
+SOURCE_W, SOURCE_H = 3840, 2160
+# Classes that tend to appear together in the supplied scenes, so the detector sees
+# the same context it will meet live (a hangar with planes beside it, and so on).
+GROUPS = [
+    ('hangar', 'small_plane', 'small_plane', 'jet_plane'),
+    ('hangar', 'medium_plane', 'spacecraft'),
+    ('large_tower', 'small_tower', 'jammer'),
+    ('large_launcher', 'medium_launcher', 'small_launcher'),
+    ('tank', 'tank', 'mine_roller', 'ta-ta'),
+    ('helicopter', 'helicopter', 'condor'),
+]
+
+
+def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: bool):
+    """Sprite cut-outs by class, preferring hand-reviewed outlines."""
+    index = json.loads((sprite_dir / 'index.json').read_text())
+    manual = {}
+    manual_path = sprite_dir / 'manual.json'
+    if manual_path.exists():
+        manual = json.loads(manual_path.read_text())
+
+    by_class: dict[str, list[np.ndarray]] = {name: [] for name in OBJECT_CLASSES}
+    for entry in index:
+        if entry.get('truncated') and not include_truncated:
+            continue
+        if entry.get('suspect') and not include_suspect and entry['file'] not in manual:
+            continue
+        image = cv2.imread(str(sprite_dir / entry['file']), cv2.IMREAD_UNCHANGED)
+        if image is None or image.shape[2] != 4 or image.shape[0] < 4 or image.shape[1] < 4:
+            continue
+        by_class[entry['class']].append(image)
+    return {name: sprites for name, sprites in by_class.items() if sprites}
+
+
+def transform_sprite(sprite: np.ndarray, rng: random.Random):
+    """Random rotation, scale and flip. Returns the RGBA sprite, still tight around its alpha."""
+    if rng.random() < 0.5:
+        sprite = cv2.flip(sprite, 1)
+    scale = rng.uniform(0.75, 1.35)
+    angle = rng.uniform(0, 360)
+
+    h, w = sprite.shape[:2]
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, scale)
+    cos, sin = abs(matrix[0, 0]), abs(matrix[0, 1])
+    out_w, out_h = int(w * cos + h * sin) + 2, int(w * sin + h * cos) + 2
+    matrix[0, 2] += out_w / 2 - w / 2
+    matrix[1, 2] += out_h / 2 - h / 2
+    rotated = cv2.warpAffine(sprite, matrix, (out_w, out_h), flags=cv2.INTER_LINEAR,
+                             borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0))
+
+    # Trim back to the alpha, so the label is the object and not the rotation padding.
+    ys, xs = np.nonzero(rotated[:, :, 3] > 8)
+    if len(xs) == 0:
+        return None
+    return rotated[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+
+
+def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random.Random):
+    """Nudge the sprite towards the local exposure, then jitter it a little."""
+    rgb = sprite[:, :, :3].astype(np.float32)
+    alpha = sprite[:, :, 3:4].astype(np.float32) / 255.0
+    visible = alpha > 0.5
+    if visible.sum() < 4:
+        return sprite
+
+    sprite_mean = float((rgb * alpha).sum() / max(alpha.sum() * 3, 1))
+    background_mean = float(background_patch.mean())
+    blend = rng.uniform(0.35, 0.75)  # partly match the scene, keep some of the model's own tone
+    gain = (background_mean * blend + sprite_mean * (1 - blend)) / max(sprite_mean, 1e-3)
+    rgb *= gain * rng.uniform(0.92, 1.08)
+    rgb += rng.uniform(-10, 10)
+
+    if rng.random() < 0.5:  # mild colour cast, the models are re-lit per scene
+        rgb *= np.array([rng.uniform(0.94, 1.06) for _ in range(3)], np.float32)
+
+    out = sprite.copy()
+    out[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return out
+
+
+def paste(canvas: np.ndarray, sprite: np.ndarray, x: int, y: int, shadow: tuple, rng: random.Random):
+    """Alpha-blend a sprite at (x, y) with a soft drop shadow. Returns its box."""
+    h, w = sprite.shape[:2]
+    if x < 0 or y < 0 or x + w > SOURCE_W or y + h > SOURCE_H:
+        return None
+    alpha = (sprite[:, :, 3:4].astype(np.float32) / 255.0)
+
+    dx, dy = shadow
+    sx, sy = x + dx, y + dy
+    if 0 <= sx and 0 <= sy and sx + w <= SOURCE_W and sy + h <= SOURCE_H:
+        shadow_alpha = cv2.GaussianBlur(alpha[:, :, 0], (0, 0), 1.6)[:, :, None] * rng.uniform(0.25, 0.5)
+        region = canvas[sy:sy + h, sx:sx + w].astype(np.float32)
+        canvas[sy:sy + h, sx:sx + w] = (region * (1 - shadow_alpha)).astype(np.uint8)
+
+    region = canvas[y:y + h, x:x + w].astype(np.float32)
+    blended = sprite[:, :, :3].astype(np.float32) * alpha + region * (1 - alpha)
+    canvas[y:y + h, x:x + w] = np.clip(blended, 0, 255).astype(np.uint8)
+    return [x, y, x + w, y + h]
+
+
+def overlaps(box, placed, margin: int = 6) -> bool:
+    x1, y1, x2, y2 = box
+    for px1, py1, px2, py2 in placed:
+        if x1 < px2 + margin and px1 < x2 + margin and y1 < py2 + margin and py1 < y2 + margin:
+            return True
+    return False
+
+
+def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int):
+    """Paste objects onto a copy of the background. Returns (frame, annotations)."""
+    canvas = background.copy()
+    if rng.random() < 0.6:  # the challenge imagery is soft; vary how soft ours is
+        canvas = cv2.GaussianBlur(canvas, (0, 0), rng.uniform(0.3, 0.9))
+
+    angle = rng.uniform(0, 2 * math.pi)  # one sun direction per frame
+    distance = rng.uniform(2, 6)
+    shadow = (int(round(math.cos(angle) * distance)), int(round(math.sin(angle) * distance)))
+
+    annotations, placed = [], []
+    wanted = []
+    while len(wanted) < n_objects:
+        if rng.random() < 0.45:  # a themed group, as the scenes have
+            wanted.extend(name for name in rng.choice(GROUPS) if name in sprites)
+        else:
+            wanted.append(rng.choice(sorted(sprites)))
+    rng.shuffle(wanted)
+
+    for class_name in wanted[:n_objects]:
+        sprite = transform_sprite(rng.choice(sprites[class_name]), rng)
+        if sprite is None:
+            continue
+        h, w = sprite.shape[:2]
+        if h >= SOURCE_H or w >= SOURCE_W:
+            continue
+        for _ in range(30):  # try a few spots before giving up on this object
+            x = rng.randint(0, SOURCE_W - w - 1)
+            y = rng.randint(0, SOURCE_H - h - 1)
+            box = [x, y, x + w, y + h]
+            if overlaps(box, placed):
+                continue
+            lit = match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng)
+            pasted = paste(canvas, lit, x, y, shadow, rng)
+            if pasted is None:
+                continue
+            placed.append(pasted)
+            annotations.append({'object_id': class_name, 'bbox': pasted})
+            break
+
+    if rng.random() < 0.7:  # sensor noise, so the pasted edges are not the only grain
+        noise = rng.uniform(1.0, 3.5)
+        canvas = np.clip(canvas.astype(np.float32) + np.random.normal(0, noise, canvas.shape), 0, 255).astype(np.uint8)
+    return canvas, annotations
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--backgrounds', default=str(ROOT / 'backgrounds' / 'naip'))
+    parser.add_argument('--sprites', default=str(ROOT / 'sprites'))
+    parser.add_argument('--out', default=str(ROOT / 'datasets' / 'synth_yolo'))
+    parser.add_argument('--frames', type=int, default=300, help='synthetic 4K frames to compose')
+    parser.add_argument('--min-objects', type=int, default=8)
+    parser.add_argument('--max-objects', type=int, default=30)
+    parser.add_argument('--val-fraction', type=float, default=0.1)
+    parser.add_argument('--with-helsinki', action='store_true', help='also cut views from the supplied scene')
+    parser.add_argument('--include-suspect', action='store_true', help='use sprites flagged SUSPECT too')
+    parser.add_argument('--include-truncated', action='store_true', help='use sprites cut by the frame edge')
+    parser.add_argument('--l1-random', type=int, default=6)
+    parser.add_argument('--l1-per-object', type=int, default=1)
+    parser.add_argument('--l2-random', type=int, default=8)
+    parser.add_argument('--l2-per-object', type=int, default=1)
+    parser.add_argument('--preview', type=int, default=0, help='write N full composed frames and stop')
+    parser.add_argument('--seed', type=int, default=0)
+    args = parser.parse_args()
+
+    rng = random.Random(args.seed)
+    np.random.seed(args.seed)
+
+    background_paths = sorted(Path(args.backgrounds).glob('*.jpg'))
+    if not background_paths:
+        raise SystemExit(f'no backgrounds in {args.backgrounds}; run training/fetch_backgrounds.py first')
+    sprites = load_sprites(Path(args.sprites), args.include_suspect, args.include_truncated)
+    missing = [name for name in OBJECT_CLASSES if name not in sprites]
+    print(f'{len(background_paths)} backgrounds, sprites for {len(sprites)}/{len(OBJECT_CLASSES)} classes'
+          + (f' (missing: {", ".join(missing)})' if missing else ''))
+
+    out = Path(args.out)
+    if args.preview:
+        preview_dir = out.parent / 'synth_preview'
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        for i in range(args.preview):
+            background = cv2.imread(str(background_paths[i % len(background_paths)]))
+            frame, annotations = compose_frame(background, sprites, rng,
+                                               rng.randint(args.min_objects, args.max_objects))
+            marked = frame.copy()
+            for ann in annotations:
+                x1, y1, x2, y2 = ann['bbox']
+                cv2.rectangle(marked, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(marked, ann['object_id'], (x1, max(y1 - 4, 10)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.imwrite(str(preview_dir / f'synth_{i:02d}.jpg'), frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            cv2.imwrite(str(preview_dir / f'synth_{i:02d}_boxes.jpg'), marked, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            print(f'preview {i}: {len(annotations)} objects')
+        print(f'previews in {preview_dir}')
+        return
+
+    if out.exists():
+        shutil.rmtree(out)
+    for split in ('train', 'val'):
+        (out / 'images' / split).mkdir(parents=True)
+        (out / 'labels' / split).mkdir(parents=True)
+
+    counts = {'train': 0, 'val': 0}
+    per_class = {name: 0 for name in OBJECT_CLASSES}
+
+    def cut(frame, annotations, stem, split):
+        plan = [
+            (0, view_centres(0, annotations, 0, 0, rng)),
+            (1, view_centres(1, annotations, args.l1_random, args.l1_per_object, rng)),
+            (2, view_centres(2, annotations, args.l2_random, args.l2_per_object, rng)),
+        ]
+        for level, centres in plan:
+            for i, (cx, cy) in enumerate(centres):
+                view, region = crop_view(frame, level, cx, cy)
+                lines = labels_for_region(annotations, region)
+                name = f'{stem}_L{level}_{i:03d}_{cx}_{cy}'
+                cv2.imwrite(str(out / 'images' / split / f'{name}.jpg'), view, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                (out / 'labels' / split / f'{name}.txt').write_text('\n'.join(lines))
+                counts[split] += 1
+
+    for n in range(args.frames):
+        split = 'val' if rng.random() < args.val_fraction else 'train'
+        background = cv2.imread(str(background_paths[n % len(background_paths)]))
+        frame, annotations = compose_frame(background, sprites, rng,
+                                           rng.randint(args.min_objects, args.max_objects))
+        for ann in annotations:
+            per_class[ann['object_id']] += 1
+        cut(frame, annotations, f's{n:04d}', split)
+        if (n + 1) % 25 == 0:
+            print(f'{n + 1}/{args.frames} frames composed ({counts["train"]} train views)')
+
+    if args.with_helsinki:
+        for frame_no in frame_numbers():
+            split = 'val' if frame_no in (6, 13, 21) else 'train'
+            cut(load_frame(frame_no), load_annotations(frame_no), f'h{frame_no:03d}', split)
+
+    names = '\n'.join(f'  {i}: {name}' for i, name in enumerate(OBJECT_CLASSES))
+    (out / 'data.yaml').write_text(f'path: {out}\ntrain: images/train\nval: images/val\nnames:\n{names}\n')
+    rare = ', '.join(f'{name} {count}' for name, count in sorted(per_class.items(), key=lambda kv: kv[1])[:5])
+    print(f"wrote {counts['train']} train / {counts['val']} val views to {out}")
+    print(f'objects pasted: {sum(per_class.values())} (rarest: {rare})')
+    print(f'class index order matches {len(CLASS_INDEX)} challenge classes')
+
+
+if __name__ == '__main__':
+    main()
