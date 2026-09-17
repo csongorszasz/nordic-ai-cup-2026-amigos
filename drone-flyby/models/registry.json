@@ -32,6 +32,34 @@
    "url": "https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2"
   }
  ],
+ "large_launcher": [
+  {
+   "added": "2026-09-17",
+   "author": "Muhamad Mirza Arrafi",
+   "author_profile": "https://sketchfab.com/nazidefenseforceofficial",
+   "downloadable": true,
+   "faces": 13649,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "downloadable stand-in for the view-only Patriot Juan found; scale to 31.3 x 23.1 m",
+   "status": "candidate",
+   "title": "MIM-104 Patriot Surface-To-Air Missile (SAM)",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "SpatialNeglect",
+   "author_profile": "https://sketchfab.com/jeandiz",
+   "downloadable": false,
+   "faces": 69732,
+   "licence": "Standard",
+   "licence_requirements": "Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works",
+   "note": "VIEW-ONLY on Sketchfab (isDownloadable=false), so the mesh cannot be obtained",
+   "status": "rejected",
+   "title": "MIM-104 Patriot",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-5aa6d27d22274a7aac54ed7cc0eee7c7"
+  }
+ ],
  "large_tower": [
   {
    "added": "2026-09-17",
@@ -94,7 +122,7 @@
    "faces": 664,
    "licence": "CC Attribution",
    "licence_requirements": "Author must be credited. Commercial use is allowed.",
-   "note": "same mesh as large_tower, tinted green and scaled to 12.6 x 12.0 m; the two classes differ mostly in colour",
+   "note": "Juan: keep THIS Sketchfab watchtower for small_tower, tinted green, 12.6 x 12.0 m (large_tower uses the CGTrader one)",
    "status": "candidate",
    "title": "Old Wooden Watchtower (House 3)",
    "url": "https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499"

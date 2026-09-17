@@ -46,7 +46,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | wanted |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | wanted |
-| 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | wanted |
+| 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
 | 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | wanted |
 | 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
 
@@ -66,13 +66,17 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
 | `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 | `large_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — scale to 13.9 x 12.6 m. From above the sprites read as a brown/camo rectangular structure with a pale band across the middle, more camouflaged shelter than open tower, so check the render before trusting it |
-| `small_tower` | whichever watchtower wins for `large_tower` | see that row | see that row | candidate — same mesh, rendered tinted green and scaled to 12.6 x 12.0 m |
+| `small_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — Juan's pick for this class: tint green, scale to 12.6 x 12.0 m |
 | `large_tower` | [Old wooden watchtower (low poly)](https://www.cgtrader.com/free-3d-models/exterior/other/old-wooden-watchtower-low-poly) | CGTrader | free — **check the licence line** | candidate, Juan's preferred — closer to the sprites than the Sketchfab watchtower |
+| `large_launcher` | [MIM-104 Patriot SAM](https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb) | Muhamad Mirza Arrafi | CC-BY (credit required) | candidate — 13.6k faces, scale to 31.3 x 23.1 m. Replaces a view-only Patriot that cannot be downloaded |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
 **Two things to check on any CGTrader model**, because they are not uniform like Sketchfab's:
 
+0. **That it is actually downloadable.** Sketchfab shows view-only models in the same search
+   results; the API field is `isDownloadable`, and on the page it is the absence of a Download
+   button. `add_model.py` records it, so check the output.
 1. **The licence line on the page.** CGTrader free models are usually "Royalty Free", but some
    are "Editorial Uses Only", which excludes training data. Record what it says with
    `--licence`; `add_model.py` cannot read CGTrader.
