@@ -36,6 +36,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T024 | 2026-09-17 | **merged decision premise** (clause±1) | base | 0.882 | 0.320 | 0.545 | positive recall 0.892 |
 | T025 | 2026-09-17 | merged decision, large NLI | large | **0.938** | **0.340** | **0.579** | positive recall 0.944 |
 | T026 | 2026-09-17 | merged decision, large, τ 0.5 | large | 0.938 | 0.337 | 0.578 | |
+| T027 | 2026-09-17 | **validation: served merged config** | base | — | — | **0.545** | matches T024 exactly |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -152,6 +153,20 @@ question's number. Keep it (cheap insurance) but don't count on it.
 - **Conclusion:** recall was premise construction, not model capability. The
   remaining gap is localization (chosen 0.36 vs neighbourhood oracle 0.66,
   global 0.88) — the M3 problem.
+
+## T027 — served validation confirms the merged premise (0.545)
+
+- **Config:** local GTX 1650 + cloudflared quick tunnel; `large-v3-turbo` int8 +
+  base NLI; `DECISION_NEIGHBOURS=1`, `TOP_CLAUSES=1`, `greedy_trim`,
+  `MAX_CANDIDATES=120`, `MAX_RANGE_WORDS=10`, τ 0.3, `MEDAPP_CAPTURE=1`.
+- **Results:** 19 validation conversations, **all 200 OK, zero timeouts**;
+  latency mean **21.6 s**, worst **31.3 s**; **service score 0.545**.
+- **Recall:** validation yes-rate **37% → 47%** (near the balanced ~50%).
+- **Correspondence:** 0.545 equals the training estimate T024 (base-merged,
+  0.545) exactly — `dev_eval` is a faithful predictor of the service.
+- **Conclusion:** ADR-0004 validated end-to-end (+0.088 over the single-clause
+  dry run). The remaining headroom is localization (M3); large NLI would add
+  ~0.03 but needs latency work on the 1650.
 
 ## Latency (P100, transcripts cached, per conversation)
 

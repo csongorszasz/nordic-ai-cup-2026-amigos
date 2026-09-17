@@ -22,7 +22,8 @@ guarded sub-range localization → answer + span`, with a never-raise contract.
   preserve doses/numbers (`one million IU four times daily`,
   `fluconazole 50 milligrams`). Turbo is 2.2× faster than large-v3 on the 1650.
 - **Merged decision premise.** Deciding on clause ± 1 lifted positive recall
-  **0.749 → 0.944** (large) at a tiny precision cost (ADR-0004).
+  **0.749 → 0.944** (large) at a tiny precision cost (ADR-0004), and validation
+  confirmed the end-to-end gain (**0.457 → 0.545**, T027).
 - **Hard negatives and off-topic.** 0.930 and 0.943 accuracy (large, merged) —
   NLI alone rejects the near-misses; the numeric guard is a no-op.
 - **Proposition rewrite.** Decisive: accuracy `0.821` (base NLI, proposition)
@@ -65,22 +66,24 @@ localization ≈ 0.33.
 | config | score |
 | --- | --- |
 | shipped baseline (floor) | 0.200 |
-| single-clause, large (T018) | 0.512 |
-| served cheap config, 3 training convs | 0.471 |
-| **served cheap config, validation (T023)** | **0.457** |
-| **merged decision, large (T025, not yet served)** | **0.579** |
+| single-clause served, validation (T023) | 0.457 |
+| merged decision, large, training (T025) | 0.579 |
+| **merged decision served, validation (T027)** | **0.545** |
 
-Local dev_eval predicted the service within noise; the harness and data agree.
-T025 has not been served/validated yet — the served config predates the merged
-premise.
+`dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
+validation T027 (0.545) exactly. We can iterate locally with confidence. The
+large-NLI variant (0.579 on training) is not yet served — it needs latency work.
 
 ## Open problems / next
 
 - **M3: learned span ranker** (ADR-0003) — the only large remaining gap
   (localization). Also frees NLI latency for the decision.
-- **Re-serve + validate** the merged-decision config (expected ~0.53–0.58).
-- **Serving** — local + **named tunnel** chosen (ADR-0002); set up the stable URL
-  before the evaluation.
+- **Thread C: medical ASR** — benchmark `Na0s/Medical-Whisper-Large-v3` (and a
+  turbo fine-tune on PriMock57) against the downstream score.
+- **Thread B: LLM probe** — local instruction model as a ceiling probe for
+  decision + quote-cited localization.
+- **Serving** — local + **named tunnel** (needs a Cloudflare domain; quick
+  tunnel meanwhile, ADR-0002).
 - **Hygiene** — captures are debug-only; never train on validation/evaluation.
 
 ## Artifact map
