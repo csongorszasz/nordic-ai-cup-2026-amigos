@@ -81,7 +81,7 @@ Each ActionRequest must include the following fields:
 |-------------------|-------|---------------------------------------------------------------------------|
 |agent_id	        | int	| The ID of the agent this action applies to.                                   |
 |move_distance	    | float | Distance to move (capped by speed or sprint_speed).                       |
-|move_direction     | float | Absolute movement direction (radians).                                    |
+|move_direction     | float | Movement direction relative to the agent's heading before turning (radians). |
 |turn_angle	        | float | Rotation applied this step (radians).                                     |
 |spawn_agent	    | bool  | Whether the agent should attempt to spawn a new agent (high energy cost).   |
 
@@ -92,7 +92,7 @@ For a full example of how actions are used in practice, see [dummy_agent_policy.
 |-----------------------------------------------------|-------------------------------------------------|
 | Walking (move_distance <= speed                     | move_distance * 0.05                            |
 | Sprinting (speed <= move_distance <= sprint_speed)  | speed * 0.05 + (move_distance - speed) * 0.5    |
-| Turning                                             | abs(turn_angle) / 2 * pi                        |
+| Turning                                             | min(pi, abs(turn_angle)) / (2 * pi)              |
 | Spawning                                            | 100                                             |
 | Living (passive cost over time)                     | 1 / 10 * biome_energy_modifier                  |
 
@@ -317,9 +317,85 @@ python -m unittest discover -s tests -p "test_benchmark_runner.py"
 Remove-Item Env:BENCHMARK_INTEGRATION
 ```
 
+## Developing a policy
+
+The modular pipeline is **controller search -> imitation/DAgger -> recurrent PPO**.
+The controller remains a submission candidate; a completed training run is not evidence
+that a neural policy is better. See `docs\policy-architecture.md` for component boundaries,
+mechanics, design decisions, alternatives, and failure-isolation contracts.
+
+Run all commands below from `survival-simulator`, using the existing virtual environment.
+Controller inference and ordinary benchmarks only need `requirements.txt`. Training/search
+adds pinned optional dependencies:
+
+```powershell
+python -m pip install -r requirements-training.txt
+```
+
+For the supported NVIDIA CUDA build, install PyTorch from its official index before the
+training requirements:
+
+```powershell
+python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+python -m pip install -r requirements-training.txt
+```
+
+Experiments use strict JSON configurations and typed overrides, not edits to Python:
+
+```powershell
+python train.py --config .\configs\profile.json --output .\training-results\profile-1
+python train.py --config .\configs\profile.json --set resources.workers=2 --output .\training-results\profile-2
+python train.py --config .\configs\search.json --output .\training-results\controller-search
+python train.py --config .\configs\imitation-gru.json --output .\training-results\imitation
+python train.py --config .\configs\ppo-gru.json --set checkpoint=training-results\imitation\checkpoint.pt --output .\training-results\ppo
+```
+
+For example, `--set model.encoder=attention`, `--set model.memory=none`,
+`--set optimizer.learning_rate=0.0001`, and `--set resources.device=cpu` change supported
+architectures or parameters without touching the collector, policy factory, or API.
+Choose worker counts using measured throughput and memory, not the logical CPU count.
+Rollouts stay in host memory; neural training enforces its configured VRAM/token budget.
+Search evaluates independent candidate/world jobs across those workers, including whole
+CMA populations. It records completed episodes immediately and prints periodic native-tick
+progress; interrupted batches never become a complete candidate ranking.
+
+Use `--resume .\training-results\ppo\checkpoint.pt` with a **new** output directory to
+resume optimizer/RNG/update state. `updates` is the target total, not an additional count.
+Resume restarts the reference worlds; it does not serialize Pygame or promise exact
+mid-episode continuation. A warm-start `checkpoint` loads weights without optimizer state.
+Keep `checkpoint.pt.json` alongside the weights for checksum/schema validation.
+Resume also requires the original `manifest.json` and matching simulator, runtime,
+PyTorch, and seed-generation/suite provenance. Use a warm start when intentionally
+changing those; resuming must not silently change the training-world sequence.
+
+Compare exported policies through the existing benchmark:
+
+```powershell
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller.json --suite standard --output .\benchmark-results\controller-standard
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\training-results\ppo\policy.json --artifact .\training-results\ppo\checkpoint.pt --suite standard --output .\benchmark-results\ppo-standard
+python benchmark.py compare --reference .\benchmark-results\controller-standard --candidate .\benchmark-results\ppo-standard --output .\benchmark-results\ppo-comparison
+```
+
+Generated outputs under `training-results` are ignored by Git. They contain resolved
+configurations, source/runtime provenance, incremental events, summaries, and any trained
+weights. Preserve them explicitly when moving machines. Training seeds exclude the
+standard/holdout suites; freeze a candidate before consulting holdout.
+
 # Run on server
 You can serve your endpoint locally and test that everything starts without errors by running [agent_server.py](agent_server.py). Then open a browser and navigate to [http://localhost:9052](http://localhost:9052). You should see a message stating that the agent server is running. 
 Feel free to change the `HOST` and `PORT` settings in [agent_server.py](agent_server.py).
+
+The server now loads `configs\controller.json` once at startup and uses the same policy
+factory as the benchmark. To select another exported policy, set `SURVIVAL_POLICY_CONFIG`
+to its JSON descriptor. Paths inside a descriptor are relative to this use-case working
+directory.
+
+The default controller is stateless. **Neural serving is deliberately opt-in** because
+the request DTO has no episode identifier: first confirm that your endpoint receives only
+one sequential game stream, then set `SURVIVAL_SINGLE_STREAM=1`. Use one server worker.
+Recurrent sessions reset at bootstrap/new-game boundaries, prune dead agents, and cache
+identical retries; conflicting/out-of-order requests return HTTP 409 rather than corrupting
+memory. Missing/bad checkpoints fail startup, never silently fall back to random actions.
 
 To run a simulation on the server, you can run [simulation_server.py](simulation_server.py) while the endpoint is running.
 

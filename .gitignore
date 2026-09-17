@@ -1,3 +1,4 @@
 __pycache__/
 .venv/
 /survival-simulator/benchmark-results/
+/survival-simulator/training-results/

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "mode": "search",
+  "policy": "heuristic",
+  "seed": 12345,
+  "search": {
+    "method": "cma",
+    "candidates": 8,
+    "worlds": 3
+  }
+}

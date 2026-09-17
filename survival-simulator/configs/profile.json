@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "mode": "profile",
+  "policy": "heuristic",
+  "seed": 12345,
+  "rollout_steps": 128,
+  "resources": {
+    "device": "cpu",
+    "workers": 1
+  }
+}
