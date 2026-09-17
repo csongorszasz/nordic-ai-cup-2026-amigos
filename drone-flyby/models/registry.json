@@ -1,4 +1,19 @@
 {
+ "hangar": [
+  {
+   "added": "2026-09-17",
+   "author": "Vitor Augusto",
+   "author_profile": "https://sketchfab.com/Vitorodrigues",
+   "downloadable": true,
+   "faces": 40,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "check against the measured 38.9 x 25.0 m and the dark curved roof in the sprites",
+   "status": "candidate",
+   "title": "Hangar",
+   "url": "https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05"
+  }
+ ],
  "mine_roller": [
   {
    "added": "2026-09-17",

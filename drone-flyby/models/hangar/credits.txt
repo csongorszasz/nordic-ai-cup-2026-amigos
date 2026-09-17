@@ -1,0 +1,7 @@
+hangar - 3D model sources
+
+Hangar [candidate]
+  https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05
+  author:  Vitor Augusto
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    check against the measured 38.9 x 25.0 m and the dark curved roof in the sprites

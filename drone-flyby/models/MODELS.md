@@ -38,7 +38,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless green blob at 23x30 px | **candidate found** — MIM-23 Hawk, see below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | camo cylinder/mast with a light band | **wanted** |
-| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **wanted** — only 6 sprites, biggest false-positive source (roads/roofs) |
+| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **candidate found** — Hangar by Vitor Augusto, see below |
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **wanted** — only 5 sprites |
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **wanted** |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **wanted** |
@@ -64,6 +64,7 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `mine_roller` | [PT-34-85 mine clearing vehicle](https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f) | 42manako | CC-BY (credit required, commercial ok) | candidate — T-34 hull with roller drum, extent close to the measured 12.6 x 11.1 m |
 | `spacecraft` | [Star Wars: TIE/in Interceptor](https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41) | Daniel | CC-BY (credit required) | candidate — silhouette matches the sprites |
 | `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
+| `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 
 ### How exact does a model have to be?
 
@@ -92,6 +93,14 @@ re-finds them.
 | [Kenney](https://kenney.nl/assets) | CC0 | Tanks, towers, aircraft in a consistent style. |
 | [OpenGameArt](https://opengameart.org) | mixed, check per asset | Older, uneven quality. |
 | [NASA 3D Resources](https://nasa3d.arc.nasa.gov/models) | public domain | Good for aircraft/spacecraft shapes. |
+| [Fab](https://fab.com) | free section incl. CC-BY, plus paid | Epic's merged Unreal Marketplace + Quixel + Sketchfab store. Military vehicle packs turn up regularly. |
+
+Not usable, so nobody wastes an evening on it: **Steam Workshop**. Items are licensed for use
+inside their own game (Steam Subscriber Agreement plus the game's terms), there is no purchase
+that grants wider rights, and they ship as game packages (`.gma`, Source `.mdl`, Unity bundles,
+Arma `.pbo`) rather than meshes. Much of the military content there is itself ripped from other
+games. Paid marketplaces (TurboSquid, CGTrader, Unity Asset Store) are legitimate but pointless
+for us: our objects render at 20-180 px, so a 200k-face asset shows nothing a 3k-face one does not.
 
 ## How to check a candidate before spending time on it
 
