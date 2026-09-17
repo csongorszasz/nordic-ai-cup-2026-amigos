@@ -1,5 +1,25 @@
 {
   "version": 1,
   "policy": "heuristic",
-  "heuristic": {}
+  "heuristic": {
+    "backend": "vectorized",
+    "breeding_age": 58.157631064637584,
+    "breeding_energy": 253.4105475704165,
+    "breeding_reserve": 58.24716164884594,
+    "danger_weight": 4.221954232890617,
+    "directions": 16,
+    "energy_weight": 0.15,
+    "exploration_weight": 0.3,
+    "food_weight": 2.0,
+    "max_turn": 0.45,
+    "scan_turn": 0.12,
+    "sprint_distance": 45.0,
+    "threat_distance": 127.44741865848646,
+    "wall_margin": 12.0,
+    "wall_weight": 4.0
+  },
+  "checkpoint": null,
+  "checkpoint_sha256": null,
+  "device": "cpu",
+  "torch_threads": 1
 }

@@ -63,6 +63,33 @@ class HTTPPolicyTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"actions": expected})
 
+    def test_official_verifier_sample_is_normalized(self):
+        response = requests.post(self.url + "/predict", timeout=5, json={
+            "game_status": "running",
+            "score": 123.4,
+            "agent_status": [{
+                "agent_id": 1,
+                "observations": [
+                    {"type": "tree", "distance": 12.5, "angle": 1.57},
+                    {"type": "predator", "distance": 30.0, "angle": -1.57, "rel_dir": -2.57},
+                    {"type": "edge", "coords": [[50.0, 50.0], [100.0, 100.0]]},
+                ],
+                "energy": 85.0,
+                "biome": "forest",
+                "age": 5.2,
+                "speed": 12.5,
+                "sprint_speed": 13.5,
+                "hearing_radius": 10.0,
+                "vision_angle": 1.57,
+                "vision_range": 50.0,
+                "max_energy": 500.0,
+            }],
+        })
+        self.assertEqual(response.status_code, 200, response.text)
+        actions = response.json()["actions"]
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["agent_id"], 1)
+
     def test_invalid_count_returns_explicit_client_error(self):
         response = requests.post(self.url + "/predict", timeout=5, json={
             "game_status": "ok", "sim_time": 1, "score": 1, "n_agents": 1, "agent_status": [],

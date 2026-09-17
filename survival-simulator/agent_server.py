@@ -16,6 +16,38 @@ from src.utils.DTOs import StepResponse
 HOST = "0.0.0.0"
 PORT = 9052
 
+_GAME_STATUSES = {"running": "ok", "ok": "ok", "game_over": "game_over"}
+_OBSERVATION_TYPES = {
+    name.casefold(): name for name in ("Fruit", "Agent", "Predator", "Tree", "Edge")
+}
+
+
+def normalize_submission_step(step: StepResponse) -> StepResponse:
+    """Translate the public verifier payload into the simulator's internal DTO vocabulary."""
+    values = step.model_dump(mode="python")
+    status = _GAME_STATUSES.get(step.game_status.casefold())
+    if status is None:
+        raise ValueError(f"Unknown game status: {step.game_status!r}")
+    values["game_status"] = status
+    if "n_agents" not in step.model_fields_set:
+        values["n_agents"] = len(step.agent_status)
+    for agent in values["agent_status"]:
+        observations = []
+        for observation in agent["observations"]:
+            normalized = dict(observation)
+            raw_type = normalized.get("type")
+            canonical = (
+                _OBSERVATION_TYPES.get(raw_type.casefold())
+                if isinstance(raw_type, str) else None
+            )
+            if canonical is None:
+                raise ValueError(f"Unknown observation type: {raw_type!r}")
+            normalized["type"] = canonical
+            observations.append(normalized)
+        agent["observations"] = observations
+    return StepResponse.model_validate(values)
+
+
 def create_app(
     config_path: Path | None = None, *, policy_factory: Callable[[], Policy] | None = None,
     stateful: bool = False, single_stream: bool | None = None,
@@ -51,11 +83,12 @@ def create_app(
     @application.post("/predict")
     def predict(step: StepResponse = Body(...)):
         try:
-            validate_step(step)
+            normalized_step = normalize_submission_step(step)
+            validate_step(normalized_step)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         try:
-            actions = application.state.session.predict(step)
+            actions = application.state.session.predict(normalized_step)
         except SessionConflict as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"actions": [action.model_dump(mode="json") for action in actions]}

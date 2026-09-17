@@ -390,6 +390,19 @@ factory as the benchmark. To select another exported policy, set `SURVIVAL_POLIC
 to its JSON descriptor. Paths inside a descriptor are relative to this use-case working
 directory.
 
+`configs\controller.json` contains the tuned vectorized controller exported by
+`training-results\controller-vectorized-search-plan-v1\policy.json`. It won the
+four-candidate search on two shared training seeds (mean score 1263.90 versus 1060.80
+for the untuned controller). These are training results, not held-out evidence.
+The untuned vectorized settings remain in `configs\controller-vectorized.json`.
+This selection does not establish HTTP-budget compliance: the earlier
+`controller-http-full-plan-v1` probe exceeded its response/wait budget.
+Restart the server after changing the selected configuration.
+
+The HTTP boundary accepts both the official verifier payload (`game_status="running"`,
+omitted `sim_time`/`n_agents`, lowercase observation types) and the richer local
+simulator payload. Inputs are normalized before they reach the policy.
+
 The default controller is stateless. **Neural serving is deliberately opt-in** because
 the request DTO has no episode identifier: first confirm that your endpoint receives only
 one sequential game stream, then set `SURVIVAL_SINGLE_STREAM=1`. Use one server worker.

@@ -2,10 +2,17 @@ import unittest
 
 from pydantic import ValidationError
 
-from src.policies.config import ExperimentConfig, SearchConfig, apply_overrides
+from src.benchmarking.config import PROJECT_ROOT, read_json
+from src.policies.config import ExperimentConfig, RuntimeConfig, SearchConfig, apply_overrides
 
 
 class PolicyConfigTests(unittest.TestCase):
+    def test_default_serving_config_selects_vectorized_controller_without_checkpoint(self):
+        options = RuntimeConfig.model_validate(read_json(PROJECT_ROOT / "configs" / "controller.json"))
+        self.assertEqual(options.policy, "heuristic")
+        self.assertEqual(options.heuristic.backend, "vectorized")
+        self.assertIsNone(options.checkpoint)
+
     def test_nested_architecture_and_parameter_overrides(self):
         original = ExperimentConfig()
         changed = apply_overrides(original, [
