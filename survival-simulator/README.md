@@ -150,6 +150,173 @@ You should see a stream of `Score | Agents alive | Time` lines, ending with a `G
 # Testing locally
 To test the simulation locally you can run [local_playground.py](local_playground.py). This can be used to get an idea of how the simulation works. It is recommended to use this file for any potential training with "verbose" set to False to run simulations faster.
 
+## Comparing policies
+
+The benchmark evaluates **local Python policies** against the existing random policy
+or against any other saved policy run. It does not change the simulator, scoring,
+playground, or HTTP server.
+
+Run these commands from `survival-simulator` with the virtual environment active:
+
+```powershell
+python -m pip install -r requirements-benchmark.txt
+python benchmark.py run --policy random --suite quick --output .\benchmark-results\random-quick
+python benchmark.py run --policy random --suite standard --output .\benchmark-results\random-standard
+```
+
+The `random` alias identifies `random-local-v1`: the original `action_decision`
+function with one persistent policy RNG per episode, as in `local_playground.py`.
+It is **not** the HTTP server's variant, which reseeds on every request.
+
+| Suite | World seeds | Purpose |
+| --- | --- | --- |
+| `quick` (default) | 3, drawn from standard | Exploratory iteration with fewer episodes |
+| `standard` | 20 | Routine comparisons and the saved random baseline |
+| `holdout` | 20, disjoint from standard | Explicit final comparisons, not routine tuning |
+
+The versioned seed lists live in `benchmarks\suites`. Quick runs still use the full
+episode horizon. Every episode begins with the existing empty-action tick and
+stops at extinction or when engine time is **strictly greater than 3000 seconds**,
+matching the current simulator scripts rather than assuming exactly 30000 ticks.
+
+### Adding a policy
+
+Create an importable factory, for example
+`src\utils\controllers\my_policy.py`. The benchmark calls it with `seed` and
+`config` keyword arguments for each episode. Its returned object must implement
+`act(step: StepResponse)`, returning a sequence of `ActionRequest` objects:
+
+```python
+import random
+from src.utils.DTOs import ActionRequest, StepResponse
+
+
+class MyPolicy:
+    def __init__(self, seed, config):
+        self.rng = random.Random(seed)
+        self.config = config
+        self.memory = {}
+
+    def act(self, step: StepResponse) -> list[ActionRequest]:
+        return [
+            ActionRequest(
+                agent_id=agent.agent_id,
+                move_distance=0.0,
+                move_direction=0.0,
+                turn_angle=0.0,
+                spawn_agent=False,
+            )
+            for agent in step.agent_status
+        ]
+
+
+def create_policy(seed, config):
+    return MyPolicy(seed, config)
+```
+
+This deliberately simple example is an interface illustration, not a proposed
+competitive policy. The batch API exposes every current agent together, enabling
+shared memory and coordination. State must reset in the factory; use private
+RNGs initialized from the supplied policy seed, not global random state.
+
+```powershell
+python benchmark.py run --policy src.utils.controllers.my_policy:create_policy --label my-policy --suite standard --output .\benchmark-results\candidate-standard
+python benchmark.py compare --reference .\benchmark-results\random-standard --candidate .\benchmark-results\candidate-standard --output .\benchmark-results\comparison
+```
+
+Use any saved run as `--reference` to compare solutions with each other. Repeat
+`--candidate` to compare several candidates together. Each output path must be new;
+existing directories are never overwritten. Compare the same baseline directory
+against itself to exercise reporting without additional simulation.
+
+Pass `--config .\policy-config.json` for a JSON object of policy parameters.
+Use repeatable `--artifact .\model-file` arguments to fingerprint model weights or
+additional source/config files, especially dependencies outside the local policy
+source tree. Policies receive observations only, not the simulator or its RNG;
+these are trusted local plugins, not sandboxed programs.
+
+### Measurements and saved reports
+
+**Mean native final score is the primary ranking metric.** Reports also include
+median, spread and extrema; capped survival time; time-limit completion fraction;
+initial/final/peak/mean population; and wall-clock diagnostics. Raw engine time and
+tick counts are retained. Extinction is a successfully evaluated episode, but is
+not a time-limit completion.
+
+Initialization, policy construction, simulation stepping, policy execution, and
+episode wall time are measured separately. Latency is for a **batch call across
+all living agents**, includes cold calls, and is summarized per episode as
+mean/p50/p95/max. It is not per-agent inference latency or an HTTP timeout guarantee.
+Episode timings exclude CLI startup, policy module import, provenance hashing, and
+report generation.
+Different machines or timing contexts are flagged rather than treated as controlled
+speed comparisons.
+
+Each run stores `manifest.json`, incremental `episodes.jsonl`, `episodes.csv`,
+`summary.json`, and `report.md`. The manifest records seeds, settings, policy
+configuration, source/artifact fingerprints, Git state, and runtime provenance.
+Generated runs and comparison directories under `benchmark-results` are ignored
+by Git; retain or share them explicitly when comparing work across machines.
+
+Comparison reports are generated entirely from saved records and include
+paired-case data, score distributions, per-seed score differences, and
+score-versus-policy-latency PNG plots. Simulation and numerical reporting do not
+require Matplotlib; install `requirements-benchmark.txt` for plots, or use
+`compare --no-plots` for numerical output only.
+
+```powershell
+python benchmark.py inspect --run .\benchmark-results\random-standard
+```
+
+Comparisons require the exact same suite/cases, simulator settings and source,
+runner protocol, and compatible Python/OS/runtime dependencies. Policy code,
+parameters, and Git revisions may differ. Missing, failed, duplicated, truncated,
+or otherwise incompatible trials cannot silently enter a complete ranking.
+
+### Repeats, uncertainty, and failures
+
+Use `--repeats N` to evaluate multiple stochastic policy trials per world seed.
+Repeat zero uses the world seed as its policy seed. Further policy seeds use the
+first four bytes of SHA-256 over
+`sha256-policy-seed-v1:<world_seed>:<repeat_index>`, interpreted big-endian.
+Every resolved case and seed is saved; policies are compared on matching cases,
+never by row position.
+
+Reports show absolute score deltas and win/tie/loss counts with a `1e-9` absolute
+tie tolerance, not percentages over potentially zero or negative baselines.
+The 95% paired percentile bootstrap interval uses 10000 resamples and an independent
+fixed report RNG. Repeats are averaged within a world seed before resampling seeds;
+agents, ticks, and repeated trials of one world are not independent environments.
+One-seed intervals are unavailable, and constant differences have point intervals.
+Quick-suite results are exploratory; an interval crossing zero does not establish
+a clear improvement. Holdout seeds are version-controlled, not secret.
+
+The simulator's observation ordering is not fully deterministic, even for matching
+seeds on the same platform. Seeds and provenance make experiments comparable but
+do **not** guarantee identical replay. Different policies also consume different
+amounts of environment randomness through their actions. No observation sorting,
+physics changes, or RNG-consuming graphics optimizations are applied by the harness.
+
+Failures stop the run with a nonzero exit code and explicit error details; missing
+scores are never replaced by zero or random actions. Completed episodes survive
+interruptions. Use `inspect` for partial runs, and a new output directory to rerun.
+There is no preemptive timeout for a local policy that blocks indefinitely.
+
+For a bounded integration probe, add `--max-steps 2`. The initial empty-action tick
+counts toward this cap. Such diagnostic runs are never eligible for full-horizon
+comparisons, even if an episode becomes extinct before the cap.
+
+### Benchmark development
+
+The benchmark uses standard-library `unittest`, without another test-runner dependency:
+
+```powershell
+python -m unittest discover -s tests -p "test_benchmark_*.py"
+$env:BENCHMARK_INTEGRATION = "1"
+python -m unittest discover -s tests -p "test_benchmark_runner.py"
+Remove-Item Env:BENCHMARK_INTEGRATION
+```
+
 # Run on server
 You can serve your endpoint locally and test that everything starts without errors by running [agent_server.py](agent_server.py). Then open a browser and navigate to [http://localhost:9052](http://localhost:9052). You should see a message stating that the agent server is running. 
 Feel free to change the `HOST` and `PORT` settings in [agent_server.py](agent_server.py).
@@ -160,6 +327,8 @@ The default movement logic for agents can be found in [dummy_agent_policy.py](sr
 
 
 ### OBS
-The simulation is deterministic as long as it runs on the same OS. If you want to test how a specific seed runs on the validation/evaluation server, you should test on a Linux machine.
+For comparisons with the validation/evaluation server, use a Linux machine. Matching
+OS, versions, and seeds does not guarantee exact replay: observation ordering can
+still vary. The benchmark records provenance and documents these limitations.
 
 To avoid bottlenecking the system, the server will wait for responses for up to 10 seconds. If no responses are received from the agent server within that time or if the accumulated wait time reaches 600 seconds, the run will end.
