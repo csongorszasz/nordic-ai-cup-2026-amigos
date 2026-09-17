@@ -38,13 +38,14 @@ run() {
     echo "########################################################################"
     echo "### ${tag}: $*"
     echo "########################################################################"
-    env "$@" python dev_eval.py --answer nli --diagnostics --debug 6 --json "results/${tag}.json" --tag "${tag}"
+    env "$@" python dev_eval.py --answer nli --diagnostics --json "results/${tag}.json" --tag "${tag}"
 }
 
+BASE="MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 LARGE="MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli"
-run T018 NLI_MODEL="$LARGE" MEDAPP_NLI_TAU=0.3 MEDAPP_TOP_CLAUSES=3 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
-run T019 NLI_MODEL="$LARGE" MEDAPP_NLI_TAU=0.5 MEDAPP_TOP_CLAUSES=3 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
-run T020 NLI_MODEL="$LARGE" MEDAPP_NLI_TAU=0.3 MEDAPP_TOP_CLAUSES=1 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
+run T024 NLI_MODEL="$BASE"  MEDAPP_NLI_TAU=0.3 MEDAPP_DECISION_NEIGHBOURS=1 MEDAPP_TOP_CLAUSES=1 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
+run T025 NLI_MODEL="$LARGE" MEDAPP_NLI_TAU=0.3 MEDAPP_DECISION_NEIGHBOURS=1 MEDAPP_TOP_CLAUSES=1 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
+run T026 NLI_MODEL="$LARGE" MEDAPP_NLI_TAU=0.5 MEDAPP_DECISION_NEIGHBOURS=1 MEDAPP_TOP_CLAUSES=1 MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1
 
 echo "########################################################################"
 echo "finished $(date)"

@@ -21,8 +21,10 @@ guarded sub-range localization → answer + span`, with a never-raise contract.
 - **ASR.** `faster-whisper` with word timestamps; `large-v3` and `large-v3-turbo`
   preserve doses/numbers (`one million IU four times daily`,
   `fluconazole 50 milligrams`). Turbo is 2.2× faster than large-v3 on the 1650.
-- **Hard negatives and off-topic.** 0.94–0.97 and 0.98 accuracy — the numeric
-  guard is currently a no-op, i.e. NLI alone rejects the near-misses at τ 0.3.
+- **Merged decision premise.** Deciding on clause ± 1 lifted positive recall
+  **0.749 → 0.944** (large) at a tiny precision cost (ADR-0004).
+- **Hard negatives and off-topic.** 0.930 and 0.943 accuracy (large, merged) —
+  NLI alone rejects the near-misses; the numeric guard is a no-op.
 - **Proposition rewrite.** Decisive: accuracy `0.821` (base NLI, proposition)
   vs `0.692` for the raw question.
 - **The endpoint.** Local + cloudflared: all 200 OK, worst 46.6 s of 60 s, zero
@@ -30,25 +32,26 @@ guarded sub-range localization → answer + span`, with a never-raise contract.
 
 ## What doesn't (and why)
 
-1. **Localization.** Chosen span tIoU ~0.25 against a **0.884** pruned-candidate
-   oracle. The cause is an objective mismatch, not tuning: NLI entailment is
-   monotone in context while gold spans are minimal, so every "pick by score"
-   rule drifts to the longest candidate. Five selection rules and three search
-   breadths all landed within 0.04 (ADR-0003).
-2. **Positive recall.** ~0.73 on training; validation yes-rate 37% on a balanced
-   set. A missed positive is both a wrong answer and a 0 in the tIoU average.
+**Localization.** Chosen span tIoU ~0.36 against a searched-neighbourhood oracle
+of 0.66 and a global candidate oracle of **0.884**. The cause is an objective
+mismatch, not tuning: NLI entailment is monotone in context while gold spans are
+minimal, so every "pick by score" rule drifts to the longest candidate. Five
+selection rules and three search breadths all landed within 0.04 (ADR-0003).
 
-## Loss decomposition (T018, mIoU 0.286)
+Positive recall — previously the other failure — is resolved by the merged
+premise (ADR-0004).
+
+## Loss decomposition (T025, mIoU 0.340)
 
 | stage | ceiling | loss | cause |
 | --- | --- | --- | --- |
 | any word range | 0.894 | — | ASR word times vs annotator boundaries |
-| searched neighbourhood | 0.714 | −0.18 | most-entailing clause ≠ annotated clause |
-| chosen span | 0.381 | −0.33 | NLI cannot rank by "what a human cites" |
-| mean over positives | 0.286 | −0.10 | 49/195 positives answered no |
+| searched neighbourhood | 0.656 | −0.24 | most-entailing clause ≠ annotated clause |
+| chosen span | 0.360 | −0.30 | NLI cannot rank by "what a human cites" |
+| mean over positives | 0.340 | −0.02 | 11/195 positives answered no |
 
-Headroom: accuracy ≈ 0.06, localization ≈ 0.35. **Localization is where the
-points are.**
+Headroom is now almost entirely **localization**. Accuracy headroom ≈ 0.02,
+localization ≈ 0.33.
 
 ## Budgets (GTX 1650, int8)
 
@@ -62,18 +65,20 @@ points are.**
 | config | score |
 | --- | --- |
 | shipped baseline (floor) | 0.200 |
-| best training config (T018) | 0.512 |
+| single-clause, large (T018) | 0.512 |
 | served cheap config, 3 training convs | 0.471 |
-| **served cheap config, validation** | **0.457** |
+| **served cheap config, validation (T023)** | **0.457** |
+| **merged decision, large (T025, not yet served)** | **0.579** |
 
 Local dev_eval predicted the service within noise; the harness and data agree.
+T025 has not been served/validated yet — the served config predates the merged
+premise.
 
 ## Open problems / next
 
-- **M3: learned span ranker** (ADR-0003) — attack localization, and free NLI
-  latency for a stronger decision.
-- **Decision recall** — re-tune τ / consider large NLI for the decision, LOCO on
-  training only.
+- **M3: learned span ranker** (ADR-0003) — the only large remaining gap
+  (localization). Also frees NLI latency for the decision.
+- **Re-serve + validate** the merged-decision config (expected ~0.53–0.58).
 - **Serving** — local + **named tunnel** chosen (ADR-0002); set up the stable URL
   before the evaluation.
 - **Hygiene** — captures are debug-only; never train on validation/evaluation.

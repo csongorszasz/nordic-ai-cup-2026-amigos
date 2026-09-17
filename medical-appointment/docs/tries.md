@@ -33,6 +33,9 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T019 | 2026-09-17 | large NLI, τ 0.5 | large | 0.836 | 0.272 | 0.498 | |
 | T020 | 2026-09-17 | large NLI, top-1 | large | 0.851 | 0.272 | 0.504 | |
 | T023 | 2026-09-17 | **validation dry run** (served config) | base | — | — | **0.457** | local+cloudflared, all 200 OK |
+| T024 | 2026-09-17 | **merged decision premise** (clause±1) | base | 0.882 | 0.320 | 0.545 | positive recall 0.892 |
+| T025 | 2026-09-17 | merged decision, large NLI | large | **0.938** | **0.340** | **0.579** | positive recall 0.944 |
+| T026 | 2026-09-17 | merged decision, large, τ 0.5 | large | 0.938 | 0.337 | 0.578 | |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -132,6 +135,23 @@ competition is.
 **Numeric guard is currently dead weight** (T003 ≡ T006): it never changes a
 decision at τ 0.3, because the clause containing the evidence also contains the
 question's number. Keep it (cheap insurance) but don't count on it.
+
+## T024–T026 — the recall bottleneck was premise construction
+
+- **Diagnostic (`diagnose_recall.py`):** for 195 positives, entailment of the
+  proposition against best clause / clause±1 merged / gold text. Merged lifted
+  the ≥τ rate from **73% → 90%** (base) and **75% → 95%** (large); hard-negative
+  false positives rose only 9% → 13% (base) and 5% → 7% (large). Gold-text scores
+  were *lower* than merged (62/66%) because annotations are minimal, often
+  truncated fragments.
+- **Root cause:** the gold evidence crosses our clause boundaries **71%** of the
+  time, so a single-clause premise could not entail it.
+- **Fix:** decision premise = clause ± 1 merged (`MEDAPP_DECISION_NEIGHBOURS=1`).
+- **Result:** positive recall **0.749 → 0.944**, accuracy **0.851 → 0.938**,
+  mIoU **0.286 → 0.340**, score **0.512 → 0.579** (T025). Negligible latency cost.
+- **Conclusion:** recall was premise construction, not model capability. The
+  remaining gap is localization (chosen 0.36 vs neighbourhood oracle 0.66,
+  global 0.88) — the M3 problem.
 
 ## Latency (P100, transcripts cached, per conversation)
 

@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 TAU = float(os.environ.get("MEDAPP_NLI_TAU", "0.5"))
 NEIGHBOURS = int(os.environ.get("MEDAPP_LOCALIZE_NEIGHBOURS", "1"))
+# How many neighbour clauses to merge into the decision premise. The gold
+# evidence crosses our clause boundaries ~71% of the time; merging recovers most
+# of the lost positive recall (diagnose_recall: 73% -> 90% base, 75% -> 95% large).
+DECISION_NEIGHBOURS = int(os.environ.get("MEDAPP_DECISION_NEIGHBOURS", "1"))
 MAX_RANGE_WORDS = int(os.environ.get("MEDAPP_MAX_RANGE_WORDS", "16"))
 MAX_CANDIDATES = int(os.environ.get("MEDAPP_MAX_CANDIDATES", "400"))
 HYPOTHESIS_MODE = os.environ.get("MEDAPP_HYPOTHESIS", "proposition")
@@ -94,6 +98,19 @@ def _enumerate_candidates(
     return ranges
 
 
+def _decision_texts(windows: Sequence[Window], neighbours: int) -> List[str]:
+    """Premise texts for the decision: each window joined with its neighbours."""
+    if neighbours <= 0:
+        return [w.text for w in windows]
+    count = len(windows)
+    texts = []
+    for index in range(count):
+        lo = max(0, index - neighbours)
+        hi = min(count - 1, index + neighbours)
+        texts.append(" ".join(w.text for w in windows[lo:hi + 1]))
+    return texts
+
+
 def answer_question(
     question: str,
     words: List[Dict],
@@ -130,11 +147,11 @@ def answer_question(
 
     hypothesis = hypothesis_for(question)
 
-    clause_texts = [window.text for window in windows]
+    decision_texts = _decision_texts(windows, DECISION_NEIGHBOURS)
     started = time.perf_counter()
-    clause_scores = nli.score(clause_texts, hypothesis)
+    clause_scores = nli.score(decision_texts, hypothesis)
     info["t_clause"] = time.perf_counter() - started
-    info["n_clause_pairs"] = len(clause_texts)
+    info["n_clause_pairs"] = len(decision_texts)
     best = max(range(len(windows)), key=lambda index: clause_scores[index])
     info["best_clause"] = best
     info["clause_score"] = clause_scores[best]
@@ -142,7 +159,7 @@ def answer_question(
     if clause_scores[best] < tau:
         info["decided_by"] = "below_threshold"
         return result(False, None)
-    if use_guard and not numeric_guard(question, clause_texts[best]):
+    if use_guard and not numeric_guard(question, decision_texts[best]):
         info["decided_by"] = "guard"
         return result(False, None)
 

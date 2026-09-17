@@ -29,6 +29,7 @@ Set via environment (all read at process start):
 | `MEDAPP_MAX_CANDIDATES` | `120` | latency cap |
 | `MEDAPP_MAX_RANGE_WORDS` | `10` | latency cap |
 | `MEDAPP_NLI_TAU` | `0.3` | decision threshold |
+| `MEDAPP_DECISION_NEIGHBOURS` | `1` | merge clause ± 1 for the decision (ADR-0004) |
 | `MEDAPP_CAPTURE` | `1` | record requests/responses to `captured/` |
 
 ## 3. Start / stop
@@ -37,8 +38,9 @@ Set via environment (all read at process start):
 source ~/miniforge3/etc/profile.d/conda.sh && conda activate medapp-local
 cd ~/nordic-ai-cup-2026-amigos/medical-appointment
 WHISPER_MODEL=large-v3-turbo WHISPER_COMPUTE_TYPE=int8 NLI_DEVICE=cuda \
-  MEDAPP_NLI_TAU=0.3 MEDAPP_TOP_CLAUSES=1 MEDAPP_SELECT=greedy_trim \
-  MEDAPP_TRIM_MARGIN=0.1 MEDAPP_MAX_CANDIDATES=120 MEDAPP_MAX_RANGE_WORDS=10 \
+  MEDAPP_NLI_TAU=0.3 MEDAPP_DECISION_NEIGHBOURS=1 MEDAPP_TOP_CLAUSES=1 \
+  MEDAPP_SELECT=greedy_trim MEDAPP_TRIM_MARGIN=0.1 \
+  MEDAPP_MAX_CANDIDATES=120 MEDAPP_MAX_RANGE_WORDS=10 \
   MEDAPP_CAPTURE=1 setsid nohup python api.py > /tmp/opencode/api_local.log 2>&1 &
 ```
 
