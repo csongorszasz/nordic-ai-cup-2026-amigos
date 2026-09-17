@@ -66,7 +66,7 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
 | `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 | `large_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — scale to 13.9 x 12.6 m. From above the sprites read as a brown/camo rectangular structure with a pale band across the middle, more camouflaged shelter than open tower, so check the render before trusting it |
-
+| `small_tower` | same watchtower mesh as `large_tower` | Blenderust | CC-BY (credit required) | candidate — render tinted green and scaled to 12.6 x 12.0 m |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
