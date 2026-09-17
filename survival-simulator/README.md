@@ -121,7 +121,7 @@ cd Nordic-AI-Cup-2026/survival-simulator
 ```
 
 ### Install
-The simulator requires **Python 3.10 or newer**. We recommend installing the dependencies in a virtual environment so they do not interfere with your other projects.
+The simulator requires **Python 3.10-3.13**. Python 3.14 is not supported by the pinned Pygame version. We recommend installing the dependencies in a virtual environment so they do not interfere with your other projects.
 
 Linux / macOS:
 ```bash
@@ -132,9 +132,9 @@ pip install -r requirements.txt
 
 Windows:
 ```cmd
-python -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Remember to activate the environment (`source .venv/bin/activate` or `.venv\Scripts\activate`) in every new terminal before running any of the scripts below.
