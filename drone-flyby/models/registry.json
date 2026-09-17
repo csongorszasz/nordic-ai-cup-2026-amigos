@@ -59,6 +59,21 @@
    "url": "https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4"
   }
  ],
+ "small_tower": [
+  {
+   "added": "2026-09-17",
+   "author": "Blenderust",
+   "author_profile": "https://sketchfab.com/narighillya",
+   "downloadable": true,
+   "faces": 664,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "same mesh as large_tower, tinted green and scaled to 12.6 x 12.0 m; the two classes differ mostly in colour",
+   "status": "candidate",
+   "title": "Old Wooden Watchtower (House 3)",
+   "url": "https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499"
+  }
+ ],
  "spacecraft": [
   {
    "added": "2026-09-17",

@@ -42,7 +42,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **wanted** — only 5 sprites |
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **wanted** |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **wanted** |
-| 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | wanted |
+| 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | wanted |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | wanted |
@@ -66,6 +66,11 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
 | `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 | `large_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — scale to 13.9 x 12.6 m. From above the sprites read as a brown/camo rectangular structure with a pale band across the middle, more camouflaged shelter than open tower, so check the render before trusting it |
+
+One mesh can serve more than one class. `small_tower` and `large_tower` are nearly the same
+size (12.6 x 12.0 vs 13.9 x 12.6 m) and differ mainly in colour — green roof against brown
+camo — so the same watchtower is registered for both, to be rendered with a per-class tint.
+The renderer therefore needs a hue/saturation override per class, not just scale and angle.
 
 ### How exact does a model have to be?
 
@@ -116,4 +121,11 @@ for us: our objects render at 20-180 px, so a 200k-face asset shows nothing a 3k
 Not built yet: a `trimesh`/`pyrender` script to render each model top-down over a range of
 yaw, pitch (the camera is near-nadir but not exactly), sun angle and scale, producing RGBA
 sprites in the same layout as `sprites/`, so `training/synth_dataset.py` can paste them
-straight onto the aerial backgrounds. Worth writing once 4 or 5 models are in, not before.
+straight onto the aerial backgrounds.
+
+It should read `registry.json`, and per class it needs:
+
+- **scale** to the measured ground size in the table (a model's own units mean nothing);
+- **a hue/saturation tint**, so one mesh can cover two classes (see the towers above);
+- **downsampling to the class's real pixel size**, because a crisp render at 400 px looks
+  nothing like the same object at 60 px in the challenge imagery.
