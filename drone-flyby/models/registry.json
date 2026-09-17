@@ -14,6 +14,21 @@
    "url": "https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f"
   }
  ],
+ "small_launcher": [
+  {
+   "added": "2026-09-17",
+   "author": "Dominik Bia\u0142y",
+   "author_profile": "https://sketchfab.com/crazyyuan",
+   "downloadable": true,
+   "faces": 53030,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "MIM-23 Hawk SAM; 3 rails on a towed trailer, ~5 m - check against the 6.3 x 4.6 m measured",
+   "status": "candidate",
+   "title": "Mim-23 Hawk SAM air defence system (game-ready)",
+   "url": "https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4"
+  }
+ ],
  "spacecraft": [
   {
    "added": "2026-09-17",

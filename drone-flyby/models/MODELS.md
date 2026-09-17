@@ -35,7 +35,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 |---|---|---|---|---|---|---|
 | 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **candidate found** — PT-34-85, see below |
 | 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | small dark launcher vehicle, hard to read | **wanted** — worst AP, rough sprites |
-| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | pale green box on a flatbed, tiny | **wanted** — too small to cut cleanly |
+| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless green blob at 23x30 px | **candidate found** — MIM-23 Hawk, see below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | camo cylinder/mast with a light band | **wanted** |
 | 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **wanted** — only 6 sprites, biggest false-positive source (roads/roofs) |
@@ -63,6 +63,20 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 |---|---|---|---|---|
 | `mine_roller` | [PT-34-85 mine clearing vehicle](https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f) | 42manako | CC-BY (credit required, commercial ok) | candidate — T-34 hull with roller drum, extent close to the measured 12.6 x 11.1 m |
 | `spacecraft` | [Star Wars: TIE/in Interceptor](https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41) | Daniel | CC-BY (credit required) | candidate — silhouette matches the sprites |
+| `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
+
+### How exact does a model have to be?
+
+It depends entirely on how many pixels the class covers, so check the Size column before
+spending an hour on a search:
+
+- **Under ~35 px** (`small_launcher` 23x30, `ta-ta` 32x17, `jammer` 43x32): there is no
+  structure to see. Every one of the 25 `small_launcher` cut-outs is a featureless green
+  blob. Footprint, colour and rough aspect ratio are all the detector can learn, so any
+  plausible vehicle of the right size does the job.
+- **Over ~100 px** (`hangar` 185x119, `condor` 173x166, `large_launcher` 149x110,
+  `helicopter` 116x94): the silhouette is clearly visible and the model matters. These are
+  worth the hunt, and they are also where the false positives come from.
 
 `status` in the registry is `candidate` until the `.glb` is actually in `models/<class>/`,
 then `downloaded`; use `rejected` (with a note) for ones that turned out wrong, so nobody
