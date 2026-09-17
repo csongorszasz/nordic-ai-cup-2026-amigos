@@ -44,11 +44,21 @@ for part in "${parts[@]}"; do
     # Big zips are uploaded as 95 MB parts (file.zip.part00, part01, ...) so a stalled
     # upload only costs one part; small ones as a single file.
     rm -f "$CACHE/$file" "$CACHE/$file".part*
-    if gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name' | grep -qx "$file"; then
+    assets="$(gh release view "$TAG" -R "$REPO" --json assets -q '.assets[].name')"
+    if grep -qx "$file" <<<"$assets"; then
       gh release download "$TAG" -R "$REPO" -p "$file" -D "$CACHE" --clobber
-    else
+    elif grep -q "^$file\.part" <<<"$assets"; then
       gh release download "$TAG" -R "$REPO" -p "$file.part*" -D "$CACHE" --clobber
       cat "$CACHE/$file".part* > "$CACHE/$file" && rm -f "$CACHE/$file".part*
+    else
+      echo "'$file' is not on release $TAG (yet)."
+      case "$part" in
+        frames)     echo "  Rebuild it instead: fetch the recordings, then run training/reconstruct_frames.py"; ;;
+        recordings) echo "  Raw evaluator views of past validation runs; they cannot be regenerated without"
+                    echo "  new runs. Ask whoever recorded them (Juan) to upload the zip."; ;;
+      esac
+      echo "  Uploads over ~15 MB were failing from Juan's home line, so this may simply be pending."
+      exit 1
     fi
     actual="$(sha256sum "$CACHE/$file" | cut -d' ' -f1)"
     [ "$actual" = "$expected" ] || { echo "checksum mismatch for $file"; exit 1; }
