@@ -58,6 +58,19 @@
    "status": "rejected",
    "title": "MIM-104 Patriot",
    "url": "https://sketchfab.com/3d-models/mim-104-patriot-5aa6d27d22274a7aac54ed7cc0eee7c7"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "Chenzoss",
+   "author_profile": "https://sketchfab.com/Chenzoss",
+   "downloadable": true,
+   "faces": 119997,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's pick; downloadable CC-BY, 120k faces (heavy but fine for offline rendering). Scale to 31.3 x 23.1 m",
+   "status": "candidate",
+   "title": "MIM-104 Patriot Air Defense System",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-air-defense-system-977f1f08a2014da99138a3364b7a56cd"
   }
  ],
  "large_tower": [
