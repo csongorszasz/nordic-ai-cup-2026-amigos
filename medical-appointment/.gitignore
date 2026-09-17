@@ -2,6 +2,7 @@
 transcripts/
 models/
 logs/
+results/
 
 # Generic Python files (Source: https://github.com/github/gitignore/blob/main/Python.gitignore)
 __pycache__/

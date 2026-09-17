@@ -52,7 +52,8 @@ def _ends_clause(text: str) -> bool:
     return bool(text) and text.endswith(_CLAUSE_END)
 
 
-def _join(words: List[Dict], first: int, last: int) -> str:
+def join_words(words: List[Dict], first: int, last: int) -> str:
+    """Join a word range into text, normalising whitespace."""
     raw = "".join(words[i]["word"] for i in range(first, last + 1))
     return " ".join(raw.split())
 
@@ -152,8 +153,7 @@ def build_windows(words: List[Dict]) -> List[Window]:
                 id=len(windows),
                 start=words[atom[0]]["start"],
                 end=words[atom[-1]]["end"],
-                text=_join(words, atom[0], atom[-1]),
-                first_word=atom[0],
+                text=join_words(words, atom[0], atom[-1]),                first_word=atom[0],
                 last_word=atom[-1],
             )
         )

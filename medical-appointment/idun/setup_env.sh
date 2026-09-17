@@ -28,6 +28,7 @@ conda activate nordic
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements-model.txt
 # torch brings the CUDA runtime libs (cuBLAS/cuDNN) that ctranslate2 needs.
 python -m pip install torch --index-url https://download.pytorch.org/whl/cu121
 python -m pip install faster-whisper
@@ -36,6 +37,15 @@ echo "pre-downloading faster-whisper weights"
 python - <<'PY'
 from huggingface_hub import snapshot_download
 snapshot_download("Systran/faster-whisper-large-v3")
+PY
+
+echo "pre-downloading NLI model"
+python - <<'PY'
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+name = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
+AutoTokenizer.from_pretrained(name)
+AutoModelForSequenceClassification.from_pretrained(name)
+print("downloaded", name)
 PY
 
 echo "setup complete"

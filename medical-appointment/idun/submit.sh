@@ -11,6 +11,7 @@
 #   bash idun/submit.sh eval        # submit an end-to-end HTTP scoring job
 #   bash idun/submit.sh queue       # show your SLURM jobs
 #   bash idun/submit.sh logs [id]   # tail a job log
+#   bash idun/submit.sh pull        # copy results/ and transcripts/ back locally
 #
 # Environment overrides:
 #   REMOTE="idun"                  SSH alias from ~/.ssh/config
@@ -51,9 +52,21 @@ sync_code() {
         --exclude='models' \
         --exclude='transcripts' \
         --exclude='logs' \
+        --exclude='results' \
         --exclude='.scratch' \
         "${PROJECT_ROOT}/" "${REMOTE}:${REMOTE_DIR}/"
     echo "Sync complete."
+}
+
+# Copy experiment summaries (and transcripts) back from IDUN. results/ is
+# excluded from sync so it is never deleted remotely; pull it to keep a record.
+pull_results() {
+    mkdir -p "${PROJECT_ROOT}/results" "${PROJECT_ROOT}/transcripts"
+    echo "Pulling results..."
+    rsync -avz "${REMOTE}:${REMOTE_DIR}/results/" "${PROJECT_ROOT}/results/"
+    echo "Pulling transcripts..."
+    rsync -avz "${REMOTE}:${REMOTE_DIR}/transcripts/" "${PROJECT_ROOT}/transcripts/"
+    echo "Pull complete."
 }
 
 case "$ACTION" in
@@ -112,6 +125,11 @@ case "$ACTION" in
             echo "Tailing ${LATEST}"
             ssh "$REMOTE" "tail -n 80 -f ${LATEST}"
         fi
+        ;;
+
+    pull)
+        check_ssh
+        pull_results
         ;;
 
     help|--help|-h)
