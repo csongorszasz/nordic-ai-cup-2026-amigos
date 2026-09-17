@@ -77,3 +77,16 @@ conversations; evaluation is 38 and is the one scored run.
 **5-timeout abort** — five consecutive timed-out requests and the service stops
 sending; the unsent conversations are scored wrong. Only timeouts accumulate; a
 malformed reply still proves the endpoint is alive and resets the counter.
+
+## Serving
+
+**Serving config** — the environment-variable set that runs the endpoint
+(`WHISPER_MODEL`, `NLI_MODEL`, `MEDAPP_TOP_CLAUSES`, …). See ADR-0002.
+
+**Capture** — opt-in recording (`MEDAPP_CAPTURE=1`) of each request's audio and
+questions plus our response, for debugging and consistency checks only. Never a
+training source.
+
+**Positive recall** — the share of the true positives we answer yes to. A missed
+positive is doubly expensive: a wrong answer (accuracy) and a zero in the
+`mean tIoU` average, which is fixed over all annotated positives.

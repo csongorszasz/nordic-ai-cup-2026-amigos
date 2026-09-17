@@ -40,23 +40,39 @@ Read `../README.md` for the full rules. This file is the working brief.
 
 ## Environment
 
-- Conda env: `medical` (Python 3.11). Activate with
-  `conda activate medical` (or `source ~/miniforge3/bin/activate medical`).
-- Base env is Python 3.14 and has no torch/ctranslate2 wheels — always work in
-  `medical`.
-- Hardware: WSL, **NVIDIA GTX 1650 with 4 GB VRAM**. This is the binding
-  constraint on ASR model size; measure before committing to a model.
-- Local state under `models/` and `transcripts/` is gitignored.
+- **Dev/test env:** `medical` (Python 3.11) — fastapi/pydantic/requests/pytest.
+  Activate with `conda activate medical`. Run the fast tests here.
+- **Serving env:** `medapp-local` (Python 3.11) — torch cu121, faster-whisper,
+  transformers. Created by `local/setup_env.sh`. Serves the endpoint locally
+  (ADR-0002).
+- Base env is Python 3.14 and has no torch/ctranslate2 wheels.
+- Hardware: WSL, **NVIDIA GTX 1650 with 4 GB VRAM**. Binding constraint: only
+  int8 ASR fits alongside the NLI model. Dev/experiments run on **IDUN** GPUs.
+- Local state under `models/`, `transcripts/`, `logs/`, `results/`, `captured/`
+  is gitignored.
 
 ## Commands
 
 ```bash
+# dev / scoring (medical env)
 conda activate medical
-pip install -r requirements.txt          # fastapi/uvicorn/pydantic/requests
-python api.py                            # serves http://localhost:9054/predict
-python local_evaluator.py                # score the 390 supplied questions
-python local_evaluator.py --oracle       # ground truth -> expect 1.000
-python local_evaluator.py --verbose      # one line per question
+python dev_eval.py --diagnostics          # in-process score + span oracles
+python dev_eval.py --answer nli --limit 3 # real pipeline on 3 conversations
+python -m pytest -m "not slow"            # fast test gate
+python local_evaluator.py --oracle        # harness sanity -> 1.000
+
+# IDUN (see docs/local-serving.md for the full runbook)
+bash idun/submit.sh dev --diagnostics     # GPU dev_eval (fast-test gate first)
+bash idun/submit.sh test                  # slow (model-backed) tests
+bash idun/submit.sh pull                  # copy results/ + transcripts/ back
+
+# local serving
+bash local/setup_env.sh
+bash local/bench_asr.py                   # ASR speed/VRAM benchmark
+python api.py                             # serves http://localhost:9054/predict
+
+# knowledge
+docs/state-of-knowledge.md   docs/tries.md   docs/adr/   docs/local-serving.md
 ```
 
 The shipped baseline in `example.py` answers `true` to everything and points at

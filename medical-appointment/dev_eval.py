@@ -326,6 +326,23 @@ def _print_timing(timing: Dict) -> None:
         f"trim {timing['trim_pairs'] / conversations:.0f}  "
         f"(total {(timing['clause_pairs'] + timing['candidate_pairs'] + timing['trim_pairs']) / conversations:.0f})"
     )
+    try:
+        import subprocess
+
+        import torch
+
+        if torch.cuda.is_available():
+            print(
+                f"  GPU (torch)        peak {torch.cuda.max_memory_allocated() / 1e9:.2f} GB allocated"
+            )
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.used,memory.total",
+             "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=5,
+        )
+        print(f"  GPU memory now     {out.stdout.strip()}")
+    except Exception:
+        pass
 
 
 def _print_diagnostics(window_counts: List[int], diag: Dict) -> None:

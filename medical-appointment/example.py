@@ -10,13 +10,15 @@ questions wrong, so every failure falls back to a well-formed guess.
 
 import logging
 import os
-from typing import List, Optional, Tuple
+import time
+from typing import List, Optional
 
 import answer as answer_module
 import asr
 import windows as windows_module
+from capture import maybe_capture
 from dtos import ASRQuestionRequestDto, ASRQuestionResponseDto
-from utils import Span, decode_audio
+from utils import decode_audio
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,21 @@ if os.environ.get("MEDAPP_SKIP_WARMUP") != "1":
 
 
 def predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
-    """Answer every question about one conversation."""
+    """Answer every question about one conversation. Never raises."""
+    started = time.time()
+    try:
+        response = _predict(request)
+    except Exception:
+        logger.exception(
+            "predict failed for %s; returning guesses.", request.audio_filename
+        )
+        response = _fallback(len(request.questions))
+
+    maybe_capture(request, response, time.time() - started)
+    return response
+
+
+def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     audio_bytes = decode_audio(request.audio_base64)
 
     try:

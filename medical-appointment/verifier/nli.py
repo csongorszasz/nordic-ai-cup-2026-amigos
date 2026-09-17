@@ -22,6 +22,9 @@ MODEL_NAME = os.environ.get(
 )
 BATCH_SIZE = int(os.environ.get("NLI_BATCH_SIZE", "16"))
 MAX_LENGTH = int(os.environ.get("NLI_MAX_LENGTH", "512"))
+# "auto" picks CUDA when available; force "cpu" to keep VRAM for the ASR model.
+NLI_DEVICE = os.environ.get("NLI_DEVICE", "auto").lower()
+NLI_HALF = os.environ.get("NLI_HALF", "0") == "1"
 
 _model = None
 _tokenizer = None
@@ -58,8 +61,17 @@ def get_model():
         logger.info("Loading NLI model %s", MODEL_NAME)
         _tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         _model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-        _device = "cuda" if torch.cuda.is_available() else "cpu"
-        _model.to(_device).eval()
+        if NLI_DEVICE in ("cuda", "cpu"):
+            _device = NLI_DEVICE
+        else:
+            _device = "cuda" if torch.cuda.is_available() else "cpu"
+        if _device == "cuda" and not torch.cuda.is_available():
+            logger.warning("NLI_DEVICE=cuda but CUDA is unavailable; using CPU.")
+            _device = "cpu"
+        _model.to(_device)
+        if NLI_HALF and _device == "cuda":
+            _model.half()
+        _model.eval()
         _entail_index = _find_entail_index(_model.config)
         logger.info(
             "NLI model on %s; id2label=%s; entailment index=%d",

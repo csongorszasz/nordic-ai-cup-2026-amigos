@@ -32,6 +32,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T018 | 2026-09-17 | **large NLI**, τ 0.3, top-3, trim | large | 0.851 | 0.286 | **0.512** | best overall |
 | T019 | 2026-09-17 | large NLI, τ 0.5 | large | 0.836 | 0.272 | 0.498 | |
 | T020 | 2026-09-17 | large NLI, top-1 | large | 0.851 | 0.272 | 0.504 | |
+| T023 | 2026-09-17 | **validation dry run** (served config) | base | — | — | **0.457** | local+cloudflared, all 200 OK |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -145,3 +146,34 @@ Drivers: clause scoring (~42×10 pairs), candidate scoring (up to 400×10),
 greedy trim (sequential, unbatched), plus model load per run. Large NLI is
 ~2.5–3× base per pair. With ASR added, a GPU host stays inside the 60 s budget;
 CPU would not.
+
+## T023 — validation dry run (local serving)
+
+- **Goal:** confirm the endpoint contract end-to-end and capture what the
+  validation service sends.
+- **Host:** local GTX 1650 (WSL) + cloudflared quick tunnel (ADR-0002).
+- **Config:** `large-v3-turbo` int8 ASR + base NLI; `TOP_CLAUSES=1`,
+  `greedy_trim`, `MAX_CANDIDATES=120`, `MAX_RANGE_WORDS=10`, τ 0.3,
+  `MEDAPP_CAPTURE=1`.
+- **Results:** 22 `/predict` calls (2 local tests + Verify + 19 validation),
+  **all 200 OK, zero timeouts**; latency mean **30.1 s**, worst **46.6 s**;
+  VRAM 1575 MiB. Service raw score **0.457**.
+- **Answer behaviour:** yes on **37%** of questions (70/190) on a set that is
+  exactly balanced (~50%) — the same positive under-call as the training trials.
+- **Conclusion:** the local harness predicts the service (3-conv local config
+  scored 0.471 vs 0.457 on validation). Captures saved to `captured/` (debug
+  only). Local + tunnel is a viable serving path.
+
+### Local ASR benchmark (GTX 1650, int8, 3 clips ~95 s mean)
+
+| model | RTF | 3 clips | worst clip | VRAM | load |
+| --- | --- | --- | --- | --- | --- |
+| large-v3 | 3.6× | 77.8 s | 31.9 s | 1957 MiB | 15.9 s |
+| **large-v3-turbo** | **7.9×** | 35.6 s | 13.8 s | 1125 MiB | 7.8 s |
+| distil-large-v3 | 8.8× | 32.2 s | 12.4 s | 1061 MiB | 4.4 s |
+| medium.en | 4.6× | 61.3 s | 25.2 s | 1029 MiB | 4.7 s |
+| small.en | 7.6× | 37.2 s | 14.3 s | 389 MiB | 1.4 s |
+
+Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
+(decision 10.5, localization 8.8) ⇒ ~35 s mean, ~41 s worst per conversation.
+
