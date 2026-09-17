@@ -1,12 +1,21 @@
-"""Find more examples of one class in unlabelled frames, by rotated template matching.
+"""Find more examples of one class in unlabelled frames.
 
-The objects are the same 3D models in every scene, so a cut-out from the labelled
-scene still matches the same object elsewhere, once you try every rotation. Useful
-when a class has only one or two examples in the training scene and you want to see
-what it really looks like (e.g. before buying/downloading a 3D model of it).
+Useful when a class has only one or two examples in the training scene and you want
+to see what it really looks like, e.g. before downloading a 3D model of it.
+
+Two methods:
+
+``--method detector`` (default)
+    Slide the fine-tuned YOLO over each frame at native resolution and keep the
+    detections of one class. The model is weak on the validation scene, but it
+    ranks that scene's objects far better than raw pixels do.
+``--method template``
+    Rotated template matching from the sprite cut-outs. Cheap and model-free, but
+    normalised correlation saturates on bland ground (grass and bushes score ~0.97),
+    so treat its ranking with suspicion.
 
     python training/find_class.py mine_roller
-    python training/find_class.py hangar --frames-dir recordings/validation_4k --step 3
+    python training/find_class.py hangar --method template --step 3
 
 Writes a contact sheet of the best candidates plus a JSON list of where they are.
 
@@ -80,6 +89,28 @@ def best_in_frame(frame: np.ndarray, templates, per_frame: int):
     return hits[:per_frame]
 
 
+def detector_hits(frame: np.ndarray, model, class_index: int, conf: float, tile: tuple, overlap: int):
+    """Detections of one class in a 4K frame, from tiled inference at native scale."""
+    tile_w, tile_h = tile
+    height, width = frame.shape[:2]
+    hits = []
+    xs = list(range(0, max(width - tile_w, 0) + 1, tile_w - overlap)) or [0]
+    ys = list(range(0, max(height - tile_h, 0) + 1, tile_h - overlap)) or [0]
+    for y in ys:
+        for x in xs:
+            crop = frame[y:y + tile_h, x:x + tile_w]
+            result = model.predict(crop, conf=conf, verbose=False, half=True)[0]
+            for box, cls, score in zip(result.boxes.xyxy.tolist(),
+                                       result.boxes.cls.tolist(),
+                                       result.boxes.conf.tolist()):
+                if int(cls) != class_index:
+                    continue
+                hits.append((float(score), int(box[0]) + x, int(box[1]) + y,
+                             int(box[2]) + x, int(box[3]) + y))
+    hits.sort(reverse=True)
+    return hits
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('class_name')
@@ -94,8 +125,38 @@ def main():
     parser.add_argument('--top', type=int, default=48, help='candidates on the contact sheet')
     parser.add_argument('--context', type=int, default=96, help='half-size of each crop, in px')
     parser.add_argument('--downscale', type=float, default=0.5,
-                        help='search at this fraction of full size (1.0 is exact but ~4x slower)')
+                        help='template search at this fraction of full size (1.0 is exact, ~4x slower)')
+    parser.add_argument('--method', default='detector', choices=['detector', 'template'])
+    parser.add_argument('--model', default=str(ROOT / 'runs' / 'yolo11s_baseline' / 'weights' / 'best.pt'))
+    parser.add_argument('--conf', type=float, default=0.05)
     args = parser.parse_args()
+
+    frame_paths = sorted(Path(args.frames_dir).glob('frame_*.jpg'))[::args.step]
+    if not frame_paths:
+        raise SystemExit(f'no frames in {args.frames_dir}')
+
+    if args.method == 'detector':
+        from dtos import OBJECT_CLASSES
+        from ultralytics import YOLO
+
+        if args.class_name not in OBJECT_CLASSES:
+            raise SystemExit(f'unknown class {args.class_name!r}')
+        class_index = OBJECT_CLASSES.index(args.class_name)
+        model = YOLO(args.model)
+        print(f'{args.model} -> class {args.class_name} (index {class_index}), '
+              f'{len(frame_paths)} frames, conf >= {args.conf}', flush=True)
+
+        found = []
+        for n, path in enumerate(frame_paths):
+            frame = cv2.imread(str(path))
+            for score, x1, y1, x2, y2 in detector_hits(frame, model, class_index, args.conf,
+                                                       (960, 540), 120)[:args.per_frame]:
+                found.append({'score': round(score, 4), 'frame': path.name, 'bbox': [x1, y1, x2, y2]})
+            if (n + 1) % 10 == 0:
+                best = max((f['score'] for f in found), default=0.0)
+                print(f'{n + 1}/{len(frame_paths)} frames, {len(found)} hits, best {best:.3f}', flush=True)
+        write_results(found, args)
+        return
 
     templates = load_templates(Path(args.sprites), args.class_name, args.templates)
     if not templates:
@@ -108,9 +169,6 @@ def main():
     print(f'{len(templates)} cut-outs -> {len(turned)} rotated/scaled templates '
           f'(searching at {factor:g}x)', flush=True)
 
-    frame_paths = sorted(Path(args.frames_dir).glob('frame_*.jpg'))[::args.step]
-    if not frame_paths:
-        raise SystemExit(f'no frames in {args.frames_dir}')
     print(f'searching {len(frame_paths)} frames')
 
     found = []
@@ -125,8 +183,16 @@ def main():
             print(f'{n + 1}/{len(frame_paths)} frames, best so far {max(f["score"] for f in found):.3f}',
                   flush=True)
 
+    write_results(found, args)
+
+
+def write_results(found, args):
+    """Contact sheet plus JSON of the best candidates, so they can be eyeballed."""
     found.sort(key=lambda f: -f['score'])
     found = found[:args.top]
+    if not found:
+        print('nothing found; try a lower --conf')
+        return
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
