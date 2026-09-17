@@ -90,3 +90,11 @@ recordings/
 sprites/
 .downloads/
 backgrounds/
+
+# 3D models: keep credits.txt, not the meshes
+models/**/*.glb
+models/**/*.gltf
+models/**/*.obj
+models/**/*.fbx
+models/**/*.blend
+models/**/textures/
