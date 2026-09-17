@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from config import DroneFlybyConfig
-from core.camera_policy import SurveyAndZoomPolicy, create_camera_policy
+from core.camera_policy import LagSafeCameraGuard, SurveyAndZoomPolicy, create_camera_policy
 from core.interfaces import TrackerSummary
 from core.interfaces import DetectionResult
 from core.tracker import WorldMapTracker
@@ -274,3 +274,79 @@ def test_survey_zoom_trajectory_remains_legal_for_25_frames():
     assert any(view.resolution_level == 0 for view in requested_views)
     assert any(view.resolution_level == 1 for view in requested_views)
     assert any(view.resolution_level == 2 for view in requested_views)
+
+
+# --------------------------------------------------------------------------- #
+# Camera lag: the live service applies a command about one frame late.
+# --------------------------------------------------------------------------- #
+
+def _run_with_lag(policy, guard, sequence_id: str, frames: int = 25):
+    """Replay a sequence where a command only takes effect on the frame after the next.
+
+    Returns (refused, requested) counts. The reported view lags one command behind,
+    exactly as the live service behaves; the local evaluator applies commands at once.
+    """
+    camera = SimulatedCamera()
+    in_flight = None  # command sent last frame, applied before the next request
+    refused = requested = 0
+
+    for frame_index in range(frames):
+        request = _build_request(camera, frame_index, sequence_id=sequence_id)
+        next_view = policy.decide_next_view(request, _simple_summary((900, 600), (2500, 1400), (3000, 700)))
+        if guard is not None:
+            next_view = guard.filter(request, next_view)
+
+        if in_flight is not None:
+            # The previous command lands now, i.e. after we have already answered
+            # a request that still showed the older view.
+            if describe_camera_rejection(
+                camera.resolution_level,
+                (camera.center_x, camera.center_y),
+                in_flight.resolution_level,
+                (in_flight.center_x, in_flight.center_y),
+            ) is None:
+                camera.resolution_level = in_flight.resolution_level
+                camera.center_x = in_flight.center_x
+                camera.center_y = in_flight.center_y
+            else:
+                refused += 1
+            in_flight = None
+
+        if next_view is not None:
+            requested += 1
+            in_flight = next_view
+
+    return refused, requested
+
+
+def test_survey_zoom_moves_are_refused_under_camera_lag_without_guard():
+    # Documents the bug the guard exists for: validating only against the reported
+    # view is not enough when the service applies commands a frame late.
+    policy = SurveyAndZoomPolicy(survey_interval_frames=4)
+    policy.reset("lag_unguarded")
+    refused, requested = _run_with_lag(policy, None, "lag_unguarded")
+    assert requested > 0
+    assert refused > 0
+
+
+def test_lag_safe_guard_prevents_refused_moves():
+    policy = SurveyAndZoomPolicy(survey_interval_frames=4)
+    policy.reset("lag_guarded")
+    guard = LagSafeCameraGuard()
+    guard.reset("lag_guarded")
+    refused, requested = _run_with_lag(policy, guard, "lag_guarded")
+    assert refused == 0
+    assert requested > 0, "the guard should not silence the camera completely"
+
+
+def test_lag_safe_guard_forgets_pending_command_once_observed():
+    guard = LagSafeCameraGuard()
+    camera = SimulatedCamera()
+    request = _build_request(camera, 0, sequence_id="pending_seq")
+    view = guard.filter(request, RequestedViewDto(resolution_level=1, center_x=960, center_y=540))
+    assert view is not None
+    assert guard._pending["pending_seq"] == (1, 960, 540)
+
+    camera.apply(view)
+    guard.filter(_build_request(camera, 1, sequence_id="pending_seq"), None)
+    assert "pending_seq" not in guard._pending

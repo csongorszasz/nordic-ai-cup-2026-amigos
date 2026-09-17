@@ -6,6 +6,7 @@ from typing import Optional
 import cv2
 
 from config import DroneFlybyConfig
+from core.camera_policy import LagSafeCameraGuard
 from core.interfaces import BaseCameraPolicy, BaseDetector, BaseTracker
 from dtos import DroneFlybyPredictRequestDto, DroneFlybyPredictResponseDto
 from utils import decode_view
@@ -27,6 +28,9 @@ class PipelineOrchestrator:
         self.tracker = tracker
         self.camera_policy = camera_policy
         self.config = config
+        # The live service applies camera commands about a frame late; this drops the
+        # ones that could then be refused. See LagSafeCameraGuard.
+        self.camera_guard = LagSafeCameraGuard()
 
         self.active_sequence_id: Optional[str] = None
         self.last_frame_index: int = -1
@@ -82,9 +86,12 @@ class PipelineOrchestrator:
             # 5. Camera Steering Policy stage
             t_cam_start = time.perf_counter()
             tracker_summary = self.tracker.get_summary()
-            next_view = self.camera_policy.decide_next_view(
-                request=request,
-                tracker_summary=tracker_summary,
+            next_view = self.camera_guard.filter(
+                request,
+                self.camera_policy.decide_next_view(
+                    request=request,
+                    tracker_summary=tracker_summary,
+                ),
             )
             t_cam_ms = (time.perf_counter() - t_cam_start) * 1000
 
@@ -129,4 +136,5 @@ class PipelineOrchestrator:
         self.active_sequence_id = new_sequence_id
         self.tracker.reset(new_sequence_id)
         self.camera_policy.reset(new_sequence_id)
+        self.camera_guard.reset(new_sequence_id)
 

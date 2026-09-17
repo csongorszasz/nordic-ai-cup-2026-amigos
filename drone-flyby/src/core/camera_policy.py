@@ -11,8 +11,12 @@ from dtos import (
     RequestedViewDto,
     MAXIMUM_CENTER_DELTA_PIXELS,
 )
+from utils import describe_camera_rejection
 
 logger = logging.getLogger(__name__)
+
+# (resolution_level, center_x, center_y)
+CameraState = Tuple[int, int, int]
 
 
 @dataclass
@@ -83,6 +87,65 @@ class CameraConstraintGuard:
             center_x=int(clamped_x),
             center_y=int(clamped_y),
         )
+
+
+class LagSafeCameraGuard:
+    """Drop camera commands the live service could refuse because it applies them late.
+
+    The evaluation service acts on a command roughly one frame after we send it, so the
+    view reported in a request can still be the previous one. `CameraConstraintGuard`
+    only checks the reported view, which cost us 9-12 refused moves per live validation.
+
+    This guard remembers the command we last sent and, until we see the camera actually
+    there, treats both views as possible. A command is passed on when it is legal from
+    every possible view, or (as a fallback) at least from the pending one, which is where
+    the camera will be if our previous command did land. The local evaluator applies
+    commands immediately, so this is a no-op there.
+    """
+
+    def __init__(self) -> None:
+        self._pending: Dict[str, CameraState] = {}
+
+    def reset(self, sequence_id: str) -> None:
+        self._pending.pop(sequence_id, None)
+
+    @staticmethod
+    def _is_legal(source: CameraState, target: CameraState) -> bool:
+        return describe_camera_rejection(source[0], (source[1], source[2]), target[0], (target[1], target[2])) is None
+
+    def filter(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        requested_view: Optional[RequestedViewDto],
+    ) -> Optional[RequestedViewDto]:
+        sequence_id = request.sequence_id
+        current: CameraState = (request.view.resolution_level, request.view.center_x, request.view.center_y)
+
+        # Seeing the camera where we sent it means the command landed; stop guarding against it.
+        pending = self._pending.get(sequence_id)
+        if pending == current:
+            self._pending.pop(sequence_id, None)
+            pending = None
+
+        if requested_view is None:
+            return None
+
+        target: CameraState = (
+            requested_view.resolution_level,
+            requested_view.center_x,
+            requested_view.center_y,
+        )
+        possible = [current] + ([pending] if pending is not None else [])
+        if all(self._is_legal(state, target) for state in possible) or (
+            pending is not None and self._is_legal(pending, target)
+        ):
+            self._pending[sequence_id] = target
+            return requested_view
+
+        logger.debug(
+            "dropping view %s: not legal from every possible camera state %s", target, possible
+        )
+        return None
 
 
 class SweepCameraPolicy(BaseCameraPolicy):
