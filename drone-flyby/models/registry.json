@@ -1,0 +1,32 @@
+{
+ "mine_roller": [
+  {
+   "added": "2026-09-17",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 2812,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "T-34 hull with roller drum; ground extent close to the measured 12.6 x 11.1 m",
+   "status": "candidate",
+   "title": "PT-34-85 mine clearing vehicle",
+   "url": "https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f"
+  }
+ ],
+ "spacecraft": [
+  {
+   "added": "2026-09-17",
+   "author": "Daniel",
+   "author_profile": "https://sketchfab.com/DanielAndersson",
+   "downloadable": true,
+   "faces": 20272,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's first find; silhouette matches the TIE in the sprites",
+   "status": "candidate",
+   "title": "Star Wars: TIE/in Interceptor",
+   "url": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41"
+  }
+ ]
+}

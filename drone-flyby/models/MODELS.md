@@ -33,7 +33,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 
 | # | Class | Size (m) | Sprites | Local AP | Looks like | Status |
 |---|---|---|---|---|---|---|
-| 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **wanted** — worst AP, only 2 sprites |
+| 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **candidate found** — PT-34-85, see below |
 | 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | small dark launcher vehicle, hard to read | **wanted** — worst AP, rough sprites |
 | 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | pale green box on a flatbed, tiny | **wanted** — too small to cut cleanly |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
@@ -48,10 +48,25 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | wanted |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | wanted |
 | 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | wanted |
-| 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **have** — [Sketchfab TIE-in interceptor](https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41), needs `credits.txt` + download into `models/spacecraft/` |
+| 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
 
 Local AP is from the Helsinki set, where the model memorised the scene, so treat 1.000 as
 "nothing to learn here yet" rather than "solved". Live validation was 0.0069 overall.
+
+## Candidates so far
+
+Recorded with `python training/add_model.py <class> <url>`, which looks the model up on
+Sketchfab and writes both `models/registry.json` and `models/<class>/credits.txt`. Add every
+candidate as you find it, even an uncertain one: the URL is the part that gets lost.
+
+| Class | Model | Author | Licence | Status |
+|---|---|---|---|---|
+| `mine_roller` | [PT-34-85 mine clearing vehicle](https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f) | 42manako | CC-BY (credit required, commercial ok) | candidate — T-34 hull with roller drum, extent close to the measured 12.6 x 11.1 m |
+| `spacecraft` | [Star Wars: TIE/in Interceptor](https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41) | Daniel | CC-BY (credit required) | candidate — silhouette matches the sprites |
+
+`status` in the registry is `candidate` until the `.glb` is actually in `models/<class>/`,
+then `downloaded`; use `rejected` (with a note) for ones that turned out wrong, so nobody
+re-finds them.
 
 ## Places to look
 
