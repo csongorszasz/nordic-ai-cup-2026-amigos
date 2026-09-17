@@ -79,3 +79,11 @@ cython_debug/
 .vscode
 .devcontainer
 .jupyter
+
+# Generated training data and training runs
+datasets/
+runs/
+*.pt
+runs_train.log
+recordings/
+sprites/
