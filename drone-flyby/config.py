@@ -20,7 +20,7 @@ class DroneFlybyConfig:
     CONFIDENCE_THRESHOLD_L2: float = 0.20
     
     # --- Tracker & Spatial Memory Settings ---
-    TRACKER_TYPE: str = "passthrough"  # "passthrough", "world_map"
+    TRACKER_TYPE: str = "world_map"  # "passthrough", "world_map"
     IOU_MATCH_THRESHOLD: float = 0.30
     MIN_HITS_TO_CONFIRM: int = 2
     CONFIDENCE_DECAY_RATE: float = 0.98  # Slow decay for static objects
