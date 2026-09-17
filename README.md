@@ -24,12 +24,6 @@ Below you can find the use cases for the Nordic AI Cup event. <br>
 <a href="https://github.com/amboltio/Nordic-AI-Cup-2026/tree/main/drone-flyby"> - Drone Flyby</a> <br>
 <a href="https://github.com/amboltio/Nordic-AI-Cup-2026/tree/main/medical-appointment"> - Medical Appointment</a> <br>
 
-
-Clone this GitHub repository to download templates for all three use cases.
-```
-git clone https://github.com/amboltio/Nordic-AI-Cup-2026.git
-```
-
 Within each use case, you find a template that can be used to setup an API endpoint on your own machine or a dedicated server. <br> 
 The API endpoint will be used for submission and is required. The requirements for the API endpoints are specified in the respective use cases. <br> 
 
