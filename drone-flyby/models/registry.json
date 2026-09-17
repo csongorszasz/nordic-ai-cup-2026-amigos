@@ -32,6 +32,44 @@
    "url": "https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2"
   }
  ],
+ "helicopter": [
+  {
+   "added": "2026-09-17",
+   "author": "Rukh3D",
+   "author_profile": "https://sketchfab.com/rukh3d",
+   "downloadable": true,
+   "faces": 25086,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "downloadable Mi-28N, stands in for the view-only Mi-28 Juan found; scale to 24.4 x 19.7 m",
+   "status": "candidate",
+   "title": "Mi-28N Havoc",
+   "url": "https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "undoniuzz",
+   "author_profile": "https://sketchfab.com/undoniuzz",
+   "downloadable": false,
+   "faces": 23620,
+   "licence": "None (all rights reserved)",
+   "licence_requirements": null,
+   "note": "view-only (isDownloadable=false) and no licence set",
+   "status": "rejected",
+   "title": "Mi-28",
+   "url": "https://sketchfab.com/3d-models/mi-28-4def720fb3b0415dac4839c267ccbd7d"
+  }
+ ],
+ "jet_plane": [
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the licence line on the page",
+   "note": "A-7 is 14.1 m long, 11.8 m span; our jet_plane is 17.0 x 16.2 m so scale up slightly. The bundled shelter may also serve hangar",
+   "status": "candidate",
+   "title": "A-7 Corsair II with weapons and shelter bonus",
+   "url": "https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/a7-corsair-ii-aircraft-with-weapons-and-shelter-bonus"
+  }
+ ],
  "large_launcher": [
   {
    "added": "2026-09-17",

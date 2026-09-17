@@ -44,10 +44,10 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
-| 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | wanted |
+| 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | wanted |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
-| 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | wanted |
+| 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **candidate found** — A-7 Corsair II, see below |
 | 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
 
 Local AP is from the Helsinki set, where the model memorised the scene, so treat 1.000 as
@@ -70,6 +70,8 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `large_tower` | [Old wooden watchtower (low poly)](https://www.cgtrader.com/free-3d-models/exterior/other/old-wooden-watchtower-low-poly) | CGTrader | free — **check the licence line** | candidate, Juan's preferred — closer to the sprites than the Sketchfab watchtower |
 | `large_launcher` | [MIM-104 Patriot Air Defense System](https://sketchfab.com/3d-models/mim-104-patriot-air-defense-system-977f1f08a2014da99138a3364b7a56cd) | Chenzoss | CC-BY (credit required) | **preferred** — downloadable, 120k faces, scale to 31.3 x 23.1 m |
 | `large_launcher` | [MIM-104 Patriot SAM](https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb) | Muhamad Mirza Arrafi | CC-BY (credit required) | alternative — 13.6k faces, lighter. A third Patriot Juan found first is view-only and was rejected |
+| `helicopter` | [Mi-28N Havoc](https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68) | Rukh3D | CC-BY (credit required) | candidate — 25k faces, scale to 24.4 x 19.7 m. Replaces a view-only Mi-28 with no licence set |
+| `jet_plane` | [A-7 Corsair II (with shelter bonus)](https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/a7-corsair-ii-aircraft-with-weapons-and-shelter-bonus) | CGTrader | free — **check the licence line** | candidate — scale to 17.0 x 16.2 m. The bundled shelter may also serve `hangar` |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
