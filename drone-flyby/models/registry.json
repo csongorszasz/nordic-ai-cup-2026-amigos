@@ -1,4 +1,14 @@
 {
+ "condor": [
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the page; note this is a game asset, see the caveat in MODELS.md",
+   "note": "quad-rotor VTOL transport, close to the X-shaped 4-engine sprite. IP caveat: extracted from Battlefield 2042 (EA/DICE)",
+   "status": "candidate",
+   "title": "Battlefield 2042 Condor",
+   "url": "https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight"
+  }
+ ],
  "hangar": [
   {
    "added": "2026-09-17",
@@ -12,6 +22,14 @@
    "status": "candidate",
    "title": "Hangar",
    "url": "https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05"
+  },
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the licence line on the page (Royalty Free vs Editorial Uses Only)",
+   "note": "hardened aircraft shelter, arched roof: matches the dark curved roof in the sprites better than a generic hangar. Scale to 38.9 x 25.0 m",
+   "status": "candidate",
+   "title": "NATO aircraft shelter v2",
+   "url": "https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2"
   }
  ],
  "large_tower": [

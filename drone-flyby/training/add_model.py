@@ -55,12 +55,22 @@ def main():
     parser.add_argument('url')
     parser.add_argument('--note', default='')
     parser.add_argument('--status', default='candidate', choices=['candidate', 'downloaded', 'rejected'])
+    # Only Sketchfab can be looked up automatically; for CGTrader, Fab, Poly Pizza and the
+    # rest, copy what the page says. The licence is the part worth getting right.
+    parser.add_argument('--title', default='')
+    parser.add_argument('--author', default='')
+    parser.add_argument('--licence', default='')
     args = parser.parse_args()
 
     entry = {'url': args.url, 'status': args.status, 'added': date.today().isoformat()}
     if args.note:
         entry['note'] = args.note
     entry.update(sketchfab_details(args.url))
+    for field, value in (('title', args.title), ('author', args.author), ('licence', args.licence)):
+        if value:
+            entry[field] = value
+    if not entry.get('licence'):
+        print('WARNING: no licence recorded. Pass --licence with what the page states.')
 
     registry_path = ROOT / 'models' / 'registry.json'
     registry = json.loads(registry_path.read_text()) if registry_path.exists() else {}

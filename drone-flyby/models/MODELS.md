@@ -38,10 +38,10 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless green blob at 23x30 px | **candidate found** — MIM-23 Hawk, see below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **candidate found** — wooden watchtower, see below |
-| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **candidate found** — Hangar by Vitor Augusto, see below |
+| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **wanted** — only 5 sprites |
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **wanted** |
-| 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **wanted** |
+| 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | wanted |
@@ -66,6 +66,21 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
 | `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 | `large_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — scale to 13.9 x 12.6 m. From above the sprites read as a brown/camo rectangular structure with a pale band across the middle, more camouflaged shelter than open tower, so check the render before trusting it |
+
+| `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
+| `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
+
+**Two things to check on any CGTrader model**, because they are not uniform like Sketchfab's:
+
+1. **The licence line on the page.** CGTrader free models are usually "Royalty Free", but some
+   are "Editorial Uses Only", which excludes training data. Record what it says with
+   `--licence`; `add_model.py` cannot read CGTrader.
+2. **Whether it is a game rip.** "Battlefield 2042 Condor" is EA/DICE's design, extracted from
+   their game; the uploader has no rights to grant, whatever the page's licence box says. The
+   same is true of the organisers' own `spacecraft` and `ta-ta`, which are Star Wars assets, so
+   this is a competition-wide grey area rather than something we invented. For a weekend
+   hackathon it is a small risk; if anything we build gets published, swap it for a generic
+   tiltrotor (search "V-22 Osprey", "quadrotor VTOL transport") and re-render.
 
 One mesh can serve more than one class. `small_tower` and `large_tower` are nearly the same
 size (12.6 x 12.0 vs 13.9 x 12.6 m) and differ mainly in colour — green roof against brown
