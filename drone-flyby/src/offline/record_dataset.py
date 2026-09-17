@@ -1,18 +1,19 @@
 """Utility to record incoming camera frames and metadata during validation attempts."""
 
 import json
+import os
 from pathlib import Path
 from typing import Optional
 import cv2
 
 from dtos import DroneFlybyPredictRequestDto
-from utils import decode_view
+from utils import PROJECT_ROOT, decode_view
 
 
 class ValidationDatasetRecorder:
     """Saves incoming validation frames and JSON metadata to disk for offline training."""
 
-    def __init__(self, output_dir: Path = Path("recorded_validation_data")):
+    def __init__(self, output_dir: Path = PROJECT_ROOT / "recorded_validation_data"):
         self.output_dir = output_dir
         self.images_dir = self.output_dir / "images"
         self.metadata_dir = self.output_dir / "metadata"
@@ -26,6 +27,10 @@ class ValidationDatasetRecorder:
         self.images_dir.mkdir(parents=True, exist_ok=True)
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
         self.enabled = True
+
+    def stop(self) -> None:
+        """Disable recording for the current session."""
+        self.enabled = False
 
     def record_frame(self, request: DroneFlybyPredictRequestDto) -> None:
         """Save image and request metadata for the current frame."""
@@ -53,4 +58,14 @@ class ValidationDatasetRecorder:
         }
         with open(meta_path, "w", encoding="utf-8") as fh:
             json.dump(meta, fh, indent=2)
+
+
+def recorder_from_env() -> Optional[ValidationDatasetRecorder]:
+    """Build a recorder when validation capture is enabled via environment."""
+    enabled_value = os.getenv("DRONE_FLYBY_RECORD_VALIDATION_DATA", "0").strip().lower()
+    if enabled_value not in {"1", "true", "yes", "on"}:
+        return None
+
+    output_dir = Path(os.getenv("DRONE_FLYBY_RECORD_DIR", str(PROJECT_ROOT / "recorded_validation_data")))
+    return ValidationDatasetRecorder(output_dir=output_dir)
 

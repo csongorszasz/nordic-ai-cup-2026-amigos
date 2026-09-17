@@ -30,7 +30,8 @@ from dtos import (
 )
 
 
-DATA_DIRECTORY = Path(__file__).resolve().parent / 'src'
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIRECTORY = PROJECT_ROOT / 'data'
 DEFAULT_SCENE = 'helsinki'
 
 

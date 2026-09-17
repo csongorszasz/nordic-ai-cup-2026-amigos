@@ -25,13 +25,13 @@ pip install -r requirements.txt
 Serve the baseline:
 
 ```cmd
-python api.py
+python src/api.py
 ```
 
 Then, in a second terminal, score it against the supplied scene:
 
 ```cmd
-python local_evaluator.py
+python src/local_evaluator.py
 ```
 
 You now have a working endpoint and a number to improve. The baseline scores
@@ -41,7 +41,7 @@ plumbing works, not to compete.
 Check that the harness and the data agree with each other at any time:
 
 ```cmd
-python local_evaluator.py --oracle
+python src/local_evaluator.py --oracle
 ```
 
 That feeds the ground truth in as predictions and should print `1.000`. If it
@@ -51,15 +51,17 @@ does, a low score is your model, not your setup.
 
 | File | What it is |
 |---|---|
-| `api.py` | The FastAPI server the evaluator calls. You probably will not change it. |
-| `example.py` | The baseline detector and camera policy. **This is the file to replace.** |
-| `dtos.py` | The request and response models, plus the protocol constants. |
-| `utils.py` | Decoding, coordinate conversion, response validation, box drawing. |
-| `local_evaluator.py` | Replays a scene through your endpoint and scores it. |
-| `visualize.py` | Draws the ground truth onto the supplied frames. |
+| `src/api.py` | The FastAPI server the evaluator calls. You probably will not change it. |
+| `src/example.py` | The baseline detector and camera policy. **This is the file to replace.** |
+| `src/dtos.py` | The request and response models, plus the protocol constants. |
+| `src/utils.py` | Decoding, coordinate conversion, response validation, box drawing. |
+| `src/local_evaluator.py` | Replays a scene through your endpoint and scores it. |
+| `src/visualize.py` | Draws the ground truth onto the supplied frames. |
+| `src/core/` | Detector, tracker, camera policy and pipeline. |
+| `src/offline/` | Training, pseudo-labeling and recording scripts. |
 | `requirements.txt` | Dependencies. Loose pins, so they will not fight your detection stack. |
 | `Dockerfile` | If you would rather containerise the server. |
-| `src/helsinki/` | 25 reference frames with annotations. |
+| `data/helsinki/` | 25 reference frames with annotations. |
 
 ## About the challenge
 
@@ -104,7 +106,7 @@ Level-1 or Level-2 view would have shown. That detail was never sent.
 
 ## Supplied data
 
-`src/helsinki/` holds 25 reference frames from a flight over a location near
+`data/helsinki/` holds 25 reference frames from a flight over a location near
 Helsinki:
 
 - `images/` — the raw 3840x2160 frames;
@@ -118,9 +120,9 @@ consecutive frames.
 To see the annotations drawn on the frames:
 
 ```cmd
-python visualize.py --frame 0          # writes annotated/frame_000000.png
-python visualize.py --all              # the whole scene
-python visualize.py --frame 0 --show   # in a window
+python src/visualize.py --frame 0          # writes annotated/frame_000000.png
+python src/visualize.py --all              # the whole scene
+python src/visualize.py --frame 0 --show   # in a window
 ```
 
 **The supplied boxes are in source pixels — `[x1, y1, x2, y2]` at 4K.** That is
@@ -446,11 +448,11 @@ same crops, the same payloads, the same camera rules and the same scorer as the
 competition.
 
 ```cmd
-python local_evaluator.py                              # every frame, no clock
-python local_evaluator.py --realtime                   # with the 3 fps clock
-python local_evaluator.py --realtime --simulate-latency-ms 400
-python local_evaluator.py --oracle                     # score the ground truth
-python local_evaluator.py --verbose                    # log every frame
+python src/local_evaluator.py                              # every frame, no clock
+python src/local_evaluator.py --realtime                   # with the 3 fps clock
+python src/local_evaluator.py --realtime --simulate-latency-ms 400
+python src/local_evaluator.py --oracle                     # score the ground truth
+python src/local_evaluator.py --verbose                    # log every frame
 ```
 
 The two modes answer different questions. The default sends every frame and
@@ -471,7 +473,7 @@ Serve your endpoint locally and test that everything starts without errors:
 
 ```cmd
 cd drone-flyby
-python api.py
+python src/api.py
 ```
 
 Open a browser and navigate to http://localhost:9053. You should see a message

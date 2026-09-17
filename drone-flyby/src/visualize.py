@@ -20,6 +20,7 @@ import cv2
 
 from utils import (
     DEFAULT_SCENE,
+    PROJECT_ROOT,
     draw_boxes,
     frame_numbers,
     load_annotations,
@@ -29,7 +30,7 @@ from utils import (
 
 
 PREVIEW_WIDTH = 1920
-DEFAULT_OUTPUT_DIRECTORY = Path('annotated')
+DEFAULT_OUTPUT_DIRECTORY = PROJECT_ROOT / 'annotated'
 
 
 def render_frame(
@@ -54,7 +55,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description='Draw the supplied ground-truth boxes onto the frames.'
     )
-    parser.add_argument('--scene', default=DEFAULT_SCENE, help='Scene under src/.')
+    parser.add_argument('--scene', default=DEFAULT_SCENE, help='Scene under data/.')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--frame', type=int, help='Render a single frame number.')
     group.add_argument('--all', action='store_true', help='Render every frame.')

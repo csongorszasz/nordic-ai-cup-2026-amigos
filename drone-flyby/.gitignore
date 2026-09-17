@@ -79,3 +79,7 @@ cython_debug/
 .vscode
 .devcontainer
 .jupyter
+
+training_artifacts/
+runs/
+*.pt

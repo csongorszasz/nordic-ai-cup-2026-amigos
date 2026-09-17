@@ -11,7 +11,7 @@ arrived with that request, so at Level 1 and Level 2 it reports only the region
 the camera is pointed at, while a frame's ground truth covers the whole source
 frame.
 
-Run ``python local_evaluator.py`` to see what it scores. It will be close to
+Run ``python src/local_evaluator.py`` to see what it scores. It will be close to
 zero, which is the honest starting point.
 """
 

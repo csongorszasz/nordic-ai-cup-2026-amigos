@@ -546,7 +546,7 @@ def main() -> int:
         description='Replay a scene through your endpoint and score it.'
     )
     parser.add_argument('--url', default=DEFAULT_URL, help='Your predict endpoint.')
-    parser.add_argument('--scene', default=DEFAULT_SCENE, help='Scene under src/.')
+    parser.add_argument('--scene', default=DEFAULT_SCENE, help='Scene under data/.')
     parser.add_argument(
         '--realtime',
         action='store_true',

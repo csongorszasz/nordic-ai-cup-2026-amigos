@@ -10,6 +10,7 @@ rather than just the host.
 
 import datetime
 import logging
+import os
 import time
 
 import uvicorn
@@ -20,6 +21,7 @@ from contextlib import asynccontextmanager
 from config import DEFAULT_CONFIG
 from core import build_pipeline
 from dtos import DroneFlybyPredictRequestDto, DroneFlybyPredictResponseDto
+from offline.record_dataset import recorder_from_env
 from utils import validate_response
 
 HOST = '0.0.0.0'
@@ -29,6 +31,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 pipeline = build_pipeline(DEFAULT_CONFIG)
+recorder = recorder_from_env()
 start_time = time.time()
 
 
@@ -45,6 +48,13 @@ app = FastAPI(lifespan=lifespan)
 @app.post('/predict', response_model=DroneFlybyPredictResponseDto)
 def predict_endpoint(request: DroneFlybyPredictRequestDto):
     """Answer one frame."""
+    if recorder is not None:
+        if not recorder.enabled or getattr(recorder, "session_dir", None) is None:
+            recorder.start(request.sequence_id)
+        elif recorder.session_dir.name != request.sequence_id:
+            recorder.start(request.sequence_id)
+        recorder.record_frame(request)
+
     response = pipeline.handle_request(request)
 
     # Fail here, loudly, rather than having the evaluator silently discard the
