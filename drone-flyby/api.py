@@ -15,8 +15,11 @@ import time
 import uvicorn
 from fastapi import FastAPI
 
+from contextlib import asynccontextmanager
+
+from config import DEFAULT_CONFIG
+from core import build_pipeline
 from dtos import DroneFlybyPredictRequestDto, DroneFlybyPredictResponseDto
-from example import predict
 from utils import validate_response
 
 HOST = '0.0.0.0'
@@ -25,28 +28,29 @@ PORT = 9053
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+pipeline = build_pipeline(DEFAULT_CONFIG)
 start_time = time.time()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm up models and kernels on server startup
+    pipeline.warmup()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post('/predict', response_model=DroneFlybyPredictResponseDto)
 def predict_endpoint(request: DroneFlybyPredictRequestDto):
     """Answer one frame."""
-    response = predict(request)
+    response = pipeline.handle_request(request)
 
     # Fail here, loudly, rather than having the evaluator silently discard the
     # frame. Every rule this checks is a rule the evaluator also enforces.
     validate_response(response)
 
-    logger.info(
-        'frame %s (index %s) L%s at (%s, %s): returned %s detections',
-        request.frame,
-        request.frame_index,
-        request.view.resolution_level,
-        request.view.center_x,
-        request.view.center_y,
-        len(response.annotations),
-    )
     return response
 
 
