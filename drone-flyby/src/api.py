@@ -1,7 +1,13 @@
 """The endpoint the evaluation service calls.
 
-You should not need to change much in here. Put your model in ``example.py``
-and leave the transport alone.
+You should not need to change much in here. The transport stays as the organisers
+wrote it; the answer comes from one of two stacks, chosen with ``DRONE_STACK``:
+
+``solution`` (default)
+    ``solution.predict`` - fine-tuned YOLO + object memory + lag-safe camera planner.
+    This is the stack that ran the live validation (0 refused camera moves).
+``pipeline``
+    ``core.build_pipeline`` - modular detector/tracker/camera-policy orchestrator.
 
 The URL you submit is used exactly as you give it, path included, so if you
 keep the ``/predict`` route below then submit ``http://<your-host>:9053/predict``
@@ -10,6 +16,7 @@ rather than just the host.
 
 import datetime
 import logging
+import os
 import time
 
 import uvicorn
@@ -18,8 +25,11 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from contextlib import asynccontextmanager
+
+from config import DEFAULT_CONFIG
 from dtos import DroneFlybyPredictRequestDto, DroneFlybyPredictResponseDto
-from solution import predict
+from offline.record_dataset import recorder_from_env
 from utils import validate_response
 
 HOST = '0.0.0.0'
@@ -28,8 +38,30 @@ PORT = 9053
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+STACK = os.environ.get('DRONE_STACK', 'solution').strip().lower()
+if STACK == 'pipeline':
+    from core import build_pipeline
+
+    pipeline = build_pipeline(DEFAULT_CONFIG)
+    predict = pipeline.handle_request
+else:
+    from solution import predict
+
+    pipeline = None
+
+recorder = recorder_from_env()
 start_time = time.time()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm up models and kernels on server startup (solution.py warms up on import).
+    if pipeline is not None:
+        pipeline.warmup()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(RequestValidationError)
@@ -49,21 +81,19 @@ async def log_validation_error(request: Request, exc: RequestValidationError):
 @app.post('/predict', response_model=DroneFlybyPredictResponseDto)
 def predict_endpoint(request: DroneFlybyPredictRequestDto):
     """Answer one frame."""
+    if recorder is not None:
+        if not recorder.enabled or getattr(recorder, "session_dir", None) is None:
+            recorder.start(request.sequence_id)
+        elif recorder.session_dir.name != request.sequence_id:
+            recorder.start(request.sequence_id)
+        recorder.record_frame(request)
+
     response = predict(request)
 
     # Fail here, loudly, rather than having the evaluator silently discard the
     # frame. Every rule this checks is a rule the evaluator also enforces.
     validate_response(response)
 
-    logger.info(
-        'frame %s (index %s) L%s at (%s, %s): returned %s detections',
-        request.frame,
-        request.frame_index,
-        request.view.resolution_level,
-        request.view.center_x,
-        request.view.center_y,
-        len(response.annotations),
-    )
     return response
 
 
@@ -71,6 +101,7 @@ def predict_endpoint(request: DroneFlybyPredictRequestDto):
 def hello():
     return {
         'service': 'drone-flyby-usecase',
+        'stack': STACK,
         'uptime': '{}'.format(datetime.timedelta(seconds=time.time() - start_time)),
     }
 

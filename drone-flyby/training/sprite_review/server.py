@@ -24,7 +24,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
 
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH  # noqa: E402
 from utils import load_frame  # noqa: E402

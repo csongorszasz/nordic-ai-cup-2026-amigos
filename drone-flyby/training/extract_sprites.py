@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
 
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES  # noqa: E402
 from utils import frame_numbers, load_annotations, load_frame  # noqa: E402

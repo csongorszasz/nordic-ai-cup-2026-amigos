@@ -33,7 +33,7 @@ from utils import center_bounds_for_level, clip_bbox_to_frame, decode_view
 
 logger = logging.getLogger(__name__)
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]  # drone-flyby/ (runs/, recordings/, sprites/ live there)
 MODEL_PATH = Path(os.environ.get('DRONE_MODEL', ROOT / 'runs' / 'yolo11s_baseline' / 'weights' / 'best.pt'))
 DETECT_CONF = float(os.environ.get('DRONE_CONF', 0.05))
 IMGSZ = 960

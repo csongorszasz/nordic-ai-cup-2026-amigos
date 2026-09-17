@@ -17,7 +17,7 @@ from pathlib import Path
 import cv2
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
 
 from dtos import OBJECT_CLASSES, SOURCE_REGION_SIZES, TRANSMITTED_VIEW_SIZE  # noqa: E402
 from utils import (  # noqa: E402

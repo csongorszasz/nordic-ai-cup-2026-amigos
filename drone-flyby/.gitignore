@@ -80,8 +80,9 @@ cython_debug/
 .devcontainer
 .jupyter
 
-# Generated training data and training runs
+# Generated training data, models and recorded/downloaded data
 datasets/
+training_artifacts/
 runs/
 *.pt
 runs_train.log
