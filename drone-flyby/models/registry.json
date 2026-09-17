@@ -14,6 +14,21 @@
    "url": "https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05"
   }
  ],
+ "large_tower": [
+  {
+   "added": "2026-09-17",
+   "author": "Blenderust",
+   "author_profile": "https://sketchfab.com/narighillya",
+   "downloadable": true,
+   "faces": 664,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "wooden watchtower; scale to the measured 13.9 x 12.6 m footprint",
+   "status": "candidate",
+   "title": "Old Wooden Watchtower (House 3)",
+   "url": "https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499"
+  }
+ ],
  "mine_roller": [
   {
    "added": "2026-09-17",
