@@ -35,9 +35,11 @@ logger = logging.getLogger(__name__)
 
 CHECKPOINT = os.environ.get("MEDAPP_MB_CHECKPOINT") or None
 # Decoder: "psupport" (max p_support, thresholded -- the OOF winner) or
-# "score_aware" (argmax SUPPORT, q-dependent cutoff). tau is LOCO-calibrated.
+# "score_aware" (argmax SUPPORT, q-dependent cutoff). tau is LOCO-calibrated:
+# on the class-weighted OOF the LOCO optimum was 0.16 (stable 0.15-0.16), with
+# a flat plateau from 0.05 to 0.16.
 DECODE_MODE = os.environ.get("MEDAPP_MB_DECODE", "psupport")
-DECODE_TAU = float(os.environ.get("MEDAPP_MB_TAU", "0.08"))
+DECODE_TAU = float(os.environ.get("MEDAPP_MB_TAU", "0.16"))
 
 _state: Dict[str, object] = {}
 

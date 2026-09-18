@@ -41,6 +41,8 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T029 | 2026-09-18 | same, large NLI | large | 0.938 | 0.318 | 0.566 | caps cost 0.013 vs T025 |
 | T030 | 2026-09-18 | OOF calibration run (τ=0) | large | — | — | 0.569 | LOCO τ 0.65 |
 | T031 | 2026-09-18 | ModernBERT passage retrieval recall gate | MiniLM | — | — | — | 64/32 + multi-qa top-8: sup 0.995 / ref 1.000 |
+| T032 | 2026-09-18 | ModernBERT scorer, first OOF (4 ep) | MB-base | 0.777 | 0.391 | 0.546 | +psupport decode 0.602 (LOCO τ .08) |
+| T033 | 2026-09-18 | **ModernBERT scorer, class-weighted (6 ep)** | MB-base | 0.854 | 0.446 | **0.609** | LOCO τ .16 → 0.610 |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -258,4 +260,26 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 - **Conclusion:** adopt **64/32 + `multi-qa-MiniLM-L6-cos-v1` + top-8**;
   top-5 (0.964/0.984) is the latency fallback on the 1650. Top-3 alone
   (≈0.83–0.91 support) is **not** sufficient. Recorded before any training.
+
+## T032/T033 — ModernBERT cross-encoder (learned localizer + decision)
+
+- **Shape:** `[CLS] question [SEP] passage [SEP]` → 3-way SUPPORT/REFUTE/
+  NOT_MENTIONED, token start/end, expected-tIoU. Trained on `evidence.csv`
+  labels with cross-conversation NOT_MENTIONED negatives.
+- **Protocol:** 5-fold grouped-by-conversation; held-out conversations scored
+  through the *serving* code path (`predict_transcript`); COF/LOCO τ selection.
+- **T032 (4 epochs):** OOF 0.546 native (acc 0.777, mIoU 0.391). Switching the
+  decoder from argmax-SUPPORT+score-aware to **max-`p_support` + τ** (LOCO τ
+  0.08) lifted it to **0.602** — the raw p is not temperature-calibrated, so the
+  q-dependent cutoff was too strict.
+- **T033 (inverse-frequency class weights, 6 epochs):** OOF native 0.609
+  (acc 0.854, mIoU 0.446); **LOCO τ 0.16 → 0.610** (acc 0.859, mIoU 0.444),
+  stable 0.15–0.16 across folds. By type: positive 0.800, hard_negative 0.873,
+  off_topic 1.000; positive recall 0.800.
+- **Compare legacy OOF (T030) 0.569** (acc 0.949, mIoU 0.316). ModernBERT trades
+  ~9 points of accuracy for **+13 points of mIoU**, netting **+0.041**.
+- **Fold spread (T033):** 0.652, 0.617, 0.663, 0.574, 0.522.
+- **Conclusion:** the learned path beats the frozen legacy pipeline out of fold
+  on the training set. Next: final model on all 39, 1650 latency/VRAM check,
+  then flip `MEDAPP_ANSWERER` (validation only with approval).
 

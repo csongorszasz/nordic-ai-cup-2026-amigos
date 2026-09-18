@@ -173,6 +173,9 @@ def main() -> int:
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--loco", action="store_true",
                         help="Leave-one-conversation-out (39 folds; slow).")
+    parser.add_argument("--train-all", action="store_true",
+                        help="Train one model on every conversation (serving); "
+                             "writes final.pt and skips OOF.")
     parser.add_argument("--top-k", type=int, default=data.TOP_K)
     parser.add_argument("--cross-negatives", type=int, default=2)
     parser.add_argument("--window", type=int, default=data.WINDOW_WORDS)
@@ -205,17 +208,24 @@ def main() -> int:
     words_cache = {tid: data.load_words(tid) for tid in rows_by_tid}
 
     tids = sorted(rows_by_tid)
+    tokenizer = model_module.AutoTokenizer.from_pretrained(model_module.MODEL_NAME)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.train_all:
+        print(f"training on all {len(tids)} conversations (serving model)")
+        model = train_fold(examples, tokenizer, args, device)
+        model.save(str(output_dir / "final.pt"))
+        print(f"final -> {output_dir / 'final.pt'}")
+        return 0
+
     if args.loco:
         folds = [[tid] for tid in tids]
     else:
         folds = grouped_folds(tids, args.folds, args.seed)
     print(f"  {len(tids)} conversations -> {len(folds)} folds")
 
-    tokenizer = model_module.AutoTokenizer.from_pretrained(model_module.MODEL_NAME)
     retriever = MiniLMRetriever()
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     all_oof = []
     started = time.time()
     for fold_index, held_out in enumerate(folds):
