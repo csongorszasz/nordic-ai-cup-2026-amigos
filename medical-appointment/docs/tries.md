@@ -45,6 +45,8 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T033 | 2026-09-18 | **ModernBERT scorer, class-weighted (6 ep)** | MB-base | 0.854 | 0.446 | **0.609** | LOCO τ .16 → 0.610 |
 | T034 | 2026-09-18 | **validation: served ModernBERT** | MB-base | — | — | **0.606** | 19 convs, all 200 OK, worst 32.4 s |
 | T035 | 2026-09-18 | hybrid OOF analysis (legacy decide + MB span) | large+MB | 0.933 | 0.456 | 0.647 | B (OR) 0.661; offline only |
+| T036 | 2026-09-18 | **LLM probe L0/L1/L2** (39 convs, in-sample) | Qwen2.5-7B | 0.982 | 0.454 | **0.665** | L1 few-shot; L0 0.588, L2 0.611 |
+| T037 | 2026-09-18 | hybrid sim: LLM decision + MB span | Qwen+MB | 0.982 | 0.521 | **0.705** | offline join of T036/T033 |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -317,3 +319,38 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 - **Status:** offline only; not yet implemented as an answerer or served. Next:
   `answerers/hybrid.py`, OOF calibration, 1650 latency check, validate.
 
+
+## T036 — LLM ceiling probe (Qwen2.5-7B-Instruct, 39 conversations, in-sample)
+
+- **Setup:** transcript-only, one call per conversation, strict JSON with a
+  verbatim `evidence_quote` aligned to ASR words. L0 zero-shot, L1 few-shot
+  (3 LOCO-safe balanced examples), L2 two-pass (decide, then cite). V100-32G,
+  fp16, plain `transformers`; scripts `llm_probe.py`, `answerers/llm_*`.
+
+| rung | score | acc | mIoU | pos recall | quote found | parse fails | latency |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| L0 | 0.588 | 0.962 | 0.339 | 0.939 | 0.776 | 10 | 9-16 s |
+| **L1** | **0.665** | **0.982** | **0.454** | **0.980** | **0.954** | **0** | 9-16 s |
+| L2 | 0.611 | 0.985 | 0.362 | 0.980 | 0.855 | 0 | 12-24 s |
+
+- **Few-shot is decisive:** L0 → L1 gains +0.077, driven by quoting
+  (`quote_found` 0.776 → 0.954) and format (`parse_fail` 10 → 0), with accuracy
+  0.962 → 0.982. L2's isolated quote pass hallucinates more than joint
+  decide+cite (0.855 vs 0.954) despite the best accuracy (0.985).
+- **Decision is near-perfect:** L1 positive 191/195, hard_negative 140/142,
+  off_topic 52/53; only 4 missed positives and 3 false positives. L1 catches
+  38 positives ModernBERT misses (MB catches 3 L1 misses).
+- **Localization is the remaining loss:** mean tIoU when yes 0.464 (lower than
+  ModernBERT's 0.557); 47/191 yes have tIoU < 0.1 — wrong occurrence of a
+  repeated/paraphrased statement, not boundary width. Ceiling: in-sample.
+
+## T037 — hybrid simulation: LLM decision + ModernBERT span
+
+- **Method:** offline join of T036 L1 decisions with T033 ModernBERT OOF spans;
+  span = ModernBERT span when it exists, else the L1 span.
+- **Result:** **0.705** (acc 0.982, mIoU 0.521) vs L1 alone 0.665 and
+  ModernBERT alone 0.609. The LLM supplies the near-perfect decision and
+  ModernBERT the better span.
+- **Caveat:** in-sample ceiling (both components are scored on the 39 labelled
+  conversations). Not served. Localization (occurrence choice) is still the
+  largest remaining gap (0.521 vs the 0.843 served-cap oracle).
