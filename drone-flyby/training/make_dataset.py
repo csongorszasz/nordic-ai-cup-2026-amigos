@@ -6,6 +6,7 @@ ground-truth boxes clipped to that region.
 
     python training/make_dataset.py                    # -> datasets/helsinki_yolo
     python training/make_dataset.py --val-frames 6 13 21
+    python training/make_dataset.py --all-val --out datasets/helsinki_real   # a real test set for synthetic training
 """
 
 import argparse
@@ -92,6 +93,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default=str(ROOT / 'datasets' / 'helsinki_yolo'))
     parser.add_argument('--val-frames', type=int, nargs='*', default=[6, 13, 21])
+    parser.add_argument('--all-val', action='store_true',
+                        help='every frame to val: the real scene as the test set of a synthetic-only model')
     parser.add_argument('--l1-random', type=int, default=12)
     parser.add_argument('--l1-per-object', type=int, default=1)
     parser.add_argument('--l2-random', type=int, default=20)
@@ -109,7 +112,7 @@ def main():
 
     counts = {'train': 0, 'val': 0}
     for frame_no in frame_numbers():
-        split = 'val' if frame_no in args.val_frames else 'train'
+        split = 'val' if args.all_val or frame_no in args.val_frames else 'train'
         frame = load_frame(frame_no)
         annotations = load_annotations(frame_no)
         plan = [

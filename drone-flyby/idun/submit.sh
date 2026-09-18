@@ -112,7 +112,9 @@ case "$ACTION" in
         FRAMES="${2:-300}"
         check_ssh
         sync_code
-        submit job.slurm "python training/synth_dataset.py --frames ${FRAMES} --with-helsinki && python training/train_yolo.py --data datasets/synth_yolo/data.yaml --epochs 60 --batch 32 --name synth_${FRAMES}"
+        # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
+        # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
+        submit job.slurm "python training/make_dataset.py --all-val --out datasets/helsinki_real && python training/synth_dataset.py --frames ${FRAMES} --val-dir datasets/helsinki_real/images/val && python training/train_yolo.py --data datasets/synth_yolo/data.yaml --epochs 60 --batch 32 --name synth_${FRAMES}"
         ;;
 
     queue)

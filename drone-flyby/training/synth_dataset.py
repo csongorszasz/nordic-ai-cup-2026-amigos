@@ -335,6 +335,9 @@ def main():
     parser.add_argument('--min-objects', type=int, default=8)
     parser.add_argument('--max-objects', type=int, default=30)
     parser.add_argument('--val-fraction', type=float, default=0.1)
+    parser.add_argument('--val-dir', help='validate on these images instead of a synthetic split (every synthetic '
+                                          'frame then goes to train), e.g. the real Helsinki views of '
+                                          'make_dataset.py --all-val')
     parser.add_argument('--with-helsinki', action='store_true', help='also cut views from the supplied scene')
     parser.add_argument('--include-suspect', action='store_true', help='use sprites flagged SUSPECT too')
     parser.add_argument('--include-truncated', action='store_true', help='use sprites cut by the frame edge')
@@ -406,7 +409,7 @@ def main():
                 counts[split] += 1
 
     for n in range(args.frames):
-        split = 'val' if rng.random() < args.val_fraction else 'train'
+        split = 'val' if not args.val_dir and rng.random() < args.val_fraction else 'train'
         background, ground = load_background(rng.choice(background_paths))
         frame, annotations = compose_frame(background, sprites, rng,
                                            rng.randint(args.min_objects, args.max_objects),
@@ -423,7 +426,8 @@ def main():
             cut(load_frame(frame_no), load_annotations(frame_no), f'h{frame_no:03d}', split)
 
     names = '\n'.join(f'  {i}: {name}' for i, name in enumerate(OBJECT_CLASSES))
-    (out / 'data.yaml').write_text(f'path: {out}\ntrain: images/train\nval: images/val\nnames:\n{names}\n')
+    val = Path(args.val_dir).resolve() if args.val_dir else 'images/val'  # YOLO takes an absolute val path as is
+    (out / 'data.yaml').write_text(f'path: {out}\ntrain: images/train\nval: {val}\nnames:\n{names}\n')
     rare = ', '.join(f'{name} {count}' for name, count in sorted(per_class.items(), key=lambda kv: kv[1])[:5])
     print(f"wrote {counts['train']} train / {counts['val']} val views to {out}")
     print(f'objects pasted: {sum(per_class.values())} (rarest: {rare})')
