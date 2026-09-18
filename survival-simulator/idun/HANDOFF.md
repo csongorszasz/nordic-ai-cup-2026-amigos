@@ -109,6 +109,17 @@ bash idun/submit.sh compare --reference benchmark-results/random-standard \
 bash idun/submit.sh test
 ```
 
+To request an **80 GB GPU** for PPO, run on IDUN from `~/nordic-survival`
+after syncing the project:
+
+```bash
+mkdir -p logs
+sbatch --constraint=gpu80g idun/job_train.slurm configs/ppo-gru.json ppo-80gb
+```
+
+This overrides the training script's GPU constraint for this submission only.
+It does not change the application's `resources.max_vram_mb` memory limit.
+
 Monitor and collect:
 
 ```bash
@@ -123,6 +134,38 @@ Notes:
   within the 12 h walltime.
 - `resources.workers` is set from `--cpus-per-task - 1`; edit the SLURM files to
   change CPU/GPU sizing.
+
+### Evaluate each new checkpoint without stopping training
+
+On IDUN, submit the watcher directly from `~/nordic-survival`:
+
+```bash
+sbatch --exclude=<training-node> idun/job_watch.slurm \
+  --training-job <training-job-id> \
+  --run training-results/<training-run> \
+  --reference benchmark-results/<completed-random-quick-run> \
+  --output benchmark-results/<new-monitor-directory>
+```
+
+The CPUQ job captures the current checkpoint and checks for new generations every
+five seconds. Copies are published only when the weights, checksum sidecar, and
+policy descriptor agree; update numbers come from the saved training state.
+One evaluator runs full-horizon `quick` benchmarks and paired comparisons against
+the existing reference. Capture continues while evaluation is busy, so snapshots
+can queue without blocking training. The output contains `status.json`,
+`snapshots/update-NNNN`, per-update logs, benchmarks, and comparison reports.
+
+The watcher stops capturing when the training job leaves the queue, then finishes
+pending evaluations, subject to its own 12-hour walltime. It records missed update
+numbers and evaluation failures instead of silently treating them as successes.
+Restart with the same output to process preserved snapshots; completed and failed
+evaluations are not rerun. Earlier overwritten checkpoints cannot be recovered.
+Quick-suite results remain exploratory; reserve holdout worlds for final selection.
+
+For an already-running training job, copy only `watch_checkpoints.py` and
+`job_watch.slurm` into the remote `idun` directory. Do not use `submit.sh` to deploy
+the watcher: its resync can change live sources and delete remote logs. Exclude
+the training node to keep benchmark compute separate; no GPU is requested.
 
 ---
 
