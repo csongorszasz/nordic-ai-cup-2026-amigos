@@ -1,0 +1,7 @@
+ta-ta - 3D model sources
+
+Star Wars AT-AT Walker [candidate]
+  https://www.cgtrader.com/free-3d-models/space/other/star-wars-at-at-walker-68bd9d4c-a316-4517-8b6c-b6feb3b1da77
+  author:  ?
+  licence: CGTrader free - CHECK the licence line on the page - check the page
+  note:    the class is an AT-AT at 32x17 px (6.7 x 3.6 m); Star Wars IP, same grey area as the organisers' TIE fighter

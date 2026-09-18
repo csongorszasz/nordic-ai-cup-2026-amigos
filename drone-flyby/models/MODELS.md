@@ -36,7 +36,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **candidate found** — PT-34-85, see below |
 | 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | small dark launcher vehicle, hard to read | **wanted** — worst AP, rough sprites |
 | 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless green blob at 23x30 px | **candidate found** — MIM-23 Hawk, see below |
-| 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
+| 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **candidate found** — AT-AT (CGTrader), licence to check |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **2 candidates** — CGTrader watchtower preferred, see below |
 | 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **candidate found** — P-51 Mustang (CC-BY), see below |
@@ -76,6 +76,7 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `small_plane` | [Yak-9](https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684) | Starpovich | CC-BY (credit required) | candidate — 12k faces; the sprites have a red nose and red on the tail, scale to 10.5 x 9.0 m |
 | `tank` | [Low Poly Churchill VII](https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c) | LowPolyCount | CC-BY (credit required) | **preferred** — the [Black Prince](https://sketchfab.com/3d-models/black-prince-aa7487b728e34f5ea2196c57585182cb) Juan matched to the sprites is built on this hull, but is view-only with no licence, so it stays as a shape reference. 10k faces, scale to 10.5 x 9.9 m, repaint camo |
 | `tank` | [Tank T-10M](https://sketchfab.com/3d-models/tank-t-10m-9aeda33a945c42f0bdebe3d1ef91da06) | yanix | CC-BY (credit required) | fallback — 500k faces |
+| `ta-ta` | [Star Wars AT-AT Walker](https://www.cgtrader.com/free-3d-models/space/other/star-wars-at-at-walker-68bd9d4c-a316-4517-8b6c-b6feb3b1da77) | CGTrader | free — **check the licence line** | candidate — 32x17 px on screen, so the silhouette of the legs is all that matters. Star Wars IP, same grey area as the TIE |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
