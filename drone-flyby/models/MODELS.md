@@ -38,7 +38,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless pale green blob at 23x30 px; real shape unknowable | **candidate found** — Rapier launcher as a stand-in, see below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **candidate found** — AT-AT (CGTrader), licence to check |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **2 candidates** — CGTrader watchtower preferred, see below |
-| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
+| 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **downloaded + fitted** — NATO shelter, IoU 0.91 (`--drop Cube.032 Lamps`); Sketchfab hangar kept as alt |
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **candidate found** — P-51 Mustang (CC-BY), see below |
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **candidate found** — Yak-9, see below |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
@@ -47,7 +47,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **candidate found** — Churchill VII (Black Prince hull), see below |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
-| 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **candidate found** — A-7 Corsair II, see below |
+| 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **downloaded + fitted** — A-7 Corsair II, IoU 0.84, pose matches all 22 frames |
 | 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
 
 Local AP is from the Helsinki set, where the model memorised the scene, so treat 1.000 as

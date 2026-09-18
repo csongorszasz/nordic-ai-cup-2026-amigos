@@ -51,6 +51,43 @@ def compare_pages():
                   if (p / 'index.html').exists())
 
 
+# 3D models under models/<class>/<model>/, shown by viewer3d.html.
+MODELS = ROOT / 'models'
+MESH_SUFFIXES = {'.glb', '.gltf', '.obj'}
+app.mount('/models', StaticFiles(directory=MODELS), name='models')
+
+
+@app.get('/viewer3d', response_class=HTMLResponse)
+def viewer3d():
+    return (Path(__file__).parent / 'viewer3d.html').read_text()
+
+
+@app.get('/api/models')
+def models_3d():
+    """Every mesh with its fit from match.json, if render_models.py has run on it."""
+    out = []
+    for path in sorted(p for p in MODELS.rglob('*') if p.suffix.lower() in MESH_SUFFIXES):
+        cls, name = path.relative_to(MODELS).parts[:2]
+        # Prefer the texture-slimmed copy render_models.slim_glb() caches; the originals
+        # can be hundreds of MB of 8K maps that the browser would have to decode.
+        slim = MODEL_MATCH / '_slim' / f'{path.parent.name}_{path.stem}.glb'
+        served = slim if slim.exists() else path
+        url = ('/compare/' + slim.relative_to(MODEL_MATCH).as_posix() if slim.exists()
+               else '/models/' + path.relative_to(MODELS).as_posix())
+        item = {'key': f'{cls}/{name}', 'cls': cls, 'name': name, 'url': url,
+                'size_mb': round(served.stat().st_size / 2**20, 1)}
+        match_path = MODELS / cls / 'match.json'
+        fit = json.loads(match_path.read_text()).get(name) if match_path.exists() else None
+        if fit and Path(fit['mesh']).name == path.name:
+            per = fit.get('per_sprite', [])
+            best = max(per, key=lambda s: s['iou']) if per else {}
+            item.update(mean_iou=fit['mean_iou'], length_m=fit['length_m'],
+                        dropped_parts=fit.get('dropped_parts', []),
+                        yaw=best.get('yaw'), tilt=best.get('tilt', fit.get('tilt')), sprite=best.get('file'))
+        out.append(item)
+    return out
+
+
 def load_manual() -> dict:
     return json.loads(MANUAL.read_text()) if MANUAL.exists() else {}
 

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Model Viewer</title>
+<style>
+  :root { --bg:#16181c; --panel:#1f2228; --line:#2e323a; --text:#e6e6e6; --muted:#8a8f99; --accent:#58a6ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px system-ui, sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+  aside { width:250px; border-right:1px solid var(--line); overflow:auto; padding:10px; flex:none; }
+  aside h1 { font-size:15px; margin:4px 0 10px; }
+  a { color:var(--accent); text-decoration:none; }
+  .item { display:block; padding:6px 8px; border-radius:6px; cursor:pointer; color:var(--text); }
+  .item:hover { background:var(--panel); } .item.active { background:#2b3140; }
+  .item small { color:var(--muted); display:block; }
+  main { flex:1; position:relative; min-width:0; }
+  canvas { display:block; }
+  .toolbar { position:absolute; top:10px; left:10px; right:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; pointer-events:none; }
+  .toolbar > * { pointer-events:auto; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button:hover { border-color:#666; } button.on { border-color:var(--accent); color:var(--accent); }
+  #info { color:var(--muted); background:rgba(22,24,28,.8); padding:4px 8px; border-radius:6px; }
+  #status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); pointer-events:none; }
+  #real { position:absolute; right:10px; bottom:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px; }
+  #real img { image-rendering:pixelated; display:block;
+    background:repeating-conic-gradient(#555 0 25%, #777 0 50%) 0 0/12px 12px; }
+  #real div { color:var(--muted); font-size:12px; margin-bottom:4px; }
+  .help { color:var(--muted); font-size:12px; line-height:1.6; margin-top:14px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<aside>
+  <a href="/">&larr; sprite review</a>
+  <h1 style="margin-top:10px">3D models</h1>
+  <div id="list"></div>
+  <div class="help">
+    Drag to orbit, scroll to zoom, right-drag to pan.<br>
+    <b>Drone view</b> puts the camera where the matcher found the best fit, next to a
+    real cut-out, so you can check orientation and proportions.<br>
+    Parts left out by <code>--drop</code> are hidden, as in the fit.
+  </div>
+</aside>
+<main>
+  <div class="toolbar">
+    <button id="spin" class="on">auto-rotate</button>
+    <button id="drone">drone view</button>
+    <button id="top">top</button>
+    <button id="wire">wireframe</button>
+    <button id="dropped">show dropped parts</button>
+    <span id="info"></span>
+  </div>
+  <div id="status">pick a model</div>
+  <div id="real" hidden><div id="realcap"></div><img id="realimg"></div>
+</main>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const main = document.querySelector('main');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+main.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a2e35);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+sun.position.set(-1, 2, 1);
+scene.add(sun);
+const grid = new THREE.GridHelper(4, 20, 0x555a63, 0x3a3f48);
+scene.add(grid);
+
+// Perspective camera for orbiting; orthographic for the drone view, as render_models.py uses.
+const persp = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+persp.position.set(1.6, 1.2, 1.6);
+const ortho = new THREE.OrthographicCamera(-0.75, 0.75, 0.75, -0.75, 0.01, 20);
+let camera = persp;
+const controls = new OrbitControls(persp, renderer.domElement);
+controls.autoRotate = true; controls.autoRotateSpeed = 2; controls.enableDamping = true;
+
+// Holder turns the model to the fitted yaw in drone view; model is normalised inside it.
+const holder = new THREE.Group();
+scene.add(holder);
+let model = null, current = null, wire = false, showDropped = false;
+
+function resize() {
+  const w = main.clientWidth, h = main.clientHeight;
+  renderer.setSize(w, h);
+  persp.aspect = w / h; persp.updateProjectionMatrix();
+  const a = w / h;
+  ortho.left = -0.75 * a; ortho.right = 0.75 * a; ortho.top = 0.75; ortho.bottom = -0.75;
+  ortho.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+// --drop matches trimesh's part names, "<glTF mesh name> (<node name>)". three.js renames
+// objects (drops dots, keeps only the node name), so keep the original names at load time.
+function isDropped(obj, drop) {
+  for (let o = obj; o && o !== model; o = o.parent)
+    if (drop.some(d => (o.userData.partName || o.name || '').includes(d))) return true;
+  return false;
+}
+
+function keepGltfNames(gltf) {
+  const json = gltf.parser.json;
+  gltf.scene.traverse(o => {
+    const a = gltf.parser.associations.get(o);
+    if (!a) return;
+    const mesh = a.meshes !== undefined ? json.meshes[a.meshes].name : '';
+    const node = a.nodes !== undefined ? json.nodes[a.nodes].name : '';
+    o.userData.partName = `${mesh || ''} (${node || ''})`;
+  });
+  return gltf.scene;
+}
+
+function applyVisibility() {
+  if (!model) return;
+  const drop = current.dropped_parts || [];
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    o.visible = showDropped || !isDropped(o, drop);
+    for (const m of [].concat(o.material)) m.wireframe = wire;
+  });
+}
+
+// Centre on the ground and scale the longest horizontal side to 1, as load_normalised does.
+function normalise(obj, drop) {
+  const box = new THREE.Box3();
+  obj.updateMatrixWorld(true);
+  obj.traverse(o => { if (o.isMesh && !isDropped(o, drop)) box.expandByObject(o); });
+  const size = box.getSize(new THREE.Vector3());
+  const scale = 1 / Math.max(size.x, size.z);
+  obj.scale.setScalar(scale);
+  const c = box.getCenter(new THREE.Vector3());
+  obj.position.set(-c.x * scale, -box.min.y * scale, -c.z * scale);
+  return size.y * scale;
+}
+
+function droneView(on) {
+  document.getElementById('drone').classList.toggle('on', on);
+  document.getElementById('real').hidden = !on || !current.sprite;
+  if (on) {
+    controls.autoRotate = false; document.getElementById('spin').classList.remove('on');
+    // render_models.py: model spun by yaw about the vertical, camera straight down with
+    // image-up = -Z (glTF), then tilted by `tilt` about X.
+    holder.rotation.y = THREE.MathUtils.degToRad(current.yaw || 0);
+    const t = THREE.MathUtils.degToRad(current.tilt || 0), d = 5;
+    ortho.position.set(0, d * Math.cos(t), d * Math.sin(t));
+    ortho.up.set(0, Math.sin(t), -Math.cos(t));
+    ortho.lookAt(0, 0, 0);
+    camera = ortho; grid.visible = false;
+  } else {
+    holder.rotation.y = 0; camera = persp; grid.visible = true;
+  }
+}
+
+async function open(item) {
+  current = item;
+  document.querySelectorAll('.item').forEach(a => a.classList.toggle('active', a.dataset.key === item.key));
+  const status = document.getElementById('status');
+  status.textContent = `loading ${item.name} (${item.size_mb} MB)...`;
+  if (model) { holder.remove(model); model = null; }
+  try {
+    const obj = item.url.endsWith('.obj')
+      ? await new OBJLoader().loadAsync(item.url)
+      : await new GLTFLoader().loadAsync(item.url, e => {
+          if (e.total) status.textContent = `loading ${item.name}: ${Math.round(100 * e.loaded / e.total)}%`;
+        }).then(keepGltfNames);
+    model = obj;
+    const height = normalise(obj, item.dropped_parts || []);
+    holder.add(obj);
+    applyVisibility();
+    status.textContent = '';
+    let faces = 0;
+    obj.traverse(o => { if (o.isMesh && o.geometry) faces += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+    const fit = item.mean_iou != null
+      ? ` - fit: IoU ${item.mean_iou}, yaw ${item.yaw}, tilt ${item.tilt}, ~${item.length_m} m long` : ' - not fitted yet';
+    document.getElementById('info').textContent =
+      `${item.cls} / ${item.name} - ${Math.round(faces).toLocaleString()} faces, height/length ${height.toFixed(2)}${fit}`;
+    if (item.sprite) {
+      const img = document.getElementById('realimg');
+      img.onload = () => { img.width = Math.min(img.naturalWidth * 3, 280); };
+      img.src = '/img/sprite/' + item.sprite;
+      document.getElementById('realcap').textContent = 'real cut-out ' + item.sprite;
+    }
+    droneView(document.getElementById('drone').classList.contains('on'));
+    location.hash = item.key;
+  } catch (err) {
+    status.textContent = `could not load ${item.url}: ${err.message || err}`;
+  }
+}
+
+const toggle = (id, fn) => document.getElementById(id).onclick = e => fn(e.target.classList.toggle('on'));
+toggle('spin', on => { controls.autoRotate = on; if (on) droneView(false); });
+toggle('wire', on => { wire = on; applyVisibility(); });
+toggle('dropped', on => { showDropped = on; applyVisibility(); });
+document.getElementById('drone').onclick = () => { if (current) droneView(camera !== ortho); };
+document.getElementById('top').onclick = () => {
+  droneView(false); controls.autoRotate = false; document.getElementById('spin').classList.remove('on');
+  persp.position.set(0, 3, 0.0001); controls.target.set(0, 0, 0);
+};
+
+const items = await (await fetch('/api/models')).json();
+const list = document.getElementById('list');
+for (const item of items) {
+  const a = document.createElement('a');
+  a.className = 'item'; a.dataset.key = item.key;
+  a.innerHTML = `${item.cls}<small>${item.name} - ${item.size_mb} MB${item.mean_iou != null ? ' - IoU ' + item.mean_iou : ''}</small>`;
+  a.onclick = () => open(item);
+  list.appendChild(a);
+}
+if (!items.length) document.getElementById('status').textContent = 'no models under models/<class>/ yet';
+// #<class>/<model> opens that model; append &drone to start in drone view.
+const [wanted, mode] = decodeURIComponent(location.hash.slice(1)).split('&');
+if (mode === 'drone') document.getElementById('drone').classList.add('on');
+const start = items.find(i => i.key === wanted) || items[0];
+if (start) open(start);
+
+renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+</script>
+</body>
+</html>

@@ -30,6 +30,7 @@ pick another format. glTF is Y-up by convention; use --up to override.
 import argparse
 import json
 import os
+import struct
 import sys
 from pathlib import Path
 
@@ -99,6 +100,82 @@ def lighten_materials(meshes):
             setattr(material, attribute, shrunk[id(image)])
 
 
+SLIM_CACHE = ROOT / 'datasets' / 'model_match' / '_slim'
+GLB_JSON, GLB_BIN = 0x4E4F534A, 0x004E4942
+
+
+def slim_glb(path: Path) -> Path:
+    """A cached copy of a .glb with only small base-colour textures, for models too big to load.
+
+    trimesh decodes every embedded image before lighten_materials can drop it; a 552 MB
+    model with 406 textures passed 9 GB that way. This rewrites the file one image at a
+    time instead: maps other than base colour are unlinked and blanked, base colour is
+    shrunk to TEXTURE_MAX_SIDE, and the binary chunk is repacked.
+    """
+    out = SLIM_CACHE / f'{path.parent.name}_{path.stem}.glb'
+    if out.exists() and out.stat().st_mtime >= path.stat().st_mtime:
+        return out
+    data = path.read_bytes()
+    json_length, = struct.unpack_from('<I', data, 12)
+    gltf = json.loads(data[20:20 + json_length])
+    bin_start = 20 + json_length + 8
+    binary = memoryview(data)[bin_start:]
+    if len(gltf.get('buffers', [])) != 1:
+        return path
+
+    keep = set()  # textures still used as base colour
+    for material in gltf.get('materials', []):
+        for key in ('normalTexture', 'occlusionTexture', 'emissiveTexture'):
+            material.pop(key, None)
+        material.pop('emissiveFactor', None)
+        pbr = material.get('pbrMetallicRoughness', {})
+        pbr.pop('metallicRoughnessTexture', None)
+        if 'baseColorTexture' in pbr:
+            keep.add(gltf['textures'][pbr['baseColorTexture']['index']]['source'])
+
+    blank = cv2.imencode('.png', np.full((1, 1, 3), 128, np.uint8))[1].tobytes()
+    replaced = {}
+    for i, image in enumerate(gltf.get('images', [])):
+        if 'bufferView' not in image:
+            continue
+        view = gltf['bufferViews'][image['bufferView']]
+        if i not in keep:
+            replaced[image['bufferView']] = blank
+            image['mimeType'] = 'image/png'
+            continue
+        start = view.get('byteOffset', 0)
+        pixels = cv2.imdecode(np.frombuffer(binary[start:start + view['byteLength']], np.uint8), cv2.IMREAD_UNCHANGED)
+        if pixels is None or max(pixels.shape[:2]) <= TEXTURE_MAX_SIDE:
+            continue
+        factor = TEXTURE_MAX_SIDE / max(pixels.shape[:2])
+        pixels = cv2.resize(pixels, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
+        replaced[image['bufferView']] = cv2.imencode('.png', pixels)[1].tobytes()
+        image['mimeType'] = 'image/png'
+
+    chunks, offset = [], 0
+    for index, view in enumerate(gltf['bufferViews']):
+        start = view.get('byteOffset', 0)
+        chunk = replaced.get(index, binary[start:start + view['byteLength']])
+        padding = (-offset) % 4
+        chunks.append(b'\0' * padding)
+        offset += padding
+        view['byteOffset'], view['byteLength'] = offset, len(chunk)
+        chunks.append(chunk)
+        offset += len(chunk)
+    new_binary = b''.join(chunks) + b'\0' * ((-offset) % 4)
+    gltf['buffers'][0]['byteLength'] = offset
+
+    header = json.dumps(gltf).encode()
+    header += b' ' * ((-len(header)) % 4)
+    total = 12 + 8 + len(header) + 8 + len(new_binary)
+    SLIM_CACHE.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(struct.pack('<III', 0x46546C67, 2, total)
+                    + struct.pack('<II', len(header), GLB_JSON) + header
+                    + struct.pack('<II', len(new_binary), GLB_BIN) + new_binary)
+    print(f'    slimmed {path.name}: {path.stat().st_size >> 20} MB -> {out.stat().st_size >> 20} MB')
+    return out
+
+
 def part_name(mesh):
     return f"{mesh.metadata.get('name', '?')} ({mesh.metadata.get('node', '?')})"
 
@@ -109,7 +186,8 @@ def load_normalised(path: Path, up: str, drop=()):
     `drop` removes parts whose geometry or node name contains any of the given strings,
     e.g. a concrete apron or display base the real object does not have.
     """
-    loaded = trimesh.load(str(path), force='scene')
+    source = slim_glb(path) if path.suffix.lower() == '.glb' else path
+    loaded = trimesh.load(str(source), force='scene')
     meshes = [g for g in loaded.dump(concatenate=False) if isinstance(g, trimesh.Trimesh) and len(g.faces)]
     dropped = [m for m in meshes if any(d in part_name(m) for d in drop)]
     meshes = [m for m in meshes if not any(d in part_name(m) for d in drop)]
