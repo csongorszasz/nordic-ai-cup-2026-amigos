@@ -90,7 +90,7 @@ def main():
             continue
         sprite = cv2.cvtColor(cv2.imread(str(ROOT / 'sprites' / entry['file']), cv2.IMREAD_UNCHANGED),
                               cv2.COLOR_BGRA2RGBA)
-        fit = rm.fit_sprite(renderer, sprite, yaws)
+        fit = rm.fit_sprite(renderer, sprite, yaws, match.get('tilts', rm.TILTS), gaps=match.get('close_gaps', 0))
         if fit:
             fit['gains'], fit['offsets'], fit['colour_error'] = rm.fit_colour(fit['placed'], sprite)
             fits[entry['frame']] = (sprite, fit)

@@ -2,7 +2,6 @@
 
     python training/procedural_models.py tower              # -> models/small_tower/procedural_tower/tower.glb
     python training/procedural_models.py tower --cabin-height 1.0
-    python training/procedural_models.py tall_tower         # -> models/large_tower/procedural_tall_tower/tall_tower.glb
     python training/render_models.py small_tower            # then fit it like any other model
 
 small_tower seen from the drone is a pale square platform with a smaller green cabin on
@@ -11,10 +10,6 @@ from the side, so its top leans away from the image centre. The downloaded watch
 roof covers its whole footprint, so its roof got matched to the platform. This builds
 the shape as seen: a platform, four legs and a raised cabin with a roof. Being modelled
 from scratch, it needs no licence.
-
-large_tower is seen so obliquely that it lies across the frame, cabin at one end, and
-the whole length looks solid: the downloaded lattice tower leaves gaps the real one does
-not have. tall_tower is a clad, tapering shaft with a balcony floor, cabin and roof.
 
 Units are relative (platform side = 1); render_models.py scales by the real cut-outs.
 """
@@ -48,25 +43,7 @@ def tower(cabin_height: float, cabin_side: float):
     return parts
 
 
-def frustum(bottom: float, top: float, height: float, z0: float, colour):
-    """Square column tapering from side `bottom` to `top`, standing at height z0."""
-    mesh = box((1, 1, height), (0, 0, z0 + height / 2), colour)
-    upper = mesh.vertices[:, 2] > z0 + height / 2
-    mesh.vertices[:, :2] *= np.where(upper, top, bottom)[:, None]
-    return mesh
-
-
-def tall_tower(cabin_height: float, cabin_side: float):
-    """Z-up tower: clad shaft from a 1 x 1 base up to the cabin at `cabin_height`."""
-    camo, pale, grey = (95, 90, 65), (200, 175, 130), (120, 115, 105)
-    return [frustum(1.0, cabin_side * 0.9, cabin_height, 0, camo),
-            box((cabin_side * 1.25, cabin_side * 1.25, 0.08), (0, 0, cabin_height + 0.04), pale),
-            box((cabin_side, cabin_side, 0.5), (0, 0, cabin_height + 0.33), camo),
-            frustum(cabin_side * 1.2, 0.2, 0.3, cabin_height + 0.58, grey)]
-
-
-RECIPES = {'tower': ('small_tower', 'procedural_tower', tower, 0.8, 0.6),
-           'tall_tower': ('large_tower', 'procedural_tall_tower', tall_tower, 4.5, 0.8)}
+RECIPES = {'tower': ('small_tower', 'procedural_tower', tower, 0.8, 0.6)}
 
 
 def main():

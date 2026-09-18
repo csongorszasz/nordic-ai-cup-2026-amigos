@@ -11,6 +11,7 @@ the sprite generator will use.
     python training/render_models.py hangar --tilts 0 8 16 --yaw-step 3
     python training/render_models.py helicopter --up z --drop rotor_Body  # skinned glTF, rotor spins
     python training/render_models.py hangar --drop Cube.032     # leave out the model's concrete apron
+    python training/render_models.py large_tower --close-gaps 4 # lattice legs vs a cut-out that fills them
 
 Each cut-out is fitted for yaw, camera tilt and lean direction (the drone camera looks
 slightly forward, so tall parts lean, mostly toward the image top) and scale. The score
@@ -339,15 +340,31 @@ def place(render: np.ndarray, transform, shape) -> np.ndarray:
     return placed
 
 
-def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,)):
+def close_gaps(mask: np.ndarray, pixels: int) -> np.ndarray:
+    """Fill gaps up to about 2 * `pixels` wide, like the cut-out's mask does between a lattice's legs."""
+    if pixels <= 0:
+        return mask
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * pixels + 1, 2 * pixels + 1))
+    padded = np.pad(mask.astype(np.uint8), pixels)
+    return cv2.morphologyEx(padded, cv2.MORPH_CLOSE, kernel)[pixels:-pixels, pixels:-pixels] > 0
+
+
+def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,), gaps=0):
     """Scale and centre a render onto the sprite's canvas; the scale with the best IoU wins.
 
-    Scales are relative to the one that makes the silhouette areas equal. Returns a dict
-    with the placed RGBA, IoU and the transform (for place()), or None.
+    Scales are relative to the one that makes the silhouette areas equal. `gaps` closes
+    the render's silhouette by that many sprite pixels before comparing (close_gaps()).
+    Returns a dict with the placed RGBA, IoU and the transform (for place()), or None.
     """
     sprite_mask = sprite[:, :, 3] > 128
     render_mask = render[:, :, 3] > 0
     sprite_area, render_area = sprite_mask.sum(), render_mask.sum()
+    if gaps and render_area:
+        # Closed area measured at about sprite size: closing at render resolution needs a
+        # kernel several times larger and is far too slow.
+        f = max(sprite.shape[:2]) / render.shape[0]
+        small = cv2.resize(render_mask.astype(np.uint8) * 255, None, fx=f, fy=f, interpolation=cv2.INTER_AREA) > 64
+        render_area = close_gaps(small, gaps).sum() / f ** 2
     if sprite_area < 8 or render_area < 8:
         return None
     ys, xs = np.nonzero(render_mask)
@@ -357,12 +374,12 @@ def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,)):
     for factor in scales:
         scale = np.sqrt(sprite_area / render_area) * factor
         small = place(render, (*box, scale, 0, 0), (int((box[3] - box[1]) * scale) + 2, int((box[2] - box[0]) * scale) + 2))
-        my, mx = np.nonzero(small[:, :, 3] > 64)
+        my, mx = np.nonzero(close_gaps(small[:, :, 3] > 64, gaps))
         if len(my) == 0:
             continue
         transform = (*box, scale, int(round(sx.mean() - mx.mean())), int(round(sy.mean() - my.mean())))
         placed = place(render, transform, sprite.shape)
-        placed_mask = placed[:, :, 3] > 64
+        placed_mask = close_gaps(placed[:, :, 3] > 64, gaps)
         union = (placed_mask | sprite_mask).sum()
         iou = float((placed_mask & sprite_mask).sum() / union) if union else 0.0
         if best is None or iou > best['iou']:
@@ -387,7 +404,7 @@ def structure(placed: np.ndarray, sprite: np.ndarray) -> float:
     return float(max(np.corrcoef(a, b)[0, 1], 0.0))
 
 
-def fit_sprite(renderer: Renderer, sprite: np.ndarray, yaws, tilts=TILTS, leans=LEANS):
+def fit_sprite(renderer: Renderer, sprite: np.ndarray, yaws, tilts=TILTS, leans=LEANS, gaps=0):
     """Best yaw, tilt, lean and scale for one cut-out.
 
     Yaw comes first from the silhouette seen straight down (tilt barely changes it), then
@@ -396,20 +413,20 @@ def fit_sprite(renderer: Renderer, sprite: np.ndarray, yaws, tilts=TILTS, leans=
     """
     by_yaw = []
     for yaw in yaws:
-        fitted = fit_to_sprite(renderer.render(yaw)[0], sprite)
+        fitted = fit_to_sprite(renderer.render(yaw)[0], sprite, gaps=gaps)
         if fitted:
             by_yaw.append((fitted['iou'], yaw))
     candidates = []
     for _, yaw in sorted(by_yaw, reverse=True)[:3]:
         for tilt in tilts:
             for lean in (leans if tilt else (0,)):
-                fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite)
+                fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite, gaps=gaps)
                 if fitted:
                     score = fitted['iou'] + STRUCTURE_WEIGHT * structure(fitted['placed'], sprite)
                     candidates.append((score, yaw, tilt, lean))
     best = None
     for _, yaw, tilt, lean in sorted(candidates, reverse=True)[:3]:
-        fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite, SCALE_STEPS)
+        fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite, SCALE_STEPS, gaps)
         if not fitted:
             continue
         fitted['structure'] = structure(fitted['placed'], sprite)
@@ -560,6 +577,9 @@ def main():
     parser.add_argument('--up', choices=['auto', 'y', 'z'], default='auto')
     parser.add_argument('--drop', nargs='*', default=[],
                         help='parts to leave out, matched against geometry/node names (e.g. Cube.032)')
+    parser.add_argument('--close-gaps', type=int, default=0, metavar='PX',
+                        help='fill gaps in the render silhouette up to ~2*PX sprite pixels before comparing, '
+                             'for open structures whose cut-outs include the ground between their parts')
     parser.add_argument('--max-sprites', type=int, default=8)
     parser.add_argument('--out', default=str(ROOT / 'datasets' / 'model_match'))
     args = parser.parse_args()
@@ -591,7 +611,7 @@ def main():
 
         per_sprite = []
         for file, sprite, bbox in sprites:
-            best = fit_sprite(renderer, sprite, yaws, args.tilts)
+            best = fit_sprite(renderer, sprite, yaws, args.tilts, gaps=args.close_gaps)
             if best is None:
                 per_sprite.append(None)
                 continue
@@ -623,6 +643,8 @@ def main():
                 'mesh': str(path.relative_to(ROOT)),
                 'dropped_parts': args.drop,
                 'up': args.up,
+                'close_gaps': args.close_gaps,
+                'tilts': args.tilts,
                 'mean_iou': round(float(np.mean([b['iou'] for b in good])), 3),
                 'mean_colour_error': round(float(np.mean([b['colour_error'] for b in good])), 1),
                 'length_m': round(float(np.median([b['length_m'] for b in good])), 1),

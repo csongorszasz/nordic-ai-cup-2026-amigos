@@ -1,188 +1,104 @@
 {
  "cgtrader_watchtower": {
+  "close_gaps": 20,
   "dropped_parts": [],
   "gains": [
-   0.2,
-   0.2,
-   0.2
+   0.443,
+   0.443,
+   0.443
   ],
-  "length_m": 7.3,
-  "mean_colour_error": 31.8,
-  "mean_iou": 0.545,
+  "length_m": 4.5,
+  "mean_colour_error": 33.0,
+  "mean_iou": 0.749,
   "mesh": "models/large_tower/cgtrader_watchtower/watchtower.obj",
   "offsets": [
-   84.1,
-   80.4,
+   77.8,
+   78.0,
    68.9
   ],
   "per_sprite": [
    {
-    "colour_error": 32.6,
+    "colour_error": 32.9,
     "file": "large_tower/f021_3.png",
-    "iou": 0.542,
+    "iou": 0.739,
     "lean": 45,
-    "structure": 0.199,
-    "tilt": 24,
-    "yaw": 85
+    "structure": 0.206,
+    "tilt": 40.0,
+    "yaw": 345
    },
    {
-    "colour_error": 33.1,
+    "colour_error": 31.9,
     "file": "large_tower/f022_3.png",
-    "iou": 0.548,
+    "iou": 0.746,
     "lean": 45,
-    "structure": 0.076,
-    "tilt": 24,
-    "yaw": 100
+    "structure": 0.277,
+    "tilt": 40.0,
+    "yaw": 70
    },
    {
     "colour_error": 30.1,
     "file": "large_tower/f024_2.png",
-    "iou": 0.563,
-    "lean": 225,
-    "structure": 0.022,
-    "tilt": 24,
-    "yaw": 280
-   },
-   {
-    "colour_error": 31.2,
-    "file": "large_tower/f020_3.png",
-    "iou": 0.539,
-    "lean": 225,
-    "structure": 0.109,
-    "tilt": 24,
-    "yaw": 100
-   },
-   {
-    "colour_error": 29.7,
-    "file": "large_tower/f023_2.png",
-    "iou": 0.553,
-    "lean": 225,
-    "structure": 0.076,
-    "tilt": 24,
-    "yaw": 280
-   },
-   {
-    "colour_error": 35.2,
-    "file": "large_tower/f019_3.png",
-    "iou": 0.545,
+    "iou": 0.729,
     "lean": 45,
-    "structure": 0.106,
-    "tilt": 24,
-    "yaw": 285
+    "structure": 0.228,
+    "tilt": 40.0,
+    "yaw": 250
    },
    {
-    "colour_error": 31.6,
-    "file": "large_tower/f018_3.png",
-    "iou": 0.534,
-    "lean": 225,
-    "structure": 0.028,
-    "tilt": 24,
-    "yaw": 85
+    "colour_error": 35.6,
+    "file": "large_tower/f020_3.png",
+    "iou": 0.751,
+    "lean": 45,
+    "structure": 0.149,
+    "tilt": 40.0,
+    "yaw": 345
    },
    {
-    "colour_error": 31.3,
-    "file": "large_tower/f017_3.png",
-    "iou": 0.537,
-    "lean": 225,
-    "structure": 0.017,
-    "tilt": 24,
-    "yaw": 10
-   }
-  ],
-  "tilt": 24.0,
-  "up": "y"
- },
- "procedural_tall_tower": {
-  "dropped_parts": [],
-  "gains": [
-   0.779,
-   0.779,
-   0.779
-  ],
-  "length_m": 4.0,
-  "mean_colour_error": 32.4,
-  "mean_iou": 0.784,
-  "mesh": "models/large_tower/procedural_tall_tower/tall_tower.glb",
-  "offsets": [
-   50.0,
-   42.4,
-   33.2
-  ],
-  "per_sprite": [
-   {
-    "colour_error": 31.2,
-    "file": "large_tower/f021_3.png",
-    "iou": 0.775,
+    "colour_error": 30.5,
+    "file": "large_tower/f023_2.png",
+    "iou": 0.743,
     "lean": 45,
     "structure": 0.252,
-    "tilt": 24,
-    "yaw": 350
+    "tilt": 40.0,
+    "yaw": 75
    },
    {
-    "colour_error": 32.4,
-    "file": "large_tower/f022_3.png",
-    "iou": 0.773,
-    "lean": 45,
-    "structure": 0.151,
-    "tilt": 24,
-    "yaw": 350
-   },
-   {
-    "colour_error": 31.0,
-    "file": "large_tower/f024_2.png",
-    "iou": 0.749,
-    "lean": 45,
-    "structure": 0.094,
-    "tilt": 24,
-    "yaw": 350
-   },
-   {
-    "colour_error": 33.2,
-    "file": "large_tower/f020_3.png",
-    "iou": 0.786,
-    "lean": 45,
-    "structure": 0.191,
-    "tilt": 24,
-    "yaw": 350
-   },
-   {
-    "colour_error": 31.3,
-    "file": "large_tower/f023_2.png",
-    "iou": 0.773,
-    "lean": 45,
-    "structure": 0.089,
-    "tilt": 24,
-    "yaw": 350
-   },
-   {
-    "colour_error": 33.6,
+    "colour_error": 34.6,
     "file": "large_tower/f019_3.png",
-    "iou": 0.802,
+    "iou": 0.752,
     "lean": 45,
-    "structure": 0.165,
-    "tilt": 24,
-    "yaw": 270
+    "structure": 0.227,
+    "tilt": 40.0,
+    "yaw": 95
    },
    {
-    "colour_error": 33.5,
+    "colour_error": 34.1,
     "file": "large_tower/f018_3.png",
-    "iou": 0.809,
+    "iou": 0.767,
     "lean": 45,
-    "structure": 0.205,
-    "tilt": 24,
-    "yaw": 270
+    "structure": 0.224,
+    "tilt": 40.0,
+    "yaw": 95
    },
    {
-    "colour_error": 32.7,
+    "colour_error": 34.5,
     "file": "large_tower/f017_3.png",
-    "iou": 0.806,
+    "iou": 0.765,
     "lean": 45,
-    "structure": 0.186,
-    "tilt": 24,
-    "yaw": 270
+    "structure": 0.207,
+    "tilt": 40.0,
+    "yaw": 0
    }
   ],
-  "tilt": 24.0,
+  "tilt": 40.0,
+  "tilts": [
+   0.0,
+   8.0,
+   16.0,
+   24.0,
+   32.0,
+   40.0
+  ],
   "up": "y"
  }
 }
