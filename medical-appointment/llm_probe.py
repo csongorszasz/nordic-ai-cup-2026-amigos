@@ -7,6 +7,13 @@ ModernBERT OOF 0.610 and hybrid 0.647-0.661.
 
     python llm_probe.py --rungs L0 L1 L2 --limit 3        # smoke
     python llm_probe.py --rungs L0 L1 L2                  # full 39
+    python llm_probe.py --rungs SERVED --tag base         # the served answerer
+    python llm_probe.py --rungs SERVED --tag seg --cite-segment --fewshot-counts 4,1,1
+
+``SERVED`` runs ``answerers.llm.LLMAnswerer`` itself (prompt, parser, prior
+fallback, alignment, offsets), so what it measures is what ``/predict`` does;
+the ``--cite-segment`` / ``--fewshot-counts`` / ``--fuzzy`` / ``--offsets``
+flags A/B the serving knobs without touching the environment.
 
 Writes ``results/llm_<tag>_<rung>.json`` (summary) and
 ``results/llm_<tag>_<rung>_questions.json`` (per-question records).
@@ -46,7 +53,7 @@ from answerers.passages import contains, overlap_word_range  # noqa: E402
 from local_evaluator import UNANSWERED, Statistics  # noqa: E402
 from utils import gold_evidence  # noqa: E402
 
-RUNGS = ("L0", "L1", "L2", "RAG")
+RUNGS = ("L0", "L1", "L2", "RAG", "SERVED")
 
 logger = logging.getLogger(__name__)
 
@@ -333,6 +340,45 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
     return records, elapsed, parse_failures
 
 
+def _run_served(answerer, transcript: Dict, rows: List[Dict]):
+    """The served answerer on one conversation -> records, elapsed, failures."""
+    questions = [row["question"] for row in rows]
+    # The answerer excludes the conversation named here from its own few-shot;
+    # pin it to the transcript id so a cache without the field cannot leak.
+    transcript = dict(transcript, audio_filename=f"conversation_{rows[0]['transcript_id']}.mp3")
+    started = time.perf_counter()
+    results = answerer.answer_all(questions, transcript, return_info=True)
+    elapsed = time.perf_counter() - started
+
+    records: List[Dict] = []
+    failures = 0
+    for row, (answer, span, info) in zip(rows, results):
+        decided_by = (info or {}).get("decided_by")
+        if decided_by in ("parse", "generation_error", "deadline"):
+            failures += 1
+        records.append(
+            {
+                "question_id": row["question_id"],
+                "transcript_id": row["transcript_id"],
+                "question_type": row["question_type"],
+                "label": int(row["label"]),
+                "prediction": int(bool(answer)),
+                "answer": bool(answer),
+                "span": list(span) if span is not None else None,
+                "gold": (
+                    [float(row["evidence_start"]), float(row["evidence_end"])]
+                    if row["question_type"] == "positive"
+                    else None
+                ),
+                "quote": (info or {}).get("quote"),
+                "segment": (info or {}).get("segment"),
+                "decided_by": decided_by,
+                "rung": "SERVED",
+            }
+        )
+    return records, elapsed, failures
+
+
 def score_records(records: List[Dict]) -> Dict:
     statistics = Statistics()
     for record in records:
@@ -382,10 +428,16 @@ def run_rung(
     index_kind: str = "passages",
     top_k: int = 5,
     context: int = 1,
+    served_options: Optional[Dict] = None,
 ) -> Dict:
     conversations, rows_by_tid, transcripts = _documents(limit)
     evidence = data.load_evidence()
     retriever = MiniLMRetriever() if rung == "RAG" else None
+    served = None
+    if rung == "SERVED":
+        from answerers.llm import LLMAnswerer
+
+        served = LLMAnswerer(client=client, **(served_options or {}))
     index_cache: Dict[str, list] = {}
     example_cache: Dict[str, list] = {}
 
@@ -394,7 +446,11 @@ def run_rung(
     parse_failures = 0
     latencies: List[float] = []
     for conversation_index, (tid, rows) in enumerate(conversations):
-        if rung == "RAG":
+        if rung == "SERVED":
+            conversation_records, elapsed, failures = _run_served(
+                served, transcripts[tid], rows
+            )
+        elif rung == "RAG":
             words = transcripts[tid].get("words", [])
             if tid not in index_cache:
                 index_cache[tid] = rag_module.build_index(
@@ -432,6 +488,7 @@ def run_rung(
         {
             "rung": rung,
             "tag": tag,
+            "served_options": served.status() if served is not None else None,
             "model": getattr(client, "model_name", "stub"),
             "conversations": len(conversations),
             "parse_failures": parse_failures,
@@ -468,7 +525,27 @@ def main() -> int:
     parser.add_argument("--top-k", type=int, default=5, help="RAG candidates per question.")
     parser.add_argument("--context", type=int, default=1,
                         help="Sentence window half-width for --index sentences.")
+    parser.add_argument("--cite-segment", action="store_true",
+                        help="SERVED: ask for the quoted segment id.")
+    parser.add_argument("--fewshot-counts", default=None,
+                        help="SERVED: positive,refute,off_topic examples, e.g. 4,1,1.")
+    parser.add_argument("--fuzzy", type=float, default=None,
+                        help="SERVED: fuzzy alignment ratio (0 disables).")
+    parser.add_argument("--offsets", type=float, nargs=2, default=None,
+                        metavar=("START", "END"), help="SERVED: span offsets in seconds.")
     args = parser.parse_args()
+
+    served_options: Dict = {}
+    if args.cite_segment:
+        served_options["cite_segment"] = True
+    if args.fewshot_counts:
+        served_options["few_shot_counts"] = tuple(
+            int(part) for part in args.fewshot_counts.split(",")
+        )
+    if args.fuzzy is not None:
+        served_options["fuzzy_ratio"] = args.fuzzy or None
+    if args.offsets is not None:
+        served_options["offsets"] = tuple(args.offsets)
     logging.basicConfig(level=logging.INFO)
 
     client = HFClient(model_name=args.model, max_new_tokens=args.max_new_tokens)
@@ -479,6 +556,7 @@ def main() -> int:
         summaries.append(run_rung(
             rung, client, args.limit, args.tag,
             index_kind=args.index, top_k=args.top_k, context=args.context,
+            served_options=served_options,
         ))
 
     print("\n=== summary ===")

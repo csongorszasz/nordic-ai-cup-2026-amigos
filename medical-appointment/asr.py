@@ -14,13 +14,17 @@ Environment overrides:
 * ``WHISPER_DEVICE``        default ``cuda`` (falls back to CPU)
 * ``WHISPER_COMPUTE_TYPE``  default ``float16`` (falls back to ``int8`` on CPU)
 * ``WHISPER_LANGUAGE``      default ``en``
+* ``MEDAPP_ASR_HOTWORDS``   ``1`` biases decoding towards the drug/entity names
+  in the request's questions (default ``0``; A/B it before serving)
 """
 
 import hashlib
 import json
 import logging
 import os
+import re
 import tempfile
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -36,8 +40,50 @@ LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 
 # Transcript caching can be disabled for serving (cache correctness > speed).
 CACHE_ENABLED = os.environ.get("MEDAPP_ASR_CACHE", "1") != "0"
+HOTWORDS_ENABLED = os.environ.get("MEDAPP_ASR_HOTWORDS", "0") == "1"
+MAX_HOTWORDS = 40
+
+# Words that carry no spelling information for the decoder. Numbers, number
+# words and units are left out on purpose: hard negatives differ from the truth
+# by exactly those ("200 mg" vs "100 mg"), and biasing the decoder towards a
+# question's value could make it hear the wrong one.
+_HOTWORD_STOP = {
+    "the", "and", "was", "were", "does", "did", "will", "would", "should",
+    "could", "have", "has", "had", "been", "being", "with", "without", "that",
+    "this", "there", "their", "they", "them", "what", "which", "when", "where",
+    "about", "after", "before", "from", "into", "right", "isn't", "wasn't",
+    "doesn't", "didn't", "won't", "patient", "doctor", "mention", "mentioned",
+    "any", "also", "still", "then", "than", "take", "taken", "each", "daily",
+    "week", "weeks", "day", "days", "month", "months", "year", "years", "times",
+    "once", "twice", "hour", "hours", "dose", "doses",
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "twenty", "thirty", "forty", "fifty", "hundred",
+    "half", "mg", "milligrams", "milligram", "ml", "mmol", "kg", "grams", "units",
+}
+_HOTWORD_RE = re.compile(r"[A-Za-z][A-Za-z\-']+")
 
 _model = None
+
+
+def hotwords_from_questions(questions) -> str:
+    """Entity-like words from the questions, for decoder biasing.
+
+    Keeps capitalised words (brand names: Pamol, Ibumetin) and longer
+    lower-case words (esomeprazole, amoxicillin); drops numbers, number words,
+    units and function words. Order-preserving, deduplicated, capped.
+    """
+    seen = []
+    lowered = set()
+    for question in questions or []:
+        for token in _HOTWORD_RE.findall(question):
+            key = token.lower().strip("-'")
+            if key in _HOTWORD_STOP or key in lowered:
+                continue
+            if not (token[0].isupper() and len(key) >= 3) and len(key) < 6:
+                continue
+            lowered.add(key)
+            seen.append(token.strip("-'"))
+    return " ".join(seen[:MAX_HOTWORDS])
 
 
 def _resolve_device() -> tuple:
@@ -133,16 +179,23 @@ def content_hash(audio_bytes: bytes) -> str:
     return hashlib.sha256(audio_bytes).hexdigest()[:8]
 
 
-def cache_path(audio_filename: str, audio_bytes: Optional[bytes] = None) -> Path:
+def cache_path(
+    audio_filename: str,
+    audio_bytes: Optional[bytes] = None,
+    hotwords: Optional[str] = None,
+) -> Path:
     """Where the transcript for one conversation is cached.
 
-    The key combines the filename, the decoding configuration and (when the
-    bytes are supplied) the audio content, so reusing a filename for different
-    audio can never serve a stale transcript.
+    The key combines the filename, the decoding configuration, (when the bytes
+    are supplied) the audio content and (when used) the hotwords, so reusing a
+    filename for different audio or a different bias never serves a stale
+    transcript.
     """
     key = f"{Path(audio_filename).stem}.{config_hash()}"
     if audio_bytes is not None:
         key += f".{content_hash(audio_bytes)}"
+    if hotwords:
+        key += f".hw{hashlib.sha1(hotwords.encode()).hexdigest()[:6]}"
     return TRANSCRIPTS_DIR / f"{key}.json"
 
 
@@ -151,6 +204,8 @@ def transcribe_bytes(
     audio_filename: str,
     cache: bool = True,
     force: bool = False,
+    hotwords: Optional[str] = None,
+    deadline: Optional[float] = None,
 ) -> Dict:
     """Transcribe one conversation, returning a transcript dict.
 
@@ -158,9 +213,13 @@ def transcribe_bytes(
     tagged with the ``seg_idx`` it came from), so downstream code can build
     phrase spans without re-running ASR. Results are cached unless
     ``MEDAPP_ASR_CACHE=0`` or ``cache=False``.
+
+    ``deadline`` (epoch seconds) stops decoding early and returns the segments
+    so far, marked ``truncated`` and never cached: a partial transcript still
+    answers the questions about its first part.
     """
     cache = cache and CACHE_ENABLED
-    path = cache_path(audio_filename, audio_bytes)
+    path = cache_path(audio_filename, audio_bytes, hotwords)
     if cache and not force and path.exists():
         try:
             return json.loads(path.read_text())
@@ -172,17 +231,35 @@ def transcribe_bytes(
     with tempfile.NamedTemporaryFile(suffix=".mp3") as handle:
         handle.write(audio_bytes)
         handle.flush()
-        segment_iter, info = model.transcribe(
-            handle.name,
+        options = dict(
             language=LANGUAGE,
             word_timestamps=True,
             vad_filter=True,
             condition_on_previous_text=False,
         )
+        if hotwords:
+            try:
+                segment_iter, info = model.transcribe(
+                    handle.name, hotwords=hotwords, **options
+                )
+            except TypeError:  # faster-whisper < 1.0.2 has no `hotwords`
+                segment_iter, info = model.transcribe(
+                    handle.name, initial_prompt=hotwords, **options
+                )
+        else:
+            segment_iter, info = model.transcribe(handle.name, **options)
 
         segments: List[Dict] = []
         words: List[Dict] = []
+        truncated = False
         for segment in segment_iter:
+            if deadline is not None and time.time() > deadline:
+                truncated = True
+                logger.warning(
+                    "ASR deadline hit for %s after %d segments; answering from a "
+                    "partial transcript.", audio_filename, len(segments),
+                )
+                break
             seg_idx = len(segments)
             segment_words = []
             for word in segment.words or []:
@@ -221,9 +298,11 @@ def transcribe_bytes(
         "duration_after_vad": float(getattr(info, "duration_after_vad", 0.0)),
         "segments": segments,
         "words": words,
+        "hotwords": hotwords or None,
+        "truncated": truncated,
     }
 
-    if cache:
+    if cache and not truncated:
         TRANSCRIPTS_DIR.mkdir(exist_ok=True)
         path.write_text(json.dumps(transcript, indent=2))
         logger.info("Cached transcript -> %s", path)

@@ -19,6 +19,14 @@ order is a judgement call, not a dependency.
   cloudflared quick-tunnel URL is ephemeral and the IDUN job has a finite
   walltime; the endpoint must be up and unchanged when the evaluation fires.
 
+## Serving hardening (H1, 2026-09-19)
+
+Branch `medical-llm-hardening` closes the serving risks above (truncated replies,
+no hard timeout, silent zero-shot, constant fallback, unpinned weights, fragile
+tunnel) and adds span knobs that stay off until the SERVED probe rung beats
+T038. Order: SERVED `base` → knobs → calibrate offsets → one validation →
+rehearsal → evaluation. Runbook: `docs/serving-runbook.md`.
+
 ## Diagnosis (T033 OOF, class-weighted ModernBERT)
 
 | type | recall | failures |

@@ -13,7 +13,11 @@ from typing import Dict, List, Optional, Sequence
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = os.environ.get("MEDAPP_LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
-MAX_NEW_TOKENS = int(os.environ.get("MEDAPP_LLM_MAX_NEW_TOKENS", "512"))
+# Pin the exact checkpoint (a commit hash from `idun/setup_llm.sh`) so the
+# evaluation runs the weights that were validated. Empty = whatever is cached.
+REVISION = os.environ.get("MEDAPP_LLM_REVISION", "").strip() or None
+# Ten answers with quotes run ~400 tokens; 512 could cut the JSON mid-object.
+MAX_NEW_TOKENS = int(os.environ.get("MEDAPP_LLM_MAX_NEW_TOKENS", "1024"))
 DEVICE = os.environ.get("MEDAPP_LLM_DEVICE", "auto").lower()
 DTYPE = os.environ.get("MEDAPP_LLM_DTYPE", "float16")
 
@@ -25,7 +29,12 @@ class StubClient:
         self.responses = list(responses)
         self.calls: List[List[Dict]] = []
 
-    def generate(self, messages: List[Dict], max_new_tokens: Optional[int] = None) -> str:
+    def generate(
+        self,
+        messages: List[Dict],
+        max_new_tokens: Optional[int] = None,
+        max_time: Optional[float] = None,
+    ) -> str:
         self.calls.append(messages)
         if not self.responses:
             return ""
@@ -42,8 +51,10 @@ class HFClient:
         model_name: Optional[str] = None,
         max_new_tokens: Optional[int] = None,
         dtype: Optional[str] = None,
+        revision: Optional[str] = None,
     ) -> None:
         self.model_name = model_name or MODEL_NAME
+        self.revision = revision or REVISION
         self.max_new_tokens = max_new_tokens or MAX_NEW_TOKENS
         self.dtype = dtype or DTYPE
         self._model = None
@@ -56,13 +67,16 @@ class HFClient:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        logger.info("Loading LLM %s", self.model_name)
+        logger.info("Loading LLM %s (revision=%s)", self.model_name, self.revision or "cached")
+        pinned = {"revision": self.revision} if self.revision else {}
         try:
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, **pinned)
         except Exception:
             from transformers import AutoProcessor
 
-            self._tokenizer = AutoProcessor.from_pretrained(self.model_name).tokenizer
+            self._tokenizer = AutoProcessor.from_pretrained(
+                self.model_name, **pinned
+            ).tokenizer
 
         torch_dtype = getattr(torch, self.dtype, torch.float16)
 
@@ -70,9 +84,13 @@ class HFClient:
         # is silently ignored, which loads fp32 and OOMs a 7B on a 32 GB card.
         def _from(factory):
             try:
-                return factory.from_pretrained(self.model_name, dtype=torch_dtype)
+                return factory.from_pretrained(
+                    self.model_name, dtype=torch_dtype, **pinned
+                )
             except TypeError:
-                return factory.from_pretrained(self.model_name, torch_dtype=torch_dtype)
+                return factory.from_pretrained(
+                    self.model_name, torch_dtype=torch_dtype, **pinned
+                )
 
         try:
             self._model = _from(AutoModelForCausalLM)
@@ -103,9 +121,19 @@ class HFClient:
             pass
 
     def warm_up(self) -> None:
+        """Load the weights and run one short generation to compile kernels."""
         self._load()
+        self.generate([{"role": "user", "content": "Reply with OK."}], max_new_tokens=4)
 
-    def generate(self, messages: List[Dict], max_new_tokens: Optional[int] = None) -> str:
+    def generate(
+        self,
+        messages: List[Dict],
+        max_new_tokens: Optional[int] = None,
+        max_time: Optional[float] = None,
+    ) -> str:
+        """Greedy completion. ``max_time`` (seconds) is a hard stop inside
+        ``generate``: the partial output is returned, and the parser salvages
+        every answer object that closed before the cut."""
         import torch
 
         self._load()
@@ -122,6 +150,7 @@ class HFClient:
                 temperature=None,
                 top_p=None,
                 pad_token_id=self._tokenizer.eos_token_id,
+                **({"max_time": max_time} if max_time else {}),
             )
         new_tokens = output[0][encoded["input_ids"].shape[1]:]
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True)

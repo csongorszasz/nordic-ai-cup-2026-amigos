@@ -14,9 +14,10 @@ import time
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from dtos import ASRQuestionRequestDto, ASRQuestionResponseDto
-from example import predict
+from example import READINESS, predict
 from utils import validate_response
 
 HOST = '0.0.0.0'
@@ -47,6 +48,16 @@ def hello():
         'service': 'medical-appointment-usecase',
         'uptime': '{}'.format(datetime.timedelta(seconds=time.time() - start_time)),
     }
+
+
+@app.get('/ready')
+def ready():
+    """Readiness: 200 only once the models, few-shot and prior are loaded.
+
+    ``/`` answers as soon as the process is up; poll this one before handing
+    out the URL, so a failed warm-up is found before the attempt, not in it.
+    """
+    return JSONResponse(READINESS, status_code=200 if READINESS.get('ready') else 503)
 
 
 @app.get('/')

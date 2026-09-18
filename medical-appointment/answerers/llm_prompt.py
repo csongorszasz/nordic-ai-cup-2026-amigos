@@ -7,7 +7,7 @@ includes retrieved candidates (L0-L2 are transcript-only).
 
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from .align import text_between
+from .align import segment_at, text_between
 
 SYSTEM_PROMPT = (
     "You are a clinical evidence extraction assistant. You are given a "
@@ -29,6 +29,28 @@ SCHEMA_HINT = (
     '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"..."},'
     '{"id":"q02","answer":"no","evidence_quote":null}]}'
 )
+
+# Segment-cited variant (MEDAPP_LLM_CITE_SEGMENT=1): the model also names the
+# transcript line it quoted, so a quote that occurs more than once is aligned to
+# the occurrence the model actually read, not the first one.
+SEGMENT_RULE = (
+    "\n- For a yes, segment is the id of the transcript line (e.g. \"s07\") the "
+    "quote starts in. If answer is \"no\", segment is null."
+)
+
+SCHEMA_HINT_SEGMENT = (
+    'Return JSON exactly like:\n'
+    '{"answers":[{"id":"q01","answer":"yes","segment":"s07","evidence_quote":"..."},'
+    '{"id":"q02","answer":"no","segment":null,"evidence_quote":null}]}'
+)
+
+
+def system_prompt(cite_segment: bool = False) -> str:
+    return SYSTEM_PROMPT + (SEGMENT_RULE if cite_segment else "")
+
+
+def schema_hint(cite_segment: bool = False) -> str:
+    return SCHEMA_HINT_SEGMENT if cite_segment else SCHEMA_HINT
 
 
 def qid_for(index: int) -> str:
@@ -79,13 +101,15 @@ def questions_block(questions: Sequence[str]) -> str:
     )
 
 
-def _base_user(transcript: Dict, questions: Sequence[str]) -> str:
+def _base_user(
+    transcript: Dict, questions: Sequence[str], cite_segment: bool = False
+) -> str:
     return (
         "TRANSCRIPT\n"
         f"{serialize_transcript(transcript)}\n\n"
         "QUESTIONS\n"
         f"{questions_block(questions)}\n\n"
-        f"{SCHEMA_HINT}"
+        f"{schema_hint(cite_segment)}"
     )
 
 
@@ -98,14 +122,23 @@ def build_l0_messages(transcript: Dict, questions: Sequence[str]) -> List[Dict]:
 
 
 def build_l1_messages(
-    transcript: Dict, questions: Sequence[str], few_shot: Sequence[Tuple[str, str]] = ()
+    transcript: Dict,
+    questions: Sequence[str],
+    few_shot: Sequence[Tuple[str, str]] = (),
+    cite_segment: bool = False,
 ) -> List[Dict]:
-    """Few-shot, single call. ``few_shot`` is a list of (user, assistant) turns."""
-    messages: List[Dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    """Few-shot, single call. ``few_shot`` is a list of (user, assistant) turns.
+
+    With ``cite_segment`` the few-shot turns must have been rendered with it too,
+    or the examples and the instructions disagree on the schema.
+    """
+    messages: List[Dict] = [{"role": "system", "content": system_prompt(cite_segment)}]
     for user, assistant in few_shot:
         messages.append({"role": "user", "content": user})
         messages.append({"role": "assistant", "content": assistant})
-    messages.append({"role": "user", "content": _base_user(transcript, questions)})
+    messages.append(
+        {"role": "user", "content": _base_user(transcript, questions, cite_segment)}
+    )
     return messages
 
 
@@ -261,6 +294,7 @@ def render_example(
     answer: bool,
     quote: Optional[str],
     evidence_span: Optional[Tuple[float, float]] = None,
+    cite_segment: bool = False,
 ) -> Tuple[str, str]:
     """One few-shot turn pair from an example conversation."""
     start, end = evidence_span if evidence_span else (None, None)
@@ -270,21 +304,19 @@ def render_example(
         f"{excerpt}\n\n"
         "QUESTIONS\n"
         f"q01: {question}\n\n"
-        f"{SCHEMA_HINT}"
+        f"{schema_hint(cite_segment)}"
     )
     import json
 
-    assistant = json.dumps(
-        {
-            "answers": [
-                {
-                    "id": "q01",
-                    "answer": "yes" if answer else "no",
-                    "evidence_quote": quote if answer else None,
-                }
-            ]
-        }
-    )
+    entry = {"id": "q01", "answer": "yes" if answer else "no"}
+    if cite_segment:
+        segment = None
+        if answer and evidence_span:
+            index = segment_at(transcript.get("words", []), start, end)
+            segment = f"s{index:02d}" if index is not None else None
+        entry["segment"] = segment
+    entry["evidence_quote"] = quote if answer else None
+    assistant = json.dumps({"answers": [entry]})
     return user, assistant
 
 
@@ -294,11 +326,15 @@ def build_few_shot(
     evidence: Dict[str, Dict],
     exclude_tid: str,
     counts: Tuple[int, int, int] = (1, 1, 1),
+    cite_segment: bool = False,
 ) -> List[Tuple[str, str]]:
     """Balanced LOCO-safe examples: positive, hard-negative refute, off-topic.
 
     Draws from conversations other than ``exclude_tid`` so the target's answer
-    can never leak into its own prompt.
+    can never leak into its own prompt. With more than one positive, they are
+    picked across the range of gold span durations, so the examples show the
+    model how long an annotated passage runs (short dose mentions and longer
+    explanations alike), which is the half of the score that is still open.
     """
     want_positive, want_refute, want_offtopic = counts
     examples: List[Tuple[str, str]] = []
@@ -329,22 +365,47 @@ def build_few_shot(
             span = (float(row["evidence_start"]), float(row["evidence_end"]))
             quote = text_between(words, span[0], span[1])
             examples.append(render_example(
-                transcripts[tid], row["question"], True, quote, span
+                transcripts[tid], row["question"], True, quote, span,
+                cite_segment=cite_segment,
             ))
         elif row["question_type"] == "hard_negative":
             span = None
             if item.get("start") and item.get("end"):
                 span = (float(item["start"]), float(item["end"]))
             examples.append(render_example(
-                transcripts[tid], row["question"], False, None, span
+                transcripts[tid], row["question"], False, None, span,
+                cite_segment=cite_segment,
             ))
         else:
             examples.append(render_example(
-                transcripts[tid], row["question"], False, None, None
+                transcripts[tid], row["question"], False, None, None,
+                cite_segment=cite_segment,
             ))
 
-    for _ in range(want_positive):
+    def diverse_positives(count: int) -> List[Dict]:
+        """``count`` positives from distinct conversations, spread by duration."""
+        pool = []
+        for tid in tids:
+            if tid in used or tid not in transcripts:
+                continue
+            rows = [r for r in rows_by_tid[tid] if r["question_type"] == "positive"]
+            if rows:
+                row = rows[0]
+                pool.append(
+                    (float(row["evidence_end"]) - float(row["evidence_start"]), tid, row)
+                )
+        pool.sort(key=lambda item: (item[0], item[1]))
+        if len(pool) <= count:
+            return [row for _, _, row in pool]
+        # Evenly spaced quantiles of the duration distribution, endpoints included.
+        picks = [round(i * (len(pool) - 1) / (count - 1)) for i in range(count)]
+        return [pool[index][2] for index in picks]
+
+    if want_positive == 1:
         add(find("positive"))
+    elif want_positive > 1:
+        for row in diverse_positives(want_positive):
+            add(row)
     for _ in range(want_refute):
         add(find("hard_negative", require_refute=True))
     for _ in range(want_offtopic):

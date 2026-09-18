@@ -9,8 +9,8 @@ def test_parse_plain_object():
     text = '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"abc"},' \
            '{"id":"q02","answer":"no","evidence_quote":null}]}'
     parsed = parse_answers(text, IDS)
-    assert parsed["q01"] == {"answer": True, "quote": "abc", "candidate": None}
-    assert parsed["q02"] == {"answer": False, "quote": None, "candidate": None}
+    assert parsed["q01"] == {"answer": True, "quote": "abc", "candidate": None, "segment": None}
+    assert parsed["q02"] == {"answer": False, "quote": None, "candidate": None, "segment": None}
     assert parsed["q03"] is None
 
 

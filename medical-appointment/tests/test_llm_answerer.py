@@ -32,10 +32,15 @@ def test_no_answer():
     assert LLMAnswerer(client=client, few_shot=()).answer_all(["Q?"], TRANSCRIPT) == [(False, None)]
 
 
-def test_parse_failure_is_no():
-    assert LLMAnswerer(client=StubClient(["garbage"]), few_shot=()).answer_all(
-        ["Q?"], TRANSCRIPT
-    ) == [(False, None)]
+def test_parse_failure_falls_back_to_the_prior_guess():
+    answerer = LLMAnswerer(
+        client=StubClient(["garbage"]), few_shot=(), fallback=lambda qs: [False] * len(qs)
+    )
+    assert answerer.answer_all(["Q?"], TRANSCRIPT) == [(False, None)]
+    answerer = LLMAnswerer(
+        client=StubClient(["garbage"]), few_shot=(), fallback=lambda qs: [True] * len(qs)
+    )
+    assert answerer.answer_all(["Q?"], TRANSCRIPT) == [(True, None)]
 
 
 def test_yes_with_unfindable_quote_has_no_span():
@@ -47,9 +52,10 @@ def test_yes_with_unfindable_quote_has_no_span():
 
 def test_empty_transcript():
     client = StubClient(["{}"])
-    assert LLMAnswerer(client=client, few_shot=()).answer_all(
-        ["Q?"], {"words": [], "segments": []}
-    ) == [(False, None)]
+    assert LLMAnswerer(
+        client=client, few_shot=(), fallback=lambda qs: [False] * len(qs)
+    ).answer_all(["Q?"], {"words": [], "segments": []}) == [(False, None)]
+    assert client.calls == []
 
 
 def test_factory_builds_llm():

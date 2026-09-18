@@ -12,6 +12,7 @@
 #   bash idun/submit.sh llm [args]  # LLM ceiling probe (L0/L1/L2)
 #   bash idun/submit.sh llm80 [args]# same, forced onto an 80 GB GPU (26B/31B)
 #   bash idun/submit.sh serve       # serve the LLM endpoint + cloudflared tunnel
+#                                   #   (SERVE_MODEL=26b, SERVE_TIME=0-12:00:00)
 #   bash idun/submit.sh eval        # submit an end-to-end HTTP scoring job
 #   bash idun/submit.sh queue       # show your SLURM jobs
 #   bash idun/submit.sh logs [id]   # tail a job log
@@ -95,8 +96,22 @@ case "$ACTION" in
         ;;
 
     serve)
+        # SERVE_MODEL=e4b (default, validated 0.744) | 26b (80 GB node)
+        # SERVE_TIME=D-HH:MM:SS walltime; SERVE_EXPORT="VAR=v,VAR2=v" extra knobs.
         check_ssh; sync_code; sync_transcripts
-        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_serve_llm.slurm")
+        SERVE_ARGS=""
+        EXPORTS="ALL"
+        case "${SERVE_MODEL:-e4b}" in
+            e4b) ;;
+            26b)
+                SERVE_ARGS+=" --constraint=gpu80g --mem=64G"
+                EXPORTS+=",MEDAPP_LLM_MODEL=google/gemma-4-26b-a4b-it"
+                ;;
+            *) echo "SERVE_MODEL must be e4b or 26b"; exit 1 ;;
+        esac
+        [ -n "${SERVE_TIME:-}" ] && SERVE_ARGS+=" --time=${SERVE_TIME}"
+        [ -n "${SERVE_EXPORT:-}" ] && EXPORTS+=",${SERVE_EXPORT}"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} ${SERVE_ARGS} --export=${EXPORTS} idun/job_serve_llm.slurm")
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  URL: ssh ${REMOTE} \"grep -a PUBLIC_URL ${REMOTE_DIR}/logs/med_serve_llm_${JOB_ID}.out\""

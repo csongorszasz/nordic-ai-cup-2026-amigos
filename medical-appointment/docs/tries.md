@@ -50,6 +50,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T038 | 2026-09-18 | **LLM L1 with Gemma 4 E4B** (39 convs, in-sample) | Gemma4-E4B | 0.990 | 0.555 | **0.729** | quote_found 1.000, 0 parse fails |
 | T039 | 2026-09-18 | **validation: served Gemma 4 E4B L1** | Gemma4-E4B | — | — | **0.744** | 19 convs, 14–19 s, IDUN + cloudflared |
 | T040 | 2026-09-18 | LLM L1 Gemma 4 26B-A4B (39 convs, in-sample) | Gemma4-26B | 0.997 | 0.594 | **0.755** | 1 decision miss; 22 worst unchanged |
+| H1 | 2026-09-19 | serving hardening + span knobs (branch `medical-llm-hardening`) | — | — | — | *unmeasured* | defaults = T039; prior 0.661 LOCO acc |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -439,3 +440,32 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
   more parameters.
 - **Serving:** 26B fp16 holds an 80 GB node; E4B (validated 0.744, 14–19 s)
   stays the default unless 26B is chosen for the evaluation.
+
+## H1 — serving hardening and span knobs (not yet measured)
+
+- **Why:** a review of T039's serving path found failure modes that would cost a
+  whole conversation (10 marks) or the tail of the attempt, and span knobs that
+  target the open half of the score (acc ≈ 0.99, mIoU 0.555).
+- **Reliability (on by default):** `max_new_tokens` 512 → 1024 (ten quoted
+  answers are ~400 tokens) and salvage of every closed answer object from a
+  truncated reply, which used to parse as *all ten no*; `generate(max_time)`
+  bound to the deadline; a hard `predict` timeout (55 s) with an abandoned
+  worker; one conversation on the GPU at a time with a budget-bounded wait;
+  ASR stops at the deadline; the constant fallback became a question-text prior
+  (`prior.py`: LOCO acc **0.661**, off_topic 1.000, hard_negative 0.514,
+  positive 0.677); `/ready`; strict startup (a missing `transcripts/` used to
+  mean silent zero-shot); fuzzy quote fallback for yes answers whose quote was
+  not found.
+- **Span knobs (off by default, A/B with `llm_probe.py --rungs SERVED`):**
+  `--cite-segment` (the model names the quoted segment; the quote is aligned to
+  that occurrence rather than the first — targets the occurrence-selection
+  failures), `--fewshot-counts 4,1,1` (positives spread over gold-span
+  duration), boundary offsets fitted by `calibrate_spans.py` (LOCO-checked),
+  ASR hotwords from the questions' entity names (validation A/B only).
+- **Ops:** serve job waits on `/ready`, watchdog restarts API/tunnel, optional
+  named tunnel, `SERVE_MODEL=26b`, walltime override, revision pinning and env
+  lock from `setup_llm.sh`, GPU Dockerfile, `local/rehearse.sh`. See
+  `docs/serving-runbook.md`.
+- **Next:** SERVED `base` must reproduce T038 (0.729) before the knobs are
+  compared against it.
+
