@@ -62,6 +62,24 @@ def viewer3d():
     return (Path(__file__).parent / 'viewer3d.html').read_text()
 
 
+# Synthetic frames rebuilt in 3D by training/scene3d.py, flown over in scene3d.html.
+SCENES = ROOT / 'datasets' / 'scene3d'
+SCENES.mkdir(parents=True, exist_ok=True)
+app.mount('/scene3d_data', StaticFiles(directory=SCENES), name='scene3d_data')
+
+
+@app.get('/scene3d', response_class=HTMLResponse)
+def scene3d():
+    return (Path(__file__).parent / 'scene3d.html').read_text()
+
+
+@app.get('/api/scenes')
+def scenes_3d():
+    """Scene folders, newest first."""
+    found = sorted(SCENES.glob('*/scene.json'), key=lambda p: -p.stat().st_mtime)
+    return [p.parent.name for p in found]
+
+
 @app.get('/api/models')
 def models_3d():
     """Every mesh with its fit from match.json, if render_models.py has run on it."""

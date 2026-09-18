@@ -140,7 +140,10 @@ def ground_mask(depth, pose, rgb):
 
 
 def render_frame(renderer, index, x, y, yaw):
-    """(RGB uint8 frame centred on GK25 (x, y), ground mask), or None when the mesh does not cover it."""
+    """(RGB uint8 frame from GK25 (x, y), ground mask, camera), or None when the mesh does not cover it.
+
+    camera: the exact pose, {x, y, z, yaw} in GK25 metres and degrees (the file name rounds them).
+    """
     reach = np.hypot(WIDTH, HEIGHT) / 2 * METRES_PER_PIXEL + 50
     subs = [s for s, b in index.items() if b[0] < x + reach and b[2] > x - reach and b[1] < y + reach and b[3] > y - reach]
     if not subs:
@@ -163,7 +166,7 @@ def render_frame(renderer, index, x, y, yaw):
     rgb = (255 * (colour[:, :, :3] / 255.0) ** (1 / 2.2)).round().astype(np.uint8)
     if empty.any():  # thin cracks where neighbouring mesh pieces do not meet
         rgb = cv2.inpaint(rgb, empty.astype(np.uint8), 3, cv2.INPAINT_TELEA)
-    return rgb, ground_mask(depth, pose, rgb)
+    return rgb, ground_mask(depth, pose, rgb), {'x': x, 'y': y, 'z': ground + altitude(), 'yaw': yaw}
 
 
 def water_mask(rgb):
@@ -206,12 +209,14 @@ def main():
         rendered = render_frame(renderer, index, x, y, yaw)
         if rendered is None:
             continue
-        rgb, ground = rendered
+        rgb, ground, camera = rendered
         if water_mask(rgb).mean() > MAX_WATER or ground.mean() < MIN_GROUND:
             continue
         name = f'hel3d_{int(x)}_{int(y)}_{int(yaw):03d}'
         cv2.imwrite(str(out / f'{name}.jpg'), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 92])
         cv2.imwrite(str(out / f'{name}_ground.png'), ground.astype(np.uint8) * 255)
+        camera['tiles'] = sorted({Path(sub).parent.name for sub in index})  # for scene3d.py
+        (out / f'{name}_camera.json').write_text(json.dumps(camera))
         written += 1
         print(f'  {name}: {ground.mean():.0%} open ground', flush=True)
     renderer.delete()
