@@ -74,8 +74,11 @@ def models_3d():
         served = slim if slim.exists() else path
         url = ('/compare/' + slim.relative_to(MODEL_MATCH).as_posix() if slim.exists()
                else '/models/' + path.relative_to(MODELS).as_posix())
+        # A .gltf is only the JSON; its .bin and textures sit beside it.
+        size = (sum(f.stat().st_size for f in path.parent.rglob('*') if f.is_file())
+                if served.suffix.lower() == '.gltf' else served.stat().st_size)
         item = {'key': f'{cls}/{name}', 'cls': cls, 'name': name, 'url': url,
-                'size_mb': round(served.stat().st_size / 2**20, 1)}
+                'size_mb': round(size / 2**20, 1)}
         match_path = MODELS / cls / 'match.json'
         fit = json.loads(match_path.read_text()).get(name) if match_path.exists() else None
         if fit and Path(fit['mesh']).name == path.name:

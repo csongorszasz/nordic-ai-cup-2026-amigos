@@ -1,0 +1,78 @@
+{
+ "patriot_chenzoss": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 29.0,
+  "mean_colour_error": 32.2,
+  "mean_iou": 0.685,
+  "mesh": "models/large_launcher/patriot_chenzoss/scene.gltf",
+  "offsets": [
+   88.3,
+   91.5,
+   66.8
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 29.2,
+    "file": "large_launcher/f018_0.png",
+    "iou": 0.705,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 31.7,
+    "file": "large_launcher/f015_0.png",
+    "iou": 0.677,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 32.6,
+    "file": "large_launcher/f014_0.png",
+    "iou": 0.679,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 32.9,
+    "file": "large_launcher/f013_0.png",
+    "iou": 0.671,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 30.6,
+    "file": "large_launcher/f016_0.png",
+    "iou": 0.707,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 30.3,
+    "file": "large_launcher/f017_0.png",
+    "iou": 0.706,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 34.0,
+    "file": "large_launcher/f012_1.png",
+    "iou": 0.68,
+    "tilt": 20,
+    "yaw": 245
+   },
+   {
+    "colour_error": 36.2,
+    "file": "large_launcher/f009_1.png",
+    "iou": 0.656,
+    "tilt": 20,
+    "yaw": 245
+   }
+  ],
+  "tilt": 20.0
+ }
+}

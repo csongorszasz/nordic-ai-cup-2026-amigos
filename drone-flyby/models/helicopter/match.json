@@ -1,0 +1,81 @@
+{
+ "mi28n": {
+  "dropped_parts": [
+   "rotor_Body"
+  ],
+  "gains": [
+   0.596,
+   0.596,
+   0.596
+  ],
+  "length_m": 18.9,
+  "mean_colour_error": 38.9,
+  "mean_iou": 0.513,
+  "mesh": "models/helicopter/mi28n/scene.gltf",
+  "offsets": [
+   81.1,
+   94.6,
+   67.0
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 44.8,
+    "file": "helicopter/f015_7.png",
+    "iou": 0.566,
+    "tilt": 10,
+    "yaw": 90
+   },
+   {
+    "colour_error": 32.7,
+    "file": "helicopter/f017_7.png",
+    "iou": 0.353,
+    "tilt": 10,
+    "yaw": 300
+   },
+   {
+    "colour_error": 45.2,
+    "file": "helicopter/f014_7.png",
+    "iou": 0.56,
+    "tilt": 0,
+    "yaw": 90
+   },
+   {
+    "colour_error": 44.0,
+    "file": "helicopter/f012_7.png",
+    "iou": 0.584,
+    "tilt": 20,
+    "yaw": 90
+   },
+   {
+    "colour_error": 45.0,
+    "file": "helicopter/f009_8.png",
+    "iou": 0.589,
+    "tilt": 20,
+    "yaw": 90
+   },
+   {
+    "colour_error": 27.3,
+    "file": "helicopter/f016_7.png",
+    "iou": 0.426,
+    "tilt": 0,
+    "yaw": 265
+   },
+   {
+    "colour_error": 45.2,
+    "file": "helicopter/f008_9.png",
+    "iou": 0.61,
+    "tilt": 0,
+    "yaw": 90
+   },
+   {
+    "colour_error": 27.2,
+    "file": "helicopter/f013_6.png",
+    "iou": 0.414,
+    "tilt": 10,
+    "yaw": 265
+   }
+  ],
+  "tilt": 10.0,
+  "up": "z"
+ }
+}

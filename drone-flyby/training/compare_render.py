@@ -79,7 +79,7 @@ def main():
     mesh_path = ROOT / match['mesh']
     print(f'{args.class_name}: model "{name}" ({mesh_path.name}), dropped {match.get("dropped_parts", [])}')
 
-    meshes, height = rm.load_normalised(mesh_path, 'auto', match.get('dropped_parts', []))
+    meshes, height = rm.load_normalised(mesh_path, match.get('up', 'auto'), match.get('dropped_parts', []))
     views = rm.render_views(meshes, height, list(range(0, 360, 5)), [0, 10, 20], 135)
 
     index = json.loads((ROOT / 'sprites' / 'index.json').read_text())

@@ -175,6 +175,17 @@ async function open(item) {
       : await new GLTFLoader().loadAsync(item.url, e => {
           if (e.total) status.textContent = `loading ${item.name}: ${Math.round(100 * e.loaded / e.total)}%`;
         }).then(keepGltfNames);
+    // OBJ files are Z-up for render_models.py. glTF is shown as three.js reads it, which
+    // follows the file's node and armature transforms; trimesh skips some of those on
+    // skinned models (the Mi-28N needed --up z there), so such a model can sit at a
+    // different yaw in drone view than in the fit.
+    if (item.url.endsWith('.obj')) obj.rotation.x = -Math.PI / 2;
+    // Like the fit, ignore metallic maps: without an environment to reflect, a metallic
+    // surface renders nearly black.
+    obj.traverse(o => {
+      if (!o.isMesh) return;
+      for (const m of [].concat(o.material)) if ('metalness' in m) { m.metalness = 0; m.metalnessMap = null; }
+    });
     model = obj;
     const height = normalise(obj, item.dropped_parts || []);
     holder.add(obj);

@@ -1,0 +1,78 @@
+{
+ "watchtower": {
+  "dropped_parts": [],
+  "gains": [
+   4.0,
+   4.0,
+   4.0
+  ],
+  "length_m": 7.3,
+  "mean_colour_error": 39.5,
+  "mean_iou": 0.854,
+  "mesh": "models/small_tower/watchtower/scene.gltf",
+  "offsets": [
+   -46.6,
+   26.7,
+   22.3
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 43.7,
+    "file": "small_tower/f018_8.png",
+    "iou": 0.881,
+    "tilt": 0,
+    "yaw": 60
+   },
+   {
+    "colour_error": 41.9,
+    "file": "small_tower/f017_8.png",
+    "iou": 0.872,
+    "tilt": 0,
+    "yaw": 55
+   },
+   {
+    "colour_error": 40.9,
+    "file": "small_tower/f016_8.png",
+    "iou": 0.869,
+    "tilt": 0,
+    "yaw": 55
+   },
+   {
+    "colour_error": 36.3,
+    "file": "small_tower/f015_8.png",
+    "iou": 0.815,
+    "tilt": 0,
+    "yaw": 25
+   },
+   {
+    "colour_error": 39.1,
+    "file": "small_tower/f014_8.png",
+    "iou": 0.874,
+    "tilt": 0,
+    "yaw": 60
+   },
+   {
+    "colour_error": 38.9,
+    "file": "small_tower/f013_7.png",
+    "iou": 0.85,
+    "tilt": 0,
+    "yaw": 65
+   },
+   {
+    "colour_error": 38.0,
+    "file": "small_tower/f012_8.png",
+    "iou": 0.852,
+    "tilt": 0,
+    "yaw": 65
+   },
+   {
+    "colour_error": 37.0,
+    "file": "small_tower/f010_9.png",
+    "iou": 0.819,
+    "tilt": 0,
+    "yaw": 65
+   }
+  ],
+  "tilt": 0.0
+ }
+}

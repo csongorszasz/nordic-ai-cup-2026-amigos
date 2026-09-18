@@ -42,11 +42,11 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **candidate found** — P-51 Mustang (CC-BY), see below |
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **candidate found** — Yak-9, see below |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
-| 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
+| 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **downloaded + fitted** — watchtower, IoU 0.85; footprint right, colour flattened (real is a green block on a pale base) |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | **candidate found** — Patria AMV, see below |
-| 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
+| 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **downloaded + fitted** — Mi-28N, IoU 0.51 with `--up z --drop rotor_Body`: fuselage pose right, the real rotor turns between frames, so add it back at random angles when generating |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **downloaded + fitted** — Churchill VII, IoU 0.82; hull fits but the short gun misses the sprites' long barrel, and camo is not reproduced |
-| 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
+| 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **downloaded + fitted** — Patriot (Chenzoss), IoU 0.69; pose right, loses on the raised missile canisters and camo |
 | 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **downloaded + fitted** — A-7 Corsair II, IoU 0.84, pose matches all 22 frames |
 | 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **downloaded + fitted** — TIE/in Interceptor, IoU 0.83, same pose on all frames |
 

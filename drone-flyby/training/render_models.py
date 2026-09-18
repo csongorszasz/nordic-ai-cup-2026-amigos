@@ -433,6 +433,7 @@ def main():
             summary = {
                 'mesh': str(path.relative_to(ROOT)),
                 'dropped_parts': args.drop,
+                'up': args.up,
                 'mean_iou': round(float(np.mean([b['iou'] for b in good])), 3),
                 'mean_colour_error': round(float(np.mean([b['colour_error'] for b in good])), 1),
                 'length_m': round(float(np.median([b['length_m'] for b in good])), 1),
