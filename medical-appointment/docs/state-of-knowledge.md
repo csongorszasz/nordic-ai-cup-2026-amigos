@@ -89,12 +89,15 @@ localization ≈ 0.33.
 | hybrid legacy-decision + ModernBERT span, OOF (T035, not served) | 0.647–0.661 |
 | LLM L1 Qwen2.5-7B, in-sample (T036, not served) | 0.665 |
 | hybrid Qwen-decision + ModernBERT-span, in-sample (T037) | 0.705 |
-| **LLM L1 Gemma 4 E4B, in-sample (T038, not served)** | **0.729** |
+| LLM L1 Gemma 4 E4B, in-sample (T038, not served) | 0.729 |
+| **Gemma 4 E4B L1 served, validation (T039)** | **0.744** |
 
 `dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
-validation T027 (0.545), and ModernBERT OOF 0.610 matched validation T034 0.606.
-We can iterate locally with confidence. The hybrid (T035) is the next no-retrain
-gain; an LLM ceiling probe is planned (Thread B).
+validation T027 (0.545), ModernBERT OOF 0.610 matched validation T034 0.606,
+and Gemma E4B in-sample 0.729 matched validation T039 **0.744**. We can iterate
+locally with confidence. The best validated config is now the LLM path
+(Gemma 4 E4B L1 + turbo ASR) served from IDUN; the remaining work is serving
+stability for the one-shot evaluation.
 
 ## Open problems / next
 

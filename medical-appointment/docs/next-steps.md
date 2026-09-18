@@ -6,14 +6,18 @@ order is a judgement call, not a dependency.
 
 ## State
 
-- **Validated score 0.606** (T034): `answerers/modernbert` behind
-  `MEDAPP_ANSWERER`, final model on all 39, 64/32 passages + `multi-qa-MiniLM`
-  top-8, ModernBERT-base cross-encoder, class weights, `psupport` decode τ 0.16.
-  Previous best: legacy merged 0.545 (T027). Floor 0.200.
-- **OOF predicts the service**: T033 OOF 0.610 vs T034 validation 0.606.
-- The pipeline is now **modular** (`answerers/` behind `MEDAPP_ANSWERER`,
-  default `legacy`), so legacy, ModernBERT and future answerers A/B against the
-  same contract and the same harness.
+- **Validated score 0.744** (T039): `MEDAPP_ANSWERER=llm`,
+  `MEDAPP_LLM_MODEL=google/gemma-4-e4b-it` (fp16, multimodal loader), L1
+  whole-transcript prompt with LOCO-safe few-shot + `large-v3-turbo` int8 ASR,
+  served from IDUN behind cloudflared. Latency 14–19 s. Compare: ModernBERT
+  served 0.606 (T034), legacy 0.545 (T027), floor 0.200.
+- **Probe predicts the service**: Gemma E4B in-sample 0.729 (T038) vs validation
+  0.744 (T039); ModernBERT OOF 0.610 vs validation 0.606.
+- The pipeline is **modular** (`answerers/` behind `MEDAPP_ANSWERER`), so
+  legacy, modernbert and llm A/B against the same contract and harness.
+- **Main open risk**: serving stability for the one-shot evaluation — the
+  cloudflared quick-tunnel URL is ephemeral and the IDUN job has a finite
+  walltime; the endpoint must be up and unchanged when the evaluation fires.
 
 ## Diagnosis (T033 OOF, class-weighted ModernBERT)
 
