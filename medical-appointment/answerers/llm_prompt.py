@@ -204,7 +204,7 @@ def build_few_shot(
 
     def find(question_type: str, require_refute: bool = False) -> Optional[Dict]:
         for tid in tids:
-            if tid in used:
+            if tid in used or tid not in transcripts:
                 continue
             for row in rows_by_tid[tid]:
                 if row["question_type"] != question_type:

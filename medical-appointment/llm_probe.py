@@ -56,10 +56,12 @@ def _documents(limit: Optional[int]):
     rows_by_tid: Dict[str, List[Dict]] = defaultdict(list)
     for row in rows:
         rows_by_tid[row["transcript_id"]].append(row)
+    # Load every transcript so few-shot examples can be drawn from any OTHER
+    # conversation; only the first `limit` are scored.
+    transcripts = {tid: load_transcript(tid) for tid in rows_by_tid}
     conversations = list(rows_by_tid.items())
     if limit:
         conversations = conversations[:limit]
-    transcripts = {tid: load_transcript(tid) for tid, _ in conversations}
     return conversations, rows_by_tid, transcripts
 
 
