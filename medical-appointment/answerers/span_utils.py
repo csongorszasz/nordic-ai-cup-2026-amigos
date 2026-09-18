@@ -113,6 +113,16 @@ def score_aware_accept(p_support: float, expected_tiou: float) -> bool:
     return p_support > 0.4 / (0.8 + 1.2 * q)
 
 
+def psupport_accept(p_support: float, tau: float) -> bool:
+    """Plain calibrated-probability rule: ``yes iff p_support > tau``.
+
+    Empirically beat the score-aware rule on the first ModernBERT OOF run
+    (LOCO 0.602 vs 0.543): raw ``p_support`` is not yet temperature-calibrated,
+    so the q-dependent cutoff was too strict. ``tau`` is chosen out of fold.
+    """
+    return p_support > tau
+
+
 def pick_supported_candidate(candidates: Sequence[Dict]) -> Optional[int]:
     """Index of the SUPPORT candidate with the highest predicted tIoU.
 

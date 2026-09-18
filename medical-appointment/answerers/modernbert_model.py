@@ -194,9 +194,16 @@ def compute_loss(
     batch: Dict[str, torch.Tensor],
     span_weight: float = 1.0,
     tiou_weight: float = 1.0,
+    class_weights: Optional[torch.Tensor] = None,
 ) -> Tuple[torch.Tensor, Dict[str, float]]:
-    """3-way CE + span CE (support/refute only) + expected-tIoU MSE."""
-    cls_loss = functional.cross_entropy(outputs["logits"], batch["labels"])
+    """3-way CE + span CE (support/refute only) + expected-tIoU MSE.
+
+    ``class_weights`` counteracts the ~5 % SUPPORT rate so the decision head is
+    not biased to NOT_MENTIONED.
+    """
+    cls_loss = functional.cross_entropy(
+        outputs["logits"], batch["labels"], weight=class_weights
+    )
 
     span_mask = batch["start_positions"] >= 0
     if span_mask.any():

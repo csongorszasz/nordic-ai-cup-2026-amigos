@@ -20,7 +20,7 @@ import json
 import random
 import sys
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import torch
@@ -57,6 +57,17 @@ def native_score(records):
     return 0.4 * accuracy + 0.6 * mean_tiou, accuracy, mean_tiou
 
 
+def class_weights_for(examples, device):
+    """Inverse-frequency weights over the 3 classes."""
+    counts = Counter(model_module.LABEL_TO_ID[e["label"]] for e in examples)
+    total = sum(counts.values())
+    n_classes = len(model_module.LABEL_NAMES)
+    weights = [
+        total / (n_classes * counts.get(index, 1)) for index in range(n_classes)
+    ]
+    return torch.tensor(weights, dtype=torch.float, device=device)
+
+
 def train_fold(examples, tokenizer, args, device):
     model = model_module.ModernBertScorer()
     model.to(device)
@@ -70,6 +81,7 @@ def train_fold(examples, tokenizer, args, device):
         collate_fn=model_module.Collator(tokenizer),
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+    class_weights = class_weights_for(examples, device) if args.class_weights else None
 
     use_amp = args.bf16 and device == "cuda"
 
@@ -89,7 +101,8 @@ def train_fold(examples, tokenizer, args, device):
                         attention_mask=tensors["attention_mask"],
                     )
                     loss, parts = model_module.compute_loss(
-                        outputs, tensors, args.span_weight, args.tiou_weight
+                        outputs, tensors, args.span_weight, args.tiou_weight,
+                        class_weights,
                     )
             else:
                 outputs = model(
@@ -97,7 +110,8 @@ def train_fold(examples, tokenizer, args, device):
                     attention_mask=tensors["attention_mask"],
                 )
                 loss, parts = model_module.compute_loss(
-                    outputs, tensors, args.span_weight, args.tiou_weight
+                    outputs, tensors, args.span_weight, args.tiou_weight,
+                    class_weights,
                 )
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -148,8 +162,10 @@ def evaluate_conversations(model, tokenizer, retriever, args, device, tids, word
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default="models/modernbert")
-    parser.add_argument("--epochs", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--class-weights", action="store_true",
+                        help="Inverse-frequency 3-way class weights.")
     parser.add_argument("--lr", type=float, default=3e-5)
     parser.add_argument("--max-length", type=int, default=256)
     parser.add_argument("--span-weight", type=float, default=1.0)

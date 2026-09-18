@@ -25,11 +25,19 @@ from .base import Answer
 from .minilm import MiniLMRetriever
 from .modernbert_data import TOP_K
 from .passages import build_passages
-from .span_utils import pick_supported_candidate, score_aware_accept
+from .span_utils import (
+    pick_supported_candidate,
+    psupport_accept,
+    score_aware_accept,
+)
 
 logger = logging.getLogger(__name__)
 
 CHECKPOINT = os.environ.get("MEDAPP_MB_CHECKPOINT") or None
+# Decoder: "psupport" (max p_support, thresholded -- the OOF winner) or
+# "score_aware" (argmax SUPPORT, q-dependent cutoff). tau is LOCO-calibrated.
+DECODE_MODE = os.environ.get("MEDAPP_MB_DECODE", "psupport")
+DECODE_TAU = float(os.environ.get("MEDAPP_MB_TAU", "0.08"))
 
 _state: Dict[str, object] = {}
 
@@ -92,22 +100,38 @@ def make_candidates(bucket, scored) -> List[Dict]:
     return candidates
 
 
-def decode_question(candidates: List[Dict], words: List[Dict], module):
-    """Pick a candidate and apply the score-aware rule.
+def decode_question(
+    candidates: List[Dict],
+    words: List[Dict],
+    module,
+    mode: Optional[str] = None,
+    tau: Optional[float] = None,
+):
+    """Pick a candidate and decide yes/no.
+
+    ``psupport`` (default) takes the candidate with the highest ``p_support``
+    and accepts when it clears ``tau``. ``score_aware`` takes the argmax SUPPORT
+    candidate and uses ``p > 0.4 / (0.8 + 1.2 q)``.
 
     Returns ``(answer, span, info)``. ``info['span']`` always carries the chosen
     candidate's predicted span (even when the answer is no) so out-of-fold
     calibration can sweep a threshold without re-running the model.
     """
+    mode = mode or DECODE_MODE
+    threshold = DECODE_TAU if tau is None else tau
+
     if not candidates:
         return False, None, {"decided_by": "no_candidates", "p": 0.0, "span": None}
 
-    best = pick_supported_candidate(candidates)
-    if best is None:
-        # No support candidate: report the most positive one for calibration.
+    if mode == "score_aware":
+        best = pick_supported_candidate(candidates)
+        info_only = best is None
+        if info_only:
+            best = max(
+                range(len(candidates)), key=lambda i: candidates[i]["p_support"]
+            )
+    else:  # psupport
         best = max(range(len(candidates)), key=lambda i: candidates[i]["p_support"])
-        info_only = True
-    else:
         info_only = False
 
     chosen = candidates[best]
@@ -120,16 +144,24 @@ def decode_question(candidates: List[Dict], words: List[Dict], module):
     if span is None:
         span = passage.span()
 
+    p_support = float(chosen["p_support"])
+    expected_tiou = float(chosen["expected_tiou"])
     info = {
-        "p": result["p_support"],
-        "expected_tiou": result["expected_tiou"],
+        "p": p_support,
+        "expected_tiou": expected_tiou,
         "span": span,
+        "mode": mode,
+        "tau": threshold,
         "decided_by": "no_support" if info_only else "support",
     }
-    if info_only:
-        return False, None, info
 
-    accepted = score_aware_accept(result["p_support"], result["expected_tiou"])
+    if mode == "score_aware":
+        if info_only:
+            return False, None, info
+        accepted = score_aware_accept(p_support, expected_tiou)
+    else:
+        accepted = psupport_accept(p_support, threshold)
+
     if accepted:
         return True, span, info
     info["decided_by"] = "below_threshold"

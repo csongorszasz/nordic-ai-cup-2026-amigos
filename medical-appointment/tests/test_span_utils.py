@@ -5,6 +5,7 @@ from answerers.span_utils import (
     LABEL_SUPPORT,
     char_span_to_words,
     pick_supported_candidate,
+    psupport_accept,
     score_aware_accept,
     target_token_span,
     token_span_to_char,
@@ -61,6 +62,11 @@ def test_score_aware_threshold():
     assert score_aware_accept(0.21, 1.0)
     # No span quality -> plain 0.5, strict.
     assert not score_aware_accept(0.5, 0.0)
+
+
+def test_psupport_threshold():
+    assert psupport_accept(0.09, 0.08)
+    assert not psupport_accept(0.08, 0.08)  # strict
 
 
 def test_pick_supported_candidate_prefers_best_tiou():
