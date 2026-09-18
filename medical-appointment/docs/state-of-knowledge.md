@@ -1,8 +1,8 @@
 # State of knowledge
 
-Consolidated findings for the medical-appointment case, as of 2026-09-17.
-Detail lives in `docs/tries.md` (experiments), `docs/adr/` (decisions) and
-`docs/local-serving.md` (runbook).
+Consolidated findings for the medical-appointment case, as of 2026-09-18.
+Detail lives in `docs/tries.md` (experiments), `docs/adr/` (decisions),
+`docs/next-steps.md` (plan) and `docs/local-serving.md` (runbook).
 
 ## The task and the score
 
@@ -13,17 +13,30 @@ it. Evidence is the larger half, and a missed positive costs on both halves.
 
 ## Pipeline
 
-`ASR (word timestamps) → clause windows → proposition rewrite → NLI decision →
-guarded sub-range localization → answer + span`, with a never-raise contract.
+Two answerers behind `MEDAPP_ANSWERER` (`answerers/`), both with a never-raise
+contract and shared ASR:
+
+- `legacy` (default): `ASR → clause windows → proposition rewrite → NLI decision
+  → guarded sub-range localization → answer + span`.
+- `modernbert` (validated 0.606): `ASR → 64/32 passages → MiniLM top-8 retrieval
+  → ModernBERT cross-encoder (3-way + token span + expected-tIoU) → answer +
+  span`.
 
 ## What works
 
 - **ASR.** `faster-whisper` with word timestamps; `large-v3` and `large-v3-turbo`
   preserve doses/numbers (`one million IU four times daily`,
   `fluconazole 50 milligrams`). Turbo is 2.2× faster than large-v3 on the 1650.
+- **Learned answerer (ModernBERT).** A cross-encoder over retrieved passages
+  with class-weighted training solves localization far better than NLI-scored
+  sub-ranges: tIoU-when-yes **0.557 vs ~0.36**, validated **0.606** vs 0.545
+  (T033/T034). 64/32 passages + `multi-qa-MiniLM` top-8 retrieve the gold span
+  for ~99.5 % of positives (T031).
 - **Merged decision premise.** Deciding on clause ± 1 lifted positive recall
   **0.749 → 0.944** (large) at a tiny precision cost (ADR-0004), and validation
-  confirmed the end-to-end gain (**0.457 → 0.545**, T027).
+  confirmed the end-to-end gain (**0.457 → 0.545**, T027). It remains the best
+  *decision* signal: a hybrid using the legacy decision with ModernBERT spans is
+  worth **0.647–0.661 OOF** (T035).
 - **Hard negatives and off-topic.** 0.930 and 0.943 accuracy (large, merged) —
   NLI alone rejects the near-misses; the numeric guard is a no-op.
 - **Proposition rewrite.** Decisive: accuracy `0.821` (base NLI, proposition)
@@ -33,14 +46,17 @@ guarded sub-range localization → answer + span`, with a never-raise contract.
 
 ## What doesn't (and why)
 
-**Localization.** Chosen span tIoU ~0.36 against a searched-neighbourhood oracle
-of 0.66 and a global candidate oracle of **0.884**. The cause is an objective
-mismatch, not tuning: NLI entailment is monotone in context while gold spans are
-minimal, so every "pick by score" rule drifts to the longest candidate. Five
-selection rules and three search breadths all landed within 0.04 (ADR-0003).
+**Localization.** The learned answerer lifts tIoU-when-yes to **0.557** (from
+~0.36 for the NLI selector), but the remaining dominant error is **occurrence
+selection**: 119/156 predicted starts are earlier than gold, i.e. the model
+cites a different restatement of the same evidence. Span lengths match; it is not
+a boundary-width problem. Gold/refute span containment in retrieved passages is
+~0.99, so this is the scorer's objective, not retrieval. Score loss from
+localization (~0.21 to a perfect contained span) still exceeds the recall loss
+(~0.067).
 
 Positive recall — previously the other failure — is resolved by the merged
-premise (ADR-0004).
+premise (ADR-0004) and, for ModernBERT, by the hybrid decision (T035).
 
 ## Loss decomposition (T025, mIoU 0.340)
 
@@ -67,31 +83,40 @@ localization ≈ 0.33.
 | --- | --- |
 | shipped baseline (floor) | 0.200 |
 | single-clause served, validation (T023) | 0.457 |
-| merged decision, large, training (T025) | 0.579 |
-| **merged decision served, validation (T027)** | **0.545** |
+| merged decision served, validation (T027) | 0.545 |
+| ModernBERT OOF, training (T033) | 0.610 |
+| **ModernBERT served, validation (T034)** | **0.606** |
+| hybrid legacy-decision + ModernBERT span, OOF (T035, not served) | 0.647–0.661 |
 
 `dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
-validation T027 (0.545) exactly. We can iterate locally with confidence. The
-large-NLI variant (0.579 on training) is not yet served — it needs latency work.
+validation T027 (0.545), and ModernBERT OOF 0.610 matched validation T034 0.606.
+We can iterate locally with confidence. The hybrid (T035) is the next no-retrain
+gain; an LLM ceiling probe is planned (Thread B).
 
 ## Open problems / next
 
-- **M3: learned span ranker** (ADR-0003) — the only large remaining gap
-  (localization). Also frees NLI latency for the decision.
+- **Hybrid decision** (next): legacy NLI decision + ModernBERT span, OOF
+  0.647–0.661 (T035), with selective NLI gating for latency. See
+  `docs/next-steps.md` A1.
+- **Occurrence-aware localization**: train cross-occurrence negatives so the
+  span head cites the annotated occurrence (the ~0.09–0.21 remaining loss).
+- **Thread B: LLM ceiling probe** — local instruction model (7–8B on IDUN) for
+  decision + quote-cited localization; `answerers/llm.py` behind the factory.
 - **Thread C: medical ASR** — benchmark `Na0s/Medical-Whisper-Large-v3` (and a
   turbo fine-tune on PriMock57) against the downstream score.
-- **Thread B: LLM probe** — local instruction model as a ceiling probe for
-  decision + quote-cited localization.
 - **Serving** — local + **named tunnel** (needs a Cloudflare domain; quick
-  tunnel meanwhile, ADR-0002).
+  tunnel meanwhile, ADR-0002). ModernBERT served behind `MEDAPP_ANSWERER`.
 - **Hygiene** — captures are debug-only; never train on validation/evaluation.
 
 ## Artifact map
 
 | what | where |
 | --- | --- |
-| pipeline | `asr.py`, `windows.py`, `questions.py`, `guards.py`, `verifier/`, `answer.py`, `example.py` |
-| scoring / experiments | `dev_eval.py`, `docs/tries.md` |
+| legacy pipeline | `asr.py`, `windows.py`, `questions.py`, `guards.py`, `verifier/`, `answer.py` |
+| answerer factory | `answerers/` (`base`, `legacy`, `modernbert`, `passages`, `minilm`, `modernbert_data`, `modernbert_model`, `span_utils`) |
+| entrypoint | `example.py` (dispatches on `MEDAPP_ANSWERER`) |
+| scoring / experiments | `dev_eval.py`, `train_modernbert.py`, `docs/tries.md` |
 | serving | `local/`, `docs/local-serving.md`, `capture.py` |
 | IDUN dev | `idun/`, `docs/azure-gpu-quota.md` (why not Azure) |
 | decisions | `docs/adr/` |
+| plan | `docs/next-steps.md` |
