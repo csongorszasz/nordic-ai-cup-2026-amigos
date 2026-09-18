@@ -11,6 +11,7 @@
 #                                             # weights in runs/synth<frames>_<label>_<date>/
 #   bash idun/submit.sh queue                 # your jobs
 #   bash idun/submit.sh logs [job_id]         # tail the latest (or one) job log
+#   bash idun/submit.sh scores [run]          # validation per epoch of the latest (or one) run
 #   bash idun/submit.sh fetch                 # pull runs/ (weights, metrics) back here
 #   bash idun/submit.sh sync                  # upload code without submitting
 #
@@ -141,6 +142,19 @@ case "$ACTION" in
             echo "Tailing ${LATEST}"
             ssh -t "$REMOTE" "tail -n 50 -f ${LATEST}"
         fi
+        ;;
+
+    scores)
+        check_ssh
+        RUN="${2:-}"
+        # Newest run with a results.csv unless one is named. Columns are looked up by header.
+        ssh "$REMOTE" "cd ${REMOTE_DIR}/runs && f=\$(if [ -n '${RUN}' ]; then echo '${RUN}'/results.csv; else ls -t */results.csv | head -1; fi) && echo \"\$f\" && awk -F, '
+            NR == 1 { for (i = 1; i <= NF; i++) { gsub(/ /, \"\", \$i); c[\$i] = i }
+                      printf \"%6s %10s %8s %8s %10s\\n\", \"epoch\", \"precision\", \"recall\", \"mAP50\", \"mAP50-95\"; next }
+            { m = \$c[\"metrics/mAP50(B)\"] + 0
+              printf \"%6d %10.3f %8.3f %8.3f %10.3f\\n\", \$c[\"epoch\"], \$c[\"metrics/precision(B)\"], \$c[\"metrics/recall(B)\"], m, \$c[\"metrics/mAP50-95(B)\"]
+              if (m > best) { best = m; at = \$c[\"epoch\"] } }
+            END { printf \"best mAP50 %.3f at epoch %d of %d\\n\", best, at, NR - 1 }' \"\$f\""
         ;;
 
     fetch)
