@@ -1,0 +1,19 @@
+jammer - 3D model sources
+
+XA-180 (Finland) [rejected]
+  https://sketchfab.com/3d-models/xa-180-finland-e9d12c7fa3ab443dacf20225221e2768
+  author:  42manako
+  licence: CC Attribution-NonCommercial - Author must be credited. No commercial use.
+  note:    right kind of vehicle (boxy APC) but CC BY-NC: NonCommercial is doubtful for a prize competition
+
+Ukrainian Patria AMV [candidate]
+  https://sketchfab.com/3d-models/ukrainian-patria-amv-49992289be014290b54f1e8345ac78b3
+  author:  42manako
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    preferred: XA-180's successor, same author (42manako) as the XA-180 Juan picked, but CC-BY. 25.5k faces, scale to 9.0 x 6.7 m, green
+
+GTK BOXER ARMORED PERSONNEL CARRIERS [candidate]
+  https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194
+  author:  Muhamad Mirza Arrafi
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    alternative: literally box-shaped hull, closest to the flat green box in the sprites

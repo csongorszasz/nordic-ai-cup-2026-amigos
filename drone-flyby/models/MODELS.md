@@ -35,7 +35,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 |---|---|---|---|---|---|---|
 | 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **candidate found** — PT-34-85, see below |
 | 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | dark cluster with barrels: a Hawk launcher | **candidate found** — MIM-23 Hawk, see below |
-| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless pale green blob at 23x30 px; real shape unknowable | **no model** — see note below |
+| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless pale green blob at 23x30 px; real shape unknowable | **candidate found** — Rapier launcher as a stand-in, see below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **candidate found** — AT-AT (CGTrader), licence to check |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **2 candidates** — CGTrader watchtower preferred, see below |
 | 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
@@ -43,7 +43,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **candidate found** — Yak-9, see below |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
-| 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
+| 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | **candidate found** — Patria AMV, see below |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
 | 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **candidate found** — Churchill VII (Black Prince hull), see below |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
@@ -77,6 +77,8 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `tank` | [Low Poly Churchill VII](https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c) | LowPolyCount | CC-BY (credit required) | **preferred** — the [Black Prince](https://sketchfab.com/3d-models/black-prince-aa7487b728e34f5ea2196c57585182cb) Juan matched to the sprites is built on this hull, but is view-only with no licence, so it stays as a shape reference. 10k faces, scale to 10.5 x 9.9 m, repaint camo |
 | `tank` | [Tank T-10M](https://sketchfab.com/3d-models/tank-t-10m-9aeda33a945c42f0bdebe3d1ef91da06) | yanix | CC-BY (credit required) | fallback — 500k faces |
 | `ta-ta` | [Star Wars AT-AT Walker](https://www.cgtrader.com/free-3d-models/space/other/star-wars-at-at-walker-68bd9d4c-a316-4517-8b6c-b6feb3b1da77) | CGTrader | free — **check the licence line** | candidate — 32x17 px on screen, so the silhouette of the legs is all that matters. Star Wars IP, same grey area as the TIE |
+| `small_launcher` | [Rapier Missile Launcher](https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b) | Revada | CC-BY (credit required) | candidate — a stand-in: the class is a 23x30 px blob, so any launcher of the right footprint works. Scale to 6.3 x 4.6 m, tint pale green |
+| `jammer` | [Ukrainian Patria AMV](https://sketchfab.com/3d-models/ukrainian-patria-amv-49992289be014290b54f1e8345ac78b3) | 42manako | CC-BY (credit required) | **preferred** — successor of the XA-180 Juan picked, same author, but the XA-180 is CC BY-NC and was rejected. Scale to 9.0 x 6.7 m. Alternative: [GTK Boxer](https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194), a literally box-shaped hull |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
@@ -105,9 +107,9 @@ size (12.6 x 12.0 vs 13.9 x 12.6 m) and differ mainly in colour — green roof a
 camo — so the same watchtower is registered for both, to be rendered with a per-class tint.
 The renderer therefore needs a hue/saturation override per class, not just scale and angle.
 
-**`small_launcher` has no model on purpose.** All 25 cut-outs are the same pale green blob at
-23x30 px (6.3 x 4.6 m) with no visible structure, so there is no shape to match. It keeps
-training from its sprite cut-outs only, which already show everything the camera can see.
+**`small_launcher` has no recoverable shape.** All 25 cut-outs are the same pale green blob at
+23x30 px (6.3 x 4.6 m). The Rapier is a stand-in chosen for footprint and colour; the cut-outs
+remain the ground truth for what the camera actually sees.
 
 ### How exact does a model have to be?
 

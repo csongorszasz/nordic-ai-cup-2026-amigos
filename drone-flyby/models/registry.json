@@ -60,6 +60,47 @@
    "url": "https://sketchfab.com/3d-models/mi-28-4def720fb3b0415dac4839c267ccbd7d"
   }
  ],
+ "jammer": [
+  {
+   "added": "2026-09-18",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 7405,
+   "licence": "CC Attribution-NonCommercial",
+   "licence_requirements": "Author must be credited. No commercial use.",
+   "note": "right kind of vehicle (boxy APC) but CC BY-NC: NonCommercial is doubtful for a prize competition",
+   "status": "rejected",
+   "title": "XA-180 (Finland)",
+   "url": "https://sketchfab.com/3d-models/xa-180-finland-e9d12c7fa3ab443dacf20225221e2768"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 25525,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "preferred: XA-180's successor, same author (42manako) as the XA-180 Juan picked, but CC-BY. 25.5k faces, scale to 9.0 x 6.7 m, green",
+   "status": "candidate",
+   "title": "Ukrainian Patria AMV",
+   "url": "https://sketchfab.com/3d-models/ukrainian-patria-amv-49992289be014290b54f1e8345ac78b3"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "Muhamad Mirza Arrafi",
+   "author_profile": "https://sketchfab.com/nazidefenseforceofficial",
+   "downloadable": true,
+   "faces": 29353,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "alternative: literally box-shaped hull, closest to the flat green box in the sprites",
+   "status": "candidate",
+   "title": "GTK BOXER ARMORED PERSONNEL CARRIERS",
+   "url": "https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194"
+  }
+ ],
  "jet_plane": [
   {
    "added": "2026-09-17",
@@ -203,6 +244,21 @@
    "status": "candidate",
    "title": "PT-34-85 mine clearing vehicle",
    "url": "https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f"
+  }
+ ],
+ "small_launcher": [
+  {
+   "added": "2026-09-18",
+   "author": "Revada",
+   "author_profile": "https://sketchfab.com/revada",
+   "downloadable": true,
+   "faces": 16752,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan: stand-in for a 23x30 px blob with no visible shape; scale to 6.3 x 4.6 m, tint pale green",
+   "status": "candidate",
+   "title": "Rapier Missle Launcher",
+   "url": "https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b"
   }
  ],
  "small_plane": [
