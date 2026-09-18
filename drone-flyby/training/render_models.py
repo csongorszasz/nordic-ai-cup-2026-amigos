@@ -319,10 +319,15 @@ def fit_colour(placed: np.ndarray, sprite: np.ndarray):
     gains, offsets = np.ones(3), np.zeros(3)
     for c in range(3):
         spread = source[:, c].std()
-        # A flat-shaded render can be nearly one colour, where gain and offset are not
-        # separable; then only shift it. Either way the offset is set last, from the
-        # clipped gain, so the average colour always matches the sprite.
-        gain = np.cov(source[:, c], target[:, c])[0, 1] / spread ** 2 if spread > 2.0 else 1.0
+        # Match the spread of colours, not the per-pixel regression: at 20-180 px the
+        # render sits a pixel or two off the sprite, and a regression slope then shrinks
+        # toward zero and washes out contrast (a TIE's black panels on a white body came
+        # out mid-grey). A flat-shaded render can be nearly one colour, where gain and
+        # offset are not separable; then only shift it, as when the two anti-correlate.
+        # Either way the offset is set last, from the clipped gain, so the average
+        # colour always matches the sprite.
+        related = spread > 2.0 and np.corrcoef(source[:, c], target[:, c])[0, 1] > 0
+        gain = target[:, c].std() / spread if related else 1.0
         gains[c] = np.clip(gain, 0.2, 4.0)
         offsets[c] = target[:, c].mean() - gains[c] * source[:, c].mean()
     fitted = np.clip(source * gains + offsets, 0, 255)

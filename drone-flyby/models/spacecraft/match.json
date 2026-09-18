@@ -1,0 +1,78 @@
+{
+ "tie_interceptor": {
+  "dropped_parts": [],
+  "gains": [
+   1.949,
+   1.923,
+   1.991
+  ],
+  "length_m": 9.7,
+  "mean_colour_error": 51.4,
+  "mean_iou": 0.834,
+  "mesh": "models/spacecraft/tie_interceptor/scene.gltf",
+  "offsets": [
+   19.3,
+   21.3,
+   10.8
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 53.0,
+    "file": "spacecraft/f021_1.png",
+    "iou": 0.824,
+    "tilt": 20,
+    "yaw": 0
+   },
+   {
+    "colour_error": 52.9,
+    "file": "spacecraft/f020_1.png",
+    "iou": 0.82,
+    "tilt": 10,
+    "yaw": 0
+   },
+   {
+    "colour_error": 50.8,
+    "file": "spacecraft/f019_1.png",
+    "iou": 0.847,
+    "tilt": 20,
+    "yaw": 0
+   },
+   {
+    "colour_error": 48.2,
+    "file": "spacecraft/f018_1.png",
+    "iou": 0.834,
+    "tilt": 10,
+    "yaw": 0
+   },
+   {
+    "colour_error": 51.0,
+    "file": "spacecraft/f017_1.png",
+    "iou": 0.837,
+    "tilt": 20,
+    "yaw": 0
+   },
+   {
+    "colour_error": 48.6,
+    "file": "spacecraft/f016_1.png",
+    "iou": 0.825,
+    "tilt": 10,
+    "yaw": 0
+   },
+   {
+    "colour_error": 54.8,
+    "file": "spacecraft/f015_1.png",
+    "iou": 0.839,
+    "tilt": 20,
+    "yaw": 0
+   },
+   {
+    "colour_error": 51.8,
+    "file": "spacecraft/f014_1.png",
+    "iou": 0.846,
+    "tilt": 20,
+    "yaw": 0
+   }
+  ],
+  "tilt": 20.0
+ }
+}

@@ -97,4 +97,5 @@ models/**/*.gltf
 models/**/*.obj
 models/**/*.fbx
 models/**/*.blend
+models/**/*.bin
 models/**/textures/

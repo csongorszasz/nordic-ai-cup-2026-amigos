@@ -45,10 +45,10 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | **candidate found** — Patria AMV, see below |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
-| 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **candidate found** — Churchill VII (Black Prince hull), see below |
+| 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **downloaded + fitted** — Churchill VII, IoU 0.82; hull fits but the short gun misses the sprites' long barrel, and camo is not reproduced |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
 | 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **downloaded + fitted** — A-7 Corsair II, IoU 0.84, pose matches all 22 frames |
-| 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
+| 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **downloaded + fitted** — TIE/in Interceptor, IoU 0.83, same pose on all frames |
 
 Local AP is from the Helsinki set, where the model memorised the scene, so treat 1.000 as
 "nothing to learn here yet" rather than "solved". Live validation was 0.0069 overall.
