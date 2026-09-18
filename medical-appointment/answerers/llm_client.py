@@ -75,6 +75,17 @@ class HFClient:
             self._device = "cuda" if torch.cuda.is_available() else "cpu"
         self._model.to(self._device)
         self._model.eval()
+        try:
+            import torch as _torch
+
+            logger.info(
+                "LLM loaded: dtype=%s device=%s mem=%.2fGB",
+                next(self._model.parameters()).dtype,
+                self._device,
+                _torch.cuda.memory_allocated() / 1e9 if self._device == "cuda" else 0.0,
+            )
+        except Exception:
+            pass
 
     def warm_up(self) -> None:
         self._load()
@@ -87,6 +98,7 @@ class HFClient:
             messages, tokenize=False, add_generation_prompt=True
         )
         encoded = self._tokenizer(prompt, return_tensors="pt").to(self._device)
+        logger.info("prompt tokens=%d", encoded["input_ids"].shape[1])
         with torch.no_grad():
             output = self._model.generate(
                 **encoded,
