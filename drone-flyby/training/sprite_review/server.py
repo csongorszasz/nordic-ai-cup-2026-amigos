@@ -21,6 +21,7 @@ import numpy as np
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,6 +37,18 @@ CONTEXT = 16  # source pixels of context shown around the box
 
 app = FastAPI()
 index = {e['file']: e for e in json.loads((SPRITES / 'index.json').read_text())}
+
+# Real-vs-render comparisons written by training/compare_render.py, one folder per class.
+MODEL_MATCH = ROOT / 'datasets' / 'model_match'
+MODEL_MATCH.mkdir(parents=True, exist_ok=True)
+app.mount('/compare', StaticFiles(directory=MODEL_MATCH, html=True), name='compare')
+
+
+@app.get('/api/compare')
+def compare_pages():
+    """Classes that have a comparison page, for the sidebar."""
+    return sorted(p.name.removesuffix('_compare') for p in MODEL_MATCH.glob('*_compare')
+                  if (p / 'index.html').exists())
 
 
 def load_manual() -> dict:

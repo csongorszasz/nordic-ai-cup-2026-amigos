@@ -39,6 +39,10 @@
 <aside>
   <h1>Sprite review</h1>
   <div id="classes"></div>
+  <div id="compare" class="legend" hidden>
+    <div style="color:var(--text); margin-bottom:4px">Model renders vs real</div>
+    <div id="compare-links"></div>
+  </div>
   <div class="legend">
     <div><span class="dot" style="background:#444"></span>not reviewed</div>
     <div><span class="dot" style="background:var(--warn)"></span>flagged (CUT / SUSPECT)</div>
@@ -212,6 +216,19 @@ document.addEventListener('keydown', ev => {
   else if (k === 'ArrowLeft') step(-1);
 });
 load();
+
+// Links to real-vs-render pages written by training/compare_render.py.
+fetch('/api/compare').then(r => r.json()).then(classes => {
+  if (!classes.length) return;
+  const box = document.getElementById('compare-links');
+  for (const c of classes) {
+    const a = document.createElement('a');
+    a.href = `/compare/${c}_compare/`; a.textContent = c; a.className = 'cls';
+    a.style.color = 'var(--manual)'; a.style.textDecoration = 'none';
+    box.appendChild(a);
+  }
+  document.getElementById('compare').hidden = false;
+});
 </script>
 </body>
 </html>
