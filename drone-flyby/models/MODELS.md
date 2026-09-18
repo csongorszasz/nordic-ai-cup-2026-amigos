@@ -39,8 +39,8 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **wanted** — search "AT-AT", likely the same free asset |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **2 candidates** — CGTrader watchtower preferred, see below |
 | 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
-| 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **wanted** — only 5 sprites |
-| 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **wanted** |
+| 7 | `medium_plane` | 11.8 x 10.3 | 5 | 1.000 | dark green single-prop aircraft, WW2 style | **candidate found** — P-51 Mustang (CC-BY), see below |
+| 8 | `small_plane` | 10.5 x 9.0 | 9 | 0.857 | prop aircraft, red nose, green camo | **candidate found** — Yak-9, see below |
 | 9 | `condor` | 36.3 x 34.9 | 11 (3 suspect) | 1.000 | big grey X-shaped four-engine aircraft/cargo drone | **candidate found** — BF2042 Condor, licence to check |
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
@@ -72,6 +72,8 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `large_launcher` | [MIM-104 Patriot SAM](https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb) | Muhamad Mirza Arrafi | CC-BY (credit required) | alternative — 13.6k faces, lighter. A third Patriot Juan found first is view-only and was rejected |
 | `helicopter` | [Mi-28N Havoc](https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68) | Rukh3D | CC-BY (credit required) | candidate — 25k faces, scale to 24.4 x 19.7 m. Replaces a view-only Mi-28 with no licence set |
 | `jet_plane` | [A-7 Corsair II (with shelter bonus)](https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/a7-corsair-ii-aircraft-with-weapons-and-shelter-bonus) | CGTrader | free — **check the licence line** | candidate — scale to 17.0 x 16.2 m. The bundled shelter may also serve `hangar` |
+| `medium_plane` | [P-51 Mustang](https://sketchfab.com/3d-models/p-51-mustang-36f0f3e71d2a4c18b479db1ae8f9e7a7) | UlissesVinicios | CC-BY (credit required) | candidate — 5.7k faces, repaint dark olive, scale to 11.8 x 10.3 m. Alternative: [Tommy's P-51](https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529). The Mustang first found is CC BY-NC-ND and was rejected |
+| `small_plane` | [Yak-9](https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684) | Starpovich | CC-BY (credit required) | candidate — 12k faces; the sprites have a red nose and red on the tail, scale to 10.5 x 9.0 m |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
@@ -80,10 +82,15 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 0. **That it is actually downloadable.** Sketchfab shows view-only models in the same search
    results; the API field is `isDownloadable`, and on the page it is the absence of a Download
    button. `add_model.py` records it, so check the output.
-1. **The licence line on the page.** CGTrader free models are usually "Royalty Free", but some
+1. **No "NoDerivs" or "NonCommercial".** Sketchfab's CC BY-NC-ND and similar variants look
+   like CC-BY in a hurry. NoDerivs forbids exactly what we do (scale, tint, render into
+   sprites), and a competition with prizes is arguably commercial. `add_model.py` prints the
+   full licence label; anything other than plain CC Attribution, CC0 or Sketchfab Standard
+   gets rejected.
+2. **The licence line on the page.** CGTrader free models are usually "Royalty Free", but some
    are "Editorial Uses Only", which excludes training data. Record what it says with
    `--licence`; `add_model.py` cannot read CGTrader.
-2. **Whether it is a game rip.** "Battlefield 2042 Condor" is EA/DICE's design, extracted from
+3. **Whether it is a game rip.** "Battlefield 2042 Condor" is EA/DICE's design, extracted from
    their game; the uploader has no rights to grant, whatever the page's licence box says. The
    same is true of the organisers' own `spacecraft` and `ta-ta`, which are Star Wars assets, so
    this is a competition-wide grey area rather than something we invented. For a weekend

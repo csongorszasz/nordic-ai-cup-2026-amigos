@@ -134,6 +134,47 @@
    "url": "https://www.cgtrader.com/free-3d-models/exterior/other/old-wooden-watchtower-low-poly"
   }
  ],
+ "medium_plane": [
+  {
+   "added": "2026-09-18",
+   "author": "PapaX007",
+   "author_profile": "https://sketchfab.com/PapaX007",
+   "downloadable": true,
+   "faces": 902936,
+   "licence": "CC Attribution-NonCommercial-NoDerivs",
+   "licence_requirements": "Author must be credited. No commercial use. Modified versions can not be distributed.",
+   "note": "CC BY-NC-ND: NoDerivs forbids scaling/tinting/rendering it into training sprites; also 900k faces",
+   "status": "rejected",
+   "title": "P51- Mustang",
+   "url": "https://sketchfab.com/3d-models/p51-mustang-d911a5f3f4f046f3a1161fd8b537caba"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "UlissesVinicios",
+   "author_profile": "https://sketchfab.com/UlissesVinicios",
+   "downloadable": true,
+   "faces": 5680,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "CC-BY stand-in for the BY-NC-ND Mustang Juan found; repaint dark olive, scale to 11.8 x 10.3 m",
+   "status": "candidate",
+   "title": "P-51 Mustang",
+   "url": "https://sketchfab.com/3d-models/p-51-mustang-36f0f3e71d2a4c18b479db1ae8f9e7a7"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "Tommy",
+   "author_profile": "https://sketchfab.com/an.s055163",
+   "downloadable": true,
+   "faces": 9302,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "alternative CC-BY Mustang, 9.3k faces",
+   "status": "candidate",
+   "title": "P-51 Mustang",
+   "url": "https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529"
+  }
+ ],
  "mine_roller": [
   {
    "added": "2026-09-17",
@@ -162,6 +203,21 @@
    "status": "candidate",
    "title": "Mim-23 Hawk SAM air defence system (game-ready)",
    "url": "https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4"
+  }
+ ],
+ "small_plane": [
+  {
+   "added": "2026-09-18",
+   "author": "Starpovich",
+   "author_profile": "https://sketchfab.com/Starpovich",
+   "downloadable": true,
+   "faces": 12346,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "WW2 fighter; paint the red nose/tail markings seen in the sprites; scale to 10.5 x 9.0 m",
+   "status": "candidate",
+   "title": "Yak-9",
+   "url": "https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684"
   }
  ],
  "small_tower": [
