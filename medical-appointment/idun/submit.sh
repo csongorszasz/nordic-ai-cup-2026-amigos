@@ -8,6 +8,7 @@
 #   bash idun/submit.sh setup       # create/update the `nordic` conda env + weights
 #   bash idun/submit.sh dev [args]  # fast test gate + in-process dev_eval on GPU
 #   bash idun/submit.sh test        # slow (model-backed) test suite on GPU
+#   bash idun/submit.sh train [args]# train the ModernBERT answerer (grouped OOF)
 #   bash idun/submit.sh eval        # submit an end-to-end HTTP scoring job
 #   bash idun/submit.sh queue       # show your SLURM jobs
 #   bash idun/submit.sh logs [id]   # tail a job log
@@ -61,11 +62,13 @@ sync_code() {
 # Copy experiment summaries (and transcripts) back from IDUN. results/ is
 # excluded from sync so it is never deleted remotely; pull it to keep a record.
 pull_results() {
-    mkdir -p "${PROJECT_ROOT}/results" "${PROJECT_ROOT}/transcripts"
+    mkdir -p "${PROJECT_ROOT}/results" "${PROJECT_ROOT}/transcripts" "${PROJECT_ROOT}/models"
     echo "Pulling results..."
     rsync -avz "${REMOTE}:${REMOTE_DIR}/results/" "${PROJECT_ROOT}/results/"
     echo "Pulling transcripts..."
     rsync -avz "${REMOTE}:${REMOTE_DIR}/transcripts/" "${PROJECT_ROOT}/transcripts/"
+    echo "Pulling model checkpoints..."
+    rsync -avz "${REMOTE}:${REMOTE_DIR}/models/" "${PROJECT_ROOT}/models/" || true
     echo "Pull complete."
 }
 
@@ -107,6 +110,16 @@ case "$ACTION" in
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  tail -f ${REMOTE_DIR}/logs/med_tests_${JOB_ID}.out"
+        ;;
+
+    train)
+        check_ssh; sync_code
+        shift || true
+        ARGS="$*"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_train_modernbert.slurm ${ARGS}")
+        echo "$JOB_SUBMIT"
+        JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
+        echo "  tail -f ${REMOTE_DIR}/logs/med_train_mb_${JOB_ID}.out"
         ;;
 
     queue)

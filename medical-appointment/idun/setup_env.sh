@@ -56,4 +56,12 @@ snapshot_download(name)
 print("downloaded", name)
 PY
 
+echo "pre-downloading ModernBERT cross-encoder"
+python - <<'PY'
+from huggingface_hub import snapshot_download
+name = "answerdotai/ModernBERT-base"
+snapshot_download(name)
+print("downloaded", name)
+PY
+
 echo "setup complete"

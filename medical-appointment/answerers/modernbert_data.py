@@ -293,6 +293,10 @@ def build_examples(
                     "question_type": row["question_type"],
                     "passage_index": passage.index,
                     "passage": passage.text,
+                    "passage_words": [
+                        words[k]["word"].strip()
+                        for k in range(passage.first_word, passage.last_word + 1)
+                    ],
                     "passage_span": list(passage.span()),
                     "retrieval_score": round(score, 4),
                     "label": label,
@@ -317,6 +321,10 @@ def build_examples(
                     "question_type": row["question_type"],
                     "passage_index": passage.index,
                     "passage": passage.text,
+                    "passage_words": [
+                        words_by_tid[other][k]["word"].strip()
+                        for k in range(passage.first_word, passage.last_word + 1)
+                    ],
                     "passage_span": list(passage.span()),
                     "retrieval_score": None,
                     "label": "not_mentioned",
