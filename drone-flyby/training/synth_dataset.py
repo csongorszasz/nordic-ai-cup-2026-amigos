@@ -259,8 +259,12 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 
 
 def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int,
-                  model_sprites: dict = None, model_share: float = 0.0, ground=None):
-    """Paste objects onto a graded copy of the background. Returns (frame, annotations)."""
+                  model_sprites: dict = None, model_share: float = 0.0, ground=None, classes: list = None):
+    """Paste objects onto a graded copy of the background. Returns (frame, annotations).
+
+    `classes` fixes which objects to paste (scene3d.py asks for one of each); by default
+    n_objects are drawn at random, partly in themed groups.
+    """
     model_sprites = model_sprites or {}
     if ground is not None and not ground.any():
         ground = None
@@ -273,7 +277,7 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
     shadow = (int(round(math.cos(angle) * distance)), int(round(math.sin(angle) * distance)))
 
     annotations, placed = [], []
-    wanted = []
+    wanted = list(classes or [])
     while len(wanted) < n_objects:
         if rng.random() < 0.45:  # a themed group, as the scenes have
             wanted.extend(name for name in rng.choice(GROUPS) if name in sprites or name in model_sprites)

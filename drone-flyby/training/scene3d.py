@@ -151,7 +151,13 @@ def main():
     np.random.seed(args.seed)
     background, ground = sd.load_background(FRAMES / f'{name}.jpg')
     bank = sd.load_model_sprites(ROOT / 'datasets' / 'model_sprites')
-    frame, annotations = sd.compose_frame(background, {}, rng, args.objects, bank, 1.0, ground)
+    # One of each class first, so every model can be checked; random ones fill up to --objects.
+    classes = sorted(bank)
+    frame, annotations = sd.compose_frame(background, {}, rng, max(args.objects, len(classes)), bank, 1.0, ground,
+                                          classes=classes + [rng.choice(classes) for _ in range(args.objects - len(classes))])
+    missing = sorted(set(classes) - {a['object_id'] for a in annotations})
+    if missing:
+        print(f'  no room on this frame for: {", ".join(missing)}')
 
     # The city around it, origin on the ground under the camera.
     index = rc.build_index([rc.MESH_ROOT / t for t in camera['tiles']])
