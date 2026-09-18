@@ -249,5 +249,46 @@
    "title": "Star Wars: TIE/in Interceptor",
    "url": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41"
   }
+ ],
+ "tank": [
+  {
+   "added": "2026-09-18",
+   "author": "VladosikUA",
+   "author_profile": "https://sketchfab.com/VladosikUA",
+   "downloadable": false,
+   "faces": 731210,
+   "licence": null,
+   "licence_requirements": null,
+   "note": "closest match to the sprites, but view-only with no licence: shape reference only",
+   "status": "reference",
+   "title": "Black Prince",
+   "url": "https://sketchfab.com/3d-models/black-prince-aa7487b728e34f5ea2196c57585182cb"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "LowPolyCount",
+   "author_profile": "https://sketchfab.com/EndangeredOXX",
+   "downloadable": true,
+   "faces": 10352,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "preferred: the Black Prince is built on the Churchill hull, so same silhouette; 10k faces. Scale to 10.5 x 9.9 m, repaint camo",
+   "status": "candidate",
+   "title": "Low Poly Churchill VII Tank WW2",
+   "url": "https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "yanix",
+   "author_profile": "https://sketchfab.com/yanix",
+   "downloadable": true,
+   "faces": 500756,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's fallback if the Churchill does not look right; 500k faces",
+   "status": "candidate",
+   "title": "Tank T-10M",
+   "url": "https://sketchfab.com/3d-models/tank-t-10m-9aeda33a945c42f0bdebe3d1ef91da06"
+  }
  ]
 }

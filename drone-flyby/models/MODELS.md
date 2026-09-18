@@ -45,7 +45,7 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | 10 | `small_tower` | 12.6 x 12.0 | 20 | 0.909 | dark green square roof on a pale base | **candidate found** — same watchtower mesh, tinted green |
 | 11 | `jammer` | 9.0 x 6.7 | 13 | 0.921 | green boxy truck with a flat box body | wanted |
 | 12 | `helicopter` | 24.4 x 19.7 | 19 (4 suspect) | 1.000 | dark green helicopter, rotors visible | **candidate found** — Mi-28N Havoc, see below |
-| 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | wanted |
+| 13 | `tank` | 10.5 x 9.9 | 25 | 0.930 | camo tank, barrel forward | **candidate found** — Churchill VII (Black Prince hull), see below |
 | 14 | `large_launcher` | 31.3 x 23.1 | 25 | 1.000 | camo TEL, long missile tube on a truck | **candidate found** — MIM-104 Patriot, see below |
 | 15 | `jet_plane` | 17.0 x 16.2 | 22 | 1.000 | white/grey swept-wing jet | **candidate found** — A-7 Corsair II, see below |
 | 16 | `spacecraft` | 10.3 x 9.2 | 23 | 0.882 | TIE fighter/interceptor | **candidate found** — TIE/in Interceptor, see below |
@@ -74,6 +74,8 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 | `jet_plane` | [A-7 Corsair II (with shelter bonus)](https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/a7-corsair-ii-aircraft-with-weapons-and-shelter-bonus) | CGTrader | free — **check the licence line** | candidate — scale to 17.0 x 16.2 m. The bundled shelter may also serve `hangar` |
 | `medium_plane` | [P-51 Mustang](https://sketchfab.com/3d-models/p-51-mustang-36f0f3e71d2a4c18b479db1ae8f9e7a7) | UlissesVinicios | CC-BY (credit required) | candidate — 5.7k faces, repaint dark olive, scale to 11.8 x 10.3 m. Alternative: [Tommy's P-51](https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529). The Mustang first found is CC BY-NC-ND and was rejected |
 | `small_plane` | [Yak-9](https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684) | Starpovich | CC-BY (credit required) | candidate — 12k faces; the sprites have a red nose and red on the tail, scale to 10.5 x 9.0 m |
+| `tank` | [Low Poly Churchill VII](https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c) | LowPolyCount | CC-BY (credit required) | **preferred** — the [Black Prince](https://sketchfab.com/3d-models/black-prince-aa7487b728e34f5ea2196c57585182cb) Juan matched to the sprites is built on this hull, but is view-only with no licence, so it stays as a shape reference. 10k faces, scale to 10.5 x 9.9 m, repaint camo |
+| `tank` | [Tank T-10M](https://sketchfab.com/3d-models/tank-t-10m-9aeda33a945c42f0bdebe3d1ef91da06) | yanix | CC-BY (credit required) | fallback — 500k faces |
 | `hangar` | [NATO aircraft shelter v2](https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2) | CGTrader | free — **check the licence line** | candidate — hardened shelter with an arched roof, closer to the sprites than a plain hangar |
 | `condor` | [Battlefield 2042 Condor](https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight) | CGTrader | free — **check the licence line**, and see the game-asset caveat | candidate — quad-rotor VTOL, matches the X-shaped 4-engine sprite |
 
@@ -116,7 +118,8 @@ spending an hour on a search:
   worth the hunt, and they are also where the false positives come from.
 
 `status` in the registry is `candidate` until the `.glb` is actually in `models/<class>/`,
-then `downloaded`; use `rejected` (with a note) for ones that turned out wrong, so nobody
+then `downloaded`; `reference` for the right shape that we cannot use (view-only, no licence),
+kept to compare against; `rejected` (with a note) for ones that turned out wrong, so nobody
 re-finds them.
 
 ## Places to look

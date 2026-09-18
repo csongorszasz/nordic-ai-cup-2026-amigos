@@ -54,7 +54,7 @@ def main():
     parser.add_argument('class_name', choices=sorted(OBJECT_CLASSES))
     parser.add_argument('url')
     parser.add_argument('--note', default='')
-    parser.add_argument('--status', default='candidate', choices=['candidate', 'downloaded', 'rejected'])
+    parser.add_argument('--status', default='candidate', choices=['candidate', 'downloaded', 'reference', 'rejected'])
     # Only Sketchfab can be looked up automatically; for CGTrader, Fab, Poly Pizza and the
     # rest, copy what the page says. The licence is the part worth getting right.
     parser.add_argument('--title', default='')
