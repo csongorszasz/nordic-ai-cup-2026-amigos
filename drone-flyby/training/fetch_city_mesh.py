@@ -40,6 +40,29 @@ DEFAULT_TILES = {
 }
 
 
+def salvage(archive: Path, target: Path, tile: str):
+    """Pull what is readable out of a zip whose end is corrupt on the server (684502 is).
+
+    Without its central directory zipfile cannot open it, but bsdtar reading it as a stream
+    walks the local headers in order. The last subtile written may be cut, so it is dropped;
+    metadata.xml (lost with the tail) is the same for every tile and is copied from another.
+    """
+    donor = next((d / 'metadata.xml' for d in sorted(OUT.glob('tile_*')) if (d / 'metadata.xml').exists()), None)
+    if shutil.which('bsdtar') is None or donor is None:
+        print(f'{tile}: corrupt on the server and cannot be salvaged here (needs bsdtar); skipped', flush=True)
+        archive.unlink()
+        return None
+    print(f'{tile}: corrupt on the server; salvaging what precedes the damage', flush=True)
+    target.mkdir(parents=True, exist_ok=True)
+    with open(archive, 'rb') as stream:
+        subprocess.run(['bsdtar', '-xf', '-', '-C', str(target), '--include', f'*_L{LEVEL}_*'], stdin=stream)
+    files = [f for f in target.rglob('*') if f.is_file()]
+    if files:
+        shutil.rmtree(max(files, key=lambda f: f.stat().st_mtime).parent)
+    shutil.copy(donor, target / 'metadata.xml')
+    return [f for f in target.rglob('*') if f.is_file()]
+
+
 def fetch(tile: str):
     target = OUT / f'tile_{tile}'
     if (target / 'metadata.xml').exists():
@@ -55,9 +78,14 @@ def fetch(tile: str):
         print(f'{tile}: broken zip, downloading again', flush=True)
         archive.unlink()
         subprocess.run(['curl', '-sSL', '--fail', '--retry', '5', '-o', str(archive), url], check=True)
-    with zipfile.ZipFile(archive) as z:
-        names = [n for n in z.namelist() if f'_L{LEVEL}_' in n or n.endswith('metadata.xml')]
-        z.extractall(target, members=names)
+    if zipfile.is_zipfile(archive):
+        with zipfile.ZipFile(archive) as z:
+            names = [n for n in z.namelist() if f'_L{LEVEL}_' in n or n.endswith('metadata.xml')]
+            z.extractall(target, members=names)
+    else:
+        names = salvage(archive, target, tile)
+        if names is None:
+            return
     archive.unlink()
     size = sum(f.stat().st_size for f in target.rglob('*') if f.is_file())
     print(f'{tile}: kept {len(names)} files, {size / 2**30:.2f} GB; {shutil.disk_usage(OUT).free / 2**30:.0f} GB free', flush=True)
