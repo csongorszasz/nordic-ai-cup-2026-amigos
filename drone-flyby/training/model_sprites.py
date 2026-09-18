@@ -31,7 +31,7 @@ import render_models as rm  # noqa: E402
 ROOT = rm.ROOT
 OUT = ROOT / 'datasets' / 'model_sprites'
 SIZE_JITTER = 0.08   # relative; the fitted lengths vary about this much between frames
-MAX_TILT = 45        # degrees off vertical at the far corners of the frame (render_city.lean_at)
+MAX_TILT = 45        # degrees off vertical at the far corners of the frame (drone_camera.lean_at)
 # Rotor radius in model units (longest side = 1). The rotor was dropped from the fit
 # because it spins; the real cut-outs show it as anything from invisible to a pale
 # translucent disc, but the label box always spans the whole rotor (the Mi-28's rotor
@@ -147,7 +147,7 @@ def main():
             top = vertices[vertices[:, 2] > vertices[:, 2].max() - 0.02]
             rotor = (top.mean(axis=0), ROTORS[class_name])
         length_px = fit['length_m'] / rm.METRES_PER_PIXEL
-        # Tilt and lean depend on where the object sits in the frame (render_city.lean_at);
+        # Tilt and lean depend on where the object sits in the frame (drone_camera.lean_at);
         # the bank covers the whole range and synth_dataset picks the pose for each spot.
         max_tilt = MAX_TILT
         (out / class_name).mkdir(parents=True, exist_ok=True)

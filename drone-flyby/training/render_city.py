@@ -33,17 +33,10 @@ import numpy as np
 import pyrender
 import trimesh
 
+from drone_camera import FOCAL_PX, HEIGHT, HFOV, METRES_PER_PIXEL, PITCH_DEG, WIDTH, lean_at  # noqa: F401
+
 ROOT = Path(__file__).resolve().parents[1]
 MESH_ROOT = ROOT / 'backgrounds' / 'helsinki3d'
-WIDTH, HEIGHT = 3840, 2160
-HFOV = 68.0          # degrees, estimated from the recorded frames
-# The drone camera is pitched forward: tall objects in the supplied frames lean away from
-# a point near the bottom edge, (1920, ~2100) in the 4K frame (fitted tilt and lean of the
-# towers and launchers in models/*/match.json agree with it to within the 45 deg fit grid).
-NADIR_Y = 2100
-FOCAL_PX = WIDTH / 2 / np.tan(np.radians(HFOV / 2))
-PITCH_DEG = float(np.degrees(np.arctan((NADIR_Y - HEIGHT / 2) / FOCAL_PX)))  # ~19.7
-METRES_PER_PIXEL = 0.21
 LEVEL = 19           # quadtree level with ~0.1 m/px textures; rendered down to 0.21
 TEXTURE_SCALE = 0.5  # halve them on load (~0.18 m/px, still finer than the frame): a quarter of the memory
 MAX_EMPTY = 0.02     # share of the frame the mesh may leave uncovered (cracks between pieces, filled in)
@@ -117,16 +110,6 @@ def camera_pose(x, y, z, yaw):
     return trimesh.transformations.rotation_matrix(np.radians(yaw), [0, 0, 1], [x, y, 0]) @ \
         trimesh.transformations.translation_matrix([x, y, z]) @ \
         trimesh.transformations.rotation_matrix(np.radians(PITCH_DEG), [1, 0, 0])
-
-
-def lean_at(px, py):
-    """(tilt, lean) of a tall object at 4K frame pixel (px, py), in render_models' convention.
-
-    Tilt: how far off vertical the camera sees it; lean: image direction its top leans
-    toward, degrees clockwise from up. Both follow from the nadir point (WIDTH/2, NADIR_Y).
-    """
-    dx, dy = px - WIDTH / 2, py - NADIR_Y
-    return float(np.degrees(np.arctan(np.hypot(dx, dy) / FOCAL_PX))), float(np.degrees(np.arctan2(dx, -dy)) % 360)
 
 
 def world_height(depth, pose):

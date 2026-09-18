@@ -22,7 +22,7 @@ then cut into Level 0/1/2 views exactly like the evaluator sends them.
 Objects come from two banks: the real cut-outs (sprites/), randomly rotated, and
 renders of the painted 3D models (datasets/model_sprites/, --model-share of them).
 A model render is chosen for the spot it is pasted at: tall objects lean away from the
-camera's nadir point near the bottom of the frame (render_city.lean_at), so the render
+camera's nadir point near the bottom of the frame (drone_camera.lean_at), so the render
 whose tilt and lean match that spot is used, and it is not rotated afterwards.
 
 Backgrounds with a <name>_ground.png (render_city.py) only get objects on open ground,
@@ -53,7 +53,7 @@ from make_dataset import (  # noqa: E402
     view_centres,
 )
 from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
-from render_city import lean_at  # noqa: E402
+from drone_camera import lean_at  # noqa: E402
 
 SOURCE_W, SOURCE_H = 3840, 2160
 # Classes that tend to appear together in the supplied scenes, so the detector sees

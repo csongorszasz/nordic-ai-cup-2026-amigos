@@ -47,7 +47,9 @@ check_ssh() {
 
 # Code, the supplied scene, sprite cut-outs and backgrounds go up; generated
 # datasets, runs, recordings and the local venv stay here. Datasets are rebuilt
-# on IDUN, which is faster than uploading them.
+# on IDUN, which is faster than uploading them. Two exceptions: the 3D-model sprite
+# bank goes up (rendering it needs OpenGL), and the raw city mesh stays here (GBs;
+# only its rendered frames in backgrounds/helsinki3d_frames/ are needed).
 sync_code() {
     ssh "$REMOTE" "mkdir -p ${REMOTE_DIR}"
     echo "Syncing ${DRONE_DIR} -> ${REMOTE}:${REMOTE_DIR}"
@@ -57,7 +59,10 @@ sync_code() {
         --exclude='*.pyc' \
         --exclude='.pytest_cache' \
         --exclude='.downloads' \
-        --exclude='datasets' \
+        --include='/datasets/' \
+        --include='/datasets/model_sprites/***' \
+        --exclude='/datasets/*' \
+        --exclude='/backgrounds/helsinki3d/' \
         --exclude='runs' \
         --exclude='recordings' \
         --exclude='logs' \
