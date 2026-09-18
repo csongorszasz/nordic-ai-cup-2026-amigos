@@ -241,6 +241,10 @@ def load_normalised(path: Path, up: str, drop=(), thicken: float = 1.0):
         rotation = trimesh.transformations.rotation_matrix(np.pi / 2, [1, 0, 0])
         for mesh in meshes:
             mesh.apply_transform(rotation)
+    if up == '-z':  # upside down otherwise; the top-down outline alone cannot tell (the Mi-28 was fitted flipped)
+        rotation = trimesh.transformations.rotation_matrix(np.pi, [1, 0, 0])
+        for mesh in meshes:
+            mesh.apply_transform(rotation)
 
     bounds = np.array([m.bounds for m in meshes])
     low, high = bounds[:, 0].min(axis=0), bounds[:, 1].max(axis=0)
@@ -611,7 +615,7 @@ def main():
     parser.add_argument('--tilts', type=float, nargs='*', default=list(TILTS),
                         help='camera tilt from straight down, toward the image centre, degrees')
     parser.add_argument('--sun-azimuth', type=float, default=135)
-    parser.add_argument('--up', choices=['auto', 'y', 'z'], default='auto')
+    parser.add_argument('--up', choices=['auto', 'y', 'z', '-z'], default='auto')
     parser.add_argument('--drop', nargs='*', default=[],
                         help='parts to leave out, matched against geometry/node names (e.g. Cube.032)')
     parser.add_argument('--close-gaps', type=int, default=0, metavar='PX',
