@@ -7,7 +7,8 @@
 #   bash idun/submit.sh setup                 # once: build the conda env on IDUN
 #   bash idun/submit.sh test                  # 20-min job: GPU, torch, ultralytics sanity
 #   bash idun/submit.sh run <command...>      # GPU job running any command in drone-flyby/
-#   bash idun/submit.sh train-synth [frames]  # synthetic dataset + YOLO training, one job
+#   bash idun/submit.sh train-synth [frames] [label]  # synthetic dataset + YOLO training, one job;
+#                                             # weights in runs/synth<frames>_<label>_<date>/
 #   bash idun/submit.sh queue                 # your jobs
 #   bash idun/submit.sh logs [job_id]         # tail the latest (or one) job log
 #   bash idun/submit.sh fetch                 # pull runs/ (weights, metrics) back here
@@ -71,10 +72,14 @@ sync_code() {
         "${DRONE_DIR}/" "${REMOTE}:${REMOTE_DIR}/"
 }
 
+# The commit the job runs (IDUN gets the code by rsync, without .git); "-dirty" means
+# uncommitted changes went up too. train_yolo.py stores it in the run's provenance.json.
+GIT_COMMIT="$(git -C "${DRONE_DIR}" describe --always --dirty 2>/dev/null || echo unknown)"
+
 submit() {
     local job_file="$1" cmd="$2"
     local out
-    out=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && RUN_CMD=$(printf '%q' "$cmd") sbatch --export=ALL --account=${SLURM_ACCOUNT} idun/${job_file}")
+    out=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && GIT_COMMIT=${GIT_COMMIT} RUN_CMD=$(printf '%q' "$cmd") sbatch --export=ALL --account=${SLURM_ACCOUNT} idun/${job_file}")
     echo "$out"
     local job_id
     job_id=$(awk '{print $NF}' <<<"$out")
@@ -110,11 +115,14 @@ case "$ACTION" in
 
     train-synth)
         FRAMES="${2:-300}"
+        LABEL="${3:-run}"
+        NAME="synth${FRAMES}_${LABEL}_$(date +%m%d-%H%M)"   # unique: never overwrites an earlier run
+        echo "Run name: ${NAME} (commit ${GIT_COMMIT})"
         check_ssh
         sync_code
         # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
         # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
-        submit job.slurm "python training/make_dataset.py --all-val --out datasets/helsinki_real && python training/synth_dataset.py --frames ${FRAMES} --val-dir datasets/helsinki_real/images/val && python training/train_yolo.py --data datasets/synth_yolo/data.yaml --epochs 60 --batch 32 --name synth_${FRAMES}"
+        submit job.slurm "python training/make_dataset.py --all-val --out datasets/helsinki_real && python training/synth_dataset.py --frames ${FRAMES} --val-dir datasets/helsinki_real/images/val && python training/train_yolo.py --data datasets/synth_yolo/data.yaml --epochs 60 --batch 32 --name ${NAME}"
         ;;
 
     queue)
