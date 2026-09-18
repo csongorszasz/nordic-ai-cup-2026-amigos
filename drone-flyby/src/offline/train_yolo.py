@@ -191,6 +191,7 @@ def train(
     cache: bool = False,
     resume: bool = False,
     resume_from: Path | None = None,
+    augment_kwargs: dict | None = None,
 ) -> None:
     if not _ULTRALYTICS_AVAILABLE:
         raise RuntimeError(
@@ -215,7 +216,7 @@ def train(
         return
 
     model = yolo_cls(weights)
-    model.train(
+    train_kwargs = dict(
         data=str(data_yaml),
         epochs=epochs,
         imgsz=imgsz,
@@ -231,6 +232,32 @@ def train(
         project=project,
         name=name,
     )
+    # Dataset augmentation knobs (mosaic, mixup, copy-paste, geometry, colour)
+    # are forwarded verbatim so the caller controls them without this script
+    # hardcoding a policy. Copy-paste is especially useful for the rare classes
+    # that dominate a macro-averaged score.
+    if augment_kwargs:
+        train_kwargs.update(augment_kwargs)
+    model.train(**train_kwargs)
+
+
+def build_augment_kwargs(arguments: argparse.Namespace) -> dict:
+    """Assemble the dataset-augmentation kwargs from parsed CLI arguments."""
+    return {
+        "mosaic": arguments.mosaic,
+        "mixup": arguments.mixup,
+        "copy_paste": arguments.copy_paste,
+        "degrees": arguments.degrees,
+        "scale": arguments.scale,
+        "translate": arguments.translate,
+        "fliplr": arguments.fliplr,
+        "flipud": arguments.flipud,
+        "hsv_h": arguments.hsv_h,
+        "hsv_s": arguments.hsv_s,
+        "hsv_v": arguments.hsv_v,
+        "erasing": arguments.erasing,
+        "perspective": arguments.perspective,
+    }
 
 
 def main() -> int:
@@ -258,6 +285,21 @@ def main() -> int:
     parser.add_argument("--name", default="train")
     parser.add_argument("--build-only", action="store_true")
     parser.add_argument("--cache", action="store_true", help="Cache images in RAM during training.")
+    # Dataset augmentation. Defaults match Ultralytics, except copy-paste which
+    # is off by default and worth enabling for the rare classes.
+    parser.add_argument("--mosaic", type=float, default=1.0)
+    parser.add_argument("--mixup", type=float, default=0.0)
+    parser.add_argument("--copy-paste", dest="copy_paste", type=float, default=0.0)
+    parser.add_argument("--degrees", type=float, default=0.0)
+    parser.add_argument("--scale", type=float, default=0.5)
+    parser.add_argument("--translate", type=float, default=0.1)
+    parser.add_argument("--fliplr", type=float, default=0.5)
+    parser.add_argument("--flipud", type=float, default=0.0)
+    parser.add_argument("--hsv-h", dest="hsv_h", type=float, default=0.015)
+    parser.add_argument("--hsv-s", dest="hsv_s", type=float, default=0.7)
+    parser.add_argument("--hsv-v", dest="hsv_v", type=float, default=0.4)
+    parser.add_argument("--erasing", type=float, default=0.4)
+    parser.add_argument("--perspective", type=float, default=0.0)
     parser.add_argument(
         "--resume",
         action="store_true",
@@ -319,6 +361,7 @@ def main() -> int:
         project=arguments.project,
         name=arguments.name,
         cache=arguments.cache,
+        augment_kwargs=build_augment_kwargs(arguments),
     )
     return 0
 

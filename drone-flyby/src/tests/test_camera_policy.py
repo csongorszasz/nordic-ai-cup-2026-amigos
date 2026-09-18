@@ -367,6 +367,32 @@ def test_guard_and_describe_agree_on_canonical_constraints():
     )
 
 
+def test_guard_handles_l2_to_l1_step_when_current_center_is_outside_l1_bounds():
+    """Regression: scaling a move toward a far L1 target and then clamping to
+    the L1 bounds used to re-violate the L2 distance limit whenever the L2
+    centre sat outside those bounds (e.g. x=3360)."""
+    camera = SimulatedCamera(resolution_level=2, center_x=3360, center_y=1175)
+    request = _build_request(camera, frame_index=0, sequence_id="edge_step")
+    assert request.camera_constraints.maximum_center_delta == MAXIMUM_CENTER_DELTA_PIXELS[2]
+
+    far_l1_target = RequestedViewDto(resolution_level=1, center_x=2880, center_y=1542)
+    clamped = CameraConstraintGuard.clamp_and_validate(request, far_l1_target)
+
+    assert clamped is not None
+    assert clamped.resolution_level == 1
+    assert (
+        describe_camera_rejection(
+            camera.resolution_level,
+            (camera.center_x, camera.center_y),
+            clamped.resolution_level,
+            (clamped.center_x, clamped.center_y),
+            request.camera_constraints.maximum_center_delta,
+        )
+        is None
+    )
+
+
+
 def test_hold_policy_never_moves():
     policy = create_camera_policy(DroneFlybyConfig(POLICY_TYPE="hold"))
     policy.reset("hold_seq")

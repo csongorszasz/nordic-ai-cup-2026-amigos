@@ -17,13 +17,13 @@ old image-relative tracker did not:
 from collections import defaultdict
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
-import cv2
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from config import DroneFlybyConfig
-from core.interfaces import BaseTracker, DetectionResult, TrackerSummary
+from core.ego_motion import EgoMotionEstimator, EgoMotionResult
+from core.interfaces import BaseTracker, DetectionResult, TrackerSummary, TrackBelief
 from dtos import DroneFlybyPredictionDto, IMAGE_HEIGHT, IMAGE_WIDTH
 from utils import clip_bbox_to_frame, source_bbox_to_global
 
@@ -124,6 +124,8 @@ class WorldMapTracker(BaseTracker):
         min_existence: float = 0.20,
         in_view_miss_decay: float = 0.55,
         out_of_view_miss_decay: float = 0.97,
+        ego_motion_method: str = "phase_correlation",
+        ego_motion_min_response: float = 0.15,
     ):
         self.iou_match_threshold = iou_match_threshold
         self.min_hits_to_confirm = min_hits_to_confirm
@@ -135,6 +137,9 @@ class WorldMapTracker(BaseTracker):
         self.min_existence = min_existence
         self.in_view_miss_decay = in_view_miss_decay
         self.out_of_view_miss_decay = out_of_view_miss_decay
+        self.ego_motion = EgoMotionEstimator(
+            method=ego_motion_method, min_response=ego_motion_min_response
+        )
 
         self.tracks: Dict[int, TrackedObject] = {}
         self.next_track_id: int = 0
@@ -143,6 +148,8 @@ class WorldMapTracker(BaseTracker):
         self.last_zoom: int = 0
         self.prev_l0_gray: Optional[np.ndarray] = None
         self.prev_l0_frame_index: int = -1
+        self.prev_region: Optional[Tuple[int, int, int, int]] = None
+        self.prev_pixel_scale: Optional[float] = None
         self.current_shift: Tuple[float, float] = default_shift
 
     def reset(self, sequence_id: str) -> None:
@@ -154,6 +161,8 @@ class WorldMapTracker(BaseTracker):
         self.last_zoom = 0
         self.prev_l0_gray = None
         self.prev_l0_frame_index = -1
+        self.prev_region = None
+        self.prev_pixel_scale = None
         self.current_shift = self.default_shift
         logger.info("WorldMapTracker session reset for sequence '%s'", sequence_id)
 
@@ -162,40 +171,58 @@ class WorldMapTracker(BaseTracker):
     # ------------------------------------------------------------------ #
 
     def _estimate_ego_motion(
-        self, l0_image_gray: Optional[np.ndarray], frame_index: int
+        self,
+        l0_image_gray: Optional[np.ndarray],
+        frame_index: int,
+        source_region_xyxy: Tuple[int, int, int, int],
     ) -> Tuple[float, float]:
-        """Estimate a per-frame 4K shift from phase correlation between L0 views.
+        """Estimate a per-frame source-pixel shift from consecutive views.
 
-        Phase correlation reports the total displacement between the two L0
-        frames it is given. Skipped frames make that a multi-frame displacement,
-        so it is divided by the frame gap before use, otherwise a four-frame gap
-        looks like a 240 px/frame jump and is rejected by the sanity gate.
+        The estimator works on any view whose scale matches the previous one.
+        When the camera centre moved between the two views, that known movement
+        is added back, because phase correlation measures ``ego - camera_delta``.
+        Skipped frames divide the measured displacement by the frame gap so a
+        multi-frame gap does not look like a single huge jump.
         """
         if l0_image_gray is None:
             return self.current_shift
 
         gray = np.ascontiguousarray(l0_image_gray, dtype=np.float32)
+        source_width = max(1, int(source_region_xyxy[2]) - int(source_region_xyxy[0]))
+        pixel_scale = source_width / float(gray.shape[1])
+
+        camera_delta: Tuple[float, float] = (0.0, 0.0)
+        if self.prev_region is not None:
+            prev_width = self.prev_region[2] - self.prev_region[0]
+            if prev_width == source_width:
+                camera_delta = (
+                    (source_region_xyxy[0] + source_region_xyxy[2]) / 2.0
+                    - (self.prev_region[0] + self.prev_region[2]) / 2.0,
+                    (source_region_xyxy[1] + source_region_xyxy[3]) / 2.0
+                    - (self.prev_region[1] + self.prev_region[3]) / 2.0,
+                )
+
+        gap = max(1, frame_index - self.prev_l0_frame_index) if self.prev_l0_frame_index >= 0 else 1
 
         if self.prev_l0_gray is not None and self.prev_l0_frame_index >= 0:
-            gap = max(1, frame_index - self.prev_l0_frame_index)
-            try:
-                shift, response = cv2.phaseCorrelate(self.prev_l0_gray, gray)
-                # The transmitted L0 image is 960 px wide; tests may pass the 4K
-                # frame directly, so derive the downsample factor from the input.
-                scale = IMAGE_WIDTH / float(gray.shape[1])
-                per_frame = (shift[0] * scale / gap, shift[1] * scale / gap)
-
-                # Sanity check: the drone flies forward, so the scene drifts down.
-                if response >= 0.15 and 10.0 <= per_frame[1] <= 130.0 and abs(per_frame[0]) <= 40.0:
-                    self.current_shift = (
-                        0.7 * per_frame[0] + 0.3 * self.current_shift[0],
-                        0.7 * per_frame[1] + 0.3 * self.current_shift[1],
-                    )
-            except Exception as exc:
-                logger.warning("Phase correlation failed: %s", exc)
+            result: EgoMotionResult = self.ego_motion.estimate(
+                previous_gray=self.prev_l0_gray,
+                current_gray=gray,
+                gap=gap,
+                pixel_scale=pixel_scale,
+                camera_delta=camera_delta,
+                previous_pixel_scale=self.prev_pixel_scale,
+            )
+            if result.accepted:
+                self.current_shift = (
+                    0.7 * result.dx + 0.3 * self.current_shift[0],
+                    0.7 * result.dy + 0.3 * self.current_shift[1],
+                )
 
         self.prev_l0_gray = gray
         self.prev_l0_frame_index = frame_index
+        self.prev_region = tuple(int(v) for v in source_region_xyxy)  # type: ignore[assignment]
+        self.prev_pixel_scale = pixel_scale
         return self.current_shift
 
     def _predict_tracks(self, frame_gap: int) -> None:
@@ -308,7 +335,7 @@ class WorldMapTracker(BaseTracker):
         l0_image_gray: Optional[np.ndarray] = None,
     ) -> List[DroneFlybyPredictionDto]:
         """Update tracks, correlate with new detections, and return full-frame annotations."""
-        self._estimate_ego_motion(l0_image_gray, frame_index)
+        self._estimate_ego_motion(l0_image_gray, frame_index, source_region_xyxy)
 
         frame_gap = max(1, frame_index - self.last_frame_index) if self.last_frame_index >= 0 else 1
         self.last_frame_index = frame_index
@@ -371,7 +398,11 @@ class WorldMapTracker(BaseTracker):
                 dead_tids.append(tid)
             elif track.existence < self.min_existence * 0.5:
                 dead_tids.append(tid)
-            elif track.hits < self.min_hits_to_confirm and track.age > 4:
+            elif not self._is_confirmed(track) and track.age > 4:
+                # Only *unconfirmed* tracks die of old age. A track confirmed by
+                # a single confident hit must survive while the camera looks
+                # elsewhere, otherwise every L0-only object is lost the moment
+                # the loop starts zooming.
                 dead_tids.append(tid)
             elif (track.age - track.hits) > self.out_of_view_max_age:
                 dead_tids.append(tid)
@@ -417,8 +448,11 @@ class WorldMapTracker(BaseTracker):
 
         ``unscanned_clusters`` is ordered by expected verification value: tracks
         never seen at high zoom first, then the most positionally uncertain.
+        ``track_beliefs`` carries the same tracks with the per-track evidence a
+        belief-map planner needs (existence, confidence, best zoom, spread).
         """
         candidates: List[Tuple[float, int, int]] = []
+        beliefs: List[TrackBelief] = []
         for track in self.tracks.values():
             # Only confirmed, still-existing tracks are worth spending a camera
             # move on; unconfirmed detections are often single-frame noise.
@@ -426,9 +460,20 @@ class WorldMapTracker(BaseTracker):
                 continue
             if track.existence < self.min_existence:
                 continue
+            cx, cy = _box_center(track.bbox_4k)
+            beliefs.append(
+                TrackBelief(
+                    class_name=track.class_name,
+                    center_x=cx,
+                    center_y=cy,
+                    existence=track.existence,
+                    confidence=track.confidence,
+                    best_zoom=track.best_zoom,
+                    position_std=track.position_std,
+                )
+            )
             if track.best_zoom >= 2:
                 continue
-            cx, cy = _box_center(track.bbox_4k)
             # Higher score = more valuable to inspect.
             zoom_deficit = (2 - track.best_zoom) / 2.0
             uncertainty = 1.0 - min(1.0, track.confidence)
@@ -440,6 +485,7 @@ class WorldMapTracker(BaseTracker):
             num_active_tracks=len(self.tracks),
             unscanned_clusters=[(x, y) for _, x, y in candidates],
             current_shift_estimate=self.current_shift,
+            track_beliefs=beliefs,
         )
 
 
@@ -502,7 +548,10 @@ def create_tracker(config: DroneFlybyConfig) -> BaseTracker:
             single_hit_confirm_confidence=config.SINGLE_HIT_CONFIRM_CONFIDENCE,
             confidence_decay_rate=config.CONFIDENCE_DECAY_RATE,
             out_of_view_max_age=config.OUT_OF_VIEW_MAX_AGE_FRAMES,
+            min_existence=config.MIN_EXISTENCE,
             nms_threshold=config.GLOBAL_NMS_IOU_THRESHOLD,
+            ego_motion_method=config.EGO_MOTION_METHOD,
+            ego_motion_min_response=config.EGO_MOTION_MIN_RESPONSE,
         )
     elif config.TRACKER_TYPE == "passthrough":
         return PassthroughTracker(nms_threshold=config.GLOBAL_NMS_IOU_THRESHOLD)

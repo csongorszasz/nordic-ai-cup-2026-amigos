@@ -84,6 +84,11 @@ training_artifacts/
 runs/
 *.pt
 
+# Synthetic background data (large imagery; keep sources out of git)
+data/nordic_ortho/
+
 # Validation-attempt captures (inputs, responses, server logs)
 recorded_validation_data/
 logs/
+
+data

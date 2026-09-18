@@ -30,19 +30,35 @@ class DroneFlybyConfig:
     CONFIDENCE_THRESHOLD_L2: float = 0.20
     
     # --- Tracker & Spatial Memory Settings ---
-    # Defaults are the score-honest baseline until the registered memory
-    # (P2) and active vision (P3) beat it in full-frame macro AP.
-    TRACKER_TYPE: str = "passthrough"  # "passthrough", "world_map"
+    # Defaults select the recommended architecture: a persistent world map fed
+    # by coverage-first active vision. The previous passthrough/hold pair was a
+    # score-honest baseline, but it holds the camera at Level 0 where the
+    # objects are a few pixels, so it scores zero by construction.
+    TRACKER_TYPE: str = "world_map"  # "passthrough", "world_map"
     IOU_MATCH_THRESHOLD: float = 0.30
     MIN_HITS_TO_CONFIRM: int = 2
     SINGLE_HIT_CONFIRM_CONFIDENCE: float = 0.30
     CONFIDENCE_DECAY_RATE: float = 0.98  # Slow decay for static objects
     OUT_OF_VIEW_MAX_AGE_FRAMES: int = 50
+    MIN_EXISTENCE: float = 0.20
     GLOBAL_NMS_IOU_THRESHOLD: float = 0.45
-    
+
+    # --- Ego-motion ---
+    # "phase_correlation" is cheap and proven; "ecc" is more robust on
+    # low-texture or brightness-varying views.
+    EGO_MOTION_METHOD: str = "phase_correlation"
+    EGO_MOTION_MIN_RESPONSE: float = 0.15
+
     # --- Camera Policy Settings ---
-    POLICY_TYPE: str = "hold"  # "hold", "sweep", "survey_zoom", "deterministic_l1", "active_coverage"
+    POLICY_TYPE: str = "belief_voi"  # "hold", "sweep", "survey_zoom", "deterministic_l1", "active_coverage", "belief_voi"
     SURVEY_INTERVAL_FRAMES: int = 4
+
+    # --- Belief-map Value-of-Information Planner ---
+    BELIEF_CELL_SIZE: int = 120
+    BELIEF_EXPLORE_WEIGHT: float = 1.0
+    BELIEF_VERIFY_WEIGHT: float = 1.2
+    BELIEF_TRAVEL_WEIGHT: float = 0.35
+    BELIEF_L2_MIN_INTERVAL: int = 4
     
     # --- Geometry Constants ---
     SOURCE_WIDTH: int = 3840
@@ -94,9 +110,17 @@ class DroneFlybyConfig:
             ),
             CONFIDENCE_DECAY_RATE=_get_float("DRONE_FLYBY_CONFIDENCE_DECAY_RATE", cls.CONFIDENCE_DECAY_RATE),
             OUT_OF_VIEW_MAX_AGE_FRAMES=_get_int("DRONE_FLYBY_OUT_OF_VIEW_MAX_AGE_FRAMES", cls.OUT_OF_VIEW_MAX_AGE_FRAMES),
+            MIN_EXISTENCE=_get_float("DRONE_FLYBY_MIN_EXISTENCE", cls.MIN_EXISTENCE),
             GLOBAL_NMS_IOU_THRESHOLD=_get_float("DRONE_FLYBY_GLOBAL_NMS_IOU_THRESHOLD", cls.GLOBAL_NMS_IOU_THRESHOLD),
+            EGO_MOTION_METHOD=_get_str("DRONE_FLYBY_EGO_MOTION_METHOD", cls.EGO_MOTION_METHOD),
+            EGO_MOTION_MIN_RESPONSE=_get_float("DRONE_FLYBY_EGO_MOTION_MIN_RESPONSE", cls.EGO_MOTION_MIN_RESPONSE),
             POLICY_TYPE=_get_str("DRONE_FLYBY_POLICY_TYPE", cls.POLICY_TYPE),
             SURVEY_INTERVAL_FRAMES=_get_int("DRONE_FLYBY_SURVEY_INTERVAL_FRAMES", cls.SURVEY_INTERVAL_FRAMES),
+            BELIEF_CELL_SIZE=_get_int("DRONE_FLYBY_BELIEF_CELL_SIZE", cls.BELIEF_CELL_SIZE),
+            BELIEF_EXPLORE_WEIGHT=_get_float("DRONE_FLYBY_BELIEF_EXPLORE_WEIGHT", cls.BELIEF_EXPLORE_WEIGHT),
+            BELIEF_VERIFY_WEIGHT=_get_float("DRONE_FLYBY_BELIEF_VERIFY_WEIGHT", cls.BELIEF_VERIFY_WEIGHT),
+            BELIEF_TRAVEL_WEIGHT=_get_float("DRONE_FLYBY_BELIEF_TRAVEL_WEIGHT", cls.BELIEF_TRAVEL_WEIGHT),
+            BELIEF_L2_MIN_INTERVAL=_get_int("DRONE_FLYBY_BELIEF_L2_MIN_INTERVAL", cls.BELIEF_L2_MIN_INTERVAL),
         )
 
 

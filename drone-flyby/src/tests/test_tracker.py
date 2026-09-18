@@ -1,6 +1,7 @@
 """Unit tests for the WorldMapTracker spatial memory system."""
 
 import cv2
+import numpy as np
 import pytest
 from core.interfaces import DetectionResult
 from core.tracker import (
@@ -435,4 +436,73 @@ def test_summary_lists_only_confirmed_tracks():
 
     tracker.update(weak_detection, 0, (0, 0, 3840, 2160), frame_index=1)
     assert len(tracker.get_summary().unscanned_clusters) == 1
+
+
+def test_summary_exports_track_beliefs_for_confirmed_tracks():
+    tracker = WorldMapTracker(min_hits_to_confirm=1, default_shift=(0.0, 0.0))
+    tracker.reset("belief_export")
+
+    tracker.update(
+        detections=[
+            DetectionResult(
+                class_name="jammer",
+                bbox_global=(0.5, 0.5, 0.52, 0.52),
+                confidence=0.8,
+                zoom_level=1,
+                source_pixel_bbox=(1920.0, 1080.0, 1996.8, 1123.2),
+            )
+        ],
+        zoom_level=1,
+        source_region_xyxy=(960, 540, 2880, 1620),
+        frame_index=0,
+    )
+
+    summary = tracker.get_summary()
+    assert len(summary.track_beliefs) == 1
+    belief = summary.track_beliefs[0]
+    assert belief.class_name == "jammer"
+    assert belief.center_x == pytest.approx(1958.4, abs=1.0)
+    assert belief.center_y == pytest.approx(1101.6, abs=1.0)
+    assert belief.best_zoom == 1
+    assert 0.0 <= belief.existence <= 1.0
+
+
+def test_camera_delta_corrects_measured_ego_motion():
+    """When the camera itself moved, the measured content shift understates the
+    true ego-motion; the known centre delta must be added back."""
+    base = cv2.cvtColor(load_frame(0, scene="helsinki"), cv2.COLOR_BGR2GRAY)
+    # Content moves down 20 px between frames. The camera also moves down 10 px
+    # (so the cr(ab appears to move only 10 px).
+    shifted = cv2.warpAffine(base, np.float32([[1, 0, 0], [0, 1, 20]]), (base.shape[1], base.shape[0]))
+
+    region_f0 = (960, 540, 2880, 1620)
+    region_f1 = (960, 550, 2880, 1630)  # centre moved down 10
+    gray_f0 = base[region_f0[1]:region_f0[3], region_f0[0]:region_f0[2]]
+    gray_f1 = shifted[region_f1[1]:region_f1[3], region_f1[0]:region_f1[2]]
+
+    tracker = WorldMapTracker(default_shift=(0.0, 0.0))
+    tracker.reset("ego_correction")
+
+    tracker._estimate_ego_motion(gray_f0, 0, region_f0)
+    shift = tracker._estimate_ego_motion(gray_f1, 1, region_f1)
+
+    # 0.7 * (measured 10 + camera delta 10) + 0.3 * prior 0
+    assert shift[1] == pytest.approx(14.0, abs=2.0)
+
+
+def test_ego_motion_rejects_a_level_change():
+    base = cv2.cvtColor(load_frame(0, scene="helsinki"), cv2.COLOR_BGR2GRAY)
+    region_l1 = (960, 540, 2880, 1620)
+    region_l2 = (1440, 810, 2400, 1350)
+    gray_l1 = base[region_l1[1]:region_l1[3], region_l1[0]:region_l1[2]]
+    gray_l2 = base[region_l2[1]:region_l2[3], region_l2[0]:region_l2[2]]
+
+    tracker = WorldMapTracker(default_shift=(0.0, 58.0))
+    tracker.reset("ego_scale")
+
+    tracker._estimate_ego_motion(gray_l1, 0, region_l1)
+    shift = tracker._estimate_ego_motion(gray_l2, 1, region_l2)
+
+    # The prior is untouched because the field of view changed.
+    assert shift == (0.0, 58.0)
 

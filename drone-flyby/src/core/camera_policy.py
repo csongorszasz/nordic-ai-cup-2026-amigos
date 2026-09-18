@@ -5,6 +5,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Deque, Dict, List, Optional, Set, Tuple
 from config import DroneFlybyConfig
+from core.belief import BeliefField
 from core.interfaces import BaseCameraPolicy, TrackerSummary
 from dtos import (
     IMAGE_HEIGHT,
@@ -59,9 +60,16 @@ class CameraConstraintGuard:
             logger.warning("No bounds defined for requested level %d", target_level)
             return None
 
+        def clamp_into_bounds(point: Tuple[float, float]) -> Tuple[int, int]:
+            return (
+                int(min(max(point[0], bounds.minimum_center_x), bounds.maximum_center_x)),
+                int(min(max(point[1], bounds.minimum_center_y), bounds.maximum_center_y)),
+            )
+
         # Clamp into bounds and enforce strict Python integer
-        clamped_x = int(min(max(requested_view.center_x, bounds.minimum_center_x), bounds.maximum_center_x))
-        clamped_y = int(min(max(requested_view.center_y, bounds.minimum_center_y), bounds.maximum_center_y))
+        clamped_x, clamped_y = clamp_into_bounds(
+            (requested_view.center_x, requested_view.center_y)
+        )
 
         # 3. Validate delta constraint. Only a level-0 full-frame reset is
         #    exempt; the old check also skipped it whenever
@@ -72,17 +80,45 @@ class CameraConstraintGuard:
             max_delta = constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
                 current.resolution_level, 551.0
             )
-            dx = clamped_x - current.center_x
-            dy = clamped_y - current.center_y
-            dist = (dx**2 + dy**2) ** 0.5
-            if dist > max_delta:
-                # Scale back to max allowable distance
-                scale = (max_delta * 0.98) / dist
-                clamped_x = int(current.center_x + dx * scale)
-                clamped_y = int(current.center_y + dy * scale)
-                # Re-clamp
-                clamped_x = int(min(max(clamped_x, bounds.minimum_center_x), bounds.maximum_center_x))
-                clamped_y = int(min(max(clamped_y, bounds.minimum_center_y), bounds.maximum_center_y))
+            current_center = (float(current.center_x), float(current.center_y))
+
+            def distance(point: Tuple[float, float]) -> float:
+                return (
+                    (point[0] - current_center[0]) ** 2
+                    + (point[1] - current_center[1]) ** 2
+                ) ** 0.5
+
+            if distance((clamped_x, clamped_y)) > max_delta:
+                # Scale the move back toward the current centre, then re-clamp.
+                # Re-clamping can push the point back outside the delta disk
+                # when the current centre lies outside the target level's
+                # bounds (a common L2 -> L1 step near the frame edge), so fall
+                # back to the nearest point inside the bounds, which is always
+                # within the limit for legal level transitions.
+                dx = clamped_x - current_center[0]
+                dy = clamped_y - current_center[1]
+                dist = (dx * dx + dy * dy) ** 0.5
+                if dist > 0:
+                    scale = (max_delta * 0.98) / dist
+                    scaled = clamp_into_bounds(
+                        (current_center[0] + dx * scale, current_center[1] + dy * scale)
+                    )
+                else:
+                    scaled = (clamped_x, clamped_y)
+
+                if distance(scaled) <= max_delta:
+                    clamped_x, clamped_y = scaled
+                else:
+                    entry = clamp_into_bounds(current_center)
+                    if distance(entry) > max_delta:
+                        # No legal move toward this level exists from here.
+                        logger.warning(
+                            "No legal %d move from %s; holding",
+                            target_level,
+                            current_center,
+                        )
+                        return None
+                    clamped_x, clamped_y = entry
 
         return RequestedViewDto(
             resolution_level=int(target_level),
@@ -429,6 +465,212 @@ class ActiveCoveragePolicy(BaseCameraPolicy):
         return self._build(request, 1, target)
 
 
+@dataclass
+class _BeliefPolicyState:
+    """Sequence-local state for the belief-map value-of-information policy."""
+
+    field: BeliefField
+    last_l2_frame: int = -1000
+
+
+class BeliefVoIPolicy(BaseCameraPolicy):
+    """Belief-map camera planner that maximises expected information gain.
+
+    Level 1 is the search workhorse. Unobserved L1 cells always compete as
+    exploration candidates, so the camera can never freeze on a frame with no
+    detections; confirmed tracks with unresolved class or position compete as
+    verification candidates. Level 2 is spent only on a verification candidate
+    that lies inside the current L1 view, is due by the rate limit, and is
+    worth more than the best available L1 move.
+    """
+
+    def __init__(
+        self,
+        cell_size: int = 120,
+        explore_weight: float = 1.0,
+        verify_weight: float = 1.2,
+        travel_weight: float = 0.35,
+        l2_min_interval: int = 4,
+        min_track_existence: float = 0.20,
+        zoom_bias: float = 1.0,
+    ):
+        self.cell_size = cell_size
+        self.explore_weight = explore_weight
+        self.verify_weight = verify_weight
+        self.travel_weight = travel_weight
+        self.l2_min_interval = max(1, int(l2_min_interval))
+        self.min_track_existence = min_track_existence
+        self.zoom_bias = zoom_bias
+        self._states: Dict[str, _BeliefPolicyState] = {}
+
+    # -- state ---------------------------------------------------------- #
+
+    def _make_field(self) -> BeliefField:
+        return BeliefField(
+            cell_size=self.cell_size,
+            explore_weight=self.explore_weight,
+            verify_weight=self.verify_weight,
+            travel_weight=self.travel_weight,
+            min_track_existence=self.min_track_existence,
+        )
+
+    def reset(self, sequence_id: str) -> None:
+        self._states[sequence_id] = _BeliefPolicyState(field=self._make_field())
+        logger.info("BeliefVoIPolicy reset for sequence '%s'", sequence_id)
+
+    def _state_for(self, sequence_id: str) -> _BeliefPolicyState:
+        return self._states.setdefault(
+            sequence_id, _BeliefPolicyState(field=self._make_field())
+        )
+
+    def coverage_fraction(self, sequence_id: str, level: int) -> float:
+        """Exposed for tests and offline analysis."""
+        state = self._states.get(sequence_id)
+        return 0.0 if state is None else state.field.coverage_fraction(level)
+
+    # -- planning helpers ---------------------------------------------- #
+
+    @staticmethod
+    def _bounds(
+        request: DroneFlybyPredictRequestDto, level: int
+    ) -> Optional[Tuple[int, int, int, int]]:
+        bounds = request.camera_constraints.bounds_for_level(level)
+        if bounds is None:
+            return None
+        return (
+            bounds.minimum_center_x,
+            bounds.maximum_center_x,
+            bounds.minimum_center_y,
+            bounds.maximum_center_y,
+        )
+
+    @staticmethod
+    def _inside_view(
+        current_level: int,
+        current_center: Tuple[int, int],
+        target_center: Tuple[int, int],
+    ) -> bool:
+        width, height = SOURCE_REGION_SIZES[current_level]
+        half_width, half_height = width // 2, height // 2
+        return (
+            current_center[0] - half_width
+            <= target_center[0]
+            <= current_center[0] + half_width
+            and current_center[1] - half_height
+            <= target_center[1]
+            <= current_center[1] + half_height
+        )
+
+    def _build(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        level: int,
+        center: Tuple[int, int],
+    ) -> Optional[RequestedViewDto]:
+        raw_view = RequestedViewDto(
+            resolution_level=int(level),
+            center_x=int(center[0]),
+            center_y=int(center[1]),
+        )
+        return CameraConstraintGuard.clamp_and_validate(request, raw_view)
+
+    # -- decision ------------------------------------------------------- #
+
+    def decide_next_view(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        tracker_summary: TrackerSummary,
+    ) -> Optional[RequestedViewDto]:
+        state = self._state_for(request.sequence_id)
+        belief_field = state.field
+        current = request.view
+        constraints = request.camera_constraints
+        current_level = int(current.resolution_level)
+        current_center = (int(current.center_x), int(current.center_y))
+        tracks = list(tracker_summary.track_beliefs)
+        max_delta = constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
+            current_level, 551.0
+        )
+
+        # The current view is now knowledge, whatever we decide next.
+        belief_field.mark_observed(
+            current.source_region_xyxy, current_level, request.frame_index
+        )
+
+        # Level 2 cannot stay: the next move is always the step down to L1.
+        if current_level == 2:
+            return self._plan_l1_move(
+                request, belief_field, tracks, current_center, max_delta
+            )
+
+        # From the full view, enter L1 toward the best candidate.
+        if current_level == 0:
+            l1_bounds = self._bounds(request, 1)
+            if l1_bounds is None:
+                return None
+            candidate = belief_field.best_candidate(
+                1, current_center, tracks, max_delta, l1_bounds
+            )
+            if candidate is None:
+                return None
+            return self._build(request, 1, (candidate.center_x, candidate.center_y))
+
+        # At L1, consider spending a frame on an in-view verification target.
+        if (
+            2 in constraints.allowed_resolution_levels
+            and (request.frame_index - state.last_l2_frame) >= self.l2_min_interval
+        ):
+            in_view_tracks = [
+                track
+                for track in tracks
+                if self._inside_view(
+                    current_level,
+                    current_center,
+                    (int(round(track.center_x)), int(round(track.center_y))),
+                )
+            ]
+            l2_bounds = self._bounds(request, 2)
+            verify = belief_field.best_candidate(
+                2,
+                current_center,
+                in_view_tracks,
+                max_delta,
+                l2_bounds,
+                include_exploration=False,
+            )
+            if verify is not None:
+                l1_bounds = self._bounds(request, 1)
+                l1_move = belief_field.best_candidate(
+                    1, current_center, tracks, max_delta, l1_bounds
+                )
+                l1_value = l1_move.value if l1_move is not None else 0.0
+                if verify.value >= self.zoom_bias * l1_value:
+                    state.last_l2_frame = request.frame_index
+                    return self._build(request, 2, (verify.center_x, verify.center_y))
+
+        return self._plan_l1_move(
+            request, belief_field, tracks, current_center, max_delta
+        )
+
+    def _plan_l1_move(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        belief_field: BeliefField,
+        tracks: List,
+        current_center: Tuple[int, int],
+        max_delta: float,
+    ) -> Optional[RequestedViewDto]:
+        l1_bounds = self._bounds(request, 1)
+        if l1_bounds is None:
+            return None
+        candidate = belief_field.best_candidate(
+            1, current_center, tracks, max_delta, l1_bounds
+        )
+        if candidate is None:
+            return None
+        return self._build(request, 1, (candidate.center_x, candidate.center_y))
+
+
 def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
     """Factory function for camera policies."""
     if config.POLICY_TYPE == "hold":
@@ -440,6 +682,15 @@ def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
     elif config.POLICY_TYPE == "deterministic_l1":
         # Coverage-only baseline: legal overlapping L1 sweep, never zooms.
         return ActiveCoveragePolicy(l2_interval_frames=1, allow_l2=False)
+    elif config.POLICY_TYPE == "belief_voi":
+        return BeliefVoIPolicy(
+            cell_size=config.BELIEF_CELL_SIZE,
+            explore_weight=config.BELIEF_EXPLORE_WEIGHT,
+            verify_weight=config.BELIEF_VERIFY_WEIGHT,
+            travel_weight=config.BELIEF_TRAVEL_WEIGHT,
+            l2_min_interval=config.BELIEF_L2_MIN_INTERVAL,
+            min_track_existence=config.MIN_EXISTENCE,
+        )
     elif config.POLICY_TYPE in ("active_coverage", "belief_map"):
         return ActiveCoveragePolicy(l2_interval_frames=max(1, config.SURVEY_INTERVAL_FRAMES))
     else:

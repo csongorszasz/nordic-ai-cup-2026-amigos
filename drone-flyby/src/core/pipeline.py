@@ -107,19 +107,18 @@ class PipelineOrchestrator:
                     return self._predict_only_response(request)
                 t_det_ms = (time.perf_counter() - t_det_start) * 1000
 
-                # 5. Spatial Memory & Tracking stage
+                # 5. Spatial Memory & Tracking stage. The grayscale view feeds
+                #    ego-motion estimation; with the belief-map policy the camera
+                #    is rarely at L0, so it must be supplied at every level. The
+                #    tracker rejects comparisons across level changes.
                 t_trk_start = time.perf_counter()
-                l0_gray = (
-                    cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-                    if request.view.resolution_level == 0
-                    else None
-                )
+                view_gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
                 annotations = self.tracker.update(
                     detections=raw_detections,
                     zoom_level=request.view.resolution_level,
                     source_region_xyxy=request.view.source_region_xyxy,
                     frame_index=request.frame_index,
-                    l0_image_gray=l0_gray,
+                    l0_image_gray=view_gray,
                 )
                 t_trk_ms = (time.perf_counter() - t_trk_start) * 1000
 

@@ -1,7 +1,7 @@
 """Abstract base classes and shared data contracts for drone-flyby subsystems."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 import numpy as np
 
@@ -26,11 +26,35 @@ class DetectionResult:
 
 
 @dataclass(slots=True)
+class TrackBelief:
+    """One track's belief state, exported for information-gain camera planning.
+
+    Only the fields a planner needs are exposed: where the object is believed
+    to be, how sure we are it exists, how sure we are of its class, and how
+    deeply it has been observed. Keeping the planner decoupled from the full
+    ``TrackedObject`` lets the camera policy stay independent of tracker
+    internals.
+    """
+    class_name: str
+    center_x: float
+    center_y: float
+    existence: float
+    confidence: float
+    best_zoom: int
+    position_std: float
+
+
+@dataclass(slots=True)
 class TrackerSummary:
     """High-level spatial memory summary supplied to camera policy decisions."""
     num_active_tracks: int
     unscanned_clusters: List[Tuple[int, int]]  # Candidate target centers (cx, cy)
     current_shift_estimate: Tuple[float, float]  # (dx, dy) ego-motion shift per frame
+    # Richer per-track beliefs, when the tracker can provide them. Policies that
+    # only need cluster centres may ignore this; belief-map planners use it to
+    # compute value of information. Defaults to empty so simple trackers stay
+    # source-compatible.
+    track_beliefs: List[TrackBelief] = field(default_factory=list)
 
 
 class BaseDetector(ABC):
