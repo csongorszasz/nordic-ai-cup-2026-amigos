@@ -9,6 +9,7 @@
 #   bash idun/submit.sh dev [args]  # fast test gate + in-process dev_eval on GPU
 #   bash idun/submit.sh test        # slow (model-backed) test suite on GPU
 #   bash idun/submit.sh train [args]# train the ModernBERT answerer (grouped OOF)
+#   bash idun/submit.sh llm [args]  # LLM ceiling probe (L0/L1/L2)
 #   bash idun/submit.sh eval        # submit an end-to-end HTTP scoring job
 #   bash idun/submit.sh queue       # show your SLURM jobs
 #   bash idun/submit.sh logs [id]   # tail a job log
@@ -128,6 +129,16 @@ case "$ACTION" in
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  tail -f ${REMOTE_DIR}/logs/med_train_mb_${JOB_ID}.out"
+        ;;
+
+    llm)
+        check_ssh; sync_code
+        shift || true
+        ARGS="$*"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_llm_probe.slurm ${ARGS}")
+        echo "$JOB_SUBMIT"
+        JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
+        echo "  tail -f ${REMOTE_DIR}/logs/med_llm_probe_${JOB_ID}.out"
         ;;
 
     queue)

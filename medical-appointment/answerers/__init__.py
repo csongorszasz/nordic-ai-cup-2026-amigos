@@ -15,7 +15,7 @@ from typing import Optional
 from .base import Answer, Answerer, Span
 
 DEFAULT = "legacy"
-_KNOWN = ("legacy", "modernbert")
+_KNOWN = ("legacy", "modernbert", "llm")
 
 __all__ = ["Answer", "Answerer", "Span", "get_answerer", "DEFAULT"]
 
@@ -31,6 +31,11 @@ def get_answerer(name: Optional[str] = None) -> Answerer:
 
     if selected == "modernbert":
         from .modernbert import build_answerer
+
+        return build_answerer()
+
+    if selected == "llm":
+        from .llm import build_answerer
 
         return build_answerer()
 
