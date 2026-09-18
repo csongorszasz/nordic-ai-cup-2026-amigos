@@ -28,6 +28,7 @@ conda activate nordic
 
 export PYTHONUNBUFFERED=1
 export HF_HUB_OFFLINE=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true

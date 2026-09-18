@@ -14,6 +14,7 @@ Writes ``results/llm_<tag>_<rung>.json`` (summary) and
 
 import argparse
 import json
+import logging
 import sys
 import time
 from collections import defaultdict
@@ -45,6 +46,17 @@ from local_evaluator import UNANSWERED, Statistics  # noqa: E402
 from utils import gold_evidence  # noqa: E402
 
 RUNGS = ("L0", "L1", "L2", "RAG")
+
+logger = logging.getLogger(__name__)
+
+
+def _generate(client, messages) -> str:
+    """Generation that never aborts the run (an OOM must not cost every question)."""
+    try:
+        return client.generate(messages)
+    except Exception:
+        logger.exception("generation failed")
+        return ""
 
 
 def load_transcript(transcript_id: str) -> Dict:
@@ -83,19 +95,15 @@ def _decide_and_cite(
 
     started = time.perf_counter()
     if rung == "L0":
-        raw = client.generate(build_l0_messages(transcript, questions))
+        raw = _generate(client, build_l0_messages(transcript, questions))
         parsed = parse_answers(raw, ids)
         entries = {qid: parsed.get(qid) for qid in ids}
     elif rung == "L1":
-        raw = client.generate(
-            build_l1_messages(transcript, questions, few_shot)
-        )
+        raw = _generate(client, build_l1_messages(transcript, questions, few_shot))
         parsed = parse_answers(raw, ids)
         entries = {qid: parsed.get(qid) for qid in ids}
     else:  # L2 two-pass
-        decide_raw = client.generate(
-            build_l2_decide_messages(transcript, questions, few_shot)
-        )
+        decide_raw = _generate(client, build_l2_decide_messages(transcript, questions, few_shot))
         decisions = parse_decisions(decide_raw, ids)
         yes = [
             (qid, question)
@@ -104,9 +112,7 @@ def _decide_and_cite(
         ]
         cites: Dict[str, Optional[dict]] = {}
         if yes:
-            cite_raw = client.generate(
-                build_l2_cite_messages(transcript, yes)
-            )
+            cite_raw = _generate(client, build_l2_cite_messages(transcript, yes))
             cites = parse_answers(cite_raw, [qid for qid, _ in yes])
         entries = {}
         for qid in ids:
@@ -243,9 +249,7 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
         candidates_by_index.append([p for p, _ in ranked])
 
     started = time.perf_counter()
-    raw = client.generate(
-        build_rag_messages(questions, candidates_by_index, few_shot)
-    )
+    raw = _generate(client, build_rag_messages(questions, candidates_by_index, few_shot))
     elapsed = time.perf_counter() - started
     parsed = parse_answers(raw, ids)
 
@@ -437,6 +441,7 @@ def main() -> int:
     parser.add_argument("--context", type=int, default=1,
                         help="Sentence window half-width for --index sentences.")
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO)
 
     client = HFClient(model_name=args.model, max_new_tokens=args.max_new_tokens)
     client.warm_up()

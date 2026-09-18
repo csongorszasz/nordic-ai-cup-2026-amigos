@@ -59,9 +59,16 @@ class HFClient:
         logger.info("Loading LLM %s", self.model_name)
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         torch_dtype = getattr(torch, self.dtype, torch.float16)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype=torch_dtype
-        )
+        # transformers >=5 renamed `torch_dtype` to `dtype`; passing the old name
+        # is silently ignored, which loads fp32 and OOMs a 7B on a 32 GB card.
+        try:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.model_name, dtype=torch_dtype
+            )
+        except TypeError:
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.model_name, torch_dtype=torch_dtype
+            )
         if DEVICE in ("cuda", "cpu"):
             self._device = DEVICE
         else:
