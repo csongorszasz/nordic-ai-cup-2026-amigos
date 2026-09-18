@@ -86,7 +86,8 @@ Priority: **1 + 2 + 3** (safe, no retrain) → **4 + 7** → 5/8/9.
 | Qwen2.5-7B L0 | 0.588 | 0.962 | 0.339 | 0.776 |
 | Qwen2.5-7B L1 | 0.665 | 0.982 | 0.454 | 0.954 |
 | Qwen2.5-7B L2 | 0.611 | 0.985 | 0.362 | 0.855 |
-| **Gemma 4 E4B L1** | **0.729** | **0.990** | **0.555** | **1.000** |
+| Gemma 4 E4B L1 | 0.729 | 0.990 | 0.555 | 1.000 |
+| **Gemma 4 26B-A4B L1** | **0.755** | **0.997** | **0.594** | **1.000** |
 
 Few-shot is decisive; the decision is near-perfect (Gemma: positive 191/195,
 hard_negative 142/142, off_topic 53/53). Gemma 4 E4B (small, modern,

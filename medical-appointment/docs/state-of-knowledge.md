@@ -91,6 +91,7 @@ localization ≈ 0.33.
 | hybrid Qwen-decision + ModernBERT-span, in-sample (T037) | 0.705 |
 | LLM L1 Gemma 4 E4B, in-sample (T038, not served) | 0.729 |
 | **Gemma 4 E4B L1 served, validation (T039)** | **0.744** |
+| LLM L1 Gemma 4 26B-A4B, in-sample (T040, not served) | 0.755 |
 
 `dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
 validation T027 (0.545), ModernBERT OOF 0.610 matched validation T034 0.606,
