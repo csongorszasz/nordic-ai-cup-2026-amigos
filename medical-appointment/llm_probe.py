@@ -37,6 +37,7 @@ from answerers.llm_prompt import (  # noqa: E402
     build_l2_cite_messages,
     build_l2_decide_messages,
     build_rag_messages,
+    candidate_ids,
     qid_for,
     render_rag_example,
 )
@@ -188,7 +189,18 @@ def _rag_few_shot(
             cache[tid] = (words, built, retriever.encode([p.text for p in built]))
         return cache[tid]
 
-    def pick(question_type, require_refute=False):
+    def _cited_id(row):
+        words, built, embeddings = index_for(row["transcript_id"])
+        candidates = [
+            p for p, _ in rag_module.retrieve(
+                row["question"], built, retriever,
+                passage_embeddings=embeddings, top_k=example_k,
+            )
+        ]
+        span = (float(row["evidence_start"]), float(row["evidence_end"]))
+        return _candidate_id_for(candidates, words, span)
+
+    def pick(question_type, require_refute=False, prefer_nonfirst=False):
         for tid in sorted(rows_by_tid):
             if tid in used:
                 continue
@@ -198,6 +210,8 @@ def _rag_few_shot(
                 if require_refute and evidence.get(
                     row["question_id"], {}
                 ).get("bucket") != "refute":
+                    continue
+                if prefer_nonfirst and _cited_id(row) in (None, "c01"):
                     continue
                 return row
         return None
@@ -231,8 +245,10 @@ def _rag_few_shot(
             )
 
     # Keep the few-shot compact: one supported and one no example is enough to
-    # pin the citation schema without bloating the prompt.
-    add(pick("positive"), "positive")
+    # pin the citation schema without bloating the prompt. Prefer a positive
+    # whose gold candidate is not c01 so the model does not learn "always c01".
+    positive = pick("positive", prefer_nonfirst=True) or pick("positive")
+    add(positive, "positive")
     add(pick("hard_negative", require_refute=True), "hard_negative")
     return examples
 
@@ -251,6 +267,7 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
         )
         candidates_by_index.append([p for p, _ in ranked])
 
+    id_map = candidate_ids(candidates_by_index)
     started = time.perf_counter()
     raw = _generate(client, build_rag_messages(questions, candidates_by_index, few_shot))
     elapsed = time.perf_counter() - started
@@ -281,10 +298,11 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
         elif entry["answer"]:
             quote = entry.get("quote")
             cand_id = entry.get("candidate")
-            digits = "".join(ch for ch in str(cand_id or "") if ch.isdigit())
-            cidx = int(digits) - 1 if digits else None
+            loc = id_map.get(str(cand_id)) if cand_id else None
+            # The cited candidate must belong to this question.
             passage = (
-                cands[cidx] if cidx is not None and 0 <= cidx < len(cands) else None
+                candidates_by_index[loc[0]][loc[1]]
+                if loc is not None and loc[0] == i else None
             )
             span = align_span(words, quote or "")
             grounded = bool(passage and quote and _norm(quote) in _norm(passage.text))

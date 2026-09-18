@@ -175,15 +175,31 @@ RAG_SCHEMA_HINT = (
 )
 
 
+def candidate_ids(candidates_by_index) -> Dict[str, Tuple[int, int]]:
+    """Globally unique candidate ids across all questions -> (q_index, c_index).
+
+    Ids must not repeat per question, or the model cannot name which candidate
+    it means and collapses to the first one.
+    """
+    mapping: Dict[str, Tuple[int, int]] = {}
+    counter = 1
+    for q_index, candidates in enumerate(candidates_by_index):
+        for c_index in range(len(candidates)):
+            mapping[f"c{counter:02d}"] = (q_index, c_index)
+            counter += 1
+    return mapping
+
+
 def rag_candidates_block(questions: Sequence[str], candidates_by_index) -> str:
     lines: List[str] = []
+    counter = 1
     for index, question in enumerate(questions):
         lines.append(f"{qid_for(index)}: {question}")
-        for c_index, passage in enumerate(candidates_by_index[index]):
-            cid = f"c{c_index + 1:02d}"
+        for passage in candidates_by_index[index]:
             lines.append(
-                f"  {cid} [{passage.start:.2f}-{passage.end:.2f}] {passage.text}"
+                f"  c{counter:02d} [{passage.start:.2f}-{passage.end:.2f}] {passage.text}"
             )
+            counter += 1
     return "\n".join(lines)
 
 
@@ -194,7 +210,9 @@ def build_rag_messages(
     last = qid_for(len(questions) - 1) if questions else "q00"
     user = (
         f"Answer EVERY question below ({qid_for(0)}..{last}); output exactly one "
-        "JSON entry per question, in order, even when the answer is no.\n\n"
+        "JSON entry per question, in order, even when the answer is no. Each "
+        "candidate has a unique id (c01, c02, ...) and the candidate you cite "
+        "must be listed under that same question.\n\n"
         "CANDIDATES\n"
         f"{rag_candidates_block(questions, candidates_by_index)}\n\n"
         f"{RAG_SCHEMA_HINT}"

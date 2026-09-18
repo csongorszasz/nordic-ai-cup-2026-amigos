@@ -89,7 +89,11 @@ def test_build_few_shot_balanced_and_loco_safe():
     assert len(fewer) == 2
 
 
-from answerers.llm_prompt import build_rag_messages, rag_candidates_block
+from answerers.llm_prompt import (
+    build_rag_messages,
+    candidate_ids,
+    rag_candidates_block,
+)
 
 
 class _Passage:
@@ -106,9 +110,12 @@ def test_rag_candidates_block_and_messages():
     block = rag_candidates_block(questions, candidates)
     assert "q01: Was the dose 100 mg?" in block
     assert "c01 [100.00-105.00] the dose is 100 mg" in block
+    # Ids are globally unique, not reset per question.
+    assert "c02 [20.00-23.00] no side effects" in block
+    assert candidate_ids(candidates) == {"c01": (0, 0), "c02": (1, 0)}
 
     messages = build_rag_messages(questions, candidates)
     user = messages[-1]["content"]
-    assert "c01 [20.00-23.00] no side effects" in user
+    assert "c02 [20.00-23.00] no side effects" in user
     assert '"candidate":"c01"' in user
     assert messages[0]["role"] == "system"
