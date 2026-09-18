@@ -1,0 +1,95 @@
+{
+ "boxer": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 8.1,
+  "mean_colour_error": 23.2,
+  "mean_iou": 0.9,
+  "mesh": "models/jammer/boxer/scene.gltf",
+  "offsets": [
+   101.5,
+   122.2,
+   87.1
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 24.0,
+    "file": "jammer/f011_0.png",
+    "iou": 0.908,
+    "lean": 135,
+    "structure": 0.054,
+    "tilt": 24,
+    "yaw": 245
+   },
+   {
+    "colour_error": 24.4,
+    "file": "jammer/f010_0.png",
+    "iou": 0.912,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 245
+   },
+   {
+    "colour_error": 23.9,
+    "file": "jammer/f009_0.png",
+    "iou": 0.906,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 245
+   },
+   {
+    "colour_error": 22.9,
+    "file": "jammer/f008_0.png",
+    "iou": 0.894,
+    "lean": 135,
+    "structure": 0.016,
+    "tilt": 24,
+    "yaw": 245
+   },
+   {
+    "colour_error": 22.6,
+    "file": "jammer/f007_0.png",
+    "iou": 0.897,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 250
+   },
+   {
+    "colour_error": 23.6,
+    "file": "jammer/f006_0.png",
+    "iou": 0.901,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 250
+   },
+   {
+    "colour_error": 22.1,
+    "file": "jammer/f005_0.png",
+    "iou": 0.896,
+    "lean": 135,
+    "structure": 0.042,
+    "tilt": 24,
+    "yaw": 245
+   },
+   {
+    "colour_error": 22.2,
+    "file": "jammer/f004_0.png",
+    "iou": 0.885,
+    "lean": 135,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 245
+   }
+  ],
+  "tilt": 24.0,
+  "up": "auto"
+ }
+}
