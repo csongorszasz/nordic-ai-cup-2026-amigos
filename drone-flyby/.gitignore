@@ -98,4 +98,5 @@ models/**/*.obj
 models/**/*.fbx
 models/**/*.blend
 models/**/*.bin
+models/**/*.mtl
 models/**/textures/

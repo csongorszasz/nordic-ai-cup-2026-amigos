@@ -56,6 +56,7 @@ METRES_PER_PIXEL = 0.21
 MESH_SUFFIXES = {'.glb', '.gltf', '.obj'}
 RENDER_SIZE = 320     # render resolution; downscaled to the sprite's size afterwards
 VIEW_HALF = 0.75      # orthographic half-width, in units of the mesh's longest horizontal side
+MAX_TILT = 40         # degrees; tall models get a wider view so a tilted render is not clipped
 SHEET_CELL = 200
 
 
@@ -257,7 +258,9 @@ class Renderer:
         # as they are. For textures baked from real imagery, which already carry its light.
         self.scene = build_scene(meshes, ambient=1.0 if flat else 0.45)
         self.nodes = list(self.scene.mesh_nodes)
-        camera = pyrender.OrthographicCamera(xmag=VIEW_HALF, ymag=VIEW_HALF, znear=ZNEAR, zfar=ZFAR)
+        # The footprint's corners reach 0.71 at any yaw; tilted, the top shifts by height * sin(tilt).
+        self.view_half = max(VIEW_HALF, 0.72 + height * np.sin(np.radians(MAX_TILT)))
+        camera = pyrender.OrthographicCamera(xmag=self.view_half, ymag=self.view_half, znear=ZNEAR, zfar=ZFAR)
         self.camera = self.scene.add(camera, pose=np.eye(4))
         if not flat:
             sun = pyrender.DirectionalLight(color=np.ones(3), intensity=3.5)
@@ -288,8 +291,8 @@ class Renderer:
 
     def unproject(self, px, py, depth, yaw, tilt, lean):
         """Model-frame points (N x 3) under render pixels (px, py) with orthographic depth."""
-        x = ((px + 0.5) / RENDER_SIZE * 2 - 1) * VIEW_HALF
-        y = (1 - (py + 0.5) / RENDER_SIZE * 2) * VIEW_HALF
+        x = ((px + 0.5) / RENDER_SIZE * 2 - 1) * self.view_half
+        y = (1 - (py + 0.5) / RENDER_SIZE * 2) * self.view_half
         camera_points = np.stack([x, y, -depth, np.ones_like(x)])
         world = self.camera_pose(tilt, lean) @ camera_points
         return (rotation_z(-yaw) @ world)[:3].T
@@ -340,7 +343,7 @@ def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,)):
     """Scale and centre a render onto the sprite's canvas; the scale with the best IoU wins.
 
     Scales are relative to the one that makes the silhouette areas equal. Returns a dict
-    with the placed RGBA, IoU, pixels per mesh unit and the transform (for place()), or None.
+    with the placed RGBA, IoU and the transform (for place()), or None.
     """
     sprite_mask = sprite[:, :, 3] > 128
     render_mask = render[:, :, 3] > 0
@@ -363,8 +366,7 @@ def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,)):
         union = (placed_mask | sprite_mask).sum()
         iou = float((placed_mask & sprite_mask).sum() / union) if union else 0.0
         if best is None or iou > best['iou']:
-            best = {'placed': placed, 'iou': iou, 'transform': transform,
-                    'pixels_per_unit': RENDER_SIZE / (2 * VIEW_HALF) * scale}
+            best = {'placed': placed, 'iou': iou, 'transform': transform}
     return best
 
 
@@ -413,7 +415,8 @@ def fit_sprite(renderer: Renderer, sprite: np.ndarray, yaws, tilts=TILTS, leans=
         fitted['structure'] = structure(fitted['placed'], sprite)
         score = fitted['iou'] + STRUCTURE_WEIGHT * fitted['structure']
         if best is None or score > best['score']:
-            best = {**fitted, 'score': score, 'yaw': yaw, 'tilt': tilt, 'lean': lean}
+            best = {**fitted, 'score': score, 'yaw': yaw, 'tilt': tilt, 'lean': lean,
+                    'pixels_per_unit': RENDER_SIZE / (2 * renderer.view_half) * fitted['transform'][4]}
     return best
 
 
