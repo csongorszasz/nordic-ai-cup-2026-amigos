@@ -49,6 +49,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T037 | 2026-09-18 | hybrid sim: LLM decision + MB span | Qwen+MB | 0.982 | 0.521 | **0.705** | offline join of T036/T033 |
 | T038 | 2026-09-18 | **LLM L1 with Gemma 4 E4B** (39 convs, in-sample) | Gemma4-E4B | 0.990 | 0.555 | **0.729** | quote_found 1.000, 0 parse fails |
 | T039 | 2026-09-18 | **validation: served Gemma 4 E4B L1** | Gemma4-E4B | — | — | **0.744** | 19 convs, 14–19 s, IDUN + cloudflared |
+| T040 | 2026-09-18 | LLM L1 Gemma 4 26B-A4B (39 convs, in-sample) | Gemma4-26B | 0.997 | 0.594 | **0.755** | 1 decision miss; 22 worst unchanged |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -419,3 +420,22 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
   serving env / the 0.744 endpoint.
 - **Script:** `llm_audio_probe.py` (decodes MP3 via
   `faster_whisper.audio.decode_audio`, feeds `<|audio|>` + `input_features`).
+
+## T040 — LLM L1 with Gemma 4 26B-A4B (0.755 in-sample)
+
+- **Model:** `google/gemma-4-26b-a4b-it` (26B MoE, 3.8B active; fp16 51.6 GB;
+  H100/H200 80 GB node, `idun-06-04`), same L1 prompt/harness as T038.
+- **Result (39 conversations, in-sample):** score **0.755**, acc **0.997**,
+  mIoU **0.594**, positive recall 0.995, quote found 1.000, 0 parse fails,
+  latency mean 16.6 s / worst 19.2 s.
+- By type: positive 194/195, hard_negative 142/142, off_topic 53/53 (only **1**
+  decision miss vs E4B's 4).
+- **Scaling gains vs E4B (T038):** mIoU 0.555 → 0.594, `>=0.8` spans 55 → 63,
+  23 questions moved from tIoU<0.5 to >=0.5. **But the 22 worst cases
+  (tIoU<0.1) are identical** — a structural floor (ambiguous occurrence +
+  degenerate gold), not capacity.
+- **Interpretation:** model scale buys decisions and middle-quality spans, with
+  diminishing returns; the remaining loss needs occurrence supervision, not
+  more parameters.
+- **Serving:** 26B fp16 holds an 80 GB node; E4B (validated 0.744, 14–19 s)
+  stays the default unless 26B is chosen for the evaluation.
