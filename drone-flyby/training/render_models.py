@@ -666,7 +666,6 @@ def main():
         renderer.close()
         if texture is not None:
             BAKED.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(BAKED / f'{args.class_name}_{name}.png'), cv2.cvtColor(texture, cv2.COLOR_RGB2BGR))
             export_painted(meshes, texture, BAKED / f'{args.class_name}_{name}.glb')
             painted = Renderer(textured_meshes(meshes, texture), height, flat=True)
             for (_, sprite, _), best in zip(sprites, per_sprite):
