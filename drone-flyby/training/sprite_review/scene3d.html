@@ -50,8 +50,8 @@
   <div class="row"><button id="boxes">Boxes: on</button><button id="tags">Labels: on</button></div>
   <div id="list"></div>
   <div class="help">
-    Drag to look. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly, <kbd>E</kbd>/<kbd>Q</kbd> up/down,
-    <kbd>Shift</kbd> faster, scroll changes speed. <kbd>V</kbd> drone view, <kbd>B</kbd> boxes,
+    Drag to look. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly, <kbd>Space</kbd>/<kbd>Shift</kbd>
+    up/down, scroll changes speed (shown top left). <kbd>V</kbd> drone view, <kbd>B</kbd> boxes,
     <kbd>L</kbd> labels. Click an object in the list to fly to it.<br>
     The 2D synthetic frame this scene was built from:
   </div>
@@ -71,8 +71,12 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 
 const $ = id => document.getElementById(id);
 const view = $('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+// On a software renderer (the laptop's GPU is flaky, so Chrome may run on SwiftShader) draw at
+// half resolution: the CPU cost is per pixel.
+const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
+const software = /swiftshader|llvmpipe|software/i.test(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '');
+renderer.setPixelRatio(software ? 0.5 : 1);
 view.appendChild(renderer.domElement);
 const labels = new CSS2DRenderer({ element: $('labels') });
 const scene = new THREE.Scene();
@@ -84,6 +88,8 @@ scene.add(world);
 const loader = new GLTFLoader();
 const clock = new THREE.Clock();
 let data = null, marks = [], showBoxes = true, showTags = true, speed = 40;
+let dirty = true;  // redraw only when something changed
+const redraw = () => { dirty = true; };
 
 // One colour per class, spread round the hue circle.
 const CLASSES = ['condor','hangar','helicopter','jammer','jet_plane','large_launcher','large_tower','medium_launcher',
@@ -187,24 +193,28 @@ async function load(name) {
     $('list').appendChild(row);
   }
   applyToggles();
+  redraw();
   $('status').textContent = `${data.objects.length} objects; loading the city mesh…`;
   const city = await loader.loadAsync(data.city, e => {
     if (e.total) $('status').textContent = `${data.objects.length} objects; city mesh ${Math.round(100 * e.loaded / e.total)}%`;
   });
   world.add(unlit(city.scene));
-  $('status').textContent = `${data.frame}: ${data.objects.length} objects`;
+  redraw();
+  $('status').textContent = `${data.frame}: ${data.objects.length} objects, speed ${Math.round(speed)} m/s${software ? ' (software rendering)' : ''}`;
 }
 
 function applyToggles() {
   for (const m of marks) { m.helper.visible = showBoxes; m.label.visible = showTags; }
   $('boxes').textContent = `Boxes: ${showBoxes ? 'on' : 'off'}`;
   $('tags').textContent = `Labels: ${showTags ? 'on' : 'off'}`;
+  redraw();
 }
 
 // Fly controls: drag to look, WASD/QE to move.
 const keys = new Set();
 addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') e.preventDefault();
   keys.add(e.code);
   if (e.code === 'KeyV') droneView();
   if (e.code === 'KeyB') { showBoxes = !showBoxes; applyToggles(); }
@@ -220,24 +230,31 @@ view.addEventListener('pointermove', e => {
   camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x - (e.clientY - drag.y) * 0.004, -1.55, 1.55);
   drag = { x: e.clientX, y: e.clientY };
 });
-view.addEventListener('wheel', e => { speed = THREE.MathUtils.clamp(speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2), 2, 800); e.preventDefault(); },
+view.addEventListener('wheel', e => {
+  speed = THREE.MathUtils.clamp(speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2), 2, 800); e.preventDefault();
+  if (data) $('status').textContent = `${data.frame}: ${data.objects.length} objects, speed ${Math.round(speed)} m/s${software ? ' (software rendering)' : ''}`;
+},
                       { passive: false });
 
 function animate() {
+  requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.1);
-  const v = speed * dt * (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1);
+  if (!dirty && !keys.size) return;
+  dirty = false;
+  const v = speed * dt;
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   if (keys.has('KeyW')) camera.position.addScaledVector(forward, v);
   if (keys.has('KeyS')) camera.position.addScaledVector(forward, -v);
   if (keys.has('KeyD')) camera.position.addScaledVector(right, v);
   if (keys.has('KeyA')) camera.position.addScaledVector(right, -v);
-  if (keys.has('KeyE')) camera.position.y += v;
-  if (keys.has('KeyQ')) camera.position.y -= v;
+  if (keys.has('Space') || keys.has('KeyE')) camera.position.y += v;
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyQ')) camera.position.y -= v;
   renderer.render(scene, camera);
   labels.render(scene, camera);
-  requestAnimationFrame(animate);
 }
+for (const type of ['pointermove', 'pointerdown', 'wheel', 'keydown', 'click', 'resize']) addEventListener(type, redraw);
+THREE.DefaultLoadingManager.onLoad = redraw;
 
 $('drone').onclick = droneView;
 $('top').onclick = overview;
@@ -245,13 +262,15 @@ $('boxes').onclick = () => { showBoxes = !showBoxes; applyToggles(); };
 $('tags').onclick = () => { showTags = !showTags; applyToggles(); };
 $('synth').onclick = () => { $('big').style.display = 'block'; };
 $('big').onclick = () => { $('big').style.display = 'none'; };
-$('scene').onchange = e => load(e.target.value);
+$('scene').onchange = e => load(e.target.value).catch(fail);
 
 resize();
 animate();
 const names = await (await fetch('/api/scenes')).json();
 $('scene').innerHTML = names.map(n => `<option>${n}</option>`).join('');
-if (names.length) load(names[0]); else $('status').textContent = 'no scenes yet: run training/scene3d.py';
+const fail = e => { console.error(e); $('status').textContent = `failed: ${e.message || e}`; $('status').style.color = '#ff7070'; };
+renderer.domElement.addEventListener('webglcontextlost', () => fail('the GPU dropped the WebGL context (out of GPU memory?)'));
+if (names.length) load(names[0]).catch(fail); else $('status').textContent = 'no scenes yet: run training/scene3d.py';
 </script>
 </body>
 </html>

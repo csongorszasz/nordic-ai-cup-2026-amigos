@@ -34,6 +34,8 @@ ROOT = rc.ROOT
 FRAMES = ROOT / 'backgrounds' / 'helsinki3d_frames'
 OUT = ROOT / 'datasets' / 'scene3d'
 TO_Y_UP = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])  # glTF and three.js are Y up
+TEXTURE_PX = 256       # per piece in the atlas; the mesh's own are 512 px
+KEEP_FACES = 1.0       # share of the city triangles kept: decimating tears the pieces open at their texture seams
 GROUND_RADIUS_M = 1.5  # mesh vertices this close (horizontally) give the ground height under an object
 
 
@@ -55,17 +57,63 @@ def drop_on_ground(origin, direction, tree, heights, z0):
     return origin + direction * (z - origin[2]) / direction[2]
 
 
-def city_meshes(subs, centre):
-    """Every L19 piece of the subtiles, moved so `centre` is the origin (Z up)."""
-    meshes = []
+def decimate(mesh, keep):
+    """(vertices, faces, uv) with about `keep` of the faces; each surviving vertex keeps its uv."""
+    import fast_simplification
+    if keep >= 1 or len(mesh.faces) < 200:
+        return mesh.vertices, mesh.faces, mesh.visual.uv
+    _, _, collapses = fast_simplification.simplify(mesh.vertices, mesh.faces, target_reduction=1 - keep,
+                                                   return_collapses=True)
+    vertices, faces, mapping = fast_simplification.replay_simplification(mesh.vertices, mesh.faces, collapses)
+    if np.isnan(vertices).any():  # happens on the odd piece; NaN bounds make the whole glb invalid
+        return mesh.vertices, mesh.faces, mesh.visual.uv
+    uv = np.zeros((len(vertices), 2))
+    uv[mapping] = mesh.visual.uv
+    return vertices, faces, uv
+
+
+def subtile_mesh(sub, offset, texture_px, keep):
+    """One subtile's pieces as a single mesh on one texture atlas (a draw call per subtile, not per piece)."""
+    from io import BytesIO
+    from PIL import Image
+    pieces = []
+    for obj in sorted(glob.glob(f'{sub}/*_L{rc.LEVEL}_*.obj')):
+        mesh = trimesh.load(obj, force='mesh')
+        image = getattr(getattr(mesh.visual, 'material', None), 'image', None)
+        if len(mesh.faces) and image is not None and getattr(mesh.visual, 'uv', None) is not None:
+            pieces.append((mesh, image))
+    if not pieces:
+        return None, None
+    n = int(np.ceil(np.sqrt(len(pieces))))
+    atlas = Image.new('RGB', (n * texture_px, n * texture_px))
+    inset = 1 / texture_px  # keep a pixel's margin, or neighbouring cells bleed in at the seams
+    vertices, faces, uvs, full, count = [], [], [], [], 0
+    for k, (mesh, image) in enumerate(pieces):
+        row, col = divmod(k, n)
+        atlas.paste(image.convert('RGB').resize((texture_px, texture_px), Image.LANCZOS), (col * texture_px, row * texture_px))
+        full.append(mesh.vertices + offset)
+        v, f, uv = decimate(mesh, keep)
+        uv = inset + np.clip(uv, 0, 1) * (1 - 2 * inset)
+        uvs.append(np.stack([(col + uv[:, 0]) / n, (n - 1 - row + uv[:, 1]) / n], axis=1))  # uv v runs bottom-up
+        vertices.append(v + offset)
+        faces.append(f + count)
+        count += len(v)
+    buffer = BytesIO()
+    atlas.save(buffer, 'JPEG', quality=85)  # a PIL image without a format would be stored as PNG
+    merged = trimesh.Trimesh(np.vstack(vertices), np.vstack(faces), process=False)
+    merged.visual = trimesh.visual.TextureVisuals(uv=np.vstack(uvs), image=Image.open(BytesIO(buffer.getvalue())))
+    return merged, np.vstack(full)
+
+
+def city_meshes(subs, centre, texture_px=TEXTURE_PX, keep=KEEP_FACES):
+    """One mesh per subtile, moved so `centre` is the origin (Z up), and all full-detail vertices."""
+    meshes, full = [], []
     for sub in subs:
-        offset = rc.origin(Path(sub).parent) - centre
-        for obj in sorted(glob.glob(f'{sub}/*_L{rc.LEVEL}_*.obj')):
-            mesh = trimesh.load(obj, force='mesh')
-            if len(mesh.faces):
-                mesh.apply_translation(offset)
-                meshes.append(mesh)
-    return meshes
+        mesh, vertices = subtile_mesh(sub, rc.origin(Path(sub).parent) - centre, texture_px, keep)
+        if mesh is not None:
+            meshes.append(mesh)
+            full.append(vertices)
+    return meshes, np.vstack(full)
 
 
 def main():
@@ -73,6 +121,8 @@ def main():
     parser.add_argument('--frame', help='background name (default: the newest with a camera file)')
     parser.add_argument('--objects', type=int, default=30)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--texture', type=int, default=TEXTURE_PX, help='city texture px per piece (512 = full)')
+    parser.add_argument('--keep', type=float, default=KEEP_FACES, help='share of the city triangles kept')
     args = parser.parse_args()
 
     cameras = sorted(FRAMES.glob('*_camera.json'), key=lambda p: p.stat().st_mtime)
@@ -98,10 +148,10 @@ def main():
     subs = [s for s, b in index.items() if b[0] < x + reach and b[2] > x - reach and b[1] < y + reach and b[3] > y - reach]
     ground_z = float(np.median([index[s][4] for s in subs]))
     centre = np.array([x, y, ground_z])
-    meshes = city_meshes(subs, centre)
-    vertices = np.vstack([m.vertices for m in meshes])
+    meshes, vertices = city_meshes(subs, centre, args.texture, args.keep)
     tree, heights = cKDTree(vertices[:, :2]), vertices[:, 2]
-    print(f'{name}: {len(subs)} subtiles, {len(meshes)} pieces, {len(vertices) / 1e6:.1f}M vertices')
+    shown = sum(len(m.vertices) for m in meshes)
+    print(f'{name}: {len(meshes)} subtiles, {len(vertices) / 1e6:.1f}M vertices, {shown / 1e6:.2f}M kept for the viewer')
 
     local_pose = pose.copy()
     local_pose[:3, 3] -= centre
@@ -127,7 +177,7 @@ def main():
     for i, mesh in enumerate(meshes):
         mesh.apply_transform(TO_Y_UP)
         scene.add_geometry(mesh, node_name=f'city_{i}')
-    scene.export(str(out / 'city.glb'))
+    scene.export(str(out / 'city.glb'), include_normals=False)  # shown unlit: normals only add weight
 
     marked = frame.copy()
     for ann in annotations:
