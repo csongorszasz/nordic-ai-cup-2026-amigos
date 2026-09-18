@@ -13,9 +13,17 @@ the only honest test set we have until the model has been submitted.
     python training/synth_dataset.py                     # -> datasets/synth_yolo
     python training/synth_dataset.py --frames 400 --with-helsinki
     python training/synth_dataset.py --preview 3         # full frames to eyeball
+    python training/model_sprites.py                     # renders from the painted 3D models
+    python training/render_city.py --count 40            # Helsinki 3D-mesh backgrounds
 
 Each synthetic frame is a 3840x2160 background with 8-30 objects pasted on it,
 then cut into Level 0/1/2 views exactly like the evaluator sends them.
+
+Objects come from two banks: the real cut-outs (sprites/), randomly rotated, and
+renders of the painted 3D models (datasets/model_sprites/, --model-share of them).
+A model render is chosen for the spot it is pasted at: tall objects lean away from the
+camera's nadir point near the bottom of the frame (render_city.lean_at), so the render
+whose tilt and lean match that spot is used, and it is not rotated afterwards.
 """
 
 import argparse
@@ -41,6 +49,7 @@ from make_dataset import (  # noqa: E402
     view_centres,
 )
 from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
+from render_city import lean_at  # noqa: E402
 
 SOURCE_W, SOURCE_H = 3840, 2160
 # Classes that tend to appear together in the supplied scenes, so the detector sees
@@ -74,6 +83,33 @@ def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: boo
             continue
         by_class[entry['class']].append(image)
     return {name: sprites for name, sprites in by_class.items() if sprites}
+
+
+def load_model_sprites(bank_dir: Path):
+    """{class: [(RGBA, tilt, lean)]} from model_sprites.py, or {} when there is no bank."""
+    index_path = bank_dir / 'index.json'
+    if not index_path.exists():
+        return {}
+    by_class: dict[str, list] = {}
+    for entry in json.loads(index_path.read_text()):
+        image = cv2.imread(str(bank_dir / entry['file']), cv2.IMREAD_UNCHANGED)
+        if image is not None and image.shape[2] == 4:
+            by_class.setdefault(entry['class'], []).append((image, entry['tilt'], entry['lean']))
+    return by_class
+
+
+def pick_model_sprite(bank, cx: float, cy: float, rng: random.Random):
+    """The render (of a random few) whose tilt and lean best match frame position (cx, cy)."""
+    tilt, lean = lean_at(cx, cy)
+    candidates = rng.sample(bank, min(60, len(bank)))
+
+    def cost(item):
+        _, t, l = item
+        turn = abs((l - lean + 180) % 360 - 180)
+        # Lean direction matters in proportion to how tilted the view is.
+        return ((t - tilt) / 6) ** 2 + (turn / 25 * math.sin(math.radians(tilt))) ** 2
+
+    return min(candidates, key=cost)[0]
 
 
 def transform_sprite(sprite: np.ndarray, rng: random.Random):
@@ -150,8 +186,10 @@ def overlaps(box, placed, margin: int = 6) -> bool:
     return False
 
 
-def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int):
+def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int,
+                  model_sprites: dict = None, model_share: float = 0.0):
     """Paste objects onto a copy of the background. Returns (frame, annotations)."""
+    model_sprites = model_sprites or {}
     canvas = background.copy()
     if rng.random() < 0.6:  # the challenge imagery is soft; vary how soft ours is
         canvas = cv2.GaussianBlur(canvas, (0, 0), rng.uniform(0.3, 0.9))
@@ -164,21 +202,30 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
     wanted = []
     while len(wanted) < n_objects:
         if rng.random() < 0.45:  # a themed group, as the scenes have
-            wanted.extend(name for name in rng.choice(GROUPS) if name in sprites)
+            wanted.extend(name for name in rng.choice(GROUPS) if name in sprites or name in model_sprites)
         else:
-            wanted.append(rng.choice(sorted(sprites)))
+            wanted.append(rng.choice(sorted(set(sprites) | set(model_sprites))))
     rng.shuffle(wanted)
 
     for class_name in wanted[:n_objects]:
-        sprite = transform_sprite(rng.choice(sprites[class_name]), rng)
-        if sprite is None:
-            continue
-        h, w = sprite.shape[:2]
-        if h >= SOURCE_H or w >= SOURCE_W:
+        use_model = class_name in model_sprites and (class_name not in sprites or rng.random() < model_share)
+        sprite = None if use_model else transform_sprite(rng.choice(sprites[class_name]), rng)
+        if sprite is None and not use_model:
             continue
         for _ in range(30):  # try a few spots before giving up on this object
-            x = rng.randint(0, SOURCE_W - w - 1)
-            y = rng.randint(0, SOURCE_H - h - 1)
+            if use_model:  # the spot decides the pose: pick the matching render
+                cx, cy = rng.uniform(0, SOURCE_W), rng.uniform(0, SOURCE_H)
+                sprite = pick_model_sprite(model_sprites[class_name], cx, cy, rng)
+                h, w = sprite.shape[:2]
+                x, y = int(cx - w / 2), int(cy - h / 2)
+            else:
+                h, w = sprite.shape[:2]
+                if h >= SOURCE_H or w >= SOURCE_W:
+                    break
+                x = rng.randint(0, SOURCE_W - w - 1)
+                y = rng.randint(0, SOURCE_H - h - 1)
+            if x < 0 or y < 0 or x + w >= SOURCE_W or y + h >= SOURCE_H:
+                continue
             box = [x, y, x + w, y + h]
             if overlaps(box, placed):
                 continue
@@ -198,7 +245,11 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backgrounds', default=str(ROOT / 'backgrounds' / 'naip'))
+    parser.add_argument('--backgrounds', nargs='*',
+                        default=[str(ROOT / 'backgrounds' / 'naip'), str(ROOT / 'backgrounds' / 'helsinki3d_frames')])
+    parser.add_argument('--model-sprites', default=str(ROOT / 'datasets' / 'model_sprites'))
+    parser.add_argument('--model-share', type=float, default=0.5,
+                        help='share of objects taken from the 3D-model renders when a class has both')
     parser.add_argument('--sprites', default=str(ROOT / 'sprites'))
     parser.add_argument('--out', default=str(ROOT / 'datasets' / 'synth_yolo'))
     parser.add_argument('--frames', type=int, default=300, help='synthetic 4K frames to compose')
@@ -219,22 +270,26 @@ def main():
     rng = random.Random(args.seed)
     np.random.seed(args.seed)
 
-    background_paths = sorted(Path(args.backgrounds).glob('*.jpg'))
+    background_paths = sorted(p for d in args.backgrounds for p in Path(d).glob('*.jpg'))
     if not background_paths:
         raise SystemExit(f'no backgrounds in {args.backgrounds}; run training/fetch_backgrounds.py first')
     sprites = load_sprites(Path(args.sprites), args.include_suspect, args.include_truncated)
-    missing = [name for name in OBJECT_CLASSES if name not in sprites]
-    print(f'{len(background_paths)} backgrounds, sprites for {len(sprites)}/{len(OBJECT_CLASSES)} classes'
-          + (f' (missing: {", ".join(missing)})' if missing else ''))
+    model_sprites = load_model_sprites(Path(args.model_sprites))
+    missing = [name for name in OBJECT_CLASSES if name not in sprites and name not in model_sprites]
+    per_dir = ', '.join(f'{Path(d).name} {len(list(Path(d).glob("*.jpg")))}' for d in args.backgrounds)
+    print(f'{len(background_paths)} backgrounds ({per_dir}); real cut-outs for {len(sprites)} classes, '
+          f'model renders for {len(model_sprites)} ({sum(map(len, model_sprites.values()))} sprites)'
+          + (f'; missing: {", ".join(missing)}' if missing else ''))
 
     out = Path(args.out)
     if args.preview:
         preview_dir = out.parent / 'synth_preview'
         preview_dir.mkdir(parents=True, exist_ok=True)
         for i in range(args.preview):
-            background = cv2.imread(str(background_paths[i % len(background_paths)]))
+            background = cv2.imread(str(rng.choice(background_paths)))
             frame, annotations = compose_frame(background, sprites, rng,
-                                               rng.randint(args.min_objects, args.max_objects))
+                                               rng.randint(args.min_objects, args.max_objects),
+                                               model_sprites, args.model_share)
             marked = frame.copy()
             for ann in annotations:
                 x1, y1, x2, y2 = ann['bbox']
@@ -273,9 +328,10 @@ def main():
 
     for n in range(args.frames):
         split = 'val' if rng.random() < args.val_fraction else 'train'
-        background = cv2.imread(str(background_paths[n % len(background_paths)]))
+        background = cv2.imread(str(rng.choice(background_paths)))
         frame, annotations = compose_frame(background, sprites, rng,
-                                           rng.randint(args.min_objects, args.max_objects))
+                                           rng.randint(args.min_objects, args.max_objects),
+                                           model_sprites, args.model_share)
         for ann in annotations:
             per_class[ann['object_id']] += 1
         cut(frame, annotations, f's{n:04d}', split)
