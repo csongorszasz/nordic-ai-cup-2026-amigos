@@ -17,6 +17,7 @@ from core.detector import (
     YoloDetector,
     _normalize_class_name,
     create_detector,
+    load_calibration,
 )
 from dtos import OBJECT_CLASSES
 from utils import load_frame
@@ -74,6 +75,93 @@ def test_detector_factory_fails_when_weights_are_missing(tmp_path):
 def test_detector_factory_rejects_unknown_type():
     with pytest.raises(ValueError):
         create_detector(DroneFlybyConfig(DETECTOR_TYPE="not_a_detector"))
+
+
+def test_load_calibration_reads_known_classes_and_ignores_unknown(tmp_path):
+    path = tmp_path / "calibration.json"
+    path.write_text('{"jet_plane": 0.5, "not_a_class": 0.9}')
+    assert load_calibration(path) == {"jet_plane": 0.5}
+
+
+def test_load_calibration_missing_file_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_calibration(tmp_path / "missing.json")
+
+
+def test_load_calibration_rejects_out_of_range(tmp_path):
+    path = tmp_path / "calibration.json"
+    path.write_text('{"jet_plane": 2.0}')
+    with pytest.raises(ValueError):
+        load_calibration(path)
+
+
+def test_calibration_threshold_filters_per_class(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
+
+    # jet_plane is predicted at 0.91; a 0.95 per-class threshold must drop it,
+    # while helicopter (0.77, no calibration) survives.
+    detector = YoloDetector(
+        weights_path=str(_fake_weights(tmp_path)),
+        device="cpu",
+        calibration={"jet_plane": 0.95},
+    )
+    detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
+    assert {det.class_name for det in detections} == {"helicopter"}
+
+
+def test_debug_detector_ignores_calibration_path(tmp_path):
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE="dummy",
+        CALIBRATION_PATH=tmp_path / "missing.json",
+    )
+    assert type(create_detector(config)).__name__ == "DummyCannyDetector"
+
+
+def test_yolo_detector_fails_on_missing_calibration(tmp_path):
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE="yolo_standard",
+        YOLO_WEIGHTS_PATH=tmp_path / "fake.pt",
+        CALIBRATION_PATH=tmp_path / "missing.json",
+    )
+    with pytest.raises(FileNotFoundError):
+        create_detector(config)
+
+
+def test_tensorrt_factory_requires_an_engine_path():
+    config = DroneFlybyConfig(DETECTOR_TYPE="tensorrt", TRT_ENGINE_PATH=None)
+    with pytest.raises(ValueError):
+        create_detector(config)
+
+
+def test_tensorrt_factory_fails_on_missing_engine(tmp_path):
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE="tensorrt",
+        TRT_ENGINE_PATH=tmp_path / "missing.engine",
+    )
+    with pytest.raises(FileNotFoundError):
+        create_detector(config)
+
+
+def test_tensorrt_invalid_engine_does_not_fall_back(monkeypatch, tmp_path):
+    """An engine that fails to load must stop startup, not change the model."""
+    import core.detector as detector_module
+
+    class _BrokenYOLO:
+        def __init__(self, weights_path):
+            raise RuntimeError(f"invalid engine: {weights_path}")
+
+    engine = tmp_path / "broken.engine"
+    engine.write_bytes(b"not-a-serialized-engine")
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _BrokenYOLO)
+
+    config = DroneFlybyConfig(DETECTOR_TYPE="tensorrt", TRT_ENGINE_PATH=engine)
+    with pytest.raises(RuntimeError):
+        create_detector(config)
 
 
 class _FakeScalar:
@@ -203,6 +291,7 @@ def test_yolo_detector_drops_unknown_class(monkeypatch, tmp_path):
     detector.model = _FakeYOLOWithUnknown("fake.pt")
     detector.device = "cpu"
     detector.conf_thresholds = {0: 0.10, 1: 0.15, 2: 0.20}
+    detector.calibration = {}
     detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
 
     assert {det.class_name for det in detections} == {"ta-ta"}

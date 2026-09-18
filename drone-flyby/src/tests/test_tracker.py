@@ -262,8 +262,116 @@ def test_real_helsinki_frame_pair_confirms_oracle_tracks():
         "ta-ta",
         "tank",
     }
-    assert predicted_ids == expected_ids - {"tank"}
-    assert len(preds_f1) == len(expected_ids) - 1
+    # A class-aware centre-distance fallback keeps fast small objects such as
+    # tank associated after a rigid shift, so the oracle is fully recovered.
+    assert predicted_ids == expected_ids
+    assert len(preds_f1) == len(expected_ids)
+
+
+def test_class_aware_association_keeps_fast_small_object_attached():
+    """A small objects outruns its own box after a rigid shift; centre-distance
+    fallback keeps it on the same track instead of spawning a duplicate."""
+    tracker = WorldMapTracker(min_hits_to_confirm=1, default_shift=(0.0, 0.0))
+    tracker.reset("fast_small")
+
+    tracker.update(
+        detections=[
+            DetectionResult(
+                class_name="ta-ta",
+                bbox_global=(1000 / 3840, 500 / 2160, 1032 / 3840, 517 / 2160),
+                confidence=0.9,
+                zoom_level=0,
+                source_pixel_bbox=(1000.0, 500.0, 1032.0, 517.0),
+            )
+        ],
+        zoom_level=0,
+        source_region_xyxy=(0, 0, 3840, 2160),
+        frame_index=0,
+    )
+
+    # 58 px of motion is larger than the object's 17 px height: IoU is 0.
+    preds = tracker.update(
+        detections=[
+            DetectionResult(
+                class_name="ta-ta",
+                bbox_global=(1000 / 3840, 558 / 2160, 1032 / 3840, 575 / 2160),
+                confidence=0.9,
+                zoom_level=0,
+                source_pixel_bbox=(1000.0, 558.0, 1032.0, 575.0),
+            )
+        ],
+        zoom_level=0,
+        source_region_xyxy=(0, 0, 3840, 2160),
+        frame_index=1,
+    )
+
+    assert len(tracker.tracks) == 1
+    track = list(tracker.tracks.values())[0]
+    assert track.hits == 2
+    assert len(preds) == 1
+
+
+def test_in_view_miss_decays_faster_than_out_of_view_miss():
+    tracker = WorldMapTracker(min_hits_to_confirm=1, default_shift=(0.0, 0.0))
+    tracker.reset("negative_evidence")
+
+    tracker.update(
+        detections=[
+            DetectionResult(
+                class_name="tank",
+                bbox_global=(100 / 3840, 100 / 2160, 200 / 3840, 200 / 2160),
+                confidence=0.9,
+                zoom_level=0,
+                source_pixel_bbox=(100.0, 100.0, 200.0, 200.0),
+            ),
+            DetectionResult(
+                class_name="helicopter",
+                bbox_global=(2000 / 3840, 1000 / 2160, 2100 / 2160, 2160 / 3840),
+                confidence=0.9,
+                zoom_level=0,
+                source_pixel_bbox=(2000.0, 1000.0, 2100.0, 1100.0),
+            ),
+        ],
+        zoom_level=0,
+        source_region_xyxy=(0, 0, 3840, 2160),
+        frame_index=0,
+    )
+
+    # Crop contains the tank but not the helicopter, so only the tank was
+    # actually observed to be absent.
+    tracker.update(
+        detections=[],
+        zoom_level=2,
+        source_region_xyxy=(50, 50, 1010, 590),
+        frame_index=1,
+    )
+
+    tank = tracker.tracks[0]
+    helicopter = tracker.tracks[1]
+    assert tank.existence < helicopter.existence
+
+
+def test_predict_only_returns_last_belief_without_new_observations():
+    tracker = WorldMapTracker(min_hits_to_confirm=1, default_shift=(0.0, 0.0))
+    tracker.reset("predict_only")
+
+    emitted = tracker.update(
+        detections=[
+            DetectionResult(
+                class_name="jammer",
+                bbox_global=(0.5, 0.5, 0.52, 0.52),
+                confidence=0.9,
+                zoom_level=0,
+                source_pixel_bbox=(1920.0, 1080.0, 1996.8, 1123.2),
+            )
+        ],
+        zoom_level=0,
+        source_region_xyxy=(0, 0, 3840, 2160),
+        frame_index=0,
+    )
+    predicted = tracker.predict_only()
+
+    assert [p.object_id for p in predicted] == [p.object_id for p in emitted]
 
 
 def test_real_helsinki_tracks_persist_when_current_view_is_empty():
@@ -302,4 +410,29 @@ def test_real_helsinki_tracks_persist_when_current_view_is_empty():
     assert "jammer" in predicted_ids
     assert "large_launcher" in predicted_ids
     assert len(preds_empty_view) >= 8
+
+
+def test_summary_lists_only_confirmed_tracks():
+    tracker = WorldMapTracker(
+        min_hits_to_confirm=2,
+        single_hit_confirm_confidence=0.5,
+        default_shift=(0.0, 0.0),
+    )
+    tracker.reset("summary_confirmed")
+
+    weak_detection = [
+        DetectionResult(
+            class_name="tank",
+            bbox_global=(0.1, 0.1, 0.2, 0.2),
+            confidence=0.1,
+            zoom_level=0,
+            source_pixel_bbox=(384.0, 216.0, 768.0, 432.0),
+        )
+    ]
+
+    tracker.update(weak_detection, 0, (0, 0, 3840, 2160), frame_index=0)
+    assert tracker.get_summary().unscanned_clusters == []
+
+    tracker.update(weak_detection, 0, (0, 0, 3840, 2160), frame_index=1)
+    assert len(tracker.get_summary().unscanned_clusters) == 1
 

@@ -1,5 +1,6 @@
 """Detector implementations and factory for drone-flyby."""
 
+import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -30,6 +31,31 @@ try:  # Optional backend; the detector still works without it.
 except Exception:  # pragma: no cover - exercised only when the package exists.
     YOLO = None
     _ULTRALYTICS_AVAILABLE = False
+
+
+def load_calibration(path: Path) -> Dict[str, float]:
+    """Load a per-class confidence calibration file.
+
+    The file maps class name to a minimum confidence; classes not listed keep
+    the per-zoom thresholds. Raises if the file is missing or malformed, so a
+    misconfigured calibration stops startup instead of being ignored.
+    """
+    if not Path(path).is_file():
+        raise FileNotFoundError(f"Calibration file not found at '{path}'")
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError(f"Calibration file '{path}' must contain a JSON object")
+    calibration: Dict[str, float] = {}
+    for name, value in data.items():
+        if name not in OBJECT_CLASSES:
+            logger.warning("Ignoring calibration for unknown class '%s'", name)
+            continue
+        threshold = float(value)
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"Calibration threshold for '{name}' must be in [0, 1], got {threshold}")
+        calibration[name] = threshold
+    return calibration
 
 
 def _compute_iou(box_a: Tuple[float, float, float, float], box_b: Tuple[float, float, float, float]) -> float:
@@ -327,6 +353,7 @@ class YoloDetector(BaseDetector):
         confidence_threshold_l1: float = 0.15,
         confidence_threshold_l2: float = 0.20,
         expected_classes: Sequence[str] = OBJECT_CLASSES,
+        calibration: Optional[Dict[str, float]] = None,
     ):
         if not _ULTRALYTICS_AVAILABLE:
             raise RuntimeError("ultralytics is not installed; the YOLO backend is unavailable")
@@ -353,6 +380,7 @@ class YoloDetector(BaseDetector):
             1: confidence_threshold_l1,
             2: confidence_threshold_l2,
         }
+        self.calibration = dict(calibration) if calibration else {}
         self._validate_class_map(list(expected_classes))
 
     def _validate_class_map(self, expected_classes: List[str]) -> None:
@@ -395,6 +423,9 @@ class YoloDetector(BaseDetector):
             if class_name not in OBJECT_CLASSES:
                 continue
             conf = float(box.conf.item() if hasattr(box.conf, "item") else box.conf)
+            class_threshold = self.calibration.get(class_name)
+            if class_threshold is not None and conf < class_threshold:
+                continue
             xyxy = box.xyxy[0].tolist() if hasattr(box.xyxy, "__getitem__") else list(box.xyxy)
             x1, y1, x2, y2 = (float(v) for v in xyxy)
             view_bbox = (x1 / image_w, y1 / image_h, x2 / image_w, y2 / image_h)
@@ -426,6 +457,18 @@ class YoloDetector(BaseDetector):
         return self._parse_result(results[0], zoom_level, source_region_xyxy)
 
 
+def _load_calibration(config: DroneFlybyConfig) -> Optional[Dict[str, float]]:
+    """Load the per-class calibration, if configured.
+
+    Only the YOLO/TensorRT backends consume it, so it is loaded lazily inside
+    those branches rather than for every backend. Otherwise a stray
+    CALIBRATION_PATH would make the debug detectors fail for no reason.
+    """
+    if not config.CALIBRATION_PATH:
+        return None
+    return load_calibration(config.CALIBRATION_PATH)
+
+
 def create_detector(config: DroneFlybyConfig) -> BaseDetector:
     """Factory function for instantiating detectors.
 
@@ -440,6 +483,7 @@ def create_detector(config: DroneFlybyConfig) -> BaseDetector:
             confidence_threshold_l0=config.CONFIDENCE_THRESHOLD_L0,
             confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
             confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
+            calibration=_load_calibration(config),
         )
     elif config.DETECTOR_TYPE == "tensorrt":
         return YoloDetector(
@@ -448,6 +492,7 @@ def create_detector(config: DroneFlybyConfig) -> BaseDetector:
             confidence_threshold_l0=config.CONFIDENCE_THRESHOLD_L0,
             confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
             confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
+            calibration=_load_calibration(config),
         )
     elif config.DETECTOR_TYPE == "template_bank":
         logger.warning(

@@ -147,3 +147,39 @@ def test_pipeline_scaffolding_end_to_end():
     _ = pipeline.handle_request(req_new_seq)
     assert pipeline.active_sequence_id == "session_beta"
 
+
+def test_pipeline_drops_stale_out_of_order_frames():
+    config = DroneFlybyConfig(DEBUG=True, DETECTOR_TYPE="dummy")
+    pipeline = build_pipeline(config)
+    pipeline.warmup()
+
+    for frame_index in (0, 1, 2):
+        pipeline.handle_request(create_synthetic_request(sequence_id="stale_seq", frame_index=frame_index))
+
+    # A frame older than the newest processed one must not mutate state.
+    stale = create_synthetic_request(sequence_id="stale_seq", frame_index=1)
+    response = pipeline.handle_request(stale)
+
+    validate_response(response)
+    assert response.requested_view is None
+
+
+def test_pipeline_serves_memory_when_detector_raises(monkeypatch):
+    config = DroneFlybyConfig(DEBUG=True, DETECTOR_TYPE="dummy")
+    pipeline = build_pipeline(config)
+    pipeline.warmup()
+
+    response_f0 = pipeline.handle_request(create_synthetic_request(sequence_id="fail_seq", frame_index=0))
+
+    def _explode(**_kwargs):
+        raise RuntimeError("detector exploded")
+
+    monkeypatch.setattr(pipeline.detector, "detect", _explode)
+    response_f1 = pipeline.handle_request(create_synthetic_request(sequence_id="fail_seq", frame_index=1))
+
+    validate_response(response_f1)
+    assert response_f1.requested_view is None
+    assert [a.object_id for a in response_f1.annotations] == [
+        a.object_id for a in response_f0.annotations
+    ]
+

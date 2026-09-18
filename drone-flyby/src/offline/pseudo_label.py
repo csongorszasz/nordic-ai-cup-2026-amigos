@@ -1,22 +1,29 @@
 """Offline pseudo-label generation for recorded validation frames.
 
-This script turns a directory of recorded images into YOLO-format label files.
-The default detector is the current template-bank baseline, which works without
-extra ML dependencies. If Ultralytics is installed, you can swap in the YOLO
-backend by importing and wiring it here later.
+Turns a directory of recorded images into YOLO-format label files. The default
+detector is the production YOLO backend, built from the normal configuration,
+so pseudo-labels come from the same model the server serves. A detector can be
+injected directly for testing.
+
+The template-bank backend is deliberately not the default: it is built from 4K
+crops and finds nothing on the 960x540 views the evaluator transmits, which
+silently produced empty labels.
+
+    python src/offline/pseudo_label.py --images-dir recorded/.../images --labels-dir out/labels
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 
 import cv2
 
-from core.detector import TemplateBankDetector
+from config import DroneFlybyConfig
+from core.detector import create_detector
+from core.interfaces import BaseDetector
 from dtos import OBJECT_CLASSES
 
 CLASS_INDEX = {name: index for index, name in enumerate(OBJECT_CLASSES)}
@@ -43,10 +50,12 @@ def _xyxy_to_yolo(bbox: Tuple[float, float, float, float], width: int, height: i
 def pseudo_label_directory(
     images_dir: Path,
     labels_dir: Path,
-    detector: TemplateBankDetector | None = None,
+    detector: Optional[BaseDetector] = None,
+    config: Optional[DroneFlybyConfig] = None,
 ) -> Dict[str, int]:
     """Generate YOLO labels for every image in a directory."""
-    detector = detector or TemplateBankDetector(scene="helsinki", max_templates_per_class=1, max_proposals=20)
+    if detector is None:
+        detector = create_detector(config or DroneFlybyConfig())
     detector.warmup()
     labels_dir.mkdir(parents=True, exist_ok=True)
 
@@ -77,9 +86,15 @@ def main() -> int:
     parser.add_argument("--images-dir", type=Path, required=True, help="Directory containing images.")
     parser.add_argument("--labels-dir", type=Path, required=True, help="Output directory for YOLO labels.")
     parser.add_argument("--summary-json", type=Path, default=None, help="Optional summary JSON output.")
+    parser.add_argument("--detector-type", default="yolo_standard", help="Detector backend to pseudo-label with.")
+    parser.add_argument("--weights", type=Path, default=None, help="Override the detector weights path.")
     arguments = parser.parse_args()
 
-    counts = pseudo_label_directory(arguments.images_dir, arguments.labels_dir)
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE=arguments.detector_type,
+        YOLO_WEIGHTS_PATH=arguments.weights if arguments.weights else DroneFlybyConfig.YOLO_WEIGHTS_PATH,
+    )
+    counts = pseudo_label_directory(arguments.images_dir, arguments.labels_dir, config=config)
     if arguments.summary_json is not None:
         arguments.summary_json.parent.mkdir(parents=True, exist_ok=True)
         with open(arguments.summary_json, "w", encoding="utf-8") as handle:

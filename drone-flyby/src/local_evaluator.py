@@ -234,6 +234,8 @@ class Statistics:
     commands_applied: int = 0
     invalid_commands: int = 0
     round_trip_ms: List[float] = field(default_factory=list)
+    # Per-frame camera state, used for trajectory and transmitted-size reporting.
+    camera_frames: List[dict] = field(default_factory=list)
 
     def report(self) -> str:
         lines = [
@@ -256,6 +258,12 @@ class Statistics:
                 f'/ p95 {_percentile(ordered, 95):.0f} / p99 {_percentile(ordered, 99):.0f} '
                 f'/ max {ordered[-1]:.0f}'
             )
+        if self.camera_frames:
+            levels: Dict[int, int] = {}
+            for entry in self.camera_frames:
+                levels[entry['level']] = levels.get(entry['level'], 0) + 1
+            distribution = ', '.join(f'L{level}:{count}' for level, count in sorted(levels.items()))
+            lines.append(f'  camera levels        {distribution}')
         return '\n'.join(lines)
 
 
@@ -321,6 +329,15 @@ def replay(
         image = load_frame(frame, scene)
         encoded_image = render_view(image, camera)
         payload = build_request(frame, frame_index, camera, encoded_image, feedback)
+
+        statistics.camera_frames.append(
+            {
+                'frame': frame,
+                'level': payload['view']['resolution_level'],
+                'center': [payload['view']['center_x'], payload['view']['center_y']],
+                'region': list(payload['view']['source_region_xyxy']),
+            }
+        )
 
         statistics.frames_sent += 1
         sent_at = time.monotonic()
@@ -533,6 +550,55 @@ def score(
     return _clamp(sum(ap_by_class.values()) / len(ap_by_class)), ap_by_class
 
 
+def _iou_xyxy(a: Sequence[float], b: Sequence[float]) -> float:
+    x1, y1 = max(a[0], b[0]), max(a[1], b[1])
+    x2, y2 = min(a[2], b[2]), min(a[3], b[3])
+    intersection = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    area_a = max(0.0, a[2] - a[0]) * max(0.0, a[3] - a[1])
+    area_b = max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1])
+    union = area_a + area_b - intersection
+    return intersection / union if union > 0 else 0.0
+
+
+def size_bin_recall(
+    scene: str,
+    predictions: Dict[int, List[dict]],
+    camera_frames: List[dict],
+) -> Dict[str, Tuple[int, int]]:
+    """Recall at IoU 0.50 split by the size the object had on the wire.
+
+    An object is ``sqrt(w*h)`` source pixels scaled by the current view's
+    downsample factor, i.e. how many pixels the evaluator actually transmitted.
+    """
+    anns_by_frame = {frame: load_annotations(frame, scene) for frame in frame_numbers(scene)}
+    camera_by_frame = {entry['frame']: entry for entry in camera_frames}
+    labels = ('4-7px', '8-15px', '>15px')
+    bins: Dict[str, List[int]] = {label: [0, 0] for label in labels}
+
+    for frame, anns in anns_by_frame.items():
+        frame_predictions = predictions.get(frame, [])
+        info = camera_by_frame.get(frame)
+        scale = 1.0
+        if info is not None:
+            region = info['region']
+            width = max(1, region[2] - region[0])
+            scale = TRANSMITTED_VIEW_SIZE[0] / width
+        for annotation in anns:
+            x1, y1, x2, y2 = (float(c) for c in annotation['bbox'])
+            size = math.sqrt(max(0.0, x2 - x1) * max(0.0, y2 - y1)) * scale
+            # No gap: (.., 7] -> small, (7, 15] -> medium, (15, ..) -> large.
+            label = '4-7px' if size <= 7.0 else ('8-15px' if size <= 15.0 else '>15px')
+            recalled = any(
+                p['object_id'] == annotation['object_id'] and _iou_xyxy(p['bbox'], annotation['bbox']) >= 0.5
+                for p in frame_predictions
+            )
+            bins[label][1] += 1
+            if recalled:
+                bins[label][0] += 1
+
+    return {label: (bins[label][0], bins[label][1]) for label in labels}
+
+
 def oracle_predictions(scene: str) -> Dict[int, List[dict]]:
     """Return the ground truth as perfect predictions, to check the scorer."""
     return {
@@ -583,6 +649,11 @@ def main() -> int:
         'Should print 1.000 and proves the scorer agrees with the data.',
     )
     parser.add_argument('--verbose', action='store_true', help='Log every frame.')
+    parser.add_argument(
+        '--trajectory',
+        action='store_true',
+        help='Print the per-frame camera trajectory after the score.',
+    )
     arguments = parser.parse_args()
 
     try:
@@ -630,7 +701,23 @@ def main() -> int:
     print('AP@0.50 by class')
     for name, value in sorted(ap_by_class.items(), key=lambda item: -item[1]):
         print(f'  {name:16s} {value:.3f}')
+    worst_name = min(ap_by_class, key=ap_by_class.get)
+    print(f'  worst class: {worst_name} ({ap_by_class[worst_name]:.3f})')
     print()
+    if statistics is not None:
+        print('Recall by transmitted size (IoU 0.50)')
+        for label, (hit, total) in size_bin_recall(arguments.scene, predictions, statistics.camera_frames).items():
+            recall = (hit / total) if total else 0.0
+            print(f'  {label:8s} {hit:3d}/{total:<3d}  {recall:.3f}')
+        print()
+    if arguments.trajectory and statistics is not None:
+        print('Camera trajectory')
+        for entry in statistics.camera_frames:
+            print(
+                f"  frame {entry['frame']:3d} L{entry['level']} "
+                f"center=({entry['center'][0]},{entry['center'][1]}) region={entry['region']}"
+            )
+        print()
     print(f'COCO mAP@0.50: {coco_map_50:.3f}')
     if statistics is not None and not arguments.realtime:
         print(

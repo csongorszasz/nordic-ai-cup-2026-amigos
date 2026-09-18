@@ -291,11 +291,15 @@ def describe_camera_rejection(
     current_center: Tuple[int, int],
     requested_level: int,
     requested_center: Tuple[int, int],
+    maximum_center_delta: Optional[float] = None,
 ) -> Optional[str]:
     """Return why a camera move would be rejected, or None if it is legal.
 
     Same three checks the evaluator runs, in the same order. Call it before you
     answer if you want to guarantee your camera never idles on a bad command.
+
+    Pass ``maximum_center_delta`` from ``request.camera_constraints`` to match
+    the payload exactly; otherwise the canonical per-level limit is used.
     """
     if requested_level not in ALLOWED_RESOLUTION_LEVELS.get(current_level, ()):
         return (
@@ -325,7 +329,7 @@ def describe_camera_rejection(
         requested_center[0] - current_center[0],
         requested_center[1] - current_center[1],
     )
-    limit = MAXIMUM_CENTER_DELTA_PIXELS[current_level]
+    limit = maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS[current_level]
     if distance > limit:
         return (
             f'center movement {distance:.2f}px exceeds the L{current_level} '

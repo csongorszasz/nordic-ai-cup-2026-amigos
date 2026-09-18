@@ -18,6 +18,17 @@ def export(weights: Path, imgsz: int, half: bool, simplify: bool, workspace: int
     if not _ULTRALYTICS_AVAILABLE:
         raise RuntimeError("ultralytics is not installed; TensorRT export is unavailable")
 
+    try:
+        import tensorrt  # noqa: F401
+    except Exception as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(
+            "TensorRT is not installed in this environment. Install the matching "
+            "'tensorrt' wheel before exporting an engine."
+        ) from exc
+
+    if not Path(weights).is_file():
+        raise FileNotFoundError(f"Weights not found at '{weights}'")
+
     yolo_cls = YOLO
     assert yolo_cls is not None
     model = yolo_cls(str(weights))

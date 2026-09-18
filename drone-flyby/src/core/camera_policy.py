@@ -3,13 +3,16 @@
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Deque, Dict, List, Optional, Set, Tuple
 from config import DroneFlybyConfig
 from core.interfaces import BaseCameraPolicy, TrackerSummary
 from dtos import (
+    IMAGE_HEIGHT,
+    IMAGE_WIDTH,
     DroneFlybyPredictRequestDto,
     RequestedViewDto,
     MAXIMUM_CENTER_DELTA_PIXELS,
+    SOURCE_REGION_SIZES,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,9 +63,12 @@ class CameraConstraintGuard:
         clamped_x = int(min(max(requested_view.center_x, bounds.minimum_center_x), bounds.maximum_center_x))
         clamped_y = int(min(max(requested_view.center_y, bounds.minimum_center_y), bounds.maximum_center_y))
 
-        # 3. Validate delta constraint (unless resetting to Level 0 full frame)
+        # 3. Validate delta constraint. Only a level-0 full-frame reset is
+        #    exempt; the old check also skipped it whenever
+        #    full_view_reset_exempt_from_delta was true, which is always, so a
+        #    3304 px L2 move passed a 551 px limit.
         is_l0_reset = target_level == 0 and clamped_x == 1920 and clamped_y == 1080
-        if not is_l0_reset and not constraints.full_view_reset_exempt_from_delta:
+        if not is_l0_reset:
             max_delta = constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
                 current.resolution_level, 551.0
             )
@@ -287,6 +293,142 @@ class SurveyAndZoomPolicy(BaseCameraPolicy):
         return None
 
 
+def _level_cells(level: int) -> List[Tuple[int, int]]:
+    """Legal centres covering the frame at one level, in a serpentine order.
+
+    Spacing is half the region, i.e. 50% overlap, and consecutive cells are at
+    most one diagonal apart, so each move stays inside the level's delta limit.
+    """
+    width, height = SOURCE_REGION_SIZES[level]
+    min_x, max_x = width // 2, IMAGE_WIDTH - width // 2
+    min_y, max_y = height // 2, IMAGE_HEIGHT - height // 2
+    xs = list(range(min_x, max_x + 1, max(1, width // 2)))
+    if xs[-1] != max_x:
+        xs.append(max_x)
+    ys = list(range(min_y, max_y + 1, max(1, height // 2)))
+    if ys[-1] != max_y:
+        ys.append(max_y)
+
+    order: List[Tuple[int, int]] = []
+    for row_index, y in enumerate(ys):
+        row_xs = xs if row_index % 2 == 0 else list(reversed(xs))
+        order.extend((x, y) for x in row_xs)
+    return order
+
+
+@dataclass
+class _CoverageState:
+    next_cell: int = 0
+    covered: Set[int] = field(default_factory=set)
+    last_l2_frame: int = -1000
+
+
+class ActiveCoveragePolicy(BaseCameraPolicy):
+    """L1-first active vision with an exploration quota.
+
+    The frame is covered by a deterministic overlapping L1 grid independent of
+    any detections, so a frame with no detections can never freeze the camera at
+    L0. L2 is spent only on a tracker candidate that lies inside the current L1
+    view, rate-limited by ``l2_interval_frames``.
+    """
+
+    def __init__(self, l2_interval_frames: int = 4, allow_l2: bool = True):
+        self.l2_interval_frames = l2_interval_frames
+        self.allow_l2 = allow_l2
+        self.cells = _level_cells(1)
+        self._states: Dict[str, _CoverageState] = {}
+
+    def reset(self, sequence_id: str) -> None:
+        self._states[sequence_id] = _CoverageState()
+        logger.info("ActiveCoveragePolicy reset for sequence '%s'", sequence_id)
+
+    def _state_for(self, sequence_id: str) -> _CoverageState:
+        return self._states.setdefault(sequence_id, _CoverageState())
+
+    def _next_cell(self, state: _CoverageState) -> Tuple[int, int]:
+        index = state.next_cell % len(self.cells)
+        state.covered.add(index)
+        state.next_cell += 1
+        return self.cells[index]
+
+    @staticmethod
+    def _region(level: int, center: Tuple[int, int]) -> Tuple[int, int, int, int]:
+        width, height = SOURCE_REGION_SIZES[level]
+        return (
+            center[0] - width // 2,
+            center[1] - height // 2,
+            center[0] + width // 2,
+            center[1] + height // 2,
+        )
+
+    def _inside_current_view(self, request: DroneFlybyPredictRequestDto, level: int, center: Tuple[int, int]) -> bool:
+        region = self._region(level, (request.view.center_x, request.view.center_y))
+        return region[0] <= center[0] <= region[2] and region[1] <= center[1] <= region[3]
+
+    def _clamp(self, request: DroneFlybyPredictRequestDto, level: int, center: Tuple[int, int]) -> Tuple[int, int]:
+        bounds = request.camera_constraints.bounds_for_level(level)
+        if bounds is None:
+            return center
+        return (
+            int(min(max(center[0], bounds.minimum_center_x), bounds.maximum_center_x)),
+            int(min(max(center[1], bounds.minimum_center_y), bounds.maximum_center_y)),
+        )
+
+    def _build(self, request, level, center):
+        center = self._clamp(request, level, center)
+        raw_view = RequestedViewDto(
+            resolution_level=int(level),
+            center_x=int(center[0]),
+            center_y=int(center[1]),
+        )
+        return CameraConstraintGuard.clamp_and_validate(request, raw_view)
+
+    def _step_towards(self, request: DroneFlybyPredictRequestDto, target: Tuple[int, int]) -> Tuple[int, int]:
+        """Move toward a target by at most the current level's delta limit."""
+        current = request.view
+        limit = request.camera_constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
+            current.resolution_level, 551.0
+        )
+        dx = target[0] - current.center_x
+        dy = target[1] - current.center_y
+        distance = (dx * dx + dy * dy) ** 0.5
+        if distance <= limit * 0.95 or distance == 0.0:
+            return target
+        scale = (limit * 0.95) / distance
+        return (int(current.center_x + dx * scale), int(current.center_y + dy * scale))
+
+    def decide_next_view(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        tracker_summary: TrackerSummary,
+    ) -> Optional[RequestedViewDto]:
+        state = self._state_for(request.sequence_id)
+        current = request.view
+        candidate = tuple(tracker_summary.unscanned_clusters[0]) if tracker_summary.unscanned_clusters else None
+
+        # Leaving L2 always steps down to L1 first.
+        if current.resolution_level == 2:
+            return self._build(request, 1, candidate or self._next_cell(state))
+
+        # L1 is the search workhorse: move to a verification candidate, or to
+        # the next exploration cell when there is nothing to verify.
+        if current.resolution_level == 1:
+            can_zoom = (
+                self.allow_l2
+                and candidate is not None
+                and self._inside_current_view(request, 1, candidate)
+            )
+            if can_zoom and (request.frame_index - state.last_l2_frame) >= self.l2_interval_frames:
+                state.last_l2_frame = request.frame_index
+                return self._build(request, 2, candidate)
+            target = candidate if candidate is not None else self._next_cell(state)
+            return self._build(request, 1, self._step_towards(request, target))
+
+        # From L0, enter L1 toward the first candidate or coverage cell.
+        target = candidate if candidate is not None else self._next_cell(state)
+        return self._build(request, 1, target)
+
+
 def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
     """Factory function for camera policies."""
     if config.POLICY_TYPE == "hold":
@@ -295,11 +437,12 @@ def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
         return SweepCameraPolicy()
     elif config.POLICY_TYPE == "survey_zoom":
         return SurveyAndZoomPolicy(survey_interval_frames=config.SURVEY_INTERVAL_FRAMES)
-    elif config.POLICY_TYPE == "belief_map":
-        raise NotImplementedError(
-            "Camera policy 'belief_map' will be implemented in subsequent phases."
-        )
+    elif config.POLICY_TYPE == "deterministic_l1":
+        # Coverage-only baseline: legal overlapping L1 sweep, never zooms.
+        return ActiveCoveragePolicy(l2_interval_frames=1, allow_l2=False)
+    elif config.POLICY_TYPE in ("active_coverage", "belief_map"):
+        return ActiveCoveragePolicy(l2_interval_frames=max(1, config.SURVEY_INTERVAL_FRAMES))
     else:
-        logger.warning("Unknown policy type '%s', falling back to SweepCameraPolicy", config.POLICY_TYPE)
-        return SweepCameraPolicy()
+        logger.warning("Unknown policy type '%s', falling back to HoldCameraPolicy", config.POLICY_TYPE)
+        return HoldCameraPolicy()
 

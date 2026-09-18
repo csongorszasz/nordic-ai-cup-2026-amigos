@@ -47,6 +47,12 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     yield
+    # Drain any pending recording jobs before the process exits.
+    if recorder is not None:
+        try:
+            recorder.shutdown()
+        except Exception:
+            logger.exception("Failed to flush the validation recorder")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -55,18 +61,33 @@ app = FastAPI(lifespan=lifespan)
 @app.post('/predict', response_model=DroneFlybyPredictResponseDto)
 def predict_endpoint(request: DroneFlybyPredictRequestDto):
     """Answer one frame."""
+    t_start = time.perf_counter()
+
     if recorder is not None:
-        if not recorder.enabled or getattr(recorder, "session_dir", None) is None:
-            recorder.start(request.sequence_id)
-        elif recorder.session_dir.name != request.sequence_id:
-            recorder.start(request.sequence_id)
-        recorder.record_frame(request)
+        # Recording must never break a frame: a dropped artifact is cheap, a
+        # failed response is not.
+        try:
+            if (
+                not recorder.enabled
+                or recorder.session_dir is None
+                or recorder.session_dir.name != request.sequence_id
+            ):
+                recorder.start(request.sequence_id)
+            recorder.record_frame(request)
+        except Exception:
+            logger.exception("Failed to record the incoming validation frame")
 
     response = pipeline.handle_request(request)
 
     # Fail here, loudly, rather than having the evaluator silently discard the
     # frame. Every rule this checks is a rule the evaluator also enforces.
     validate_response(response)
+
+    if recorder is not None:
+        try:
+            recorder.record_response(request, response, (time.perf_counter() - t_start) * 1000)
+        except Exception:
+            logger.exception("Failed to record the validation response")
 
     return response
 

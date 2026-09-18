@@ -73,6 +73,15 @@ class BaseTracker(ABC):
         pass
 
     @abstractmethod
+    def predict_only(self) -> List[DroneFlybyPredictionDto]:
+        """Return the current belief without incorporating new observations.
+
+        Used on the deadline path: when a detector cannot finish in time, the
+        memory still owes the evaluator its best full-frame answer.
+        """
+        pass
+
+    @abstractmethod
     def get_summary(self) -> TrackerSummary:
         """Export world state summary for camera steering decisions."""
         pass
