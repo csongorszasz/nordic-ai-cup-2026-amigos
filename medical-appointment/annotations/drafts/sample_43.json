@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_43_yes_q02",
+    "transcript_id": "sample_43",
+    "question": "Does the patient have a sore throat?",
+    "bucket": "support",
+    "quote": "My throat has been really sore.",
+    "reason": "Patient directly reports sore throat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q03",
+    "transcript_id": "sample_43",
+    "question": "Is the infection thought to be bacterial?",
+    "bucket": "refute",
+    "quote": "My assessment is that this is a viral infection.",
+    "reason": "Asserted bacterial vs actual viral infection.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q05",
+    "transcript_id": "sample_43",
+    "question": "Did the examination find no pus in the throat?",
+    "bucket": "support",
+    "quote": "I also looked at your throat and there was no pus.",
+    "reason": "Examination explicitly found no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_off_topic_q01",
+    "transcript_id": "sample_43",
+    "question": "Are the speakers discussing the patient's pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is discussed, only roadworks and forecast.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q04",
+    "transcript_id": "sample_43",
+    "question": "Was the strep test negative?",
+    "bucket": "support",
+    "quote": "It was negative.",
+    "reason": "Strep test result is explicitly negative.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q01",
+    "transcript_id": "sample_43",
+    "question": "Is the infection considered to be viral?",
+    "bucket": "support",
+    "quote": "My assessment is that this is a viral infection.",
+    "reason": "Infection is explicitly assessed as viral.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q01",
+    "transcript_id": "sample_43",
+    "question": "Does the patient describe abdominal pain as the main problem?",
+    "bucket": "refute",
+    "quote": "My throat has been really sore.",
+    "reason": "Asserted abdominal pain as main problem vs actual sore throat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q02",
+    "transcript_id": "sample_43",
+    "question": "Were the tonsils covered in coatings?",
+    "bucket": "refute",
+    "quote": "there was no pus.",
+    "reason": "Asserted tonsils covered in coatings vs actual no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q03",
+    "transcript_id": "sample_43",
+    "question": "Has the doctor decided against antibiotics?",
+    "bucket": "support",
+    "quote": "The plan is no antibiotics",
+    "reason": "Plan explicitly states no antibiotics.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q04",
+    "transcript_id": "sample_43",
+    "question": "Did the doctor see pus in the throat?",
+    "bucket": "refute",
+    "quote": "there was no pus.",
+    "reason": "Asserted pus seen vs actual no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  }
+]

@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_48_hard_no_q02",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor attribute the fatigue to a thyroid disorder?",
+    "bucket": "refute",
+    "quote": "there is no hormonal cause for the tiredness",
+    "reason": "Asserted thyroid attribution vs actual no hormonal cause found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_off_topic_q01",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor ask about the patient's experience with specific technology?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of technology experience occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q03",
+    "transcript_id": "sample_48",
+    "question": "Was the TSH normal?",
+    "bucket": "support",
+    "quote": "It came back normal.",
+    "reason": "TSH (thyroid-stimulating hormone) test returned normal.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q06",
+    "transcript_id": "sample_48",
+    "question": "Did the glucose test come back normal too?",
+    "bucket": "support",
+    "quote": "That was normal as well.",
+    "reason": "Glucose test stated normal after the thyroid result.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q05",
+    "transcript_id": "sample_48",
+    "question": "Were both blood tests within normal limits?",
+    "bucket": "support",
+    "quote": "Both normal.",
+    "reason": "Both thyroid and glucose results stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_hard_no_q01",
+    "transcript_id": "sample_48",
+    "question": "Is the tiredness described as brief and occasional?",
+    "bucket": "refute",
+    "quote": "it has been going on and on",
+    "reason": "Asserted brief and occasional vs actual ongoing persistent tiredness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q04",
+    "transcript_id": "sample_48",
+    "question": "Has the patient been left without any specific treatment?",
+    "bucket": "support",
+    "quote": "No specific treatment is needed on the basis of these results.",
+    "reason": "Doctor states no specific treatment is needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q02",
+    "transcript_id": "sample_48",
+    "question": "Is the patient's tiredness persistent?",
+    "bucket": "support",
+    "quote": "Persistent fatigue.",
+    "reason": "Tiredness explicitly labeled persistent fatigue.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q07",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor rule out an endocrine cause?",
+    "bucket": "support",
+    "quote": "there is no hormonal cause for the tiredness",
+    "reason": "Doctor rules out a hormonal (endocrine) cause.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q01",
+    "transcript_id": "sample_48",
+    "question": "The thyroid test gave a normal result, right?",
+    "bucket": "support",
+    "quote": "the thyroid and the glucose results are normal",
+    "reason": "Thyroid result explicitly stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  }
+]

@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_42_yes_q02",
+    "transcript_id": "sample_42",
+    "question": "Was the blood pressure measured at 135/88?",
+    "bucket": "support",
+    "quote": "Your blood pressure is 135 over 88.",
+    "reason": "Blood pressure reading matches 135/88.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q07",
+    "transcript_id": "sample_42",
+    "question": "Did the doctor assess the patient as slightly overweight?",
+    "bucket": "support",
+    "quote": "It puts you in the mildly overweight range.",
+    "reason": "Mildly overweight assessment directly supports slightly overweight.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q06",
+    "transcript_id": "sample_42",
+    "question": "Were exercise recommendations also part of the plan?",
+    "bucket": "support",
+    "quote": "The plan is advice on diet and on exercise.",
+    "reason": "Exercise advice is explicitly part of the plan.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q05",
+    "transcript_id": "sample_42",
+    "question": "Does the patient have a BMI of 28?",
+    "bucket": "support",
+    "quote": "Your body mass index is 28.",
+    "reason": "BMI is explicitly stated as 28.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q03",
+    "transcript_id": "sample_42",
+    "question": "Has the patient been given advice about diet?",
+    "bucket": "support",
+    "quote": "The plan is advice on diet and on exercise.",
+    "reason": "Diet advice is explicitly part of the plan.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_hard_no_q02",
+    "transcript_id": "sample_42",
+    "question": "Did the doctor consider the patient severely obese?",
+    "bucket": "refute",
+    "quote": "It puts you in the mildly overweight range.",
+    "reason": "Asserted severely obese vs actual mildly overweight.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q01",
+    "transcript_id": "sample_42",
+    "question": "Is the patient feeling well?",
+    "bucket": "support",
+    "quote": "I feel perfectly well.",
+    "reason": "Patient explicitly states feeling well.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q04",
+    "transcript_id": "sample_42",
+    "question": "The visit was a preventive health check, correct?",
+    "bucket": "support",
+    "quote": "This is your preventive health check today.",
+    "reason": "Visit is explicitly identified as preventive health check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_hard_no_q01",
+    "transcript_id": "sample_42",
+    "question": "Was the blood pressure 155/98?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is 135 over 88.",
+    "reason": "Asserted 155/98 vs actual 135 over 88.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_off_topic_q01",
+    "transcript_id": "sample_42",
+    "question": "Does the patient talk about wanting to work part-time?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No part-time work wish is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  }
+]

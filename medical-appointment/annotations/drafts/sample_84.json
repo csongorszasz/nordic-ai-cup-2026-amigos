@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_84_hard_no_q01",
+    "transcript_id": "sample_84",
+    "question": "Is the check-up being done because the patient has symptoms from the heart?",
+    "bucket": "refute",
+    "quote": "What we are doing today is a preventive health check because of the family disposition you described.",
+    "reason": "Asserted symptoms as reason, but transcript states check is preventive because of family disposition.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_hard_no_q02",
+    "transcript_id": "sample_84",
+    "question": "Does the patient say that exercise is something they rarely do?",
+    "bucket": "refute",
+    "quote": "I train regularly.",
+    "reason": "Asserted rarely exercises, but patient states they train regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_off_topic_q01",
+    "transcript_id": "sample_84",
+    "question": "Was the patient referred to Doctor Strange for magical treatment?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Doctor Strange and magical treatment are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q02",
+    "transcript_id": "sample_84",
+    "question": "Was it the patient's grandfather who died of a heart attack?",
+    "bucket": "support",
+    "quote": "My grandfather on my father's side died of a heart attack",
+    "reason": "Transcript directly states grandfather died of heart attack.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q04",
+    "transcript_id": "sample_84",
+    "question": "Does the patient exercise regularly?",
+    "bucket": "support",
+    "quote": "I train regularly.",
+    "reason": "Patient directly states they train regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q06",
+    "transcript_id": "sample_84",
+    "question": "Will both blood tests and an ECG be carried out?",
+    "bucket": "support",
+    "quote": "I will take blood samples, and I will record an electrocardiogram",
+    "reason": "Doctor states plan for blood samples and electrocardiogram.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q05",
+    "transcript_id": "sample_84",
+    "question": "Was the blood pressure measured at 138 over 83?",
+    "bucket": "support",
+    "quote": "I have measured it at 138 over 83.",
+    "reason": "Doctor states blood pressure measurement as 138 over 83.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q01",
+    "transcript_id": "sample_84",
+    "question": "Does the patient report cardiovascular disease in the family?",
+    "bucket": "support",
+    "quote": "there is cardiovascular disease in your family? Yes.",
+    "reason": "Doctor asks and patient confirms family cardiovascular disease.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q03",
+    "transcript_id": "sample_84",
+    "question": "Did that grandfather die at the age of 52?",
+    "bucket": "support",
+    "quote": "he was only 52.",
+    "reason": "Transcript states grandfather was only 52.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q07",
+    "transcript_id": "sample_84",
+    "question": "Is the patient otherwise healthy and living a healthy life?",
+    "bucket": "support",
+    "quote": "I am healthy, as far as I know. No illnesses at all. I eat well and I look after myself.",
+    "reason": "Patient reports being healthy with no illness and healthy habits.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  }
+]

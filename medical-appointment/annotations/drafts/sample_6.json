@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_6_yes_q03",
+    "transcript_id": "sample_6",
+    "question": "Was the patient's voice noted to sound congested?",
+    "bucket": "support",
+    "quote": "You do sound congested.",
+    "reason": "Doctor notes the patient sounds congested.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_hard_no_q02",
+    "transcript_id": "sample_6",
+    "question": "Should the fungal infection be treated with Brentan gel?",
+    "bucket": "refute",
+    "quote": "And fluconazole, 50 milligrams, for seven days, for the mouth.",
+    "reason": "Asserted Brentan gel vs actual fluconazole for the mouth.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_off_topic_q01",
+    "transcript_id": "sample_6",
+    "question": "Does the patient talk about needing a new vehicle for their daily commute?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a vehicle or commute.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q04",
+    "transcript_id": "sample_6",
+    "question": "Are four daily doses of one million IU of penicillin planned?",
+    "bucket": "support",
+    "quote": "One million international units, four times daily, for seven days.",
+    "reason": "Penicillin dose and frequency match four daily doses of one million IU.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q05",
+    "transcript_id": "sample_6",
+    "question": "Does the patient also have a fungal infection in the mouth?",
+    "bucket": "support",
+    "quote": "And the mouth? That is a possible candidiasis.",
+    "reason": "Mouth issue assessed as possible candidiasis, a fungal infection.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q07",
+    "transcript_id": "sample_6",
+    "question": "Did the patient ask for penicillin?",
+    "bucket": "support",
+    "quote": "I want penicillin for it.",
+    "reason": "Patient explicitly asks for penicillin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q01",
+    "transcript_id": "sample_6",
+    "question": "Will the patient take Fluconazole 50 mg?",
+    "bucket": "support",
+    "quote": "And fluconazole, 50 milligrams, for seven days, for the mouth.",
+    "reason": "Fluconazole 50 milligrams prescribed for the mouth.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_hard_no_q01",
+    "transcript_id": "sample_6",
+    "question": "Does the patient want to avoid antibiotics?",
+    "bucket": "refute",
+    "quote": "I want penicillin for it.",
+    "reason": "Asserted avoidance of antibiotics vs actual request for penicillin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q02",
+    "transcript_id": "sample_6",
+    "question": "Is the patient complaining of sinus symptoms?",
+    "bucket": "support",
+    "quote": "My sinuses. Blocked, aching, the whole business.",
+    "reason": "Patient complains of blocked aching sinuses.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q06",
+    "transcript_id": "sample_6",
+    "question": "Has penicillin been prescribed for seven days?",
+    "bucket": "support",
+    "quote": "For the sinuses, penicillin. One million international units, four times daily, for seven days.",
+    "reason": "Penicillin for the sinuses prescribed for seven days.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  }
+]
