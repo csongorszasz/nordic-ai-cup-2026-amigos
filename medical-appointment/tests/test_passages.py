@@ -4,9 +4,23 @@ from answerers.passages import (
     STRIDE_WORDS,
     WINDOW_WORDS,
     build_passages,
+    build_sentence_windows,
+    build_sentences,
     contains,
     overlap_word_range,
 )
+
+
+def make_tokens(tokens, seg=0, gap=0.0):
+    words = []
+    t = 0.0
+    for token in tokens:
+        words.append(
+            {"word": " " + token, "start": round(t, 3), "end": round(t + 0.4, 3),
+             "seg_idx": seg}
+        )
+        t += 0.4 + gap
+    return words
 
 
 def make_words(count):
@@ -67,3 +81,33 @@ def test_served_window_always_covers_its_bound():
             assert any(contains(p, (first, last)) for p in passages), (
                 first, last, window, stride,
             )
+
+
+def test_build_sentences_splits_on_punctuation():
+    words = make_tokens(["The", "patient", "has", "asthma.",
+                         "The", "dose", "is", "100", "mg."])
+    sents = build_sentences(words)
+    assert len(sents) == 2
+    assert (sents[0].first_word, sents[0].last_word) == (0, 3)
+    assert (sents[1].first_word, sents[1].last_word) == (4, 8)
+
+
+def test_build_sentence_windows_context_one():
+    words = make_tokens(["The", "patient", "has", "asthma.",
+                         "The", "dose", "is", "100", "mg.",
+                         "Bloods", "were", "normal", "today."])
+    sents = build_sentences(words)
+    assert len(sents) == 3
+    wins = build_sentence_windows(words, context=1)
+    assert len(wins) == 3
+    # Middle window spans the first through the third sentence.
+    assert wins[1].first_word == sents[0].first_word
+    assert wins[1].last_word == sents[2].last_word
+
+
+def test_sentence_window_context_two_is_one_window():
+    words = make_tokens(["The", "patient", "has", "asthma.",
+                         "The", "dose", "is", "100", "mg."])
+    wins = build_sentence_windows(words, context=2)
+    assert len(wins) == 1
+    assert wins[0].first_word == 0

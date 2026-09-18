@@ -152,6 +152,58 @@ def build_l2_cite_messages(
     ]
 
 
+RAG_SYSTEM_PROMPT = (
+    "You are a clinical evidence extraction assistant. For each yes/no question "
+    "you are given a small set of candidate passages from the consultation "
+    "transcript. Decide the answer, and for a yes choose the single candidate "
+    "that best supports it and quote a contiguous span from within that "
+    "candidate.\n"
+    "Rules:\n"
+    "- Use only the candidate passages; never use outside knowledge.\n"
+    "- answer is exactly \"yes\" or \"no\".\n"
+    "- On yes, candidate is a candidate id (e.g. \"c02\") and evidence_quote is "
+    "copied VERBATIM from that candidate.\n"
+    "- On no, candidate and evidence_quote are null.\n"
+    "- Output ONLY a JSON object, no prose."
+)
+
+RAG_SCHEMA_HINT = (
+    'Return JSON exactly like:\n'
+    '{"answers":[{"id":"q01","answer":"yes","candidate":"c01",'
+    '"evidence_quote":"..."},{"id":"q02","answer":"no","candidate":null,'
+    '"evidence_quote":null}]}'
+)
+
+
+def rag_candidates_block(questions: Sequence[str], candidates_by_index) -> str:
+    lines: List[str] = []
+    for index, question in enumerate(questions):
+        lines.append(f"{qid_for(index)}: {question}")
+        for c_index, passage in enumerate(candidates_by_index[index]):
+            cid = f"c{c_index + 1:02d}"
+            lines.append(
+                f"  {cid} [{passage.start:.2f}-{passage.end:.2f}] {passage.text}"
+            )
+    return "\n".join(lines)
+
+
+def build_rag_messages(
+    questions: Sequence[str], candidates_by_index, few_shot: Sequence[Tuple[str, str]] = ()
+) -> List[Dict]:
+    """Grounded RAG reader: answer + choose a candidate + quote from it."""
+    user = (
+        "CANDIDATES\n"
+        f"{rag_candidates_block(questions, candidates_by_index)}\n\n"
+        f"{RAG_SCHEMA_HINT}"
+    )
+    messages: List[Dict] = [{"role": "system", "content": RAG_SYSTEM_PROMPT}]
+    for example_user, example_assistant in few_shot:
+        messages.append({"role": "user", "content": example_user})
+        messages.append({"role": "assistant", "content": example_assistant})
+    messages.append({"role": "user", "content": user})
+    return messages
+
+
 def render_example(
     transcript: Dict,
     question: str,

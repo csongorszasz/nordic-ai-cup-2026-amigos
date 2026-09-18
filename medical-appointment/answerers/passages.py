@@ -109,3 +109,124 @@ def contains(passage: Passage, word_range: Tuple[int, int]) -> bool:
     """Whether the passage fully covers a contiguous word range."""
     first, last = word_range
     return passage.first_word <= first and passage.last_word >= last
+
+
+# --------------------------------------------------------------------------- #
+# Sentence-level units (finer index for extraction / reranking)
+# --------------------------------------------------------------------------- #
+
+SENTENCE_END = (".", "?", "!")
+SENTENCE_PAUSE = 0.6
+SENTENCE_MIN_WORDS = 4
+SENTENCE_MAX_WORDS = 40
+
+
+def _sentence_atoms(words: List[Dict]) -> List[List[int]]:
+    atoms: List[List[int]] = []
+    current: List[int] = []
+    for i, word in enumerate(words):
+        current.append(i)
+        if i + 1 >= len(words):
+            break
+        nxt = words[i + 1]
+        pause = nxt["start"] - word["end"]
+        boundary = nxt.get("seg_idx", 0) != word.get("seg_idx", 0)
+        ends = word["word"].strip().endswith(SENTENCE_END)
+        if (ends and len(current) >= 3) or pause > SENTENCE_PAUSE or boundary:
+            atoms.append(current)
+            current = []
+    if current:
+        atoms.append(current)
+    return [a for a in atoms if a]
+
+
+def _merge_short_sentences(words, atoms: List[List[int]]) -> List[List[int]]:
+    changed = True
+    while changed and len(atoms) > 1:
+        changed = False
+        for i, atom in enumerate(atoms):
+            if len(atom) < SENTENCE_MIN_WORDS:
+                if i > 0:
+                    atoms[i - 1] = atoms[i - 1] + atom
+                    del atoms[i]
+                    changed = True
+                    break
+                if i + 1 < len(atoms):
+                    atoms[i] = atom + atoms[i + 1]
+                    del atoms[i + 1]
+                    changed = True
+                    break
+    return atoms
+
+
+def _split_long_sentence(words, atom: List[int]) -> List[List[int]]:
+    mid = (len(atom) - 1) / 2
+    best_k, best_score = 0, float("-inf")
+    for k in range(len(atom) - 1):
+        gap = words[atom[k + 1]]["start"] - words[atom[k]]["end"]
+        score = gap - 0.02 * abs(k - mid)
+        if score > best_score:
+            best_score, best_k = score, k
+    return [atom[: best_k + 1], atom[best_k + 1:]]
+
+
+def build_sentences(words: List[Dict]) -> List[Passage]:
+    """Sentence-ish units: split on punctuation/pauses, merge short, split long."""
+    if not words:
+        return []
+
+    atoms = _merge_short_sentences(words, _sentence_atoms(words))
+    queue = list(atoms)
+    ranges: List[Tuple[int, int]] = []
+    while queue:
+        atom = queue.pop(0)
+        if len(atom) > SENTENCE_MAX_WORDS and len(atom) > 1:
+            left, right = _split_long_sentence(words, atom)
+            queue.insert(0, left)
+            queue.insert(1, right)
+        else:
+            ranges.append((atom[0], atom[-1]))
+
+    return [
+        Passage(
+            index=index,
+            first_word=first,
+            last_word=last,
+            start=float(words[first]["start"]),
+            end=float(words[last]["end"]),
+            text=join_words(words, first, last),
+        )
+        for index, (first, last) in enumerate(ranges)
+    ]
+
+
+def build_sentence_windows(words: List[Dict], context: int = 1) -> List[Passage]:
+    """Overlapping windows of ``context`` sentences each side (containment 0.985 at 1)."""
+    sentences = build_sentences(words)
+    if not sentences:
+        return []
+
+    ranges: List[Tuple[int, int]] = []
+    for index in range(len(sentences)):
+        lo = max(0, index - context)
+        hi = min(len(sentences) - 1, index + context)
+        ranges.append((sentences[lo].first_word, sentences[hi].last_word))
+
+    seen = set()
+    unique = []
+    for pair in ranges:
+        if pair not in seen:
+            seen.add(pair)
+            unique.append(pair)
+
+    return [
+        Passage(
+            index=index,
+            first_word=first,
+            last_word=last,
+            start=float(words[first]["start"]),
+            end=float(words[last]["end"]),
+            text=join_words(words, first, last),
+        )
+        for index, (first, last) in enumerate(unique)
+    ]

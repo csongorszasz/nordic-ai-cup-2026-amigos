@@ -9,9 +9,16 @@ def test_parse_plain_object():
     text = '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"abc"},' \
            '{"id":"q02","answer":"no","evidence_quote":null}]}'
     parsed = parse_answers(text, IDS)
-    assert parsed["q01"] == {"answer": True, "quote": "abc"}
-    assert parsed["q02"] == {"answer": False, "quote": None}
+    assert parsed["q01"] == {"answer": True, "quote": "abc", "candidate": None}
+    assert parsed["q02"] == {"answer": False, "quote": None, "candidate": None}
     assert parsed["q03"] is None
+
+
+def test_parse_candidate_id():
+    text = ('{"answers":[{"id":"q01","answer":"yes","candidate":"c03",'
+            '"evidence_quote":"abc"}]}')
+    parsed = parse_answers(text, IDS)
+    assert parsed["q01"]["candidate"] == "c03"
 
 
 def test_parse_fenced_and_prose():

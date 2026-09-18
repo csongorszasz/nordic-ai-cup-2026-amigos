@@ -25,6 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from answerers import modernbert_data as data  # noqa: E402
+from answerers import rag as rag_module  # noqa: E402
 from answerers.align import align_span  # noqa: E402
 from answerers.llm_client import HFClient  # noqa: E402
 from answerers.llm_parse import parse_answers, parse_decisions  # noqa: E402
@@ -34,12 +35,15 @@ from answerers.llm_prompt import (  # noqa: E402
     build_l1_messages,
     build_l2_cite_messages,
     build_l2_decide_messages,
+    build_rag_messages,
     qid_for,
 )
+from answerers.minilm import MiniLMRetriever  # noqa: E402
+from answerers.passages import contains, overlap_word_range  # noqa: E402
 from local_evaluator import UNANSWERED, Statistics  # noqa: E402
 from utils import gold_evidence  # noqa: E402
 
-RUNGS = ("L0", "L1", "L2")
+RUNGS = ("L0", "L1", "L2", "RAG")
 
 
 def load_transcript(transcript_id: str) -> Dict:
@@ -149,6 +153,81 @@ def _decide_and_cite(
     return records, elapsed, parse_failures
 
 
+def _norm(text: Optional[str]) -> str:
+    return " ".join((text or "").split()).lower()
+
+
+def _run_rag(client, transcript, rows, index, retriever, top_k):
+    """Grounded RAG reader: answer + candidate id + verbatim quote."""
+    words = transcript.get("words", [])
+    questions = [row["question"] for row in rows]
+    ids = [qid_for(i) for i in range(len(questions))]
+
+    embeddings = retriever.encode([p.text for p in index])
+    candidates_by_index = []
+    for question in questions:
+        ranked = rag_module.retrieve(
+            question, index, retriever, passage_embeddings=embeddings, top_k=top_k
+        )
+        candidates_by_index.append([p for p, _ in ranked])
+
+    started = time.perf_counter()
+    raw = client.generate(build_rag_messages(questions, candidates_by_index))
+    elapsed = time.perf_counter() - started
+    parsed = parse_answers(raw, ids)
+
+    records: List[Dict] = []
+    parse_failures = 0
+    for i, (row, qid) in enumerate(zip(rows, ids)):
+        entry = parsed.get(qid)
+        cands = candidates_by_index[i]
+        gold = (
+            (float(row["evidence_start"]), float(row["evidence_end"]))
+            if row["question_type"] == "positive" else None
+        )
+        gold_range = overlap_word_range(words, *gold) if gold else None
+
+        if entry is None or entry.get("answer") is None:
+            parse_failures += 1
+            fields = dict(prediction=UNANSWERED, span=None, quote=None,
+                          candidate=None, grounded=False, cited_contains_gold=False)
+        elif entry["answer"]:
+            quote = entry.get("quote")
+            cand_id = entry.get("candidate")
+            digits = "".join(ch for ch in str(cand_id or "") if ch.isdigit())
+            cidx = int(digits) - 1 if digits else None
+            passage = (
+                cands[cidx] if cidx is not None and 0 <= cidx < len(cands) else None
+            )
+            span = align_span(words, quote or "")
+            grounded = bool(passage and quote and _norm(quote) in _norm(passage.text))
+            cited_gold = bool(
+                passage and gold_range and contains(passage, gold_range)
+            )
+            fields = dict(prediction=1, span=span, quote=quote, candidate=cand_id,
+                          grounded=grounded, cited_contains_gold=cited_gold)
+        else:
+            fields = dict(prediction=0, span=None, quote=None, candidate=None,
+                          grounded=True, cited_contains_gold=False)
+
+        record = {
+            "question_id": row["question_id"],
+            "transcript_id": row["transcript_id"],
+            "question_type": row["question_type"],
+            "label": int(row["label"]),
+            "answer": bool(fields["prediction"] == 1),
+            "span": list(fields["span"]) if fields["span"] is not None else None,
+            "gold": (
+                [float(row["evidence_start"]), float(row["evidence_end"])]
+                if row["question_type"] == "positive" else None
+            ),
+            "rung": "RAG",
+        }
+        record.update(fields)
+        records.append(record)
+    return records, elapsed, parse_failures
+
+
 def score_records(records: List[Dict]) -> Dict:
     statistics = Statistics()
     for record in records:
@@ -166,7 +245,7 @@ def score_records(records: List[Dict]) -> Dict:
         name: {"correct": value[0], "total": value[1]}
         for name, value in statistics.by_type.items()
     }
-    return {
+    summary = {
         "score": round(statistics.final_score, 4),
         "accuracy": round(statistics.accuracy, 4),
         "mean_tiou": round(statistics.mean_tiou, 4),
@@ -179,31 +258,60 @@ def score_records(records: List[Dict]) -> Dict:
         "tious_answered_yes": round(statistics.mean_tiou_answered_yes, 4),
         "questions": len(records),
     }
+    cited = [r for r in yes_answers if r.get("candidate")]
+    if cited:
+        summary["passage_selection_accuracy"] = round(
+            sum(1 for r in cited if r.get("cited_contains_gold")) / len(cited), 4
+        )
+        summary["grounded_rate"] = round(
+            sum(1 for r in cited if r.get("grounded")) / len(cited), 4
+        )
+    return summary
 
 
-def run_rung(rung: str, client, limit: Optional[int], tag: str) -> Dict:
+def run_rung(
+    rung: str,
+    client,
+    limit: Optional[int],
+    tag: str,
+    index_kind: str = "passages",
+    top_k: int = 5,
+    context: int = 1,
+) -> Dict:
     conversations, rows_by_tid, transcripts = _documents(limit)
     evidence = data.load_evidence()
+    retriever = MiniLMRetriever() if rung == "RAG" else None
+    index_cache: Dict[str, list] = {}
 
     print(f"\n=== {rung} ({len(conversations)} conversations) ===")
     records: List[Dict] = []
     parse_failures = 0
     latencies: List[float] = []
-    for index, (tid, rows) in enumerate(conversations):
-        if rung == "L0":
-            few_shot: Sequence[Tuple[str, str]] = ()
-        else:
-            few_shot = build_few_shot(
-                rows_by_tid, transcripts, evidence, exclude_tid=tid
+    for conversation_index, (tid, rows) in enumerate(conversations):
+        if rung == "RAG":
+            words = transcripts[tid].get("words", [])
+            if tid not in index_cache:
+                index_cache[tid] = rag_module.build_index(
+                    words, kind=index_kind, context=context
+                )
+            conversation_records, elapsed, failures = _run_rag(
+                client, transcripts[tid], rows, index_cache[tid], retriever, top_k
             )
-        conversation_records, elapsed, failures = _decide_and_cite(
-            rung, client, transcripts[tid], rows, few_shot
-        )
+        else:
+            if rung == "L0":
+                few_shot: Sequence[Tuple[str, str]] = ()
+            else:
+                few_shot = build_few_shot(
+                    rows_by_tid, transcripts, evidence, exclude_tid=tid
+                )
+            conversation_records, elapsed, failures = _decide_and_cite(
+                rung, client, transcripts[tid], rows, few_shot
+            )
         records.extend(conversation_records)
         latencies.append(elapsed)
         parse_failures += failures
         print(
-            f"  [{index + 1}/{len(conversations)}] {tid} "
+            f"  [{conversation_index + 1}/{len(conversations)}] {tid} "
             f"{elapsed:5.1f}s yes={sum(r['answer'] for r in conversation_records)}/10 "
             f"parse_fail={failures}"
         )
@@ -244,6 +352,11 @@ def main() -> int:
     parser.add_argument("--tag", default="probe")
     parser.add_argument("--model", default=None)
     parser.add_argument("--max-new-tokens", type=int, default=None)
+    parser.add_argument("--index", default="passages", choices=["passages", "sentences"],
+                        help="RAG candidate granularity.")
+    parser.add_argument("--top-k", type=int, default=5, help="RAG candidates per question.")
+    parser.add_argument("--context", type=int, default=1,
+                        help="Sentence window half-width for --index sentences.")
     args = parser.parse_args()
 
     client = HFClient(model_name=args.model, max_new_tokens=args.max_new_tokens)
@@ -251,7 +364,10 @@ def main() -> int:
 
     summaries = []
     for rung in args.rungs:
-        summaries.append(run_rung(rung, client, args.limit, args.tag))
+        summaries.append(run_rung(
+            rung, client, args.limit, args.tag,
+            index_kind=args.index, top_k=args.top_k, context=args.context,
+        ))
 
     print("\n=== summary ===")
     print(f"{'rung':<5}{'score':>7}{'acc':>7}{'mIoU':>7}{'recall':>8}{'quote_f':>9}")

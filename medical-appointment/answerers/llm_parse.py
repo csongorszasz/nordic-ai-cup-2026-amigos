@@ -119,7 +119,10 @@ def parse_answers(
             quote = quote.strip() or None
         else:
             quote = None
-        result[qid] = {"answer": answer, "quote": quote}
+        candidate = item.get("candidate", item.get("passage_id", item.get("chunk")))
+        if candidate is not None:
+            candidate = str(candidate).strip() or None
+        result[qid] = {"answer": answer, "quote": quote, "candidate": candidate}
     return result
 
 

@@ -87,3 +87,28 @@ def test_build_few_shot_balanced_and_loco_safe():
     # Excluding s1 drops the only positive example -> 2 turns remain.
     fewer = build_few_shot(rows_by_tid, transcripts, evidence, exclude_tid="s1")
     assert len(fewer) == 2
+
+
+from answerers.llm_prompt import build_rag_messages, rag_candidates_block
+
+
+class _Passage:
+    def __init__(self, start, end, text):
+        self.start, self.end, self.text = start, end, text
+
+
+def test_rag_candidates_block_and_messages():
+    candidates = [
+        [_Passage(100.0, 105.0, "the dose is 100 mg")],
+        [_Passage(20.0, 23.0, "no side effects")],
+    ]
+    questions = ["Was the dose 100 mg?", "Any side effects?"]
+    block = rag_candidates_block(questions, candidates)
+    assert "q01: Was the dose 100 mg?" in block
+    assert "c01 [100.00-105.00] the dose is 100 mg" in block
+
+    messages = build_rag_messages(questions, candidates)
+    user = messages[-1]["content"]
+    assert "c01 [20.00-23.00] no side effects" in user
+    assert '"candidate":"c01"' in user
+    assert messages[0]["role"] == "system"
