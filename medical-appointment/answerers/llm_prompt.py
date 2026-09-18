@@ -3,11 +3,19 @@
 All pure functions so the prompt shape is unit-testable without a model. The
 input never includes ``question_type`` (unavailable at evaluation time) and never
 includes retrieved candidates (L0-L2 are transcript-only).
+
+``MEDAPP_LLM_PROMPT`` selects a prompt variant (``base``, ``v1``, ``v2``,
+``v3``); every builder takes an explicit ``variant`` argument for probes so the
+environment never has to change mid-run.
 """
 
+import os
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .align import text_between
+
+# Variant selected at serving time; probes pass it explicitly.
+VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base").strip().lower()
 
 SYSTEM_PROMPT = (
     "You are a clinical evidence extraction assistant. You are given a "
@@ -24,11 +32,55 @@ SYSTEM_PROMPT = (
     "- Output ONLY a JSON object, no prose."
 )
 
+# v1 (Attribute-First): locate the evidence before deciding the answer.
+ATTRIBUTE_FIRST_NOTE = (
+    "Work evidence-first: for each question, find the exact supporting span in "
+    "the transcript first, and only then decide the answer."
+)
+# v2 (minimal evidence): counter the over-long quotes (CAGE boundary overrun).
+MINIMAL_RULE = (
+    "- evidence_quote must be the SHORTEST contiguous span that fully "
+    "establishes the answer; do not include surrounding context that is not "
+    "needed.\n"
+)
+# v3 (occurrence disambiguation): the question is written from the annotated
+# occurrence, so its wording points at the occurrence a human would cite.
+OCCURRENCE_RULE = (
+    "- If the same fact is stated more than once, quote the occurrence whose "
+    "wording most closely matches the question.\n"
+)
+
+_VARIANT_RULES = {"v2": MINIMAL_RULE, "v3": OCCURRENCE_RULE}
+
 SCHEMA_HINT = (
     'Return JSON exactly like:\n'
     '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"..."},'
     '{"id":"q02","answer":"no","evidence_quote":null}]}'
 )
+
+SCHEMA_HINT_V1 = (
+    'Return JSON exactly like:\n'
+    '{"answers":[{"id":"q01","evidence_quote":"...","answer":"yes"},'
+    '{"id":"q02","evidence_quote":null,"answer":"no"}]}'
+)
+
+
+def system_prompt(variant: Optional[str] = None) -> str:
+    """System prompt for a variant (defaults to ``MEDAPP_LLM_PROMPT``)."""
+    selected = (variant or VARIANT).strip().lower()
+    if selected == "v1":
+        return SYSTEM_PROMPT.replace(
+            "Rules:\n", "Rules:\n" + ATTRIBUTE_FIRST_NOTE + "\n", 1
+        )
+    rule = _VARIANT_RULES.get(selected)
+    if rule:
+        return SYSTEM_PROMPT.replace("Rules:\n", "Rules:\n" + rule, 1)
+    return SYSTEM_PROMPT
+
+
+def schema_hint(variant: Optional[str] = None) -> str:
+    """Schema hint for a variant; v1 puts the evidence before the answer."""
+    return SCHEMA_HINT_V1 if (variant or VARIANT).strip().lower() == "v1" else SCHEMA_HINT
 
 
 def qid_for(index: int) -> str:
@@ -79,33 +131,42 @@ def questions_block(questions: Sequence[str]) -> str:
     )
 
 
-def _base_user(transcript: Dict, questions: Sequence[str]) -> str:
+def _base_user(
+    transcript: Dict, questions: Sequence[str], variant: Optional[str] = None
+) -> str:
     return (
         "TRANSCRIPT\n"
         f"{serialize_transcript(transcript)}\n\n"
         "QUESTIONS\n"
         f"{questions_block(questions)}\n\n"
-        f"{SCHEMA_HINT}"
+        f"{schema_hint(variant)}"
     )
 
 
-def build_l0_messages(transcript: Dict, questions: Sequence[str]) -> List[Dict]:
+def build_l0_messages(
+    transcript: Dict, questions: Sequence[str], variant: Optional[str] = None
+) -> List[Dict]:
     """Zero-shot, single call."""
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": _base_user(transcript, questions)},
+        {"role": "system", "content": system_prompt(variant)},
+        {"role": "user", "content": _base_user(transcript, questions, variant)},
     ]
 
 
 def build_l1_messages(
-    transcript: Dict, questions: Sequence[str], few_shot: Sequence[Tuple[str, str]] = ()
+    transcript: Dict,
+    questions: Sequence[str],
+    few_shot: Sequence[Tuple[str, str]] = (),
+    variant: Optional[str] = None,
 ) -> List[Dict]:
     """Few-shot, single call. ``few_shot`` is a list of (user, assistant) turns."""
-    messages: List[Dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages: List[Dict] = [{"role": "system", "content": system_prompt(variant)}]
     for user, assistant in few_shot:
         messages.append({"role": "user", "content": user})
         messages.append({"role": "assistant", "content": assistant})
-    messages.append({"role": "user", "content": _base_user(transcript, questions)})
+    messages.append(
+        {"role": "user", "content": _base_user(transcript, questions, variant)}
+    )
     return messages
 
 

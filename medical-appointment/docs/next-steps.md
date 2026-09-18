@@ -1,18 +1,21 @@
 # Next steps
 
 Standing plan for the medical-appointment case, updated 2026-09-18 after the
-served ModernBERT validation (**T034, 0.606**). Threads A/B/C below; execution
-order is a judgement call, not a dependency.
+served 26B validation (**T042, 0.758**) and the T041 boundary-refiner test.
+Threads A/B/C below; execution order is a judgement call, not a dependency.
 
 ## State
 
-- **Validated score 0.744** (T039): `MEDAPP_ANSWERER=llm`,
-  `MEDAPP_LLM_MODEL=google/gemma-4-e4b-it` (fp16, multimodal loader), L1
-  whole-transcript prompt with LOCO-safe few-shot + `large-v3-turbo` int8 ASR,
-  served from IDUN behind cloudflared. Latency 14–19 s. Compare: ModernBERT
-  served 0.606 (T034), legacy 0.545 (T027), floor 0.200.
-- **Probe predicts the service**: Gemma E4B in-sample 0.729 (T038) vs validation
-  0.744 (T039); ModernBERT OOF 0.610 vs validation 0.606.
+- **Validated score 0.758** (T042): `MEDAPP_ANSWERER=llm`,
+  `MEDAPP_LLM_MODEL=google/gemma-4-26b-a4b-it` (fp16), L1 base whole-transcript
+  prompt with LOCO-safe few-shot + `large-v3-turbo` int8 ASR, served from IDUN
+  behind cloudflared. Latency 14.6–17.6 s. Fallback: E4B L1 validated 0.744
+  (T039). Compare: ModernBERT served 0.606 (T034), legacy 0.545 (T027).
+- **Probe predicts the service for model scale**: Gemma E4B in-sample 0.729
+  (T038) → validation 0.744 (T039); 26B in-sample 0.755 (T040) → validation
+  0.758 (T042). But **prompt-variant gains did not transfer**: v1/v2/v3 gained
+  ≤0.01 in-sample and 26B+v2 validated **0.72** (T042) — keep
+  `MEDAPP_LLM_PROMPT` unset.
 - The pipeline is **modular** (`answerers/` behind `MEDAPP_ANSWERER`), so
   legacy, modernbert and llm A/B against the same contract and harness.
 - **Main open risk**: serving stability for the one-shot evaluation — the
@@ -111,6 +114,11 @@ Gemma E4B alone (0.729) already exceeds it.
    occurrence a human would cite; targets the remaining 22 cases.
 5. **Risks**: in-sample ceiling (LOCO-safe few-shot), not validation; E4B is
    Apache 2.0. Confirm on validation before any flip.
+6. **Post-hoc boundary refiner (T041)**: tested on E4B, parked — all variants
+   lost to the LLM's own span (0.47–0.52 vs 0.60 covered mIoU; oracle selector
+   0.639 caps composed at ≈0.748). The extent convention is not learnable from
+   179 windows at this scale. Code behind `MEDAPP_LLM_REFINER` (off); revisit
+   only with 26B spans or as a teacher-distillation target.
 
 ## Thread C — medical-domain ASR
 

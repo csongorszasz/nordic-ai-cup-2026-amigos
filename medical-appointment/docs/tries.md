@@ -408,6 +408,52 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
   risk is serving stability for the one-shot evaluation (ephemeral tunnel,
   4 h job walltime). In-sample probe predicts the service.
 
+## T041 — post-hoc boundary refiner on E4B spans (parked)
+
+- **Goal:** recover part of the ~70 % mIoU loss that is *interval/extent* error
+  (quotes too long/short/offset) by refining the E4B quote's aligned span with a
+  small encoder, leaving the LLM decision untouched. Anchors and targets come
+  from the E4B probe records (`results/llm_gemma_l1_L1_questions.json`): window
+  ±24 words around the LLM quote, gold word range inside the window as target;
+  179 of 191 LLM-yes positives are covered (12 gold spans lie outside the LLM
+  window — occurrence failures, out of scope).
+- **Four variants, all conversation-grouped 5-fold, same harness
+  (`train_refiner.py`):**
+
+  | variant | refiner mIoU (covered) | LLM on same | composed score |
+  | --- | --- | --- | --- |
+  | token start/end, raw window | 0.472 | 0.605 | 0.656 |
+  | token start/end, quote marked + joint decode | 0.522 | 0.605 | 0.683 |
+  | delta regression (left/right words) | 0.503 | 0.605 | 0.673 |
+  | LLM anchor (baseline) | 0.605 | 0.605 | **0.729** |
+
+- **Diagnosis:** the models overfit the 179 examples (train span loss → 0.2);
+  the token model shifts correct anchors to other word ranges (55 anchors ≥0.8
+  drop from 0.874 to 0.720), and "refiner only if contained in the anchor"
+  (0.576) still loses to the anchor. The **oracle** choice between refiner and
+  anchor is 0.639 covered — at most +0.034 over the anchor, and even that cap
+  composes to ≈0.748 in-sample, barely above the validated E4B 0.744.
+- **Conclusion:** parked. The annotator extent convention is not learnable from
+  179 windows at this scale; a supervised refiner cannot pay for the serving
+  complexity. Code stays behind `MEDAPP_LLM_REFINER` (unset by default) as the
+  T040/26B or teacher path might revisit it later.
+
+## T042 — validation: served Gemma 4 26B base (0.758); prompt variants do not transfer
+
+- **Config:** `MEDAPP_ANSWERER=llm`, `MEDAPP_LLM_MODEL=google/gemma-4-26b-a4b-it`
+  (fp16), L1 **base** prompt (no variant), `large-v3-turbo` int8 ASR; IDUN
+  A100-80G + cloudflared quick tunnel.
+- **Result:** validation **0.758** — the new best (+0.014 over E4B 0.744, T039).
+  All 200 OK; captures show 14.6–17.6 s per conversation (22-conversation run).
+- **Prompt variants (E4B in-sample, T038 base 0.729):** v1 attribute-first
+  0.733, v2 minimal-evidence 0.739, v3 occurrence-wording 0.728. But served
+  26B **+ v2** validated **0.72** — a regression below both base configs. The
+  ≤+0.01 in-sample deltas were selected on the same 39 conversations and did
+  not survive validation (a "shortest span" bias under-cites unseen annotators).
+- **Decision:** ship **26B base** for the evaluation; `MEDAPP_LLM_PROMPT` stays
+  unset. Model scale is the only gain that has transferred end-to-end
+  (E4B 0.744 → 26B 0.758). Code for the variants remains behind the env flag.
+
 ## B1 — native-audio probe (in progress)
 
 - **Goal:** ask Gemma 4 E4B to transcribe the audio directly and see whether it

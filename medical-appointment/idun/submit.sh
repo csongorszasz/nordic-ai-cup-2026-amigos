@@ -9,6 +9,7 @@
 #   bash idun/submit.sh dev [args]  # fast test gate + in-process dev_eval on GPU
 #   bash idun/submit.sh test        # slow (model-backed) test suite on GPU
 #   bash idun/submit.sh train [args]# train the ModernBERT answerer (grouped OOF)
+#   bash idun/submit.sh refiner [args]# train the post-hoc boundary refiner
 #   bash idun/submit.sh llm [args]  # LLM ceiling probe (L0/L1/L2)
 #   bash idun/submit.sh llm80 [args]# same, forced onto an 80 GB GPU (26B/31B)
 #   bash idun/submit.sh serve       # serve the LLM endpoint + cloudflared tunnel
@@ -96,7 +97,16 @@ case "$ACTION" in
 
     serve)
         check_ssh; sync_code; sync_transcripts
-        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_serve_llm.slurm")
+        # Forward the LLM selection and allow per-run sbatch overrides (e.g. a
+        # 26B on gpu80g). Defaults keep the E4B/gpu40g config.
+        ENV_ARGS=""
+        [ -n "${MEDAPP_LLM_MODEL:-}" ] && ENV_ARGS="${ENV_ARGS} MEDAPP_LLM_MODEL=${MEDAPP_LLM_MODEL}"
+        [ -n "${MEDAPP_LLM_PROMPT:-}" ] && ENV_ARGS="${ENV_ARGS} MEDAPP_LLM_PROMPT=${MEDAPP_LLM_PROMPT}"
+        SBATCH_OPTS=""
+        [ -n "${MEDAPP_SERVE_CONSTRAINT:-}" ] && SBATCH_OPTS="${SBATCH_OPTS} --constraint=${MEDAPP_SERVE_CONSTRAINT}"
+        [ -n "${MEDAPP_SERVE_MEM:-}" ] && SBATCH_OPTS="${SBATCH_OPTS} --mem=${MEDAPP_SERVE_MEM}"
+        [ -n "${MEDAPP_SERVE_TIME:-}" ] && SBATCH_OPTS="${SBATCH_OPTS} --time=${MEDAPP_SERVE_TIME}"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && ${ENV_ARGS} sbatch --account=${SLURM_ACCOUNT}${SBATCH_OPTS} idun/job_serve_llm.slurm")
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  URL: ssh ${REMOTE} \"grep -a PUBLIC_URL ${REMOTE_DIR}/logs/med_serve_llm_${JOB_ID}.out\""
@@ -140,6 +150,20 @@ case "$ACTION" in
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  tail -f ${REMOTE_DIR}/logs/med_train_mb_${JOB_ID}.out"
+        ;;
+
+    refiner)
+        check_ssh; sync_code; sync_transcripts
+        shift || true
+        ARGS="$*"
+        # results/ is excluded from sync; the refiner needs the E4B probe records.
+        ssh "$REMOTE" "mkdir -p ${REMOTE_DIR}/results"
+        rsync -avz "${PROJECT_ROOT}/results/llm_gemma_l1_L1_questions.json" \
+            "${REMOTE}:${REMOTE_DIR}/results/"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_train_refiner.slurm ${ARGS}")
+        echo "$JOB_SUBMIT"
+        JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
+        echo "  tail -f ${REMOTE_DIR}/logs/med_train_refiner_${JOB_ID}.out"
         ;;
 
     llm)

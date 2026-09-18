@@ -12,7 +12,7 @@ import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from .align import align_span
+from .align import align_quote
 from .base import Answer
 from .llm_client import HFClient
 from .llm_parse import parse_answers
@@ -75,19 +75,35 @@ class LLMAnswerer:
     name = "llm"
     supports_info = True
 
-    def __init__(self, client=None, few_shot=None) -> None:
+    def __init__(self, client=None, few_shot=None, refiner=None) -> None:
         self._client = client
         self._few_shot = few_shot  # None = build lazily from training data
+        self._refiner = refiner  # None + unset env = no refinement
+        self._refiner_ready = refiner is not None
 
     def _ensure_client(self):
         if self._client is None:
             self._client = HFClient()
         return self._client
 
+    def _ensure_refiner(self):
+        """Boundary refiner when ``MEDAPP_LLM_REFINER`` is set, else None."""
+        if not self._refiner_ready:
+            self._refiner_ready = True
+            checkpoint = os.environ.get("MEDAPP_LLM_REFINER")
+            if checkpoint:
+                from .refiner import BoundaryRefiner
+
+                self._refiner = BoundaryRefiner(checkpoint)
+        return self._refiner
+
     def warm_up(self) -> None:
         warm = getattr(self._ensure_client(), "warm_up", None)
         if warm is not None:
             warm()
+        refiner = self._ensure_refiner()
+        if refiner is not None:
+            refiner.warm_up()
 
     def answer_all(
         self,
@@ -120,9 +136,10 @@ class LLMAnswerer:
 
         expected = [qid_for(index) for index in range(len(questions))]
         parsed = parse_answers(raw, expected)
+        refiner = self._ensure_refiner()
 
         results: List[Answer] = []
-        for qid in expected:
+        for index, qid in enumerate(expected):
             entry = parsed.get(qid)
             if entry is None or entry.get("answer") is None:
                 results.append(self._wrap(False, None, {"decided_by": "parse"}, return_info))
@@ -130,11 +147,26 @@ class LLMAnswerer:
             if not entry["answer"]:
                 results.append(self._wrap(False, None, {"decided_by": "no"}, return_info))
                 continue
-            span = align_span(words, entry.get("quote") or "")
-            results.append(
-                self._wrap(True, span, {"decided_by": "yes", "quote": entry.get("quote")},
-                           return_info)
-            )
+            aligned = align_quote(words, entry.get("quote") or "")
+            if aligned is None:
+                results.append(
+                    self._wrap(True, None,
+                               {"decided_by": "yes", "quote": entry.get("quote")},
+                               return_info)
+                )
+                continue
+            span = (aligned[0], aligned[1])
+            info = {"decided_by": "yes", "quote": entry.get("quote")}
+            if refiner is not None:
+                try:
+                    refined = refiner.refine(questions[index], words, aligned[2], aligned[3])
+                except Exception:
+                    logger.exception("refiner failed; using the LLM span.")
+                    refined = None
+                if refined is not None:
+                    info["llm_span"] = list(span)
+                    span = refined
+            results.append(self._wrap(True, span, info, return_info))
         return results
 
     @staticmethod

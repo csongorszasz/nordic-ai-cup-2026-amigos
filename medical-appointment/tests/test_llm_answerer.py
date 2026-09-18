@@ -54,3 +54,40 @@ def test_empty_transcript():
 
 def test_factory_builds_llm():
     assert get_answerer("llm").name == "llm"
+
+
+class FakeRefiner:
+    def __init__(self):
+        self.calls = []
+
+    def refine(self, question, words, first_word, last_word):
+        self.calls.append((question, first_word, last_word))
+        return (1.6, 2.4)
+
+
+class ExplodingRefiner:
+    def refine(self, *args):
+        raise RuntimeError("boom")
+
+
+def test_refiner_replaces_llm_span():
+    client = StubClient([
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg."}]}'
+    ])
+    refiner = FakeRefiner()
+    answerer = LLMAnswerer(client=client, few_shot=(), refiner=refiner)
+    result = answerer.answer_all(["Was the dose 100 mg?"], TRANSCRIPT, return_info=True)
+    assert result == [(True, (1.6, 2.4), {
+        "decided_by": "yes",
+        "quote": "The dose is 100 mg.",
+        "llm_span": [1.5, 2.9],
+    })]
+    assert refiner.calls == [("Was the dose 100 mg?", 0, 4)]
+
+
+def test_refiner_failure_falls_back_to_llm_span():
+    client = StubClient([
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg."}]}'
+    ])
+    answerer = LLMAnswerer(client=client, few_shot=(), refiner=ExplodingRefiner())
+    assert answerer.answer_all(["Q?"], TRANSCRIPT) == [(True, (1.5, 2.9))]

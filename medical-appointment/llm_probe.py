@@ -89,6 +89,7 @@ def _decide_and_cite(
     transcript: Dict,
     rows: List[Dict],
     few_shot: Sequence[Tuple[str, str]],
+    variant: Optional[str] = None,
 ) -> Tuple[List[Dict], float, int]:
     """Return per-question records, elapsed seconds, parse failures."""
     questions = [row["question"] for row in rows]
@@ -96,11 +97,13 @@ def _decide_and_cite(
 
     started = time.perf_counter()
     if rung == "L0":
-        raw = _generate(client, build_l0_messages(transcript, questions))
+        raw = _generate(client, build_l0_messages(transcript, questions, variant))
         parsed = parse_answers(raw, ids)
         entries = {qid: parsed.get(qid) for qid in ids}
     elif rung == "L1":
-        raw = _generate(client, build_l1_messages(transcript, questions, few_shot))
+        raw = _generate(
+            client, build_l1_messages(transcript, questions, few_shot, variant)
+        )
         parsed = parse_answers(raw, ids)
         entries = {qid: parsed.get(qid) for qid in ids}
     else:  # L2 two-pass
@@ -382,6 +385,7 @@ def run_rung(
     index_kind: str = "passages",
     top_k: int = 5,
     context: int = 1,
+    variant: Optional[str] = None,
 ) -> Dict:
     conversations, rows_by_tid, transcripts = _documents(limit)
     evidence = data.load_evidence()
@@ -416,7 +420,7 @@ def run_rung(
                     rows_by_tid, transcripts, evidence, exclude_tid=tid
                 )
             conversation_records, elapsed, failures = _decide_and_cite(
-                rung, client, transcripts[tid], rows, few_shot
+                rung, client, transcripts[tid], rows, few_shot, variant
             )
         records.extend(conversation_records)
         latencies.append(elapsed)
@@ -432,6 +436,7 @@ def run_rung(
         {
             "rung": rung,
             "tag": tag,
+            "variant": variant or "base",
             "model": getattr(client, "model_name", "stub"),
             "conversations": len(conversations),
             "parse_failures": parse_failures,
@@ -463,6 +468,10 @@ def main() -> int:
     parser.add_argument("--tag", default="probe")
     parser.add_argument("--model", default=None)
     parser.add_argument("--max-new-tokens", type=int, default=None)
+    parser.add_argument("--variant", default="base",
+                        choices=["base", "v1", "v2", "v3"],
+                        help="Prompt variant (v1 attribute-first, v2 minimal "
+                             "evidence, v3 occurrence wording).")
     parser.add_argument("--index", default="passages", choices=["passages", "sentences"],
                         help="RAG candidate granularity.")
     parser.add_argument("--top-k", type=int, default=5, help="RAG candidates per question.")
@@ -479,6 +488,7 @@ def main() -> int:
         summaries.append(run_rung(
             rung, client, args.limit, args.tag,
             index_kind=args.index, top_k=args.top_k, context=args.context,
+            variant=args.variant,
         ))
 
     print("\n=== summary ===")

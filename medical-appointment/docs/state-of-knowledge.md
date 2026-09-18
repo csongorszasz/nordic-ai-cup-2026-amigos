@@ -92,13 +92,17 @@ localization ≈ 0.33.
 | LLM L1 Gemma 4 E4B, in-sample (T038, not served) | 0.729 |
 | **Gemma 4 E4B L1 served, validation (T039)** | **0.744** |
 | LLM L1 Gemma 4 26B-A4B, in-sample (T040, not served) | 0.755 |
+| **Gemma 4 26B-A4B L1 served, validation (T042)** | **0.758** |
 
 `dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
 validation T027 (0.545), ModernBERT OOF 0.610 matched validation T034 0.606,
 and Gemma E4B in-sample 0.729 matched validation T039 **0.744**. We can iterate
-locally with confidence. The best validated config is now the LLM path
-(Gemma 4 E4B L1 + turbo ASR) served from IDUN; the remaining work is serving
-stability for the one-shot evaluation.
+locally with confidence. The best validated config is now the LLM path with
+**Gemma 4 26B-A4B L1 + turbo ASR** served from IDUN (0.758, T042); E4B L1 is
+the 0.744 fallback. Prompt variants (attribute-first, minimal-evidence,
+occurrence-wording) gained ≤0.01 in-sample but did not transfer: 26B+v2
+validated **0.72** (T042). The remaining work is serving stability for the
+one-shot evaluation.
 
 ## Open problems / next
 

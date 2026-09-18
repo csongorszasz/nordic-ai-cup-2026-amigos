@@ -7,7 +7,9 @@ from answerers.llm_prompt import (
     build_l2_cite_messages,
     build_l2_decide_messages,
     qid_for,
+    schema_hint,
     serialize_transcript,
+    system_prompt,
 )
 
 
@@ -55,6 +57,28 @@ def test_l2_builders():
     cite = build_l2_cite_messages(make_transcript("x"), [("q01", "Q?")])
     assert "already been answered YES" in cite[-1]["content"]
     assert "q01: Q?" in cite[-1]["content"]
+
+
+def test_variant_system_prompts():
+    assert "evidence-first" in system_prompt("v1")
+    assert "SHORTEST contiguous span" in system_prompt("v2")
+    assert "stated more than once" in system_prompt("v3")
+    assert "evidence-first" not in system_prompt("v2")
+
+
+def test_v1_schema_puts_evidence_before_answer():
+    hint = schema_hint("v1")
+    assert hint.index("evidence_quote") < hint.index('"answer"')
+    base = schema_hint("base")
+    assert base.index('"answer"') < base.index("evidence_quote")
+
+
+def test_l1_messages_use_the_selected_variant():
+    messages = build_l1_messages(
+        make_transcript("x"), ["Q?"], few_shot=(), variant="v3"
+    )
+    assert "stated more than once" in messages[0]["content"]
+    assert messages[-1]["role"] == "user"
 
 
 def test_build_few_shot_balanced_and_loco_safe():

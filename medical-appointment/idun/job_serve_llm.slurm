@@ -38,6 +38,7 @@ export WHISPER_COMPUTE_TYPE=int8
 export MEDAPP_CAPTURE=1
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
+echo "model=${MEDAPP_LLM_MODEL} prompt=${MEDAPP_LLM_PROMPT:-base}"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 
 python api.py > "logs/api_serve_${SLURM_JOB_ID}.log" 2>&1 &
@@ -49,7 +50,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "waiting for endpoint (model load)..."
-for _ in $(seq 1 160); do
+for _ in $(seq 1 400); do
     curl -s --max-time 3 http://localhost:9054/ >/dev/null 2>&1 && break
     sleep 3
 done

@@ -195,11 +195,13 @@ def compute_loss(
     span_weight: float = 1.0,
     tiou_weight: float = 1.0,
     class_weights: Optional[torch.Tensor] = None,
+    cls_weight: float = 1.0,
 ) -> Tuple[torch.Tensor, Dict[str, float]]:
     """3-way CE + span CE (support/refute only) + expected-tIoU MSE.
 
     ``class_weights`` counteracts the ~5 % SUPPORT rate so the decision head is
-    not biased to NOT_MENTIONED.
+    not biased to NOT_MENTIONED. ``cls_weight=0`` drops the decision term for
+    the boundary refiner, which is trained on span + tIoU only.
     """
     cls_loss = functional.cross_entropy(
         outputs["logits"], batch["labels"], weight=class_weights
@@ -218,7 +220,7 @@ def compute_loss(
         span_loss = torch.zeros((), device=cls_loss.device)
 
     tiou_loss = functional.mse_loss(outputs["tiou"], batch["tiou_target"])
-    total = cls_loss + span_weight * span_loss + tiou_weight * tiou_loss
+    total = cls_weight * cls_loss + span_weight * span_loss + tiou_weight * tiou_loss
     return total, {
         "cls": float(cls_loss.detach()),
         "span": float(span_loss.detach()),
@@ -290,6 +292,8 @@ def score_pairs(model, tokenizer, pairs, device, max_length: int = MAX_LENGTH):
                 "expected_tiou": float(tiou[i]),
                 "start_index": start_index,
                 "end_index": end_index,
+                "start_scores": starts[i].tolist(),
+                "end_scores": ends[i].tolist(),
                 "offsets": offsets[i],
                 "sequence_ids": sequence_ids[i],
             }
