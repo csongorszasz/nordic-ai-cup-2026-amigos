@@ -65,10 +65,13 @@ class PipelineOrchestrator:
 
             same_sequence = request.sequence_id == self.active_sequence_id
 
-            # 1. Discard stale/out-of-order frames before touching any state. A
-            #    late duplicate of frame 0 must not reset the session either, so
-            #    this runs before the frame_index == 0 boundary check below.
-            if same_sequence and request.frame_index < self.last_frame_index:
+            # 1. Discard stale/out-of-order frames before touching any state.
+            #    Only indices above 0 qualify: frame_index 0 is the hard
+            #    session boundary. A restarted attempt reuses the sequence id
+            #    and starts at 0, so treating index 0 as stale would poison
+            #    every later frame of the rerun (observed with the local
+            #    evaluator, which always replays sequence id 'local').
+            if same_sequence and 0 < request.frame_index < self.last_frame_index:
                 logger.warning(
                     "Discarding stale frame_index %d (< %d) for sequence %s",
                     request.frame_index,
@@ -77,9 +80,10 @@ class PipelineOrchestrator:
                 )
                 return self._predict_only_response(request)
 
-            # 2. Manage flight session boundaries. frame_index 0 marks the first
-            #    frame of a new sequence; the evaluator uses a unique sequence_id
-            #    per attempt, so a same-id restart is treated as stale above.
+            # 2. Manage flight session boundaries: a new sequence_id, or
+            #    frame_index 0, which marks the first frame of a new attempt.
+            #    The platform mints a unique sequence_id per attempt, so a
+            #    same-id frame 0 is a restarted session, not a duplicate.
             if not same_sequence or request.frame_index == 0:
                 self._reset_session(request.sequence_id)
 

@@ -62,14 +62,31 @@ NATIVE_GSD = 0.125  # orto_foraar_12_5 native resolution, m/px
 LICENSE = "Open data - attribution: Dataforsyningen / Klimadatastyrelsen"
 
 # Preset sites chosen for challenge-relevant content: airfields carry hangars,
-# jets and towers; harbours carry industrial clutter and towers.
+# jets and towers; harbours carry industrial clutter and towers. Those are
+# context-rich but contain *real* lookalikes of the challenge classes, so use
+# them only after manual review or for cropped sub-regions.
+#
+# The residential presets are deliberately lookalike-free backgrounds (dense
+# housing + streets, no airfields, harbours, masts, turbines or military
+# objects) - safe to composite sprites onto without label conflicts.
 SITES: Dict[str, Tuple[float, float]] = {
+    # Airports / harbours (contain real challenge-object lookalikes)
     "billund_airport": (55.7403, 9.1518),
     "aalborg_airport": (57.0928, 9.8494),
     "kastrup_airport": (55.6180, 12.6560),
     "aarhus_harbor": (56.1500, 10.2200),
     "odense_industrial": (55.4038, 10.4024),
     "esbjerg_harbor": (55.4676, 8.4520),
+    # Residential / conflict-free backgrounds
+    "ishoej_residential": (55.6157, 12.3523),
+    "hoeje_taastrup": (55.6540, 12.3140),
+    "birkerod_residential": (55.8436, 12.4300),
+    "viby_aarhus": (56.1166, 10.1790),
+    "hjallese_odense": (55.3850, 10.4160),
+    "seest_kolding": (55.4780, 9.4340),
+    "silkeborg_north": (56.1860, 9.5480),
+    "hjoerring_east": (57.4640, 9.9950),
+    "holbaek_east": (55.7220, 11.7700),
 }
 
 # --------------------------------------------------------------------------- #
