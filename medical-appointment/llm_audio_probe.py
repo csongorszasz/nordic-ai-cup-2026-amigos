@@ -10,6 +10,7 @@ panadil/Panodil, Activel/Activelle, Isomeprazole/Esomeprazole,
 """
 
 import argparse
+import io
 import json
 import sys
 import time
@@ -64,7 +65,7 @@ def load_model(model_name: str, dtype: str = "float16"):
 
 def transcribe(processor, model, device, tid: str, max_new_tokens: int) -> str:
     audio_bytes = (AUDIO_DIR / f"conversation_{tid}.mp3").read_bytes()
-    waveform = decode_audio(audio_bytes, sampling_rate=16000)
+    waveform = decode_audio(io.BytesIO(audio_bytes), sampling_rate=16000)
     messages = [
         {
             "role": "user",
