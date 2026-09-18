@@ -2,9 +2,9 @@
  "tie_interceptor": {
   "dropped_parts": [],
   "gains": [
-   1.949,
-   1.923,
-   1.991
+   1.953,
+   1.953,
+   1.953
   ],
   "length_m": 9.7,
   "mean_colour_error": 51.4,
@@ -12,8 +12,8 @@
   "mesh": "models/spacecraft/tie_interceptor/scene.gltf",
   "offsets": [
    19.3,
-   21.3,
-   10.8
+   19.5,
+   13.0
   ],
   "per_sprite": [
    {

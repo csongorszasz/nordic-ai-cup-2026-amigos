@@ -2,18 +2,18 @@
  "a7": {
   "dropped_parts": [],
   "gains": [
-   1.634,
-   1.588,
-   1.626
+   1.617,
+   1.617,
+   1.617
   ],
   "length_m": 12.8,
   "mean_colour_error": 24.8,
   "mean_iou": 0.84,
   "mesh": "models/jet_plane/a7/A7_GearDown.glb",
   "offsets": [
-   43.1,
-   44.9,
-   35.3
+   45.3,
+   42.4,
+   35.6
   ],
   "per_sprite": [
    {
@@ -38,14 +38,14 @@
     "yaw": 55
    },
    {
-    "colour_error": 24.6,
+    "colour_error": 24.7,
     "file": "jet_plane/f021_2.png",
     "iou": 0.845,
     "tilt": 20,
     "yaw": 55
    },
    {
-    "colour_error": 26.2,
+    "colour_error": 26.1,
     "file": "jet_plane/f020_2.png",
     "iou": 0.851,
     "tilt": 0,
@@ -66,7 +66,7 @@
     "yaw": 55
    },
    {
-    "colour_error": 25.3,
+    "colour_error": 25.2,
     "file": "jet_plane/f017_2.png",
     "iou": 0.832,
     "tilt": 20,

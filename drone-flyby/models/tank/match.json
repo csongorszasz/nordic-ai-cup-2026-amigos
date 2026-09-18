@@ -2,71 +2,71 @@
  "churchill": {
   "dropped_parts": [],
   "gains": [
-   1.0,
-   2.957,
-   1.0
+   0.2,
+   0.2,
+   0.2
   ],
   "length_m": 8.6,
-  "mean_colour_error": 37.7,
+  "mean_colour_error": 32.4,
   "mean_iou": 0.824,
   "mesh": "models/tank/churchill/scene.gltf",
   "offsets": [
-   84.1,
-   25.7,
-   2.6
+   95.9,
+   99.3,
+   53.0
   ],
   "per_sprite": [
    {
-    "colour_error": 38.8,
+    "colour_error": 33.7,
     "file": "tank/f024_4.png",
     "iou": 0.815,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 38.6,
+    "colour_error": 33.5,
     "file": "tank/f023_5.png",
     "iou": 0.824,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 40.1,
+    "colour_error": 33.2,
     "file": "tank/f022_6.png",
     "iou": 0.815,
     "tilt": 20,
     "yaw": 230
    },
    {
-    "colour_error": 37.9,
+    "colour_error": 31.9,
     "file": "tank/f021_6.png",
     "iou": 0.832,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 36.2,
+    "colour_error": 31.6,
     "file": "tank/f020_6.png",
     "iou": 0.822,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 37.2,
+    "colour_error": 32.3,
     "file": "tank/f019_6.png",
     "iou": 0.83,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 35.9,
+    "colour_error": 31.3,
     "file": "tank/f018_6.png",
     "iou": 0.828,
     "tilt": 20,
     "yaw": 225
    },
    {
-    "colour_error": 36.9,
+    "colour_error": 31.6,
     "file": "tank/f016_6.png",
     "iou": 0.829,
     "tilt": 20,

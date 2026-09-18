@@ -309,27 +309,37 @@ def fit_to_sprite(render: np.ndarray, sprite: np.ndarray):
     return placed, iou, pixels_per_unit
 
 
+MIN_SHADING_CORRELATION = 0.3
+
+
 def fit_colour(placed: np.ndarray, sprite: np.ndarray):
-    """Per-channel gain and offset mapping the render's colours onto the sprite's."""
+    """Gain and per-channel offset mapping the render's colours onto the sprite's."""
     both = (placed[:, :, 3] > 64) & (sprite[:, :, 3] > 128)
     if both.sum() < 8:
         return np.ones(3), np.zeros(3), 999.0
     source = placed[both][:, :3].astype(np.float64)
     target = sprite[both][:, :3].astype(np.float64)
-    gains, offsets = np.ones(3), np.zeros(3)
-    for c in range(3):
-        spread = source[:, c].std()
-        # Match the spread of colours, not the per-pixel regression: at 20-180 px the
-        # render sits a pixel or two off the sprite, and a regression slope then shrinks
-        # toward zero and washes out contrast (a TIE's black panels on a white body came
-        # out mid-grey). A flat-shaded render can be nearly one colour, where gain and
-        # offset are not separable; then only shift it, as when the two anti-correlate.
-        # Either way the offset is set last, from the clipped gain, so the average
-        # colour always matches the sprite.
-        related = spread > 2.0 and np.corrcoef(source[:, c], target[:, c])[0, 1] > 0
-        gain = target[:, c].std() / spread if related else 1.0
-        gains[c] = np.clip(gain, 0.2, 4.0)
-        offsets[c] = target[:, c].mean() - gains[c] * source[:, c].mean()
+    # One contrast gain for all three channels, from brightness, plus a per-channel
+    # offset. Separate gains per channel bent the hue: the Churchill's green channel
+    # alone got 3x, which turned its panel lines lime.
+    #
+    # The gain matches the spread of brightness rather than a per-pixel regression: at
+    # 20-180 px the render sits a pixel or two off the sprite, and a regression slope
+    # shrinks toward zero and washes out contrast (a TIE's black panels on a white body
+    # came out mid-grey). But stretching only makes sense where the render's light and
+    # dark parts line up with the sprite's (TIE, jet: correlation 0.5-0.6). A tank's
+    # spread is camouflage the model does not have (correlation ~0), and its texture's
+    # track and panel lines are not in the sprite either; there the regression slope
+    # (near zero) is the honest answer and flattens that detail toward the mean colour.
+    luma_source, luma_target = source.mean(axis=1), target.mean(axis=1)
+    gain = 1.0  # a nearly flat render: gain and offset are not separable, only shift it
+    if luma_source.std() > 2.0:
+        correlation = np.corrcoef(luma_source, luma_target)[0, 1]
+        ratio = luma_target.std() / luma_source.std()
+        gain = ratio if correlation >= MIN_SHADING_CORRELATION else max(correlation, 0.0) * ratio
+        gain = float(np.clip(gain, 0.2, 4.0))
+    gains = np.full(3, gain)
+    offsets = target.mean(axis=0) - gain * source.mean(axis=0)
     fitted = np.clip(source * gains + offsets, 0, 255)
     error = float(np.abs(fitted - target).mean())
     return gains, offsets, error
