@@ -72,28 +72,41 @@ Priority: **1 + 2 + 3** (safe, no retrain) → **4 + 7** → 5/8/9.
   score-aware rule.
 - **A5: capacity** — ModernBERT-large and/or fold ensembling.
 
-## Thread B — LLM method (ceiling probe)
+## Thread B — LLM method (branch `medical-dominic-llm`)
 
-Use a local instruction LLM to establish an upper bound on decision + quote-cited
-localization, then decide whether to serve a small quantised variant or use it as
-a teacher.
+**Done (T036):** the probe is built and measured on the 39 conversations
+(in-sample ceiling), transcript-only, Qwen2.5-7B-Instruct, plain `transformers`
+on V100-32G.
 
-- **Branch:** new branch off `medical-dominic` (to be created).
-- **Shape:** `answerers/llm.py` behind the factory (`MEDAPP_ANSWERER=llm`); one
-  call per conversation with a timestamped, id'd transcript + all ten questions
-  → strict JSON `{answer, evidence_quote}`; align the quote back to
-  `Word.start/end` with the aligner already in `annotations/build.py`.
-- **Where:** IDUN GPUs, 7–8B instruct (Qwen2.5-7B / Llama-3.1-8B) via vLLM.
-- **Scoring:** reuse `dev_eval` metrics; compare to 0.606 (ModernBERT served)
-  and the 0.647/0.661 hybrid estimates.
-- **Serving reality:** the 4 GB 1650 cannot run 7B usefully → the probe is a
-  ceiling, or the model becomes a **teacher** generating occurrence/paraphrase
-  supervision for Thread A (feeds #4/#8), or a 3B/int4 variant if it wins.
-- **High-value variant:** LLM as decision + occurrence selector (show it the
-  retrieved candidate passages and ask which occurrence a human would cite),
-  with a span head or aligner producing the exact timestamps.
-- **Risks:** hallucinated/unfindable quotes, prompt sensitivity, latency; no
-  tuning on validation.
+| rung | score | acc | mIoU | quote found |
+| --- | --- | --- | --- | --- |
+| L0 zero-shot | 0.588 | 0.962 | 0.339 | 0.776 |
+| **L1 few-shot** | **0.665** | **0.982** | 0.454 | 0.954 |
+| L2 two-pass | 0.611 | 0.985 | 0.362 | 0.855 |
+
+Few-shot is decisive (quoting + format); the LLM decision is near-perfect
+(4 missed positives, 3 false positives). The remaining loss is **localization**:
+mean tIoU when yes 0.464, with 47/191 yes citing the wrong occurrence.
+
+**Hybrid (T037):** offline join of L1 decisions with ModernBERT spans scores
+**0.705** (acc 0.982, mIoU 0.521) — the best number measured, in-sample.
+
+### Next
+1. **Hybrid answerer**: `answerers/hybrid_llm.py` (LLM decides, ModernBERT
+   localizes) behind the factory; validate the join against a held-out split.
+2. **Serving**: 7B cannot run on the 4 GB 1650. Now that compute-node egress and
+   cloudflared are verified (`7ccc46e`), an IDUN-hosted service is possible
+   (ASR ~few s + LLM ~12 s + MB ~1 s ≪ 60 s) but carries job-lifetime/URL risk;
+   alternatives are an int4/3B served variant, distillation, or the LLM as a
+   teacher for Thread A.
+3. **Occurrence selector (L3, deferred)**: feed the top-k retrieved passages and
+   ask which occurrence a human would cite — targets the 47 wrong-occurrence
+   cases directly.
+4. **Teacher (L4)**: emit occurrence/paraphrase/slot labels to retrain
+   ModernBERT's span head.
+5. **Risks**: quotes are aligned verbatim so hallucination is measurable
+   (`quote_found`); no tuning on validation; in-sample numbers must be
+   confirmed on validation before any flip.
 
 ## Thread C — medical-domain ASR
 
