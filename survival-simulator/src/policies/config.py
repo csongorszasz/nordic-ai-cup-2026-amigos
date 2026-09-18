@@ -20,7 +20,10 @@ Probability = Annotated[float, Field(ge=0, le=1)]
 
 
 class HeuristicConfig(Settings):
-    backend: Literal["scalar", "vectorized", "hierarchical"] = "scalar"
+    backend: Literal["scalar", "vectorized", "hierarchical", "turnaway"] = "scalar"
+    escape_strategy: Literal[
+        "direct", "direct_wall_aware", "predictive_wall_aware",
+    ] = "predictive_wall_aware"
     food_weight: float = Field(default=2.0, ge=0)
     danger_weight: float = Field(default=5.0, ge=0)
     wall_weight: float = Field(default=4.0, ge=0)

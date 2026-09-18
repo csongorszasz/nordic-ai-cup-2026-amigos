@@ -344,6 +344,38 @@ Imitation/DAgger and recurrent PPO are experimental challengers and must beat th
 controller on native score and the real HTTP budget before selection. See
 `docs\policy-architecture.md` for component boundaries and decision rationale.
 
+### TurnAway escape ablations
+
+The hierarchical policy supports three predator escape strategies while keeping its
+foraging, scouting, team assignments, and population logic identical:
+
+| Configuration | Escape behavior |
+| --- | --- |
+| `configs\controller-turnaway-direct.json` | Move directly opposite the nearest observed predator, even when that route crosses a wall. Turn to face the escape heading. |
+| `configs\controller-turnaway-wall-aware.json` | Start with direct-away movement, then try ±60°, ±90°, and reverse alternatives when the path is blocked. Turn to face the selected escape heading. |
+| `configs\controller-turnaway-predictive.json` | Predict the predator two ticks ahead, select a wall-aware separation/cover route, and turn to keep the predator visible. This is the default in `configs\controller.json`. |
+
+Run quick matched-seed comparisons from `survival-simulator`:
+
+```powershell
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-direct.json --label turnaway-direct --suite quick --output .\benchmark-results\turnaway-direct-quick
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-wall-aware.json --label turnaway-wall-aware --suite quick --output .\benchmark-results\turnaway-wall-aware-quick
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-predictive.json --label turnaway-predictive --suite quick --output .\benchmark-results\turnaway-predictive-quick
+python benchmark.py compare --reference .\benchmark-results\turnaway-direct-quick --candidate .\benchmark-results\turnaway-wall-aware-quick --candidate .\benchmark-results\turnaway-predictive-quick --output .\benchmark-results\turnaway-quick-comparison
+```
+
+Use `--suite standard` with new output directory names after the quick runs complete.
+To exercise one strategy through the local HTTP server, select its JSON before startup:
+
+```powershell
+$env:SURVIVAL_POLICY_CONFIG = ".\configs\controller-turnaway-direct.json"
+$env:SURVIVAL_SINGLE_STREAM = "1"
+python .\agent_server.py
+```
+
+In another terminal, run `python .\simulation_server.py`. Stop the server before
+changing strategies because the configuration is loaded once at startup.
+
 Run all commands below from `survival-simulator`, using the existing virtual environment.
 Controller inference and ordinary benchmarks only need `requirements.txt`. Training/search
 adds pinned optional dependencies:

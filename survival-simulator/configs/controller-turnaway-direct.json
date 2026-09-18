@@ -33,7 +33,7 @@
     "threat_distance": 127.44741865848646,
     "wall_margin": 12.0,
     "wall_weight": 4.0,
-    "escape_strategy": "predictive_wall_aware"
+    "escape_strategy": "direct"
   },
   "checkpoint": null,
   "checkpoint_sha256": null,

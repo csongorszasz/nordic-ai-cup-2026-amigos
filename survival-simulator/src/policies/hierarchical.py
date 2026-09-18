@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from numbers import Real
 from dataclasses import dataclass, field
 
 from src.policies.config import HeuristicConfig
 from src.policies.features import ENTITY_TYPES, Entity, validate_step
 from src.policies.geometry import (
-    BIOME_MOVEMENT, Point, Segment, can_spawn, movement_limit, relative_heading,
+    AGENT_RADIUS, BIOME_MOVEMENT, Point, Segment, can_spawn, movement_limit, relative_heading,
     segment_distance, wrap_angle,
 )
 from src.utils.DTOs import ActionRequest, ObservationResponse, StepResponse
 
 
-AGENT_RADIUS = 5.0
 PREDATOR_TRAVEL_PER_TICK = 15.0
 PREDATOR_LOOKAHEAD_TICKS = 2.0
 FRUIT_CLUSTER_RADIUS = 8.0
@@ -89,7 +89,7 @@ def _clamp_turn(value: float, maximum: float) -> float:
 
 
 def _number(value: object, field: str) -> float:
-    if isinstance(value, bool) or type(value) not in (int, float) or not math.isfinite(value):
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
         raise ValueError(f"{field} must be a finite number.")
     return float(value)
 
@@ -443,12 +443,43 @@ class HierarchicalPolicy:
         )
 
     def _escape(self, context: AgentContext, predator: Entity) -> ActionRequest:
-        agent = context.agent
+        if self.config.escape_strategy == "direct":
+            return self._direct_escape(context, predator, wall_aware=False)
+        if self.config.escape_strategy == "direct_wall_aware":
+            return self._direct_escape(context, predator, wall_aware=True)
+        return self._predictive_wall_aware_escape(context, predator)
+
+    def _escape_distance(self, agent: ObservationResponse, predator: Entity) -> float:
         sprint = (
             predator.distance
             <= self.config.sprint_distance + AGENT_RADIUS + PREDATOR_TRAVEL_PER_TICK
         )
-        distance = movement_limit(agent) if sprint else min(agent.speed, movement_limit(agent))
+        return movement_limit(agent) if sprint else min(agent.speed, movement_limit(agent))
+
+    def _direct_escape(
+        self, context: AgentContext, predator: Entity, *, wall_aware: bool,
+    ) -> ActionRequest:
+        agent = context.agent
+        distance = self._escape_distance(agent, predator)
+        away = wrap_angle(predator.angle + math.pi)
+        if wall_aware:
+            distance, direction = _clear_direction(
+                distance, away, agent.biome, context.walls,
+            )
+        else:
+            direction = away
+        return ActionRequest(
+            agent_id=agent.agent_id, move_distance=distance,
+            move_direction=direction,
+            turn_angle=_clamp_turn(direction, self.config.predator_face_turn),
+            spawn_agent=False,
+        )
+
+    def _predictive_wall_aware_escape(
+        self, context: AgentContext, predator: Entity,
+    ) -> ActionRequest:
+        agent = context.agent
+        distance = self._escape_distance(agent, predator)
         heading = relative_heading(predator.angle, predator.rel_dir or 0.0)
         lookahead = PREDATOR_TRAVEL_PER_TICK * PREDATOR_LOOKAHEAD_TICKS
         predicted = (

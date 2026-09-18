@@ -7,6 +7,7 @@ from src.utils.DTOs import ObservationResponse
 
 Point = tuple[float, float]
 Segment = tuple[Point, Point]
+AGENT_RADIUS = 5.0
 BIOME_MOVEMENT = {"forest": 1.0, "grassland": 1.0, "swamp": 0.5, "desert": 0.8, "river": 0.3}
 
 

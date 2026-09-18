@@ -1,8 +1,10 @@
 import math
 import unittest
 
+import numpy as np
+
 from src.policies.config import HeuristicConfig
-from src.policies.hierarchical import HierarchicalPolicy, _build_contexts
+from src.policies.hierarchical import HierarchicalPolicy, _build_contexts, _path_blocked
 from src.utils.DTOs import ObservationResponse, StepResponse
 
 
@@ -27,6 +29,15 @@ class HierarchicalPolicyTests(unittest.TestCase):
     def setUp(self):
         self.config = HeuristicConfig(backend="hierarchical")
         self.policy = HierarchicalPolicy(1, self.config)
+
+    def test_accepts_numpy_edge_coordinates_from_the_real_engine(self):
+        value = agent(0, observations=[{
+            "type": "Edge",
+            "coords": ((np.float64(20.0), np.float64(-10.0)),
+                       (np.float64(20.0), np.float64(10.0))),
+        }])
+        action = self.policy.act(frame(value))[0]
+        self.assertEqual(action.agent_id, 0)
 
     def test_guaranteed_stale_contact_fruit_is_not_chased(self):
         value = agent(
@@ -81,6 +92,66 @@ class HierarchicalPolicyTests(unittest.TestCase):
         self.assertGreater(action.move_distance, value.speed)
         self.assertLess(math.cos(action.move_direction), -0.5)
         self.assertGreater(math.cos(action.turn_angle), 0.5)
+
+    def test_direct_turnaway_requests_the_opposite_heading(self):
+        policy = HierarchicalPolicy(
+            1, self.config.model_copy(update={"escape_strategy": "direct"}),
+        )
+        value = agent(0, observations=[{
+            "type": "Predator", "distance": 30.0,
+            "angle": math.pi / 4.0, "rel_dir": 0.0,
+        }])
+        action = policy.act(frame(value))[0]
+        self.assertEqual(action.move_distance, value.sprint_speed)
+        self.assertAlmostEqual(
+            math.cos(action.move_direction), math.cos(-3.0 * math.pi / 4.0), places=12,
+        )
+        self.assertAlmostEqual(
+            math.sin(action.move_direction), math.sin(-3.0 * math.pi / 4.0), places=12,
+        )
+        self.assertAlmostEqual(action.turn_angle, -self.config.predator_face_turn)
+
+    def test_direct_turnaway_is_literal_even_when_a_wall_blocks_it(self):
+        policy = HierarchicalPolicy(
+            1, self.config.model_copy(update={"escape_strategy": "direct"}),
+        )
+        value = agent(0, observations=[
+            {"type": "Predator", "distance": 30.0, "angle": 0.0, "rel_dir": 0.0},
+            {"type": "Edge", "coords": ((-8.0, -30.0), (-8.0, 30.0))},
+        ])
+        action = policy.act(frame(value))[0]
+        self.assertAlmostEqual(abs(action.move_direction), math.pi)
+
+    def test_wall_aware_turnaway_selects_a_clear_alternative(self):
+        policy = HierarchicalPolicy(
+            1, self.config.model_copy(update={"escape_strategy": "direct_wall_aware"}),
+        )
+        value = agent(0, observations=[
+            {"type": "Predator", "distance": 30.0, "angle": 0.0, "rel_dir": 0.0},
+            {"type": "Edge", "coords": ((-8.0, -30.0), (-8.0, 30.0))},
+        ])
+        state = frame(value)
+        action = policy.act(state)[0]
+        self.assertNotAlmostEqual(abs(action.move_direction), math.pi)
+        walls = _build_contexts(state)[0].walls
+        self.assertFalse(_path_blocked(
+            action.move_distance, action.move_direction, value.biome, walls,
+        ))
+
+    def test_predictive_escape_uses_predator_heading(self):
+        value = agent(0, observations=[{
+            "type": "Predator", "distance": 60.0,
+            "angle": 0.0, "rel_dir": math.pi / 2.0,
+        }])
+        direct = HierarchicalPolicy(
+            1, self.config.model_copy(update={"escape_strategy": "direct"}),
+        ).act(frame(value))[0]
+        predictive = HierarchicalPolicy(
+            1, self.config.model_copy(update={"escape_strategy": "predictive_wall_aware"}),
+        ).act(frame(value))[0]
+        self.assertAlmostEqual(abs(direct.move_direction), math.pi)
+        self.assertNotAlmostEqual(predictive.move_direction, direct.move_direction)
+        self.assertLess(predictive.move_direction, 0.0)
 
     def test_only_selected_high_trait_breeder_reproduces(self):
         food = [{"type": "Tree", "distance": 40.0, "angle": 0.0}]

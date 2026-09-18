@@ -42,6 +42,41 @@ benchmark factory ----- policies/runtime ----- serving/session + /predict
 | Existing `benchmarking/` | Full-horizon score measurements and paired comparisons | Training reward changes |
 | `serving/session.py`, `agent_server.py` | Serialization, retry handling, explicitly scoped state | Automatic model fallback or concurrent-game inference |
 
+## Rule-only turnaway policy
+
+`configs/controller-turnaway-rules.json` selects `heuristic.backend=turnaway`.
+This backend uses no heuristic tuning fields. Each agent takes the first applicable rule:
+
+1. Spawn without moving or turning whenever the engine permits it. Spawning has
+    exclusive priority, even during danger; there are no age, reserve, role, or population gates.
+2. Retreat from the nearest sensed predator at the currently permitted movement limit,
+    turning to face its last observed position from the chosen destination. "Opposite"
+    refers to the predator's observed bearing, not its own heading. There is no danger-distance cutoff.
+3. Walk toward the nearest sensed fruit, capped at its distance and adjusted for terrain.
+4. Approach a random point around the nearest sensed tree. The sampling disk is one
+    available walking step in radius, adjusted for terrain; there is no fixed patch radius.
+5. Walk in a uniformly random direction otherwise, facing the direction of movement.
+
+All movement checks the swept path against observed walls, including the engine's
+body-size buffer at corners. Blocked paths try wall-derived tangents or outward normals
+without reversing the intended direction, then shorten the original move if necessary.
+Unobserved walls and future predator motion cannot be guaranteed safe from the public DTO.
+Random exploration is seeded, resettable, and independent of input agent ordering.
+
+The remaining numbers are game mechanics and geometry, not strategy settings:
+reproduction eligibility, movement costs and limits, terrain multipliers, the reference
+agent body radius, and angles defining a circle. Aggressive spawning can leave a parent
+nearly out of energy; that is intentional under this priority order, not a claim of better score.
+
+Run from `survival-simulator`:
+
+```powershell
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-rules.json --suite quick --output .\benchmark-results\turnaway-rules-quick
+```
+
+For imitation, select the same teacher with `--set heuristic.backend=turnaway`.
+Existing hierarchical presets and the default serving policy are unchanged.
+
 ## Contracts that isolate bugs
 
 Movement is body-relative **before** turning. Energy is charged before terrain and collision effects.
