@@ -87,6 +87,9 @@ localization ≈ 0.33.
 | ModernBERT OOF, training (T033) | 0.610 |
 | **ModernBERT served, validation (T034)** | **0.606** |
 | hybrid legacy-decision + ModernBERT span, OOF (T035, not served) | 0.647–0.661 |
+| LLM L1 Qwen2.5-7B, in-sample (T036, not served) | 0.665 |
+| hybrid Qwen-decision + ModernBERT-span, in-sample (T037) | 0.705 |
+| **LLM L1 Gemma 4 E4B, in-sample (T038, not served)** | **0.729** |
 
 `dev_eval` predicted the service: training T024 (base-merged, 0.545) matched
 validation T027 (0.545), and ModernBERT OOF 0.610 matched validation T034 0.606.

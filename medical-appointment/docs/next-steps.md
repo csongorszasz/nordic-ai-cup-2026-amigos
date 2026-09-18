@@ -74,39 +74,38 @@ Priority: **1 + 2 + 3** (safe, no retrain) → **4 + 7** → 5/8/9.
 
 ## Thread B — LLM method (branch `medical-dominic-llm`)
 
-**Done (T036):** the probe is built and measured on the 39 conversations
-(in-sample ceiling), transcript-only, Qwen2.5-7B-Instruct, plain `transformers`
-on V100-32G.
+**Done (T036/T038):** the probe is built and measured on the 39 conversations
+(in-sample ceiling), transcript-only, plain `transformers` on V100-32G.
 
-| rung | score | acc | mIoU | quote found |
+| model / rung | score | acc | mIoU | quote found |
 | --- | --- | --- | --- | --- |
-| L0 zero-shot | 0.588 | 0.962 | 0.339 | 0.776 |
-| **L1 few-shot** | **0.665** | **0.982** | 0.454 | 0.954 |
-| L2 two-pass | 0.611 | 0.985 | 0.362 | 0.855 |
+| Qwen2.5-7B L0 | 0.588 | 0.962 | 0.339 | 0.776 |
+| Qwen2.5-7B L1 | 0.665 | 0.982 | 0.454 | 0.954 |
+| Qwen2.5-7B L2 | 0.611 | 0.985 | 0.362 | 0.855 |
+| **Gemma 4 E4B L1** | **0.729** | **0.990** | **0.555** | **1.000** |
 
-Few-shot is decisive (quoting + format); the LLM decision is near-perfect
-(4 missed positives, 3 false positives). The remaining loss is **localization**:
-mean tIoU when yes 0.464, with 47/191 yes citing the wrong occurrence.
+Few-shot is decisive; the decision is near-perfect (Gemma: positive 191/195,
+hard_negative 142/142, off_topic 53/53). Gemma 4 E4B (small, modern,
+instruction-tuned) beats the larger older Qwen2.5-7B by +0.064 and cuts the
+worst localization cases (tIoU<0.1) from 47 to 22. Remaining loss is still
+**occurrence selection** (22 cases; some are degenerate gold spans).
 
-**Hybrid (T037):** offline join of L1 decisions with ModernBERT spans scores
-**0.705** (acc 0.982, mIoU 0.521) — the best number measured, in-sample.
+**Hybrid (T037):** Qwen decision + ModernBERT span scored **0.705** in-sample;
+Gemma E4B alone (0.729) already exceeds it.
 
 ### Next
-1. **Hybrid answerer**: `answerers/hybrid_llm.py` (LLM decides, ModernBERT
-   localizes) behind the factory; validate the join against a held-out split.
-2. **Serving**: 7B cannot run on the 4 GB 1650. Now that compute-node egress and
-   cloudflared are verified (`7ccc46e`), an IDUN-hosted service is possible
-   (ASR ~few s + LLM ~12 s + MB ~1 s ≪ 60 s) but carries job-lifetime/URL risk;
-   alternatives are an int4/3B served variant, distillation, or the LLM as a
-   teacher for Thread A.
-3. **Occurrence selector (L3, deferred)**: feed the top-k retrieved passages and
-   ask which occurrence a human would cite — targets the 47 wrong-occurrence
-   cases directly.
-4. **Teacher (L4)**: emit occurrence/paraphrase/slot labels to retrain
-   ModernBERT's span head.
-5. **Risks**: quotes are aligned verbatim so hallucination is measurable
-   (`quote_found`); no tuning on validation; in-sample numbers must be
-   confirmed on validation before any flip.
+1. **Serving / servability**: E4B fp16 = 15.9 GB, int4 ~4 GB (borderline for the
+   4 GB 1650); **E2B** int4 would fit — worth testing quality. Otherwise
+   IDUN-hosted behind cloudflared (proven) with the job-lifetime/URL risk, or
+   distill.
+2. **Native audio (E4B/12B)**: the model accepts audio; probe whether it can
+   ground evidence (and possibly bypass ASR) — separate experiment.
+3. **Teacher (L4)**: use E4B to emit occurrence/paraphrase/slot labels to retrain
+   ModernBERT's span head (Thread A).
+4. **Occurrence selector**: feed top-k retrieved passages and ask which
+   occurrence a human would cite; targets the remaining 22 cases.
+5. **Risks**: in-sample ceiling (LOCO-safe few-shot), not validation; E4B is
+   Apache 2.0. Confirm on validation before any flip.
 
 ## Thread C — medical-domain ASR
 
