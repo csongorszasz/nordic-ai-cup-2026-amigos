@@ -26,7 +26,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from answerers import modernbert_data as data  # noqa: E402
 from answerers import rag as rag_module  # noqa: E402
-from answerers.align import align_span  # noqa: E402
+from answerers.align import align_span, text_between  # noqa: E402
 from answerers.llm_client import HFClient  # noqa: E402
 from answerers.llm_parse import parse_answers, parse_decisions  # noqa: E402
 from answerers.llm_prompt import (  # noqa: E402
@@ -37,6 +37,7 @@ from answerers.llm_prompt import (  # noqa: E402
     build_l2_decide_messages,
     build_rag_messages,
     qid_for,
+    render_rag_example,
 )
 from answerers.minilm import MiniLMRetriever  # noqa: E402
 from answerers.passages import contains, overlap_word_range  # noqa: E402
@@ -157,7 +158,77 @@ def _norm(text: Optional[str]) -> str:
     return " ".join((text or "").split()).lower()
 
 
-def _run_rag(client, transcript, rows, index, retriever, top_k):
+def _candidate_id_for(candidates, words, span):
+    word_range = overlap_word_range(words, span[0], span[1])
+    if word_range is None:
+        return None
+    for index, passage in enumerate(candidates):
+        if contains(passage, word_range):
+            return f"c{index + 1:02d}"
+    return None
+
+
+def _rag_few_shot(
+    rows_by_tid, transcripts, evidence, exclude_tid, retriever, top_k, cache
+):
+    """Balanced LOCO-safe candidate-citing examples for the RAG rung."""
+    examples: List[Tuple[str, str]] = []
+    used = {exclude_tid}
+
+    def index_for(tid):
+        if tid not in cache:
+            words = transcripts[tid].get("words", [])
+            built = rag_module.build_index(words, kind="passages", context=1)
+            cache[tid] = (words, built, retriever.encode([p.text for p in built]))
+        return cache[tid]
+
+    def pick(question_type, require_refute=False):
+        for tid in sorted(rows_by_tid):
+            if tid in used:
+                continue
+            for row in rows_by_tid[tid]:
+                if row["question_type"] != question_type:
+                    continue
+                if require_refute and evidence.get(
+                    row["question_id"], {}
+                ).get("bucket") != "refute":
+                    continue
+                return row
+        return None
+
+    def add(row, question_type):
+        if row is None or row["transcript_id"] not in transcripts:
+            return
+        tid = row["transcript_id"]
+        used.add(tid)
+        words, built, embeddings = index_for(tid)
+        candidates = [
+            p for p, _ in rag_module.retrieve(
+                row["question"], built, retriever,
+                passage_embeddings=embeddings, top_k=top_k,
+            )
+        ]
+        if not candidates:
+            return
+        if question_type == "positive":
+            span = (float(row["evidence_start"]), float(row["evidence_end"]))
+            candidate_id = _candidate_id_for(candidates, words, span) or "c01"
+            examples.append(render_rag_example(
+                row["question"], candidates, True, candidate_id,
+                text_between(words, span[0], span[1]),
+            ))
+        else:
+            examples.append(
+                render_rag_example(row["question"], candidates, False, None, None)
+            )
+
+    add(pick("positive"), "positive")
+    add(pick("hard_negative", require_refute=True), "hard_negative")
+    add(pick("off_topic"), "off_topic")
+    return examples
+
+
+def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
     """Grounded RAG reader: answer + candidate id + verbatim quote."""
     words = transcript.get("words", [])
     questions = [row["question"] for row in rows]
@@ -172,7 +243,9 @@ def _run_rag(client, transcript, rows, index, retriever, top_k):
         candidates_by_index.append([p for p, _ in ranked])
 
     started = time.perf_counter()
-    raw = client.generate(build_rag_messages(questions, candidates_by_index))
+    raw = client.generate(
+        build_rag_messages(questions, candidates_by_index, few_shot)
+    )
     elapsed = time.perf_counter() - started
     parsed = parse_answers(raw, ids)
 
@@ -282,6 +355,7 @@ def run_rung(
     evidence = data.load_evidence()
     retriever = MiniLMRetriever() if rung == "RAG" else None
     index_cache: Dict[str, list] = {}
+    example_cache: Dict[str, list] = {}
 
     print(f"\n=== {rung} ({len(conversations)} conversations) ===")
     records: List[Dict] = []
@@ -294,8 +368,13 @@ def run_rung(
                 index_cache[tid] = rag_module.build_index(
                     words, kind=index_kind, context=context
                 )
+            few_shot = _rag_few_shot(
+                rows_by_tid, transcripts, evidence, tid, retriever, top_k,
+                example_cache,
+            )
             conversation_records, elapsed, failures = _run_rag(
-                client, transcripts[tid], rows, index_cache[tid], retriever, top_k
+                client, transcripts[tid], rows, index_cache[tid], retriever,
+                top_k, few_shot,
             )
         else:
             if rung == "L0":

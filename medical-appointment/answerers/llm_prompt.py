@@ -204,6 +204,36 @@ def build_rag_messages(
     return messages
 
 
+def render_rag_example(
+    question: str,
+    candidates,
+    answer: bool,
+    candidate_id,
+    quote,
+) -> Tuple[str, str]:
+    """One RAG few-shot turn pair: candidates + question -> JSON with citation."""
+    import json
+
+    user = (
+        "CANDIDATES\n"
+        f"{rag_candidates_block([question], [candidates])}\n\n"
+        f"{RAG_SCHEMA_HINT}"
+    )
+    assistant = json.dumps(
+        {
+            "answers": [
+                {
+                    "id": "q01",
+                    "answer": "yes" if answer else "no",
+                    "candidate": candidate_id if answer else None,
+                    "evidence_quote": quote if answer else None,
+                }
+            ]
+        }
+    )
+    return user, assistant
+
+
 def render_example(
     transcript: Dict,
     question: str,
