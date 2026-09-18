@@ -1,4 +1,11 @@
-"""Tests for detector backends using the supplied Helsinki scene."""
+"""Tests for detector backends using the supplied Helsinki scene.
+
+The wire protocol always transmits a 960x540 image, whatever the resolution
+level. Tests here therefore feed 960x540 views; feeding a 4K frame and calling
+it level 0 passes while exercising a geometry the evaluator never sends.
+"""
+
+from pathlib import Path
 
 import pytest
 import numpy as np
@@ -14,7 +21,7 @@ from core.detector import (
 from dtos import OBJECT_CLASSES
 from utils import load_frame
 
-
+WIRE_SIZE = (960, 540)
 SOURCE_REGION = (0, 0, 3840, 2160)
 
 
@@ -29,37 +36,44 @@ def _assert_valid_detections(detections):
         assert sy1 < sy2
 
 
-def test_dummy_canny_detector_runs_on_real_helsinki_frame():
+def _wire_sized_view() -> np.ndarray:
+    """A 960x540 BGR image, the only size the evaluator ever transmits."""
+    image = np.zeros((WIRE_SIZE[1], WIRE_SIZE[0], 3), dtype=np.uint8)
+    image[100:150, 200:250] = 255
+    return image
+
+
+def test_dummy_canny_detector_runs_on_wire_sized_view():
     detector = DummyCannyDetector()
     detector.warmup()
 
-    image = load_frame(0, scene="helsinki")
-    detections = detector.detect(image, zoom_level=0, source_region_xyxy=SOURCE_REGION)
+    detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
 
     assert detections
     _assert_valid_detections(detections)
 
 
-@pytest.mark.parametrize("frame_index", [0, 1, 24])
-def test_template_bank_detector_finds_real_helsinki_objects(frame_index: int):
-    detector = TemplateBankDetector(scene="helsinki", max_templates_per_class=1, max_proposals=20)
-    detector.warmup()
-
-    image = load_frame(frame_index, scene="helsinki")
-    detections = detector.detect(image, zoom_level=0, source_region_xyxy=SOURCE_REGION)
-
-    assert detections
-    _assert_valid_detections(detections)
-
-    classes = {det.class_name for det in detections}
-    assert classes & {"jammer", "helicopter", "tank", "small_launcher"}
+def test_template_bank_is_debug_only_and_runs_on_wire_sized_view():
+    # The template bank is a debug backend, not a production detector. It is
+    # built from 4K crops, so it is expected to find nothing at the 960x540 L0
+    # scale; this test only guarantees it does not raise.
+    detector = TemplateBankDetector(scene="helsinki", max_templates_per_class=1, max_proposals=5)
+    detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
+    assert isinstance(detections, list)
 
 
-def test_detector_factory_falls_back_safely_for_yolo_backends():
-    detector = create_detector(DroneFlybyConfig(DETECTOR_TYPE="yolo_standard"))
-    assert hasattr(detector, "detect")
-    assert hasattr(detector, "warmup")
-    assert type(detector).__name__ in {"YoloDetector", "TemplateBankDetector"}
+def test_detector_factory_fails_when_weights_are_missing(tmp_path):
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE="yolo_standard",
+        YOLO_WEIGHTS_PATH=tmp_path / "does_not_exist.pt",
+    )
+    with pytest.raises(FileNotFoundError):
+        create_detector(config)
+
+
+def test_detector_factory_rejects_unknown_type():
+    with pytest.raises(ValueError):
+        create_detector(DroneFlybyConfig(DETECTOR_TYPE="not_a_detector"))
 
 
 class _FakeScalar:
@@ -84,53 +98,79 @@ class _FakeResult:
 
 
 class _FakeYOLO:
-    names = {0: "airplane", 1: "helicopter"}
+    """A fake Ultralytics model exposing the challenge's 16-class map."""
+
+    names = {index: name for index, name in enumerate(OBJECT_CLASSES)}
 
     def __init__(self, weights_path):
         self.weights_path = weights_path
 
     def predict(self, image_bgr, conf, device, verbose):
         _ = (image_bgr, conf, device, verbose)
+        # Class 2 = jet_plane, class 1 = helicopter.
         return [
             _FakeResult(
                 boxes=[
-                    _FakeBox(0, 0.91, [40.0, 50.0, 120.0, 135.0]),
+                    _FakeBox(2, 0.91, [40.0, 50.0, 120.0, 135.0]),
                     _FakeBox(1, 0.77, [200.0, 180.0, 260.0, 245.0]),
                 ]
             )
         ]
 
 
-def test_yolo_detector_parses_and_normalizes_labels(monkeypatch):
+def _fake_weights(tmp_path: Path) -> Path:
+    weights = tmp_path / "fake.pt"
+    weights.write_bytes(b"not-a-real-checkpoint")
+    return weights
+
+
+def test_yolo_detector_parses_and_normalizes_labels(monkeypatch, tmp_path):
     import core.detector as detector_module
 
     monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
     monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
 
-    detector = YoloDetector(weights_path="fake.pt", device="cpu")
-    image = load_frame(0, scene="helsinki")
-    detections = detector.detect(image, zoom_level=0, source_region_xyxy=SOURCE_REGION)
+    detector = YoloDetector(weights_path=str(_fake_weights(tmp_path)), device="cpu")
+    detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
 
     assert {det.class_name for det in detections} == {"jet_plane", "helicopter"}
     _assert_valid_detections(detections)
     assert detections[0].confidence >= detections[1].confidence
 
 
-def test_yolo_factory_prefers_yolo_when_backend_is_available(monkeypatch):
+def test_yolo_detector_rejects_class_map_mismatch(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    class _FakeYOLOMismatch(_FakeYOLO):
+        names = {0: "hangar", 1: "helicopter"}
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLOMismatch)
+
+    with pytest.raises(ValueError):
+        YoloDetector(weights_path=str(_fake_weights(tmp_path)), device="cpu")
+
+
+def test_yolo_factory_prefers_yolo_when_backend_is_available(monkeypatch, tmp_path):
     import core.detector as detector_module
 
     monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
     monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
 
-    detector = create_detector(DroneFlybyConfig(DETECTOR_TYPE="yolo_standard"))
+    config = DroneFlybyConfig(
+        DETECTOR_TYPE="yolo_standard",
+        YOLO_WEIGHTS_PATH=_fake_weights(tmp_path),
+    )
+    detector = create_detector(config)
     assert isinstance(detector, YoloDetector)
 
 
-def test_normalize_class_name_preserves_challenge_labels():
+def test_normalize_class_name_does_not_alias_generic_names():
     assert _normalize_class_name("ta-ta") == "ta-ta"
     assert _normalize_class_name("ta-ta") in OBJECT_CLASSES
-    assert _normalize_class_name("airplane") == "jet_plane"
-    assert _normalize_class_name("car") == "small_plane"
+    # Generic detector names must not be remapped onto challenge classes.
+    assert _normalize_class_name("car") == "car"
+    assert _normalize_class_name("car") not in OBJECT_CLASSES
 
 
 class _FakeYOLOWithUnknown(_FakeYOLO):
@@ -148,15 +188,22 @@ class _FakeYOLOWithUnknown(_FakeYOLO):
         ]
 
 
-def test_yolo_detector_keeps_ta_ta_and_drops_unknown_class(monkeypatch):
+def test_yolo_detector_drops_unknown_class(monkeypatch, tmp_path):
     import core.detector as detector_module
 
     monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    # The fake exposes 2 classes but is only used to exercise name filtering,
+    # so allow the class-map check to be bypassed for this test.
     monkeypatch.setattr(detector_module, "YOLO", _FakeYOLOWithUnknown)
 
-    detector = YoloDetector(weights_path="fake.pt", device="cpu")
-    image = load_frame(0, scene="helsinki")
-    detections = detector.detect(image, zoom_level=0, source_region_xyxy=SOURCE_REGION)
+    # Build the detector with the real 16-class map but a fake model whose names
+    # contain an unknown class; the mismatch check would reject it, so validate
+    # filtering by calling the parser through a partially constructed instance.
+    detector = object.__new__(YoloDetector)
+    detector.model = _FakeYOLOWithUnknown("fake.pt")
+    detector.device = "cpu"
+    detector.conf_thresholds = {0: 0.10, 1: 0.15, 2: 0.20}
+    detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
 
     assert {det.class_name for det in detections} == {"ta-ta"}
     assert all(det.class_name in OBJECT_CLASSES for det in detections)

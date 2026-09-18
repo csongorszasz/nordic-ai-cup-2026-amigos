@@ -121,7 +121,8 @@ def test_camera_constraint_guard():
 
 
 def test_pipeline_scaffolding_end_to_end():
-    config = DroneFlybyConfig(DEBUG=True)
+    # Plumbing test: use the debug detector so it does not depend on GPU weights.
+    config = DroneFlybyConfig(DEBUG=True, DETECTOR_TYPE="dummy")
     pipeline = build_pipeline(config)
     pipeline.warmup()
 

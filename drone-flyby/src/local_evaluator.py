@@ -250,14 +250,32 @@ class Statistics:
         ]
         if self.round_trip_ms:
             ordered = sorted(self.round_trip_ms)
-            median = ordered[len(ordered) // 2]
-            worst = ordered[-1]
             mean = sum(ordered) / len(ordered)
             lines.append(
-                f'  round trip ms        mean {mean:.0f} / median {median:.0f} '
-                f'/ max {worst:.0f}'
+                f'  round trip ms        mean {mean:.0f} / p50 {_percentile(ordered, 50):.0f} '
+                f'/ p95 {_percentile(ordered, 95):.0f} / p99 {_percentile(ordered, 99):.0f} '
+                f'/ max {ordered[-1]:.0f}'
             )
         return '\n'.join(lines)
+
+
+def _percentile(ordered: Sequence[float], percentile: float) -> float:
+    """Return a nearest-rank percentile of an already sorted sequence."""
+    if not ordered:
+        return 0.0
+    rank = max(0, min(len(ordered) - 1, math.ceil(percentile / 100.0 * len(ordered)) - 1))
+    return ordered[rank]
+
+
+def fetch_server_stats(url: str) -> Optional[dict]:
+    """Read the server's own latency/VRAM counters when it exposes them."""
+    stats_url = url.rsplit('/', 1)[0] + '/stats'
+    try:
+        response = requests.get(stats_url, timeout=3)
+        response.raise_for_status()
+        return response.json()
+    except requests.RequestException:
+        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -601,6 +619,13 @@ def main() -> int:
     if statistics is not None:
         print('Attempt statistics')
         print(statistics.report())
+        server_stats = fetch_server_stats(arguments.url)
+        if server_stats:
+            peak = server_stats.get('peak_vram_mb')
+            if peak is not None:
+                print(f'  server peak VRAM MB  {peak:.0f}')
+            if server_stats.get('detector_type'):
+                print(f'  server detector      {server_stats["detector_type"]}')
         print()
     print('AP@0.50 by class')
     for name, value in sorted(ap_by_class.items(), key=lambda item: -item[1]):

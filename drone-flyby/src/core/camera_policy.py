@@ -85,6 +85,24 @@ class CameraConstraintGuard:
         )
 
 
+class HoldCameraPolicy(BaseCameraPolicy):
+    """Never move the camera.
+
+    Used as the fixed-L0 / fixed-view baseline: with no camera motion the
+    detector is measured on its own, and any active policy must beat this.
+    """
+
+    def reset(self, sequence_id: str) -> None:
+        logger.info("HoldCameraPolicy reset for sequence '%s'", sequence_id)
+
+    def decide_next_view(
+        self,
+        request: DroneFlybyPredictRequestDto,
+        tracker_summary: TrackerSummary,
+    ) -> Optional[RequestedViewDto]:
+        return None
+
+
 class SweepCameraPolicy(BaseCameraPolicy):
     """Horizontal sweep policy at the deepest accessible zoom level."""
 
@@ -271,7 +289,9 @@ class SurveyAndZoomPolicy(BaseCameraPolicy):
 
 def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
     """Factory function for camera policies."""
-    if config.POLICY_TYPE == "sweep":
+    if config.POLICY_TYPE == "hold":
+        return HoldCameraPolicy()
+    elif config.POLICY_TYPE == "sweep":
         return SweepCameraPolicy()
     elif config.POLICY_TYPE == "survey_zoom":
         return SurveyAndZoomPolicy(survey_interval_frames=config.SURVEY_INTERVAL_FRAMES)

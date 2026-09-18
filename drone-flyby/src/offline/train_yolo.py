@@ -121,14 +121,19 @@ def build_dataset_layout(
         with open(labels_val / f"{image_path.stem}.txt", "w", encoding="utf-8") as handle:
             handle.write("\n".join(lines))
 
-    # Optional pseudo-labeled validation frames.
+    # Optional pseudo-labeled frames. These are training data, not validation:
+    # routing them to val both starves training and makes any val metric a
+    # measure of the pseudo-labeler rather than of the model.
     if pseudo_labeled_dir is not None and pseudo_labeled_dir.exists():
         for image_path in _iter_images(pseudo_labeled_dir / "images"):
             label_path = pseudo_labeled_dir / "labels" / f"{image_path.stem}.txt"
             if not label_path.exists():
                 continue
-            (images_val / image_path.name).write_bytes(image_path.read_bytes())
-            (labels_val / label_path.name).write_bytes(label_path.read_bytes())
+            # Prefix to avoid overwriting supplied frames that share a name.
+            destination_image = images_train / f"pseudo_{image_path.name}"
+            destination_label = labels_train / f"pseudo_{label_path.name}"
+            destination_image.write_bytes(image_path.read_bytes())
+            destination_label.write_bytes(label_path.read_bytes())
 
     data_yaml = dataset_dir / "drone_flyby.yaml"
     with open(data_yaml, "w", encoding="utf-8") as handle:
@@ -141,6 +146,33 @@ def build_dataset_layout(
         )
 
     return data_yaml
+
+
+def find_last_checkpoint(project: str | None, name: str) -> Path | None:
+    """Locate a run's ``last.pt``, accounting for Ultralytics' run nesting.
+
+    Ultralytics writes a relative ``--project`` under its ``runs/detect``
+    directory, so the checkpoint may live at either ``<project>/<name>`` or
+    ``runs/detect/<project>/<name>``. Absolute projects land directly at
+    ``<project>/<name>``.
+    """
+    if not project:
+        return None
+
+    project_path = Path(project)
+    candidates: List[Path] = []
+    if project_path.is_absolute():
+        candidates.append(project_path / name / "weights" / "last.pt")
+    else:
+        candidates.append(Path.cwd() / project_path / name / "weights" / "last.pt")
+        candidates.append(Path.cwd() / "runs" / "detect" / project_path / name / "weights" / "last.pt")
+    candidates.append(REPO_ROOT / project_path / name / "weights" / "last.pt")
+    candidates.append(REPO_ROOT / "runs" / "detect" / project_path / name / "weights" / "last.pt")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def train(
@@ -156,6 +188,9 @@ def train(
     patience: int = 0,
     project: str | None = None,
     name: str = "train",
+    cache: bool = False,
+    resume: bool = False,
+    resume_from: Path | None = None,
 ) -> None:
     if not _ULTRALYTICS_AVAILABLE:
         raise RuntimeError(
@@ -164,6 +199,21 @@ def train(
 
     yolo_cls = YOLO
     assert yolo_cls is not None
+
+    if resume:
+        if resume_from is None or not Path(resume_from).is_file():
+            raise FileNotFoundError(
+                f"Cannot resume: no checkpoint found at {resume_from}. Run without "
+                f"--resume to start a fresh training run."
+            )
+        print(f"Resuming training from {resume_from}")
+        resumed = yolo_cls(str(resume_from))
+        # ``cache`` is forwarded explicitly so a run started with --cache can be
+        # resumed without it; the saved dataloader cache is a suspected cause of
+        # the mid-run stall.
+        resumed.train(resume=True, device=device, cache=cache)
+        return
+
     model = yolo_cls(weights)
     model.train(
         data=str(data_yaml),
@@ -177,6 +227,7 @@ def train(
         close_mosaic=10,
         patience=patience,
         augment=True,
+        cache=cache,
         project=project,
         name=name,
     )
@@ -187,6 +238,13 @@ def main() -> int:
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "training_artifacts")
     parser.add_argument("--helsinki-dir", type=Path, default=REPO_ROOT / "data" / "helsinki")
     parser.add_argument("--pseudo-labeled-dir", type=Path, default=None)
+    parser.add_argument(
+        "--data-yaml",
+        type=Path,
+        default=None,
+        help="Train directly on a prebuilt data YAML (e.g. the exact-view dataset) "
+        "instead of rebuilding the full-resolution dataset.",
+    )
     parser.add_argument("--weights", default="yolo11s.pt")
     parser.add_argument("--epochs", type=int, default=120)
     parser.add_argument("--imgsz", type=int, default=960)
@@ -199,10 +257,50 @@ def main() -> int:
     parser.add_argument("--project", default=None)
     parser.add_argument("--name", default="train")
     parser.add_argument("--build-only", action="store_true")
+    parser.add_argument("--cache", action="store_true", help="Cache images in RAM during training.")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from <project>/<name>/weights/last.pt if it exists.",
+    )
+    parser.add_argument(
+        "--resume-from",
+        type=Path,
+        default=None,
+        help="Explicit checkpoint to resume from (implies --resume).",
+    )
     arguments = parser.parse_args()
 
-    data_yaml = build_dataset_layout(arguments.output_dir, arguments.helsinki_dir, arguments.pseudo_labeled_dir)
-    print(f"Dataset manifest written to {data_yaml}")
+    if arguments.resume_from is not None:
+        arguments.resume = True
+
+    if arguments.resume:
+        checkpoint = arguments.resume_from or find_last_checkpoint(arguments.project, arguments.name)
+        if checkpoint is None:
+            print(
+                f"No last.pt found for project={arguments.project!r} name={arguments.name!r}; "
+                f"starting a fresh run."
+            )
+        else:
+            train(
+                data_yaml=arguments.data_yaml or Path("."),
+                weights=arguments.weights,
+                epochs=arguments.epochs,
+                imgsz=arguments.imgsz,
+                batch=arguments.batch,
+                device=arguments.device,
+                cache=arguments.cache,
+                resume=True,
+                resume_from=checkpoint,
+            )
+            return 0
+
+    if arguments.data_yaml is not None:
+        data_yaml = arguments.data_yaml
+        print(f"Using prebuilt dataset: {data_yaml}")
+    else:
+        data_yaml = build_dataset_layout(arguments.output_dir, arguments.helsinki_dir, arguments.pseudo_labeled_dir)
+        print(f"Dataset manifest written to {data_yaml}")
 
     if arguments.build_only:
         return 0
@@ -220,6 +318,7 @@ def main() -> int:
         patience=arguments.patience,
         project=arguments.project,
         name=arguments.name,
+        cache=arguments.cache,
     )
     return 0
 

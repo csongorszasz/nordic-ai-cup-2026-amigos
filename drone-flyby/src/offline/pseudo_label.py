@@ -17,6 +17,9 @@ from typing import Dict, Iterable, List, Tuple
 import cv2
 
 from core.detector import TemplateBankDetector
+from dtos import OBJECT_CLASSES
+
+CLASS_INDEX = {name: index for index, name in enumerate(OBJECT_CLASSES)}
 
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
@@ -57,11 +60,14 @@ def pseudo_label_directory(
         label_path = labels_dir / f"{image_path.stem}.txt"
         with open(label_path, "w", encoding="utf-8") as handle:
             for det in detections:
+                if det.class_name not in CLASS_INDEX:
+                    continue
                 x1, y1, x2, y2 = det.source_pixel_bbox
                 cx, cy, w, h = _xyxy_to_yolo((x1, y1, x2, y2), image.shape[1], image.shape[0])
                 if w <= 0 or h <= 0:
                     continue
-                handle.write(f"{det.class_name} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
+                # YOLO label files require numeric class IDs, not names.
+                handle.write(f"{CLASS_INDEX[det.class_name]} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}\n")
                 counts[det.class_name] = counts.get(det.class_name, 0) + 1
     return counts
 

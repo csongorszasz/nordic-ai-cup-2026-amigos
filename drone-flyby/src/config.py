@@ -6,6 +6,13 @@ from pathlib import Path
 from typing import Optional
 
 
+# The task-finetuned weights shipped with the repository. The default detector
+# is a real 16-class detector rather than the template baseline: a missing
+# weight file must fail startup, not silently change the model.
+DEFAULT_WEIGHTS_PATH = Path(__file__).resolve().parents[1] / "weights" / "yolo11s_drone_flyby.pt"
+DEFAULT_TRT_ENGINE_PATH = Path(__file__).resolve().parents[1] / "weights" / "yolo11s_drone_flyby.engine"
+
+
 @dataclass
 class DroneFlybyConfig:
     # --- System & Execution ---
@@ -13,15 +20,17 @@ class DroneFlybyConfig:
     DEVICE: str = "cuda:0"  # or "cpu"
     
     # --- Detector Settings ---
-    DETECTOR_TYPE: str = "template_bank"  # "dummy", "template_bank", "yolo_standard", "yolo_sahi", "tensorrt"
-    YOLO_WEIGHTS_PATH: Optional[Path] = None
-    TRT_ENGINE_PATH: Optional[Path] = None
+    DETECTOR_TYPE: str = "yolo_standard"  # "yolo_standard", "tensorrt"; "dummy"/"template_bank" are debug-only
+    YOLO_WEIGHTS_PATH: Optional[Path] = DEFAULT_WEIGHTS_PATH
+    TRT_ENGINE_PATH: Optional[Path] = DEFAULT_TRT_ENGINE_PATH
     CONFIDENCE_THRESHOLD_L0: float = 0.25
     CONFIDENCE_THRESHOLD_L1: float = 0.15
     CONFIDENCE_THRESHOLD_L2: float = 0.20
     
     # --- Tracker & Spatial Memory Settings ---
-    TRACKER_TYPE: str = "world_map"  # "passthrough", "world_map"
+    # Defaults are the score-honest baseline until the registered memory
+    # (P2) and active vision (P3) beat it in full-frame macro AP.
+    TRACKER_TYPE: str = "passthrough"  # "passthrough", "world_map"
     IOU_MATCH_THRESHOLD: float = 0.30
     MIN_HITS_TO_CONFIRM: int = 2
     CONFIDENCE_DECAY_RATE: float = 0.98  # Slow decay for static objects
@@ -29,7 +38,7 @@ class DroneFlybyConfig:
     GLOBAL_NMS_IOU_THRESHOLD: float = 0.45
     
     # --- Camera Policy Settings ---
-    POLICY_TYPE: str = "survey_zoom"  # "sweep", "survey_zoom", "belief_map"
+    POLICY_TYPE: str = "hold"  # "hold", "sweep", "survey_zoom", "belief_map"
     SURVEY_INTERVAL_FRAMES: int = 4
     
     # --- Geometry Constants ---
@@ -60,16 +69,16 @@ class DroneFlybyConfig:
             value = os.getenv(name)
             return default if value is None or not value.strip() else value.strip()
 
-        def _get_path(name: str) -> Optional[Path]:
+        def _get_path(name: str, default: Optional[Path]) -> Optional[Path]:
             value = os.getenv(name)
-            return None if value is None or not value.strip() else Path(value.strip())
+            return default if value is None or not value.strip() else Path(value.strip())
 
         return cls(
             DEBUG=_get_bool("DRONE_FLYBY_DEBUG", cls.DEBUG),
             DEVICE=_get_str("DRONE_FLYBY_DEVICE", cls.DEVICE),
             DETECTOR_TYPE=_get_str("DRONE_FLYBY_DETECTOR_TYPE", cls.DETECTOR_TYPE),
-            YOLO_WEIGHTS_PATH=_get_path("DRONE_FLYBY_YOLO_WEIGHTS_PATH"),
-            TRT_ENGINE_PATH=_get_path("DRONE_FLYBY_TRT_ENGINE_PATH"),
+            YOLO_WEIGHTS_PATH=_get_path("DRONE_FLYBY_YOLO_WEIGHTS_PATH", cls.YOLO_WEIGHTS_PATH),
+            TRT_ENGINE_PATH=_get_path("DRONE_FLYBY_TRT_ENGINE_PATH", cls.TRT_ENGINE_PATH),
             CONFIDENCE_THRESHOLD_L0=_get_float("DRONE_FLYBY_CONF_L0", cls.CONFIDENCE_THRESHOLD_L0),
             CONFIDENCE_THRESHOLD_L1=_get_float("DRONE_FLYBY_CONF_L1", cls.CONFIDENCE_THRESHOLD_L1),
             CONFIDENCE_THRESHOLD_L2=_get_float("DRONE_FLYBY_CONF_L2", cls.CONFIDENCE_THRESHOLD_L2),

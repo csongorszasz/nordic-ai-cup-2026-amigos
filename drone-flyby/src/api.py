@@ -39,6 +39,13 @@ start_time = time.time()
 async def lifespan(app: FastAPI):
     # Warm up models and kernels on server startup
     pipeline.warmup()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+    except Exception:
+        pass
     yield
 
 
@@ -69,6 +76,28 @@ def hello():
     return {
         'service': 'drone-flyby-usecase',
         'uptime': '{}'.format(datetime.timedelta(seconds=time.time() - start_time)),
+    }
+
+
+@app.get('/stats')
+def stats():
+    """Runtime counters used by the local benchmark harness."""
+    peak_vram_mb = None
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            peak_vram_mb = torch.cuda.max_memory_allocated() / (1024 ** 2)
+    except Exception:
+        pass
+    return {
+        'service': 'drone-flyby-usecase',
+        'uptime': '{}'.format(datetime.timedelta(seconds=time.time() - start_time)),
+        'device': DEFAULT_CONFIG.DEVICE,
+        'detector_type': DEFAULT_CONFIG.DETECTOR_TYPE,
+        'tracker_type': DEFAULT_CONFIG.TRACKER_TYPE,
+        'policy_type': DEFAULT_CONFIG.POLICY_TYPE,
+        'peak_vram_mb': peak_vram_mb,
     }
 
 

@@ -55,20 +55,14 @@ class _TemplateExample:
 
 
 def _normalize_class_name(raw_name: str) -> str:
-    """Map detector-style class names into the challenge label format."""
-    name = raw_name.strip()
-    if name in OBJECT_CLASSES:
-        return name
-    normalized = name.replace(" ", "_").replace("-", "_")
-    aliases = {
-        "airplane": "jet_plane",
-        "plane": "jet_plane",
-        "aeroplane": "jet_plane",
-        "car": "small_plane",
-        "truck": "large_launcher",
-        "bus": "hangar",
-    }
-    return aliases.get(normalized, normalized)
+    """Return a trimmed detector class name.
+
+    There is deliberately no generic-to-challenge aliasing here. Mapping names
+    such as ``car -> small_plane`` or ``truck -> large_launcher`` manufactures
+    confident semantic false positives, so unknown names are returned as-is and
+    dropped by the caller when they are not in :data:`OBJECT_CLASSES`.
+    """
+    return raw_name.strip()
 
 
 class DummyCannyDetector(BaseDetector):
@@ -318,30 +312,63 @@ class TemplateBankDetector(BaseDetector):
 
 
 class YoloDetector(BaseDetector):
-    """Optional Ultralytics-based detector scaffold for future fine-tuned weights."""
+    """Ultralytics detector backed by task-finetuned weights.
+
+    Construction is deliberately fail-fast: a missing weight file, an
+    unavailable backend or a class map that does not match the challenge stops
+    startup instead of quietly falling back to a zero-scoring detector.
+    """
 
     def __init__(
         self,
         weights_path: Optional[str] = None,
         device: Optional[str] = None,
-        use_sahi: bool = False,
         confidence_threshold_l0: float = 0.10,
         confidence_threshold_l1: float = 0.15,
         confidence_threshold_l2: float = 0.20,
+        expected_classes: Sequence[str] = OBJECT_CLASSES,
     ):
         if not _ULTRALYTICS_AVAILABLE:
-            raise RuntimeError("ultralytics is not installed; YOLO backend is unavailable")
+            raise RuntimeError("ultralytics is not installed; the YOLO backend is unavailable")
+
+        if not weights_path:
+            raise ValueError(
+                "A weights path is required for the YOLO backend. Set "
+                "DRONE_FLYBY_YOLO_WEIGHTS_PATH or DRONE_FLYBY_TRT_ENGINE_PATH."
+            )
+
+        weights_file = Path(weights_path)
+        if not weights_file.is_file():
+            raise FileNotFoundError(
+                f"Detector weights not found at '{weights_file}'. Refusing to start "
+                f"with an unvalidated fallback model."
+            )
 
         yolo_cls = YOLO
         assert yolo_cls is not None
-        self.model = yolo_cls(weights_path or "yolo11s.pt")
+        self.model = yolo_cls(str(weights_file))
         self.device = device
-        self.use_sahi = use_sahi
         self.conf_thresholds = {
             0: confidence_threshold_l0,
             1: confidence_threshold_l1,
             2: confidence_threshold_l2,
         }
+        self._validate_class_map(list(expected_classes))
+
+    def _validate_class_map(self, expected_classes: List[str]) -> None:
+        names = getattr(self.model, "names", None)
+        if isinstance(names, dict):
+            ordered = [names[key] for key in sorted(names)]
+        elif names is not None:
+            ordered = list(names)
+        else:
+            raise ValueError("The YOLO model exposes no class names; cannot verify the label map.")
+
+        if ordered != expected_classes:
+            raise ValueError(
+                "The detector's class map does not match the challenge classes. "
+                f"Expected {expected_classes}, got {ordered}."
+            )
 
     def warmup(self) -> None:
         dummy = np.zeros((540, 960, 3), dtype=np.uint8)
@@ -393,10 +420,6 @@ class YoloDetector(BaseDetector):
         source_region_xyxy: Tuple[int, int, int, int],
     ) -> List[DetectionResult]:
         conf = self.conf_thresholds.get(zoom_level, 0.15)
-        if self.use_sahi and zoom_level == 0:
-            # SAHI can be plugged in later; for now the scaffold still works with standard inference.
-            pass
-
         results = self.model.predict(image_bgr, conf=conf, device=self.device, verbose=False)
         if not results:
             return []
@@ -404,31 +427,47 @@ class YoloDetector(BaseDetector):
 
 
 def create_detector(config: DroneFlybyConfig) -> BaseDetector:
-    """Factory function for instantiating detectors."""
-    if config.DETECTOR_TYPE == "dummy":
-        return DummyCannyDetector()
-    elif config.DETECTOR_TYPE == "template_bank":
-        return TemplateBankDetector()
-    elif config.DETECTOR_TYPE in ("yolo_standard", "yolo_sahi", "tensorrt"):
-        if _ULTRALYTICS_AVAILABLE:
-            return YoloDetector(
-                weights_path=str(config.YOLO_WEIGHTS_PATH) if config.YOLO_WEIGHTS_PATH else None,
-                device=config.DEVICE,
-                use_sahi=config.DETECTOR_TYPE == "yolo_sahi",
-                confidence_threshold_l0=config.CONFIDENCE_THRESHOLD_L0,
-                confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
-                confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
-            )
+    """Factory function for instantiating detectors.
 
+    The production backends fail startup on misconfiguration. The debug-only
+    ``dummy`` and ``template_bank`` backends remain available but are expected
+    to score zero on the wire protocol and must be selected explicitly.
+    """
+    if config.DETECTOR_TYPE == "yolo_standard":
+        return YoloDetector(
+            weights_path=str(config.YOLO_WEIGHTS_PATH) if config.YOLO_WEIGHTS_PATH else None,
+            device=config.DEVICE,
+            confidence_threshold_l0=config.CONFIDENCE_THRESHOLD_L0,
+            confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
+            confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
+        )
+    elif config.DETECTOR_TYPE == "tensorrt":
+        return YoloDetector(
+            weights_path=str(config.TRT_ENGINE_PATH) if config.TRT_ENGINE_PATH else None,
+            device=config.DEVICE,
+            confidence_threshold_l0=config.CONFIDENCE_THRESHOLD_L0,
+            confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
+            confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
+        )
+    elif config.DETECTOR_TYPE == "template_bank":
         logger.warning(
-            "ultralytics is unavailable; falling back to TemplateBankDetector for '%s'",
-            config.DETECTOR_TYPE,
+            "DETECTOR_TYPE='template_bank' is a debug backend and will score near "
+            "zero on the 960x540 wire protocol."
         )
         return TemplateBankDetector()
-    else:
+    elif config.DETECTOR_TYPE == "dummy":
         logger.warning(
-            "Unknown detector type '%s', falling back to DummyCannyDetector",
-            config.DETECTOR_TYPE,
+            "DETECTOR_TYPE='dummy' is a plumbing backend and will score zero."
         )
         return DummyCannyDetector()
+    elif config.DETECTOR_TYPE == "yolo_sahi":
+        raise NotImplementedError(
+            "DETECTOR_TYPE='yolo_sahi' is not implemented. Use 'yolo_standard' with "
+            "exact-zoom training, or tile the 960x540 view yourself."
+        )
+    else:
+        raise ValueError(
+            f"Unknown DETECTOR_TYPE '{config.DETECTOR_TYPE}'. Valid values: "
+            f"yolo_standard, tensorrt, template_bank, dummy."
+        )
 
