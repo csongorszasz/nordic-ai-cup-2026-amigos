@@ -1,0 +1,105 @@
+{
+ "as78": {
+  "close_gaps": 0,
+  "dropped_parts": [
+   "Cylinder.002_Cylinder.003_39"
+  ],
+  "gains": [
+   0.225,
+   0.225,
+   0.225
+  ],
+  "length_m": 25.3,
+  "mean_colour_error": 20.1,
+  "mean_iou": 0.834,
+  "mesh": "models/condor/as78/AS-78_CONDOR.obj",
+  "offsets": [
+   152.9,
+   151.3,
+   140.1
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 20.9,
+    "file": "condor/f008_3.png",
+    "iou": 0.578,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 305
+   },
+   {
+    "colour_error": 21.1,
+    "file": "condor/f007_3.png",
+    "iou": 0.698,
+    "lean": 315,
+    "structure": 0.077,
+    "tilt": 8,
+    "yaw": 35
+   },
+   {
+    "colour_error": 20.5,
+    "file": "condor/f006_3.png",
+    "iou": 0.858,
+    "lean": 90,
+    "structure": 0.141,
+    "tilt": 8,
+    "yaw": 35
+   },
+   {
+    "colour_error": 19.9,
+    "file": "condor/f005_3.png",
+    "iou": 0.898,
+    "lean": 45,
+    "structure": 0.034,
+    "tilt": 16,
+    "yaw": 35
+   },
+   {
+    "colour_error": 19.6,
+    "file": "condor/f004_3.png",
+    "iou": 0.904,
+    "lean": 45,
+    "structure": 0.083,
+    "tilt": 16,
+    "yaw": 35
+   },
+   {
+    "colour_error": 19.7,
+    "file": "condor/f003_3.png",
+    "iou": 0.91,
+    "lean": 45,
+    "structure": 0.045,
+    "tilt": 24,
+    "yaw": 35
+   },
+   {
+    "colour_error": 19.5,
+    "file": "condor/f002_3.png",
+    "iou": 0.91,
+    "lean": 45,
+    "structure": 0.061,
+    "tilt": 24,
+    "yaw": 35
+   },
+   {
+    "colour_error": 19.4,
+    "file": "condor/f001_4.png",
+    "iou": 0.916,
+    "lean": 45,
+    "structure": 0.063,
+    "tilt": 24,
+    "yaw": 35
+   }
+  ],
+  "thicken": 1.0,
+  "tilt": 20.0,
+  "tilts": [
+   0,
+   8,
+   16,
+   24
+  ],
+  "up": "y"
+ }
+}

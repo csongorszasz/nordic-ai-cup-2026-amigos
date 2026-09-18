@@ -72,7 +72,8 @@ def main():
     mesh_path = ROOT / match['mesh']
     print(f'{args.class_name}: model "{name}" ({mesh_path.name}), dropped {match.get("dropped_parts", [])}')
 
-    meshes, height = rm.load_normalised(mesh_path, match.get('up', 'auto'), match.get('dropped_parts', []))
+    meshes, height = rm.load_normalised(mesh_path, match.get('up', 'auto'), match.get('dropped_parts', []),
+                                         match.get('thicken', 1.0))
     renderer = rm.Renderer(meshes, height)
     yaws = list(range(0, 360, 5))
 

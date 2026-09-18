@@ -3,93 +3,94 @@
   "close_gaps": 20,
   "dropped_parts": [],
   "gains": [
-   0.443,
-   0.443,
-   0.443
+   0.476,
+   0.476,
+   0.476
   ],
-  "length_m": 4.5,
-  "mean_colour_error": 33.0,
-  "mean_iou": 0.749,
+  "length_m": 4.7,
+  "mean_colour_error": 32.9,
+  "mean_iou": 0.75,
   "mesh": "models/large_tower/cgtrader_watchtower/watchtower.obj",
   "offsets": [
-   77.8,
-   78.0,
-   68.9
+   69.3,
+   71.8,
+   63.7
   ],
   "per_sprite": [
    {
-    "colour_error": 32.9,
+    "colour_error": 32.6,
     "file": "large_tower/f021_3.png",
-    "iou": 0.739,
-    "lean": 45,
-    "structure": 0.206,
-    "tilt": 40.0,
-    "yaw": 345
-   },
-   {
-    "colour_error": 31.9,
-    "file": "large_tower/f022_3.png",
-    "iou": 0.746,
-    "lean": 45,
-    "structure": 0.277,
-    "tilt": 40.0,
-    "yaw": 70
-   },
-   {
-    "colour_error": 30.1,
-    "file": "large_tower/f024_2.png",
-    "iou": 0.729,
-    "lean": 45,
-    "structure": 0.228,
-    "tilt": 40.0,
-    "yaw": 250
-   },
-   {
-    "colour_error": 35.6,
-    "file": "large_tower/f020_3.png",
-    "iou": 0.751,
-    "lean": 45,
-    "structure": 0.149,
-    "tilt": 40.0,
-    "yaw": 345
-   },
-   {
-    "colour_error": 30.5,
-    "file": "large_tower/f023_2.png",
     "iou": 0.743,
     "lean": 45,
-    "structure": 0.252,
+    "structure": 0.183,
     "tilt": 40.0,
     "yaw": 75
    },
    {
-    "colour_error": 34.6,
-    "file": "large_tower/f019_3.png",
-    "iou": 0.752,
+    "colour_error": 32.3,
+    "file": "large_tower/f022_3.png",
+    "iou": 0.741,
     "lean": 45,
-    "structure": 0.227,
+    "structure": 0.228,
+    "tilt": 40.0,
+    "yaw": 70
+   },
+   {
+    "colour_error": 31.6,
+    "file": "large_tower/f024_2.png",
+    "iou": 0.753,
+    "lean": 45,
+    "structure": 0.145,
     "tilt": 40.0,
     "yaw": 95
    },
    {
-    "colour_error": 34.1,
-    "file": "large_tower/f018_3.png",
-    "iou": 0.767,
+    "colour_error": 33.8,
+    "file": "large_tower/f020_3.png",
+    "iou": 0.744,
     "lean": 45,
-    "structure": 0.224,
+    "structure": 0.215,
     "tilt": 40.0,
-    "yaw": 95
+    "yaw": 75
+   },
+   {
+    "colour_error": 30.8,
+    "file": "large_tower/f023_2.png",
+    "iou": 0.747,
+    "lean": 45,
+    "structure": 0.141,
+    "tilt": 40.0,
+    "yaw": 250
+   },
+   {
+    "colour_error": 33.9,
+    "file": "large_tower/f019_3.png",
+    "iou": 0.747,
+    "lean": 45,
+    "structure": 0.223,
+    "tilt": 40.0,
+    "yaw": 90
+   },
+   {
+    "colour_error": 34.0,
+    "file": "large_tower/f018_3.png",
+    "iou": 0.763,
+    "lean": 45,
+    "structure": 0.239,
+    "tilt": 40.0,
+    "yaw": 85
    },
    {
     "colour_error": 34.5,
     "file": "large_tower/f017_3.png",
-    "iou": 0.765,
+    "iou": 0.761,
     "lean": 45,
-    "structure": 0.207,
+    "structure": 0.249,
     "tilt": 40.0,
-    "yaw": 0
+    "yaw": 90
    }
   ],
+  "thicken": 2.0,
   "tilt": 40.0,
   "tilts": [
    0.0,

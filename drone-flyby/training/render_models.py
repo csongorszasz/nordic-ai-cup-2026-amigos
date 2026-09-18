@@ -12,6 +12,7 @@ the sprite generator will use.
     python training/render_models.py helicopter --up z --drop rotor_Body  # skinned glTF, rotor spins
     python training/render_models.py hangar --drop Cube.032     # leave out the model's concrete apron
     python training/render_models.py large_tower --close-gaps 4 # lattice legs vs a cut-out that fills them
+    python training/render_models.py large_tower --thicken 2    # beams twice as wide
 
 Each cut-out is fitted for yaw, camera tilt and lean direction (the drone camera looks
 slightly forward, so tall parts lean, mostly toward the image top) and scale. The score
@@ -189,11 +190,35 @@ def part_name(mesh):
     return f"{mesh.metadata.get('name', '?')} ({mesh.metadata.get('node', '?')})"
 
 
-def load_normalised(path: Path, up: str, drop=()):
+def thicken_beams(mesh, factor: float, min_aspect: float = 6.0):
+    """Widen thin beams and planks in place, keeping their length.
+
+    Each connected piece whose longest side is `min_aspect` times its next one is scaled
+    by `factor` across its second principal axis, about its own centre. Low-poly models
+    build legs and planks as such strips.
+    """
+    groups = trimesh.graph.connected_components(mesh.edges, nodes=np.arange(len(mesh.vertices)))
+    vertices = mesh.vertices.copy()
+    for group in groups:
+        points = vertices[group]
+        if len(points) < 3:
+            continue
+        centre = points.mean(axis=0)
+        _, spread, axes = np.linalg.svd(points - centre, full_matrices=False)
+        if spread[1] <= 0 or spread[0] < min_aspect * spread[1]:
+            continue
+        across = axes[1]
+        offset = (points - centre) @ across
+        vertices[group] = points + np.outer(offset * (factor - 1), across)
+    mesh.vertices = vertices
+
+
+def load_normalised(path: Path, up: str, drop=(), thicken: float = 1.0):
     """Mesh list in a frame where +Z is up, centred, longest horizontal side = 1.
 
     `drop` removes parts whose geometry or node name contains any of the given strings,
-    e.g. a concrete apron or display base the real object does not have.
+    e.g. a concrete apron or display base the real object does not have. `thicken`
+    widens thin beams (thicken_beams()).
     """
     source = slim_glb(path) if path.suffix.lower() == '.glb' else path
     loaded = trimesh.load(str(source), force='scene')
@@ -205,6 +230,9 @@ def load_normalised(path: Path, up: str, drop=()):
     if not meshes:
         raise ValueError(f'{path}: no triangle meshes left')
     lighten_materials(meshes)
+    if thicken != 1.0:
+        for mesh in meshes:
+            thicken_beams(mesh, thicken)
 
     if up == 'auto':
         up = 'y' if path.suffix.lower() in {'.glb', '.gltf'} else 'z'
@@ -580,6 +608,8 @@ def main():
     parser.add_argument('--close-gaps', type=int, default=0, metavar='PX',
                         help='fill gaps in the render silhouette up to ~2*PX sprite pixels before comparing, '
                              'for open structures whose cut-outs include the ground between their parts')
+    parser.add_argument('--thicken', type=float, default=1.0, metavar='F',
+                        help='widen thin beams and planks F times (legs of a lattice tower)')
     parser.add_argument('--max-sprites', type=int, default=8)
     parser.add_argument('--out', default=str(ROOT / 'datasets' / 'model_match'))
     args = parser.parse_args()
@@ -602,7 +632,7 @@ def main():
     for path in mesh_paths:
         name = str(path.parent.relative_to(class_dir)) if path.parent != class_dir else path.stem
         try:
-            meshes, height = load_normalised(path, args.up, args.drop)
+            meshes, height = load_normalised(path, args.up, args.drop, args.thicken)
         except Exception as exc:
             print(f'  {name}: cannot load ({exc})')
             continue
@@ -644,6 +674,7 @@ def main():
                 'dropped_parts': args.drop,
                 'up': args.up,
                 'close_gaps': args.close_gaps,
+                'thicken': args.thicken,
                 'tilts': args.tilts,
                 'mean_iou': round(float(np.mean([b['iou'] for b in good])), 3),
                 'mean_colour_error': round(float(np.mean([b['colour_error'] for b in good])), 1),
