@@ -81,7 +81,12 @@ cython_debug/
 .jupyter
 
 # Generated training data, models and recorded/downloaded data
-datasets/
+datasets/*
+# ...except the fitted models painted with the real colours (render_models.export_painted),
+# which the synthetic data generator needs; small, and the only 3D files in git
+!datasets/model_match/
+datasets/model_match/*
+!datasets/model_match/_baked/
 training_artifacts/
 runs/
 *.pt

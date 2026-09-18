@@ -161,8 +161,9 @@ def main():
     written, tries = 0, 0
     while written < args.count and tries < args.count * 20:
         tries += 1
-        x = rng.uniform(bounds[:, 0].min(), bounds[:, 2].max())
-        y = rng.uniform(bounds[:, 1].min(), bounds[:, 3].max())
+        # A random subtile, then a point in it: tiles can be kilometres apart.
+        box = bounds[rng.integers(len(bounds))]
+        x, y = rng.uniform(box[0], box[2]), rng.uniform(box[1], box[3])
         yaw = rng.uniform(0, 360)
         rgb = render_frame(renderer, index, x, y, yaw)
         if rgb is None or water_share(rgb) > MAX_WATER:

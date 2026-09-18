@@ -111,6 +111,7 @@ def lighten_materials(meshes):
 
 SLIM_CACHE = ROOT / 'datasets' / 'model_match' / '_slim'
 BAKED = ROOT / 'datasets' / 'model_match' / '_baked'  # real-colour textures, one per class/model
+MAX_EXPORT_FACES = 200_000  # painted models are decimated to about this for export (needs fast_simplification)
 GLB_JSON, GLB_BIN = 0x4E4F534A, 0x004E4942
 
 
@@ -511,8 +512,16 @@ def export_painted(meshes, texture: np.ndarray, path: Path):
     """Save the model with the baked real colours as a .glb, in the fit's own frame.
 
     The geometry is the normalised one the fit used (dropped parts gone, --up applied), so
-    the 3D viewer's drone view shows exactly the fitted pose.
+    the 3D viewer's drone view shows exactly the fitted pose. Showcase models (the A-7
+    has 5.2M faces) are decimated to about MAX_EXPORT_FACES: the object is under 200 px
+    in a frame, and the file must stay under GitHub's 100 MB limit to be committed.
     """
+    total = sum(len(m.faces) for m in meshes)
+    if total > MAX_EXPORT_FACES:
+        keep = MAX_EXPORT_FACES / total
+        meshes = [m.simplify_quadric_decimation(face_count=max(int(len(m.faces) * keep), 4))
+                  if len(m.faces) > 100 else m for m in meshes]
+        print(f'    decimated {total} -> {sum(len(m.faces) for m in meshes)} faces for export')
     to_y_up = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])  # glTF is Y-up
     scene = trimesh.Scene()
     for i, mesh in enumerate(textured_meshes(meshes, texture)):
