@@ -48,6 +48,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T036 | 2026-09-18 | **LLM probe L0/L1/L2** (39 convs, in-sample) | Qwen2.5-7B | 0.982 | 0.454 | **0.665** | L1 few-shot; L0 0.588, L2 0.611 |
 | T037 | 2026-09-18 | hybrid sim: LLM decision + MB span | Qwen+MB | 0.982 | 0.521 | **0.705** | offline join of T036/T033 |
 | T038 | 2026-09-18 | **LLM L1 with Gemma 4 E4B** (39 convs, in-sample) | Gemma4-E4B | 0.990 | 0.555 | **0.729** | quote_found 1.000, 0 parse fails |
+| T039 | 2026-09-18 | **validation: served Gemma 4 E4B L1** | Gemma4-E4B | — | — | **0.744** | 19 convs, 14–19 s, IDUN + cloudflared |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -387,3 +388,34 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 - **Conclusion:** a small modern instruction model beats both the larger older
   Qwen2.5-7B and the 0.705 hybrid, and is close to a servable size. Next:
   validate (needs serving) or use as teacher; test E2B/int4 for the 1650.
+
+## T039 — validation: served Gemma 4 E4B L1 (0.744)
+
+- **Config:** `MEDAPP_ANSWERER=llm`, `MEDAPP_LLM_MODEL=google/gemma-4-e4b-it`
+  (fp16, `AutoModelForImageTextToText`), L1 whole-transcript prompt with 3
+  LOCO-safe few-shot turns; `large-v3-turbo` int8 ASR; IDUN A100/H100 node +
+  cloudflared quick tunnel.
+- **Results:** 19 validation conversations, all 200 OK; latency **14–19 s**;
+  **service score 0.744**.
+- **Correspondence:** in-sample probe T038 = 0.729; validation 0.744 (the probe
+  is again a faithful, slightly conservative predictor of the service).
+- **Bug fixed en route:** `example.py` built a fresh `LLMAnswerer` per request,
+  reloading the 16 GB model each time (36–48 s, one failure). `build_answerer`
+  is now a process-wide singleton → 14–19 s.
+- **Compare:** ModernBERT served 0.606 (T034), legacy served 0.545 (T027).
+- **Conclusion:** the best validated config so far by +0.14 over T034. Remaining
+  risk is serving stability for the one-shot evaluation (ephemeral tunnel,
+  4 h job walltime). In-sample probe predicts the service.
+
+## B1 — native-audio probe (in progress)
+
+- **Goal:** ask Gemma 4 E4B to transcribe the audio directly and see whether it
+  fixes the Whisper medical-term errors (PAMEL→Pamol, ibumedin→Ibumetin,
+  panadil→Panodil, Activel→Activelle, Isomeprazole→Esomeprazole,
+  "long-term sugar value"→HbA1c) and whether the latency is affordable.
+- **Blocker:** the multimodal generation path needs **torch>=2.6**
+  (`masking_utils` `or_mask_function`); IDUN `nordic` has torch 2.5.1. Needs a
+  separate env (`torch>=2.6`) or an older transformers, so as not to disturb the
+  serving env / the 0.744 endpoint.
+- **Script:** `llm_audio_probe.py` (decodes MP3 via
+  `faster_whisper.audio.decode_audio`, feeds `<|audio|>` + `input_features`).
