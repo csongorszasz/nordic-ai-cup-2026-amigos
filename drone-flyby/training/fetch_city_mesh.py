@@ -50,6 +50,11 @@ def fetch(tile: str):
     print(f'{tile} ({DEFAULT_TILES.get(tile, "custom")}): downloading {url}', flush=True)
     # curl resumes a partial file (-C -); urllib would start over after an interruption.
     subprocess.run(['curl', '-sSL', '--fail', '-C', '-', '--retry', '5', '-o', str(archive), url], check=True)
+    if not zipfile.is_zipfile(archive):
+        # Full size but broken, e.g. a reboot lost the unwritten tail: resuming cannot fix it.
+        print(f'{tile}: broken zip, downloading again', flush=True)
+        archive.unlink()
+        subprocess.run(['curl', '-sSL', '--fail', '--retry', '5', '-o', str(archive), url], check=True)
     with zipfile.ZipFile(archive) as z:
         names = [n for n in z.namelist() if f'_L{LEVEL}_' in n or n.endswith('metadata.xml')]
         z.extractall(target, members=names)

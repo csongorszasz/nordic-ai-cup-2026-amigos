@@ -24,6 +24,10 @@ renders of the painted 3D models (datasets/model_sprites/, --model-share of them
 A model render is chosen for the spot it is pasted at: tall objects lean away from the
 camera's nadir point near the bottom of the frame (render_city.lean_at), so the render
 whose tilt and lean match that spot is used, and it is not rotated afterwards.
+
+Backgrounds with a <name>_ground.png (render_city.py) only get objects on open ground,
+as in the supplied scenes. Every background is colour-graded towards the supplied
+frames first: they are darker and far more saturated than the mesh or NAIP imagery.
 """
 
 import argparse
@@ -62,6 +66,12 @@ GROUPS = [
     ('tank', 'tank', 'mine_roller', 'ta-ta'),
     ('helicopter', 'helicopter', 'condor'),
 ]
+# Look of the supplied frames (grey mean ~96, saturation ~110 on 0-255, over their L0
+# views); the mesh renders are ~144 and ~28, NAIP ~159 and ~31.
+GRADE_MEAN = (80, 115)
+GRADE_SATURATION = (80, 135)
+MAX_GAIN = 1.4  # lighting match: more than this turned the near-black hangars neon yellow
+MAX_SATURATION_BOOST = 2.5  # beyond this, colour noise and casts dominate
 
 
 def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: bool):
@@ -147,6 +157,7 @@ def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random
     background_mean = float(background_patch.mean())
     blend = rng.uniform(0.35, 0.75)  # partly match the scene, keep some of the model's own tone
     gain = (background_mean * blend + sprite_mean * (1 - blend)) / max(sprite_mean, 1e-3)
+    gain = min(max(gain, 1 / MAX_GAIN), MAX_GAIN)
     rgb *= gain * rng.uniform(0.92, 1.08)
     rgb += rng.uniform(-10, 10)
 
@@ -156,6 +167,52 @@ def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random
     out = sprite.copy()
     out[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
     return out
+
+
+def grade(background: np.ndarray, rng: random.Random):
+    """Darken and saturate a background towards the supplied frames' look."""
+    # Levels first: haze is an offset, and removing it restores colour a plain saturation
+    # boost would turn into a cast (NAIP is bluish). One range for all channels: per-channel
+    # ranges shift the white balance (sandy harbours went pink).
+    small = background[::8, ::8].astype(np.float32)
+    low, high = np.percentile(small, 0.5), np.percentile(small, 99.5)
+    stretched = np.clip((background - low) / max(high - low, 1) * 255, 0, 255).astype(np.uint8)
+    hsv = cv2.cvtColor(stretched, cv2.COLOR_BGR2HSV).astype(np.float32)
+    saturation = max(float(hsv[:, :, 1].mean()), 1.0)
+    boost = min(rng.uniform(*GRADE_SATURATION) / saturation, MAX_SATURATION_BOOST)
+    hsv[:, :, 1] = np.clip(hsv[:, :, 1] * boost, 0, 255)
+    value = max(float(hsv[:, :, 2].mean()) / 255, 0.05)
+    target = rng.uniform(*GRADE_MEAN) / 255 * 1.15  # HSV value runs a little above grey
+    gamma = math.log(min(target, 0.95)) / math.log(value)
+    hsv[:, :, 2] = 255 * (hsv[:, :, 2] / 255) ** gamma
+    return cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+
+def load_background(path: Path):
+    """(BGR frame, open-ground mask or None) for one background."""
+    mask_path = path.with_name(path.stem + '_ground.png')
+    mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE) if mask_path.exists() else None
+    return cv2.imread(str(path)), (mask > 127 if mask is not None else None)
+
+
+def pick_spot(ground, rng: random.Random):
+    """(cx, cy) in the frame: anywhere, or on open ground when there is a mask."""
+    if ground is None:
+        return rng.uniform(0, SOURCE_W), rng.uniform(0, SOURCE_H)
+    ys, xs = np.nonzero(ground)
+    i = rng.randrange(len(xs))
+    sx, sy = SOURCE_W / ground.shape[1], SOURCE_H / ground.shape[0]
+    return (xs[i] + rng.random()) * sx, (ys[i] + rng.random()) * sy
+
+
+def on_ground(ground, box, share: float = 0.7) -> bool:
+    """Whether most of the box lies on open ground (always, without a mask)."""
+    if ground is None:
+        return True
+    sx, sy = ground.shape[1] / SOURCE_W, ground.shape[0] / SOURCE_H
+    x1, y1, x2, y2 = box
+    patch = ground[int(y1 * sy):int(y2 * sy) + 1, int(x1 * sx):int(x2 * sx) + 1]
+    return patch.size > 0 and patch.mean() >= share
 
 
 def paste(canvas: np.ndarray, sprite: np.ndarray, x: int, y: int, shadow: tuple, rng: random.Random):
@@ -187,10 +244,12 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 
 
 def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int,
-                  model_sprites: dict = None, model_share: float = 0.0):
-    """Paste objects onto a copy of the background. Returns (frame, annotations)."""
+                  model_sprites: dict = None, model_share: float = 0.0, ground=None):
+    """Paste objects onto a graded copy of the background. Returns (frame, annotations)."""
     model_sprites = model_sprites or {}
-    canvas = background.copy()
+    if ground is not None and not ground.any():
+        ground = None
+    canvas = grade(background, rng)
     if rng.random() < 0.6:  # the challenge imagery is soft; vary how soft ours is
         canvas = cv2.GaussianBlur(canvas, (0, 0), rng.uniform(0.3, 0.9))
 
@@ -213,21 +272,17 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
         if sprite is None and not use_model:
             continue
         for _ in range(30):  # try a few spots before giving up on this object
+            cx, cy = pick_spot(ground, rng)
             if use_model:  # the spot decides the pose: pick the matching render
-                cx, cy = rng.uniform(0, SOURCE_W), rng.uniform(0, SOURCE_H)
                 sprite = pick_model_sprite(model_sprites[class_name], cx, cy, rng)
-                h, w = sprite.shape[:2]
-                x, y = int(cx - w / 2), int(cy - h / 2)
-            else:
-                h, w = sprite.shape[:2]
-                if h >= SOURCE_H or w >= SOURCE_W:
-                    break
-                x = rng.randint(0, SOURCE_W - w - 1)
-                y = rng.randint(0, SOURCE_H - h - 1)
+            h, w = sprite.shape[:2]
+            if h >= SOURCE_H or w >= SOURCE_W:
+                break
+            x, y = int(cx - w / 2), int(cy - h / 2)
             if x < 0 or y < 0 or x + w >= SOURCE_W or y + h >= SOURCE_H:
                 continue
             box = [x, y, x + w, y + h]
-            if overlaps(box, placed):
+            if overlaps(box, placed) or not on_ground(ground, box):
                 continue
             lit = match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng)
             pasted = paste(canvas, lit, x, y, shadow, rng)
@@ -286,10 +341,10 @@ def main():
         preview_dir = out.parent / 'synth_preview'
         preview_dir.mkdir(parents=True, exist_ok=True)
         for i in range(args.preview):
-            background = cv2.imread(str(rng.choice(background_paths)))
+            background, ground = load_background(rng.choice(background_paths))
             frame, annotations = compose_frame(background, sprites, rng,
                                                rng.randint(args.min_objects, args.max_objects),
-                                               model_sprites, args.model_share)
+                                               model_sprites, args.model_share, ground)
             marked = frame.copy()
             for ann in annotations:
                 x1, y1, x2, y2 = ann['bbox']
@@ -328,10 +383,10 @@ def main():
 
     for n in range(args.frames):
         split = 'val' if rng.random() < args.val_fraction else 'train'
-        background = cv2.imread(str(rng.choice(background_paths)))
+        background, ground = load_background(rng.choice(background_paths))
         frame, annotations = compose_frame(background, sprites, rng,
                                            rng.randint(args.min_objects, args.max_objects),
-                                           model_sprites, args.model_share)
+                                           model_sprites, args.model_share, ground)
         for ann in annotations:
             per_class[ann['object_id']] += 1
         cut(frame, annotations, f's{n:04d}', split)

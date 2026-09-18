@@ -12,7 +12,10 @@ perspective camera matching the drone's geometry, at 3840x2160 and ~0.21 m/px.
     python training/render_city.py --count 20                   # -> backgrounds/helsinki3d_frames/
     python training/render_city.py --count 4 --tiles tile_676510 --seed 1
 
-Frames that are mostly sea or leave part of the view empty are skipped.
+Frames that are mostly sea or leave part of the view empty are skipped. Next to each
+frame, <name>_ground.png (quarter resolution) marks open ground, from the depth buffer:
+flat, level with its surroundings and not water. synth_dataset.py pastes objects only
+there, as the supplied scenes do (fields, clearings, roads; never on trees or roofs).
 """
 
 import argparse
@@ -45,6 +48,12 @@ LEVEL = 19           # quadtree level with ~0.1 m/px textures; rendered down to 
 TEXTURE_SCALE = 0.5  # halve them on load (~0.18 m/px, still finer than the frame): a quarter of the memory
 MAX_EMPTY = 0.02     # share of the frame the mesh may leave uncovered (cracks between pieces, filled in)
 MAX_WATER = 0.5      # share of the frame that may be open water
+MASK_SCALE = 4       # ground masks are saved at 1/4 of the frame size (~0.84 m per pixel)
+GROUND_WINDOW_M = 80  # buildings narrower than this stand out above the ground under them
+MAX_HEIGHT_M = 1.0   # open ground: at most this far above the local ground level...
+MAX_ROUGHNESS_M = 0.3  # ...and this bumpy over ~4 m (tree canopy is far rougher)
+MIN_GROUND = 0.05    # skip frames with less open ground than this
+MIN_LAND_M = 1.0     # mesh heights are metres above sea level (N2000); below this is sea
 
 
 def altitude():
@@ -120,8 +129,35 @@ def lean_at(px, py):
     return float(np.degrees(np.arctan(np.hypot(dx, dy) / FOCAL_PX))), float(np.degrees(np.arctan2(dx, -dy)) % 360)
 
 
+def world_height(depth, pose):
+    """World z of every pixel of a pyrender depth map (0 = nothing there -> NaN)."""
+    h, w = depth.shape
+    scale = w / WIDTH
+    u, v = np.meshgrid(np.arange(w) + 0.5, np.arange(h) + 0.5)
+    x = (u - w / 2) / (FOCAL_PX * scale) * depth
+    y = -(v - h / 2) / (FOCAL_PX * scale) * depth
+    z = pose[2, 0] * x + pose[2, 1] * y - pose[2, 2] * depth + pose[2, 3]
+    return np.where(depth > 0, z, np.nan)
+
+
+def ground_mask(depth, pose, rgb):
+    """Quarter-resolution bool mask of open ground: flat, at ground level, not water."""
+    small = (WIDTH // MASK_SCALE, HEIGHT // MASK_SCALE)
+    z = world_height(cv2.resize(depth, small, interpolation=cv2.INTER_NEAREST), pose).astype(np.float32)
+    filled = np.where(np.isnan(z), np.nanmedian(z), z)
+    # Ground level: a grey opening removes anything narrower than the window (trees, buildings).
+    k = cv2.getStructuringElement(cv2.MORPH_RECT, (int(GROUND_WINDOW_M / (METRES_PER_PIXEL * MASK_SCALE)) | 1,) * 2)
+    ground = cv2.GaussianBlur(cv2.morphologyEx(filled, cv2.MORPH_OPEN, k), (0, 0), 5)
+    mean = cv2.blur(filled, (5, 5))
+    rough = np.sqrt(np.maximum(cv2.blur(filled * filled, (5, 5)) - mean * mean, 0))
+    water = cv2.resize(water_mask(rgb).astype(np.uint8), small, interpolation=cv2.INTER_NEAREST) > 0
+    mask = (filled - ground < MAX_HEIGHT_M) & (rough < MAX_ROUGHNESS_M) & (filled > MIN_LAND_M) & ~water & ~np.isnan(z)
+    # Drop specks: an object needs a few metres of open ground around it.
+    return cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8)) > 0
+
+
 def render_frame(renderer, index, x, y, yaw):
-    """RGB uint8 frame centred on GK25 (x, y), or None when the mesh does not cover it."""
+    """(RGB uint8 frame centred on GK25 (x, y), ground mask), or None when the mesh does not cover it."""
     reach = np.hypot(WIDTH, HEIGHT) / 2 * METRES_PER_PIXEL + 50
     subs = [s for s, b in index.items() if b[0] < x + reach and b[2] > x - reach and b[1] < y + reach and b[3] > y - reach]
     if not subs:
@@ -132,9 +168,11 @@ def render_frame(renderer, index, x, y, yaw):
         for mesh in load_subtile(sub):
             scene.add(mesh)
     yfov = 2 * np.arctan(np.tan(np.radians(HFOV / 2)) * HEIGHT / WIDTH)
-    camera = pyrender.PerspectiveCamera(yfov=yfov, aspectRatio=WIDTH / HEIGHT, znear=10, zfar=5000)
-    scene.add(camera, pose=camera_pose(x, y, ground + altitude(), yaw))
-    colour, _ = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
+    camera = pyrender.PerspectiveCamera(yfov=yfov, aspectRatio=WIDTH / HEIGHT,
+                                     znear=300, zfar=1500)  # tight: the depth buffer gives the ground mask
+    pose = camera_pose(x, y, ground + altitude(), yaw)
+    scene.add(camera, pose=pose)
+    colour, depth = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
     empty = colour[:, :, 3] == 0
     if empty.mean() > MAX_EMPTY:
         return None
@@ -142,18 +180,18 @@ def render_frame(renderer, index, x, y, yaw):
     rgb = (255 * (colour[:, :, :3] / 255.0) ** (1 / 2.2)).round().astype(np.uint8)
     if empty.any():  # thin cracks where neighbouring mesh pieces do not meet
         rgb = cv2.inpaint(rgb, empty.astype(np.uint8), 3, cv2.INPAINT_TELEA)
-    return rgb
+    return rgb, ground_mask(depth, pose, rgb)
 
 
-def water_share(rgb):
-    """Rough share of open water: green-to-blue and nearly featureless.
+def water_mask(rgb):
+    """Rough open-water mask: green-to-blue and nearly featureless.
 
     In the mesh the sea is a smooth grey-green (hue ~55-85, local detail ~1.2); land,
     even grass and forest, has detail well above 2.5.
     """
     hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
     detail = cv2.blur(np.abs(cv2.Laplacian(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY), cv2.CV_32F)), (31, 31))
-    return float(((hsv[:, :, 0] > 40) & (hsv[:, :, 0] < 110) & (detail < 2.5)).mean())
+    return (hsv[:, :, 0] > 40) & (hsv[:, :, 0] < 110) & (detail < 2.5)
 
 
 def main():
@@ -182,13 +220,17 @@ def main():
         box = bounds[rng.integers(len(bounds))]
         x, y = rng.uniform(box[0], box[2]), rng.uniform(box[1], box[3])
         yaw = rng.uniform(0, 360)
-        rgb = render_frame(renderer, index, x, y, yaw)
-        if rgb is None or water_share(rgb) > MAX_WATER:
+        rendered = render_frame(renderer, index, x, y, yaw)
+        if rendered is None:
             continue
-        name = f'hel3d_{int(x)}_{int(y)}_{int(yaw):03d}.jpg'
-        cv2.imwrite(str(out / name), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        rgb, ground = rendered
+        if water_mask(rgb).mean() > MAX_WATER or ground.mean() < MIN_GROUND:
+            continue
+        name = f'hel3d_{int(x)}_{int(y)}_{int(yaw):03d}'
+        cv2.imwrite(str(out / f'{name}.jpg'), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        cv2.imwrite(str(out / f'{name}_ground.png'), ground.astype(np.uint8) * 255)
         written += 1
-        print(f'  {name}')
+        print(f'  {name}: {ground.mean():.0%} open ground', flush=True)
     renderer.delete()
     print(f'{written} frames in {out} ({tries} tries)')
 
