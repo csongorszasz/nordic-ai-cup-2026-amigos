@@ -6,73 +6,90 @@
    0.2,
    0.2
   ],
-  "length_m": 29.0,
-  "mean_colour_error": 32.2,
-  "mean_iou": 0.685,
+  "length_m": 26.2,
+  "mean_colour_error": 31.9,
+  "mean_iou": 0.719,
   "mesh": "models/large_launcher/patriot_chenzoss/scene.gltf",
   "offsets": [
-   88.3,
-   91.5,
-   66.8
+   88.9,
+   91.8,
+   67.1
   ],
   "per_sprite": [
    {
-    "colour_error": 29.2,
+    "colour_error": 29.1,
     "file": "large_launcher/f018_0.png",
-    "iou": 0.705,
-    "tilt": 20,
+    "iou": 0.733,
+    "lean": 45,
+    "structure": 0.044,
+    "tilt": 24,
     "yaw": 245
    },
    {
-    "colour_error": 31.7,
+    "colour_error": 31.5,
     "file": "large_launcher/f015_0.png",
-    "iou": 0.677,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.71,
+    "lean": 45,
+    "structure": 0.014,
+    "tilt": 24,
+    "yaw": 250
    },
    {
-    "colour_error": 32.6,
+    "colour_error": 32.3,
     "file": "large_launcher/f014_0.png",
-    "iou": 0.679,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.722,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 250
    },
    {
     "colour_error": 32.9,
     "file": "large_launcher/f013_0.png",
-    "iou": 0.671,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.715,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 250
    },
    {
-    "colour_error": 30.6,
+    "colour_error": 30.5,
     "file": "large_launcher/f016_0.png",
-    "iou": 0.707,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.716,
+    "lean": 45,
+    "structure": 0.015,
+    "tilt": 24,
+    "yaw": 250
    },
    {
-    "colour_error": 30.3,
+    "colour_error": 29.9,
     "file": "large_launcher/f017_0.png",
-    "iou": 0.706,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.711,
+    "lean": 45,
+    "structure": 0.026,
+    "tilt": 24,
+    "yaw": 250
    },
    {
-    "colour_error": 34.0,
+    "colour_error": 33.6,
     "file": "large_launcher/f012_1.png",
-    "iou": 0.68,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.725,
+    "lean": 45,
+    "structure": 0.049,
+    "tilt": 24,
+    "yaw": 250
    },
    {
-    "colour_error": 36.2,
+    "colour_error": 35.8,
     "file": "large_launcher/f009_1.png",
-    "iou": 0.656,
-    "tilt": 20,
-    "yaw": 245
+    "iou": 0.72,
+    "lean": 45,
+    "structure": 0.054,
+    "tilt": 24,
+    "yaw": 250
    }
   ],
-  "tilt": 20.0
+  "tilt": 24.0,
+  "up": "auto"
  }
 }

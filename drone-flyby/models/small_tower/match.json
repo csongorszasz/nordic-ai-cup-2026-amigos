@@ -1,78 +1,188 @@
 {
- "watchtower": {
+ "procedural_tower": {
   "dropped_parts": [],
   "gains": [
-   4.0,
-   4.0,
-   4.0
+   2.733,
+   2.733,
+   2.733
   ],
-  "length_m": 7.3,
-  "mean_colour_error": 39.5,
+  "length_m": 7.2,
+  "mean_colour_error": 24.9,
   "mean_iou": 0.854,
-  "mesh": "models/small_tower/watchtower/scene.gltf",
+  "mesh": "models/small_tower/procedural_tower/tower.glb",
   "offsets": [
-   -46.6,
-   26.7,
-   22.3
+   -29.3,
+   -37.5,
+   -40.0
   ],
   "per_sprite": [
    {
-    "colour_error": 43.7,
+    "colour_error": 24.8,
     "file": "small_tower/f018_8.png",
-    "iou": 0.881,
-    "tilt": 0,
-    "yaw": 60
+    "iou": 0.88,
+    "lean": 90,
+    "structure": 0.719,
+    "tilt": 8,
+    "yaw": 330
    },
    {
-    "colour_error": 41.9,
+    "colour_error": 23.3,
     "file": "small_tower/f017_8.png",
-    "iou": 0.872,
-    "tilt": 0,
-    "yaw": 55
-   },
-   {
-    "colour_error": 40.9,
-    "file": "small_tower/f016_8.png",
     "iou": 0.869,
-    "tilt": 0,
-    "yaw": 55
+    "lean": 90,
+    "structure": 0.735,
+    "tilt": 16,
+    "yaw": 325
    },
    {
-    "colour_error": 36.3,
+    "colour_error": 25.9,
+    "file": "small_tower/f016_8.png",
+    "iou": 0.873,
+    "lean": 90,
+    "structure": 0.68,
+    "tilt": 8,
+    "yaw": 325
+   },
+   {
+    "colour_error": 30.5,
     "file": "small_tower/f015_8.png",
-    "iou": 0.815,
-    "tilt": 0,
-    "yaw": 25
+    "iou": 0.834,
+    "lean": 135,
+    "structure": 0.569,
+    "tilt": 16,
+    "yaw": 295
    },
    {
-    "colour_error": 39.1,
+    "colour_error": 23.9,
     "file": "small_tower/f014_8.png",
-    "iou": 0.874,
-    "tilt": 0,
-    "yaw": 60
+    "iou": 0.857,
+    "lean": 45,
+    "structure": 0.71,
+    "tilt": 16,
+    "yaw": 330
    },
    {
-    "colour_error": 38.9,
+    "colour_error": 23.3,
     "file": "small_tower/f013_7.png",
-    "iou": 0.85,
-    "tilt": 0,
-    "yaw": 65
+    "iou": 0.835,
+    "lean": 45,
+    "structure": 0.71,
+    "tilt": 16,
+    "yaw": 335
    },
    {
-    "colour_error": 38.0,
+    "colour_error": 23.3,
     "file": "small_tower/f012_8.png",
-    "iou": 0.852,
-    "tilt": 0,
-    "yaw": 65
+    "iou": 0.845,
+    "lean": 45,
+    "structure": 0.709,
+    "tilt": 16,
+    "yaw": 335
    },
    {
-    "colour_error": 37.0,
+    "colour_error": 24.2,
     "file": "small_tower/f010_9.png",
-    "iou": 0.819,
-    "tilt": 0,
-    "yaw": 65
+    "iou": 0.84,
+    "lean": 45,
+    "structure": 0.683,
+    "tilt": 16,
+    "yaw": 335
    }
   ],
-  "tilt": 0.0
+  "tilt": 16.0,
+  "up": "auto"
+ },
+ "watchtower": {
+  "dropped_parts": [],
+  "gains": [
+   1.49,
+   1.49,
+   1.49
+  ],
+  "length_m": 7.4,
+  "mean_colour_error": 41.2,
+  "mean_iou": 0.837,
+  "mesh": "models/small_tower/watchtower/scene.gltf",
+  "offsets": [
+   87.0,
+   116.7,
+   95.7
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 44.8,
+    "file": "small_tower/f018_8.png",
+    "iou": 0.881,
+    "lean": 0,
+    "structure": 0.214,
+    "tilt": 0,
+    "yaw": 330
+   },
+   {
+    "colour_error": 44.0,
+    "file": "small_tower/f017_8.png",
+    "iou": 0.872,
+    "lean": 0,
+    "structure": 0.191,
+    "tilt": 0,
+    "yaw": 325
+   },
+   {
+    "colour_error": 42.7,
+    "file": "small_tower/f016_8.png",
+    "iou": 0.82,
+    "lean": 135,
+    "structure": 0.378,
+    "tilt": 8,
+    "yaw": 145
+   },
+   {
+    "colour_error": 37.1,
+    "file": "small_tower/f015_8.png",
+    "iou": 0.815,
+    "lean": 0,
+    "structure": 0.148,
+    "tilt": 0,
+    "yaw": 295
+   },
+   {
+    "colour_error": 42.0,
+    "file": "small_tower/f014_8.png",
+    "iou": 0.874,
+    "lean": 0,
+    "structure": 0.126,
+    "tilt": 0,
+    "yaw": 330
+   },
+   {
+    "colour_error": 41.5,
+    "file": "small_tower/f013_7.png",
+    "iou": 0.819,
+    "lean": 135,
+    "structure": 0.32,
+    "tilt": 8,
+    "yaw": 155
+   },
+   {
+    "colour_error": 38.7,
+    "file": "small_tower/f012_8.png",
+    "iou": 0.811,
+    "lean": 135,
+    "structure": 0.292,
+    "tilt": 8,
+    "yaw": 155
+   },
+   {
+    "colour_error": 38.7,
+    "file": "small_tower/f010_9.png",
+    "iou": 0.807,
+    "lean": 45,
+    "structure": 0.312,
+    "tilt": 8,
+    "yaw": 335
+   }
+  ],
+  "tilt": 4.0,
+  "up": "auto"
  }
 }

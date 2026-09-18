@@ -9,10 +9,16 @@ the sprite generator will use.
 
     python training/render_models.py hangar
     python training/render_models.py hangar --tilts 0 8 16 --yaw-step 3
+    python training/render_models.py helicopter --up z --drop rotor_Body  # skinned glTF, rotor spins
     python training/render_models.py hangar --drop Cube.032     # leave out the model's concrete apron
 
-Only silhouette, size and average colour survive at 20-180 px, so those are what is
-matched; camo patterns and markings are approximated by the colour fit, not copied.
+Each cut-out is fitted for yaw, camera tilt and lean direction (the drone camera looks
+slightly forward, so tall parts lean, mostly toward the image top) and scale. The score
+is silhouette IoU plus how well light and dark parts line up (structure()), which is
+what places a tower's cabin on its platform. Two colourings come out: a colour fit
+(one gain, per-channel offsets) and the real colours, baked from the cut-outs onto the
+model through the depth buffer (bake_texture), which carries camouflage and markings.
+Painted models go to datasets/model_match/_baked/ for the 3D viewer.
 
 Sizes need no guessing: each render is scaled so its silhouette area equals the real
 sprite's, and the implied real-world length is reported as a sanity check against the
@@ -44,7 +50,7 @@ import trimesh
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))  # dtos.py lives in src/
 
-from dtos import OBJECT_CLASSES  # noqa: E402
+from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES  # noqa: E402
 
 METRES_PER_PIXEL = 0.21
 MESH_SUFFIXES = {'.glb', '.gltf', '.obj'}
@@ -101,6 +107,7 @@ def lighten_materials(meshes):
 
 
 SLIM_CACHE = ROOT / 'datasets' / 'model_match' / '_slim'
+BAKED = ROOT / 'datasets' / 'model_match' / '_baked'  # real-colour textures, one per class/model
 GLB_JSON, GLB_BIN = 0x4E4F534A, 0x004E4942
 
 
@@ -216,8 +223,8 @@ def load_normalised(path: Path, up: str, drop=()):
     return meshes, height
 
 
-def build_scene(meshes):
-    scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.45, 0.45, 0.45])
+def build_scene(meshes, ambient=0.45):
+    scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[ambient] * 3)
     for mesh in meshes:
         try:
             scene.add(pyrender.Mesh.from_trimesh(mesh, smooth=False))
@@ -228,35 +235,73 @@ def build_scene(meshes):
     return scene
 
 
-def render_views(meshes, height, yaws, tilts, sun_azimuth):
-    """{(yaw, tilt): RGBA uint8} renders from above."""
-    scene = build_scene(meshes)
-    node_all = list(scene.mesh_nodes)
-    camera = pyrender.OrthographicCamera(xmag=VIEW_HALF, ymag=VIEW_HALF, znear=0.01, zfar=20)
-    camera_node = scene.add(camera, pose=np.eye(4))
-    sun = pyrender.DirectionalLight(color=np.ones(3), intensity=3.5)
-    sun_pose = trimesh.transformations.euler_matrix(np.radians(30), 0, np.radians(sun_azimuth), 'rzxy')
-    scene.add(sun, pose=sun_pose)
-    renderer = pyrender.OffscreenRenderer(RENDER_SIZE, RENDER_SIZE)
+ZNEAR, ZFAR = 0.01, 20.0
 
-    views = {}
-    for yaw in yaws:
-        spin = trimesh.transformations.rotation_matrix(np.radians(yaw), [0, 0, 1])
-        for node in node_all:
-            scene.set_pose(node, spin)
-        for tilt in tilts:
-            pose = trimesh.transformations.rotation_matrix(np.radians(tilt), [1, 0, 0])
-            pose = pose @ trimesh.transformations.translation_matrix([0, 0, 5 + height])
-            scene.set_pose(camera_node, pose)
-            color, _ = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
-            views[(yaw, tilt)] = color
-    renderer.delete()
-    return views
+
+def rotation_z(degrees):
+    return trimesh.transformations.rotation_matrix(np.radians(degrees), [0, 0, 1])
+
+
+class Renderer:
+    """Top-down orthographic renders of one model at any yaw, tilt and lean direction.
+
+    Image up is +Y and image right is +X of the normalised model frame. `tilt` moves the
+    camera `tilt` degrees off vertical without rotating the image; tall parts then lean
+    away from the camera, toward image direction `lean` (degrees clockwise from image up,
+    so 0 = tops lean up, 90 = right).
+    """
+
+    def __init__(self, meshes, height, sun_azimuth=135, flat=False):
+        self.height = height
+        # flat: full ambient light and no sun, so the render shows the texture's colours
+        # as they are. For textures baked from real imagery, which already carry its light.
+        self.scene = build_scene(meshes, ambient=1.0 if flat else 0.45)
+        self.nodes = list(self.scene.mesh_nodes)
+        camera = pyrender.OrthographicCamera(xmag=VIEW_HALF, ymag=VIEW_HALF, znear=ZNEAR, zfar=ZFAR)
+        self.camera = self.scene.add(camera, pose=np.eye(4))
+        if not flat:
+            sun = pyrender.DirectionalLight(color=np.ones(3), intensity=3.5)
+            self.scene.add(sun, pose=trimesh.transformations.euler_matrix(np.radians(30), 0, np.radians(sun_azimuth), 'rzxy'))
+        self.renderer = pyrender.OffscreenRenderer(RENDER_SIZE, RENDER_SIZE)
+        self.flags = pyrender.RenderFlags.RGBA
+        self.yaw = None
+
+    def camera_pose(self, tilt, lean):
+        swing = rotation_z(-lean) @ trimesh.transformations.rotation_matrix(np.radians(tilt), [1, 0, 0]) @ rotation_z(lean)
+        return swing @ trimesh.transformations.translation_matrix([0, 0, 5 + self.height])
+
+    def render(self, yaw, tilt=0.0, lean=0.0):
+        """(RGBA uint8, orthographic depth) at RENDER_SIZE; depth 0 where nothing is hit."""
+        if yaw != self.yaw:
+            for node in self.nodes:
+                self.scene.set_pose(node, rotation_z(yaw))
+            self.yaw = yaw
+        self.scene.set_pose(self.camera, self.camera_pose(tilt, lean))
+        color, depth = self.renderer.render(self.scene, flags=self.flags)
+        # pyrender converts depth with the perspective formula even for orthographic
+        # cameras; undo it to get back the (linear) orthographic depth.
+        hit = depth > 0
+        ndc = np.zeros_like(depth)
+        ndc[hit] = (ZFAR + ZNEAR - 2 * ZNEAR * ZFAR / depth[hit]) / (ZFAR - ZNEAR)
+        linear = np.where(hit, (ndc * (ZFAR - ZNEAR) + ZFAR + ZNEAR) / 2, 0)
+        return color, linear
+
+    def unproject(self, px, py, depth, yaw, tilt, lean):
+        """Model-frame points (N x 3) under render pixels (px, py) with orthographic depth."""
+        x = ((px + 0.5) / RENDER_SIZE * 2 - 1) * VIEW_HALF
+        y = (1 - (py + 0.5) / RENDER_SIZE * 2) * VIEW_HALF
+        camera_points = np.stack([x, y, -depth, np.ones_like(x)])
+        world = self.camera_pose(tilt, lean) @ camera_points
+        return (rotation_z(-yaw) @ world)[:3].T
+
+    def close(self):
+        self.renderer.delete()
 
 
 # --------------------------------------------------------------------------- matching
 
 def load_sprites(class_name: str):
+    """[(file, RGBA cut-out, bbox in 4K pixels)] for the class's complete (uncut) examples."""
     index = json.loads((ROOT / 'sprites' / 'index.json').read_text())
     sprites = []
     for entry in index:
@@ -265,48 +310,180 @@ def load_sprites(class_name: str):
         image = cv2.imread(str(ROOT / 'sprites' / entry['file']), cv2.IMREAD_UNCHANGED)
         if image is None or image.shape[2] != 4:
             continue
-        sprites.append((entry['file'], cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)))
+        sprites.append((entry['file'], cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA), entry['bbox']))
     return sprites
 
 
-def fit_to_sprite(render: np.ndarray, sprite: np.ndarray):
-    """Scale and centre a render onto the sprite's canvas so the silhouette areas match.
+SCALE_STEPS = (0.85, 0.9, 0.95, 1.0, 1.05)  # around the area match, which runs large on cut-outs with a halo
+TILTS = (0, 8, 16, 24)                     # camera degrees off vertical
+LEANS = tuple(range(0, 360, 45))           # image direction tall parts lean toward
+STRUCTURE_WEIGHT = 0.25                    # weight of light/dark agreement next to the IoU
 
-    Returns (placed RGBA, IoU, pixels per mesh unit) or None.
+
+def place(render: np.ndarray, transform, shape) -> np.ndarray:
+    """Put a render onto a sprite-sized canvas with the transform fit_to_sprite found."""
+    x0, y0, x1, y1, scale, left, top = transform
+    crop = render[y0:y1, x0:x1]
+    new_w = max(1, int(round(crop.shape[1] * scale)))
+    new_h = max(1, int(round(crop.shape[0] * scale)))
+    small = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    height, width = shape[:2]
+    placed = np.zeros((height, width, render.shape[2]), render.dtype)
+    py0, px0 = max(top, 0), max(left, 0)
+    py1, px1 = min(top + new_h, height), min(left + new_w, width)
+    if py1 > py0 and px1 > px0:
+        placed[py0:py1, px0:px1] = small[py0 - top:py1 - top, px0 - left:px1 - left]
+    return placed
+
+
+def fit_to_sprite(render: np.ndarray, sprite: np.ndarray, scales=(1.0,)):
+    """Scale and centre a render onto the sprite's canvas; the scale with the best IoU wins.
+
+    Scales are relative to the one that makes the silhouette areas equal. Returns a dict
+    with the placed RGBA, IoU, pixels per mesh unit and the transform (for place()), or None.
     """
     sprite_mask = sprite[:, :, 3] > 128
     render_mask = render[:, :, 3] > 0
     sprite_area, render_area = sprite_mask.sum(), render_mask.sum()
     if sprite_area < 8 or render_area < 8:
         return None
-
-    scale = np.sqrt(sprite_area / render_area)
     ys, xs = np.nonzero(render_mask)
-    crop = render[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    new_w = max(1, int(round(crop.shape[1] * scale)))
-    new_h = max(1, int(round(crop.shape[0] * scale)))
-    small = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-    height, width = sprite.shape[:2]
-    placed = np.zeros_like(sprite)
+    box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
     sy, sx = np.nonzero(sprite_mask)
-    cy, cx = sy.mean(), sx.mean()
-    my, mx = np.nonzero(small[:, :, 3] > 64)
-    if len(my) == 0:
-        return None
-    top = int(round(cy - my.mean()))
-    left = int(round(cx - mx.mean()))
-    y0, x0 = max(top, 0), max(left, 0)
-    y1, x1 = min(top + new_h, height), min(left + new_w, width)
-    if y1 <= y0 or x1 <= x0:
-        return None
-    placed[y0:y1, x0:x1] = small[y0 - top:y1 - top, x0 - left:x1 - left]
+    best = None
+    for factor in scales:
+        scale = np.sqrt(sprite_area / render_area) * factor
+        small = place(render, (*box, scale, 0, 0), (int((box[3] - box[1]) * scale) + 2, int((box[2] - box[0]) * scale) + 2))
+        my, mx = np.nonzero(small[:, :, 3] > 64)
+        if len(my) == 0:
+            continue
+        transform = (*box, scale, int(round(sx.mean() - mx.mean())), int(round(sy.mean() - my.mean())))
+        placed = place(render, transform, sprite.shape)
+        placed_mask = placed[:, :, 3] > 64
+        union = (placed_mask | sprite_mask).sum()
+        iou = float((placed_mask & sprite_mask).sum() / union) if union else 0.0
+        if best is None or iou > best['iou']:
+            best = {'placed': placed, 'iou': iou, 'transform': transform,
+                    'pixels_per_unit': RENDER_SIZE / (2 * VIEW_HALF) * scale}
+    return best
 
-    placed_mask = placed[:, :, 3] > 64
-    union = (placed_mask | sprite_mask).sum()
-    iou = float((placed_mask & sprite_mask).sum() / union) if union else 0.0
-    pixels_per_unit = RENDER_SIZE / (2 * VIEW_HALF) * scale
-    return placed, iou, pixels_per_unit
+
+def structure(placed: np.ndarray, sprite: np.ndarray) -> float:
+    """Correlation of brightness between a placed render and the sprite, where both are solid.
+
+    The silhouette cannot tell where the tower's cabin sits on its platform, or which end
+    of a hangar is which; where light and dark parts are does. Camouflage the model lacks
+    correlates with nothing, so it neither helps nor hurts.
+    """
+    both = (placed[:, :, 3] > 64) & (sprite[:, :, 3] > 128)
+    if both.sum() < 8:
+        return 0.0
+    a = placed[both][:, :3].mean(axis=1)
+    b = sprite[both][:, :3].mean(axis=1)
+    if a.std() < 1 or b.std() < 1:
+        return 0.0
+    return float(max(np.corrcoef(a, b)[0, 1], 0.0))
+
+
+def fit_sprite(renderer: Renderer, sprite: np.ndarray, yaws, tilts=TILTS, leans=LEANS):
+    """Best yaw, tilt, lean and scale for one cut-out.
+
+    Yaw comes first from the silhouette seen straight down (tilt barely changes it), then
+    tilt and lean are searched on the best few yaws, scored by IoU plus structure(), and
+    the scale is refined last.
+    """
+    by_yaw = []
+    for yaw in yaws:
+        fitted = fit_to_sprite(renderer.render(yaw)[0], sprite)
+        if fitted:
+            by_yaw.append((fitted['iou'], yaw))
+    candidates = []
+    for _, yaw in sorted(by_yaw, reverse=True)[:3]:
+        for tilt in tilts:
+            for lean in (leans if tilt else (0,)):
+                fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite)
+                if fitted:
+                    score = fitted['iou'] + STRUCTURE_WEIGHT * structure(fitted['placed'], sprite)
+                    candidates.append((score, yaw, tilt, lean))
+    best = None
+    for _, yaw, tilt, lean in sorted(candidates, reverse=True)[:3]:
+        fitted = fit_to_sprite(renderer.render(yaw, tilt, lean)[0], sprite, SCALE_STEPS)
+        if not fitted:
+            continue
+        fitted['structure'] = structure(fitted['placed'], sprite)
+        score = fitted['iou'] + STRUCTURE_WEIGHT * fitted['structure']
+        if best is None or score > best['score']:
+            best = {**fitted, 'score': score, 'yaw': yaw, 'tilt': tilt, 'lean': lean}
+    return best
+
+
+# --------------------------------------------------------------------------- real colours
+
+BAKE_SIZE = 256  # texture over the model's top-down square of side 2 * VIEW_HALF
+
+
+def bake_texture(renderer: Renderer, fitted):
+    """Top-down texture of the real colours, from cut-outs with their fits.
+
+    Each fitted render's pixels are traced back to the model surface through the depth
+    buffer, and the real cut-out's colour at that pixel is stored at the point's (x, y).
+    Averaged over all cut-outs, this carries the real camouflage and markings onto the
+    model; vertical sides take the colour of the edge above them. Returns RGB uint8.
+    """
+    total = np.zeros((BAKE_SIZE, BAKE_SIZE, 3))
+    count = np.zeros((BAKE_SIZE, BAKE_SIZE))
+    for sprite, fit in fitted:
+        _, depth = renderer.render(fit['yaw'], fit['tilt'], fit['lean'])
+        x0, y0, x1, y1, scale, left, top = fit['transform']
+        py, px = np.nonzero(depth > 0)
+        # Render pixel -> sprite pixel, the inverse of place().
+        sx = np.floor((px + 0.5 - x0) * scale + left).astype(int)
+        sy = np.floor((py + 0.5 - y0) * scale + top).astype(int)
+        inside = (sx >= 0) & (sy >= 0) & (sx < sprite.shape[1]) & (sy < sprite.shape[0])
+        px, py, sx, sy = px[inside], py[inside], sx[inside], sy[inside]
+        # Only well inside the real silhouette: its edge mixes in the background.
+        solid = cv2.erode((sprite[:, :, 3] > 128).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+        keep = solid[sy, sx]
+        px, py, sx, sy = px[keep], py[keep], sx[keep], sy[keep]
+        points = renderer.unproject(px, py, depth[py, px], fit['yaw'], fit['tilt'], fit['lean'])
+        tx = np.clip(((points[:, 0] + VIEW_HALF) / (2 * VIEW_HALF) * BAKE_SIZE).astype(int), 0, BAKE_SIZE - 1)
+        ty = np.clip(((VIEW_HALF - points[:, 1]) / (2 * VIEW_HALF) * BAKE_SIZE).astype(int), 0, BAKE_SIZE - 1)
+        np.add.at(total, (ty, tx), sprite[sy, sx, :3].astype(np.float64))
+        np.add.at(count, (ty, tx), 1)
+    if not count.any():
+        return None
+    texture = total / np.maximum(count, 1)[:, :, None]
+    # Parts no cut-out showed take the nearest seen colour.
+    from scipy.ndimage import distance_transform_edt
+    _, (iy, ix) = distance_transform_edt(count == 0, return_indices=True)
+    return texture[iy, ix].astype(np.uint8)
+
+
+def export_painted(meshes, texture: np.ndarray, path: Path):
+    """Save the model with the baked real colours as a .glb, in the fit's own frame.
+
+    The geometry is the normalised one the fit used (dropped parts gone, --up applied), so
+    the 3D viewer's drone view shows exactly the fitted pose.
+    """
+    to_y_up = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])  # glTF is Y-up
+    scene = trimesh.Scene()
+    for i, mesh in enumerate(textured_meshes(meshes, texture)):
+        mesh.apply_transform(to_y_up)
+        scene.add_geometry(mesh, node_name=f'part_{i}')
+    scene.export(str(path))
+
+
+def textured_meshes(meshes, texture: np.ndarray):
+    """Copies of the meshes painted with a baked top-down texture (planar projection)."""
+    from PIL import Image
+    image = Image.fromarray(texture)
+    out = []
+    for mesh in meshes:
+        uv = np.stack([(mesh.vertices[:, 0] + VIEW_HALF) / (2 * VIEW_HALF),
+                       (mesh.vertices[:, 1] + VIEW_HALF) / (2 * VIEW_HALF)], axis=1)
+        visual = trimesh.visual.TextureVisuals(uv=uv, image=image)
+        out.append(trimesh.Trimesh(mesh.vertices, mesh.faces, visual=visual, process=False))
+    return out
 
 
 MIN_SHADING_CORRELATION = 0.3
@@ -374,8 +551,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('class_name', choices=sorted(OBJECT_CLASSES))
     parser.add_argument('--yaw-step', type=int, default=5)
-    parser.add_argument('--tilts', type=float, nargs='*', default=[0, 10, 20],
-                        help='camera tilt from straight down, degrees (the imagery is near-nadir)')
+    parser.add_argument('--tilts', type=float, nargs='*', default=list(TILTS),
+                        help='camera tilt from straight down, toward the image centre, degrees')
     parser.add_argument('--sun-azimuth', type=float, default=135)
     parser.add_argument('--up', choices=['auto', 'y', 'z'], default='auto')
     parser.add_argument('--drop', nargs='*', default=[],
@@ -406,18 +583,12 @@ def main():
         except Exception as exc:
             print(f'  {name}: cannot load ({exc})')
             continue
-        views = render_views(meshes, height, yaws, args.tilts, args.sun_azimuth)
-        print(f'  {name}: {sum(len(m.faces) for m in meshes)} faces, height/length {height:.2f}, '
-              f'{len(views)} renders')
+        renderer = Renderer(meshes, height, args.sun_azimuth)
+        print(f'  {name}: {sum(len(m.faces) for m in meshes)} faces, height/length {height:.2f}')
 
         per_sprite = []
-        for file, sprite in sprites:
-            best = None
-            for (yaw, tilt), render in views.items():
-                fitted = fit_to_sprite(render, sprite)
-                if fitted and (best is None or fitted[1] > best['iou']):
-                    best = {'yaw': yaw, 'tilt': tilt, 'placed': fitted[0], 'iou': fitted[1],
-                            'pixels_per_unit': fitted[2]}
+        for file, sprite, bbox in sprites:
+            best = fit_sprite(renderer, sprite, yaws, args.tilts)
             if best is None:
                 per_sprite.append(None)
                 continue
@@ -426,6 +597,21 @@ def main():
                         coloured=apply_colour(best['placed'], gains, offsets),
                         length_m=best['pixels_per_unit'] * METRES_PER_PIXEL, file=file)
             per_sprite.append(best)
+
+        # Real colours: bake them onto the model and render each fit with them.
+        fitted = [(sprite, best) for (_, sprite, _), best in zip(sprites, per_sprite) if best]
+        texture = bake_texture(renderer, fitted)
+        renderer.close()
+        if texture is not None:
+            BAKED.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(BAKED / f'{args.class_name}_{name}.png'), cv2.cvtColor(texture, cv2.COLOR_RGB2BGR))
+            export_painted(meshes, texture, BAKED / f'{args.class_name}_{name}.glb')
+            painted = Renderer(textured_meshes(meshes, texture), height, flat=True)
+            for (_, sprite, _), best in zip(sprites, per_sprite):
+                if best:
+                    render = painted.render(best['yaw'], best['tilt'], best['lean'])[0]
+                    best['painted'] = place(render, best['transform'], sprite.shape)
+            painted.close()
         results[name] = per_sprite
 
         good = [b for b in per_sprite if b]
@@ -440,7 +626,8 @@ def main():
                 'tilt': float(np.median([b['tilt'] for b in good])),
                 'gains': np.median([b['gains'] for b in good], axis=0).round(3).tolist(),
                 'offsets': np.median([b['offsets'] for b in good], axis=0).round(1).tolist(),
-                'per_sprite': [{'file': b['file'], 'yaw': b['yaw'], 'tilt': b['tilt'],
+                'per_sprite': [{'file': b['file'], 'yaw': b['yaw'], 'tilt': b['tilt'], 'lean': b['lean'],
+                                'structure': round(b['structure'], 3),
                                 'iou': round(b['iou'], 3), 'colour_error': round(b['colour_error'], 1)}
                                for b in good],
             }
@@ -453,7 +640,7 @@ def main():
 
     # Sheet: one row per real cut-out, real sprite first, then each model's best match.
     rows = []
-    for i, (file, sprite) in enumerate(sprites):
+    for i, (file, sprite, _) in enumerate(sprites):
         cells = [to_cell(sprite, ['REAL', Path(file).name])]
         for name, per_sprite in results.items():
             best = per_sprite[i]
@@ -463,8 +650,10 @@ def main():
             cells.append(to_cell(best['coloured'], [
                 name[:26],
                 f"IoU {best['iou']:.2f}  colour err {best['colour_error']:.0f}",
-                f"yaw {best['yaw']}  tilt {best['tilt']:.0f}  {best['length_m']:.1f} m",
+                f"yaw {best['yaw']} tilt {best['tilt']:.0f} lean {best['lean']} {best['length_m']:.1f} m",
             ]))
+            if 'painted' in best:
+                cells.append(to_cell(best['painted'], [name[:26], 'real colours baked on']))
         rows.append(np.hstack(cells))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

@@ -11,36 +11,43 @@
   ],
   "length_m": 37.7,
   "mean_colour_error": 5.5,
-  "mean_iou": 0.909,
+  "mean_iou": 0.923,
   "mesh": "models/hangar/nato_shelter/NATO_Shelter_V2.glb",
   "offsets": [
-   0.6,
-   1.5,
-   -2.2
+   0.2,
+   1.0,
+   -2.5
   ],
   "per_sprite": [
    {
-    "colour_error": 5.6,
+    "colour_error": 5.5,
     "file": "hangar/f024_5.png",
-    "iou": 0.906,
-    "tilt": 20,
+    "iou": 0.927,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
     "yaw": 185
    },
    {
     "colour_error": 5.6,
     "file": "hangar/f023_6.png",
-    "iou": 0.91,
-    "tilt": 20,
-    "yaw": 185
+    "iou": 0.92,
+    "lean": 225,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 190
    },
    {
-    "colour_error": 5.2,
+    "colour_error": 5.3,
     "file": "hangar/f022_7.png",
-    "iou": 0.91,
-    "tilt": 20,
-    "yaw": 5
+    "iou": 0.922,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 185
    }
   ],
-  "tilt": 20.0
+  "tilt": 24.0,
+  "up": "auto"
  }
 }

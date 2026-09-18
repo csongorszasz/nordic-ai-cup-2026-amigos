@@ -79,6 +79,9 @@ def models_3d():
                 if served.suffix.lower() == '.gltf' else served.stat().st_size)
         item = {'key': f'{cls}/{name}', 'cls': cls, 'name': name, 'url': url,
                 'size_mb': round(size / 2**20, 1)}
+        painted = MODEL_MATCH / '_baked' / f'{cls}_{name}.glb'  # render_models.export_painted()
+        if painted.exists():
+            item['painted_url'] = '/compare/' + painted.relative_to(MODEL_MATCH).as_posix()
         match_path = MODELS / cls / 'match.json'
         fit = json.loads(match_path.read_text()).get(name) if match_path.exists() else None
         if fit and Path(fit['mesh']).name == path.name:
@@ -86,7 +89,8 @@ def models_3d():
             best = max(per, key=lambda s: s['iou']) if per else {}
             item.update(mean_iou=fit['mean_iou'], length_m=fit['length_m'],
                         dropped_parts=fit.get('dropped_parts', []),
-                        yaw=best.get('yaw'), tilt=best.get('tilt', fit.get('tilt')), sprite=best.get('file'))
+                        yaw=best.get('yaw'), tilt=best.get('tilt', fit.get('tilt')), lean=best.get('lean', 0),
+                        sprite=best.get('file'))
         out.append(item)
     return out
 

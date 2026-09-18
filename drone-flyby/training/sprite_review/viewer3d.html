@@ -19,6 +19,7 @@
   .toolbar > * { pointer-events:auto; }
   button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
   button:hover { border-color:#666; } button.on { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.4; cursor:default; }
   #info { color:var(--muted); background:rgba(22,24,28,.8); padding:4px 8px; border-radius:6px; }
   #status { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); pointer-events:none; }
   #real { position:absolute; right:10px; bottom:10px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px; }
@@ -43,7 +44,9 @@
     Drag to orbit, scroll to zoom, right-drag to pan.<br>
     <b>Drone view</b> puts the camera where the matcher found the best fit, next to a
     real cut-out, so you can check orientation and proportions.<br>
-    Parts left out by <code>--drop</code> are hidden, as in the fit.
+    Parts left out by <code>--drop</code> are hidden, as in the fit.<br>
+    <b>Real colours</b> shows the model painted with the colours of the real cut-outs,
+    projected from above (render_models.py bakes them), in exactly the fitted frame.
   </div>
 </aside>
 <main>
@@ -53,6 +56,7 @@
     <button id="top">top</button>
     <button id="wire">wireframe</button>
     <button id="dropped">show dropped parts</button>
+    <button id="paintbtn">real colours</button>
     <span id="info"></span>
   </div>
   <div id="status">pick a model</div>
@@ -89,7 +93,7 @@ controls.autoRotate = true; controls.autoRotateSpeed = 2; controls.enableDamping
 // Holder turns the model to the fitted yaw in drone view; model is normalised inside it.
 const holder = new THREE.Group();
 scene.add(holder);
-let model = null, current = null, wire = false, showDropped = false;
+let model = null, current = null, wire = false, showDropped = false, painted = false;
 
 function resize() {
   const w = main.clientWidth, h = main.clientHeight;
@@ -150,12 +154,16 @@ function droneView(on) {
   document.getElementById('real').hidden = !on || !current.sprite;
   if (on) {
     controls.autoRotate = false; document.getElementById('spin').classList.remove('on');
-    // render_models.py: model spun by yaw about the vertical, camera straight down with
-    // image-up = -Z (glTF), then tilted by `tilt` about X.
-    holder.rotation.y = THREE.MathUtils.degToRad(current.yaw || 0);
-    const t = THREE.MathUtils.degToRad(current.tilt || 0), d = 5;
-    ortho.position.set(0, d * Math.cos(t), d * Math.sin(t));
-    ortho.up.set(0, Math.sin(t), -Math.cos(t));
+    // render_models.Renderer: model spun by yaw about the vertical; camera swung `tilt`
+    // off vertical so tall parts lean toward image direction `lean`. Its maths is Z-up;
+    // zup() maps that to three.js (Y-up, image up = -Z).
+    const deg = THREE.MathUtils.degToRad, zup = v => new THREE.Vector3(v.x, v.z, -v.y);
+    holder.rotation.y = deg(current.yaw || 0);
+    const a = deg(current.lean || 0), t = deg(current.tilt || 0);
+    const swing = new THREE.Matrix4().makeRotationZ(-a)
+      .multiply(new THREE.Matrix4().makeRotationX(t)).multiply(new THREE.Matrix4().makeRotationZ(a));
+    ortho.position.copy(zup(new THREE.Vector3(0, 0, 5).applyMatrix4(swing)));
+    ortho.up.copy(zup(new THREE.Vector3(0, 1, 0).applyMatrix4(swing)));
     ortho.lookAt(0, 0, 0);
     camera = ortho; grid.visible = false;
   } else {
@@ -169,17 +177,20 @@ async function open(item) {
   const status = document.getElementById('status');
   status.textContent = `loading ${item.name} (${item.size_mb} MB)...`;
   if (model) { holder.remove(model); model = null; }
+  document.getElementById('paintbtn').disabled = !item.painted_url;
+  const usePainted = painted && item.painted_url;
+  const url = usePainted ? item.painted_url : item.url;
   try {
-    const obj = item.url.endsWith('.obj')
-      ? await new OBJLoader().loadAsync(item.url)
-      : await new GLTFLoader().loadAsync(item.url, e => {
+    const obj = url.endsWith('.obj')
+      ? await new OBJLoader().loadAsync(url)
+      : await new GLTFLoader().loadAsync(url, e => {
           if (e.total) status.textContent = `loading ${item.name}: ${Math.round(100 * e.loaded / e.total)}%`;
         }).then(keepGltfNames);
     // OBJ files are Z-up for render_models.py. glTF is shown as three.js reads it, which
     // follows the file's node and armature transforms; trimesh skips some of those on
     // skinned models (the Mi-28N needed --up z there), so such a model can sit at a
     // different yaw in drone view than in the fit.
-    if (item.url.endsWith('.obj')) obj.rotation.x = -Math.PI / 2;
+    if (url.endsWith('.obj')) obj.rotation.x = -Math.PI / 2;
     // Like the fit, ignore metallic maps: without an environment to reflect, a metallic
     // surface renders nearly black.
     obj.traverse(o => {
@@ -187,7 +198,7 @@ async function open(item) {
       for (const m of [].concat(o.material)) if ('metalness' in m) { m.metalness = 0; m.metalnessMap = null; }
     });
     model = obj;
-    const height = normalise(obj, item.dropped_parts || []);
+    const height = normalise(obj, usePainted ? [] : item.dropped_parts || []);
     holder.add(obj);
     applyVisibility();
     status.textContent = '';
@@ -214,6 +225,7 @@ const toggle = (id, fn) => document.getElementById(id).onclick = e => fn(e.targe
 toggle('spin', on => { controls.autoRotate = on; if (on) droneView(false); });
 toggle('wire', on => { wire = on; applyVisibility(); });
 toggle('dropped', on => { showDropped = on; applyVisibility(); });
+toggle('paintbtn', on => { painted = on; if (current) open(current); });
 document.getElementById('drone').onclick = () => { if (current) droneView(camera !== ortho); };
 document.getElementById('top').onclick = () => {
   droneView(false); controls.autoRotate = false; document.getElementById('spin').classList.remove('on');
@@ -230,9 +242,10 @@ for (const item of items) {
   list.appendChild(a);
 }
 if (!items.length) document.getElementById('status').textContent = 'no models under models/<class>/ yet';
-// #<class>/<model> opens that model; append &drone to start in drone view.
-const [wanted, mode] = decodeURIComponent(location.hash.slice(1)).split('&');
-if (mode === 'drone') document.getElementById('drone').classList.add('on');
+// #<class>/<model> opens that model; append &drone and/or &paint to start that way.
+const [wanted, ...modes] = decodeURIComponent(location.hash.slice(1)).split('&');
+if (modes.includes('drone')) document.getElementById('drone').classList.add('on');
+if (modes.includes('paint')) { painted = true; document.getElementById('paintbtn').classList.add('on'); }
 const start = items.find(i => i.key === wanted) || items[0];
 if (start) open(start);
 
