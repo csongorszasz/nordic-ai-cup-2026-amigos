@@ -1,30 +1,83 @@
 """LLM answerer: local instruct model, transcript-only, quote-cited spans.
 
-This is the probe answerer behind ``MEDAPP_ANSWERER=llm`` (L0-style prompt). The
-heavy model loads lazily and can be injected as a ``StubClient`` for tests. It
-does not add few-shot examples by default; ``llm_probe.py`` drives the L1/L2
-variants directly.
+Serves the **L1** prompt (whole transcript + few-shot), the best-measured rung
+(T036/T038). Few-shot examples are drawn from the other supplied conversations
+(LOCO-safe: the input's own conversation is excluded). Heavy model imports stay
+lazy; a ``StubClient`` can be injected for tests.
 """
 
 import logging
+import os
 import time
-from typing import Dict, List, Optional, Sequence
+from collections import defaultdict
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .align import align_span
 from .base import Answer
 from .llm_client import HFClient
 from .llm_parse import parse_answers
-from .llm_prompt import build_l0_messages, qid_for
+from .llm_prompt import build_few_shot, build_l1_messages, qid_for
 
 logger = logging.getLogger(__name__)
+
+USE_FEW_SHOT = os.environ.get("MEDAPP_LLM_FEWSHOT", "1") != "0"
+
+_few_shot_cache: Dict[str, Sequence[Tuple[str, str]]] = {}
+_data_cache: Dict[str, object] = {}
+
+
+def _transcript_id(transcript: Dict) -> str:
+    name = os.path.basename(transcript.get("audio_filename") or "")
+    if name.startswith("conversation_"):
+        name = name[len("conversation_"):]
+    if name.endswith(".mp3"):
+        name = name[:-4]
+    return name
+
+
+def _build_few_shot(exclude_tid: str):
+    """Balanced few-shot turns from conversations other than ``exclude_tid``."""
+    if not USE_FEW_SHOT:
+        return ()
+    if exclude_tid in _few_shot_cache:
+        return _few_shot_cache[exclude_tid]
+    try:
+        from . import modernbert_data as data
+
+        if not _data_cache:
+            rows_by_tid: Dict[str, list] = defaultdict(list)
+            for row in data.load_rows():
+                rows_by_tid[row["transcript_id"]].append(row)
+            transcripts = {
+                tid: data.load_transcript(tid) for tid in rows_by_tid
+            }
+            _data_cache.update(
+                {
+                    "rows_by_tid": rows_by_tid,
+                    "transcripts": transcripts,
+                    "evidence": data.load_evidence(),
+                }
+            )
+        examples = build_few_shot(
+            _data_cache["rows_by_tid"],
+            _data_cache["transcripts"],
+            _data_cache["evidence"],
+            exclude_tid=exclude_tid,
+        )
+    except Exception:
+        logger.exception("few-shot build failed; falling back to zero-shot.")
+        examples = ()
+    _few_shot_cache[exclude_tid] = examples
+    return examples
 
 
 class LLMAnswerer:
     name = "llm"
     supports_info = True
 
-    def __init__(self, client=None) -> None:
+    def __init__(self, client=None, few_shot=None) -> None:
         self._client = client
+        self._few_shot = few_shot  # None = build lazily from training data
 
     def _ensure_client(self):
         if self._client is None:
@@ -51,8 +104,14 @@ class LLMAnswerer:
         if deadline is not None and time.time() > deadline:
             return [self._wrap(True, None, None, return_info) for _ in questions]
 
+        few_shot = (
+            self._few_shot
+            if self._few_shot is not None
+            else _build_few_shot(_transcript_id(transcript))
+        )
+
         client = self._ensure_client()
-        messages = build_l0_messages(transcript, questions)
+        messages = build_l1_messages(transcript, questions, few_shot)
         try:
             raw = client.generate(messages)
         except Exception:
@@ -85,5 +144,18 @@ class LLMAnswerer:
         return (bool(is_true), span)
 
 
+_ANSWERER: Optional[LLMAnswerer] = None
+
+
 def build_answerer() -> LLMAnswerer:
-    return LLMAnswerer()
+    """Return a process-wide singleton.
+
+    Unlike the legacy/modernbert answerers (whose models are module-level), the
+    LLM client lives on the instance, so a fresh answerer per request would
+    reload the ~16 GB model every time. ``example.py`` warms up one instance and
+    then calls the factory again; both must share it.
+    """
+    global _ANSWERER
+    if _ANSWERER is None:
+        _ANSWERER = LLMAnswerer()
+    return _ANSWERER
