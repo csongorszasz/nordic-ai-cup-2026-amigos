@@ -115,6 +115,17 @@ MAX_EXPORT_FACES = 200_000  # painted models are decimated to about this for exp
 GLB_JSON, GLB_BIN = 0x4E4F534A, 0x004E4942
 
 
+def painted_path(class_name: str, name: str, fit: dict) -> Path:
+    """The painted .glb chosen for a fitted model: projected (the default) or recoloured.
+
+    <class>_<model>.glb has the real top-down colours projected onto it (export_painted);
+    <class>_<model>_recoloured.glb keeps the model's texture with shifted colours
+    (recolour_models.py). match.json's "paint" says which one the data uses.
+    """
+    suffix = '_recoloured' if fit.get('paint') == 'recoloured' else ''
+    return BAKED / f'{class_name}_{name}{suffix}.glb'
+
+
 def slim_glb(path: Path) -> Path:
     """A cached copy of a .glb with only small base-colour textures, for models too big to load.
 
@@ -706,8 +717,8 @@ def main():
             print(f'    mean IoU {summary["mean_iou"]:.3f}, colour error {summary["mean_colour_error"]:.1f}/255, '
                   f'implied length {summary["length_m"]} m')
 
-    # The projected paint above is only kept for models without a texture of their own; the
-    # rest keep their texture with its colours shifted to the real object's (recolour_models.py).
+    # Also a recoloured copy (the model's own texture, colours shifted to the real object's) for
+    # the 3D viewer; the data keeps the projected paint unless recolour_models.py --use says so.
     import recolour_models
     recolour_models.recolour(args.class_name)
 

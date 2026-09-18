@@ -47,7 +47,7 @@ def painted_model(class_name: str):
     fits = json.loads(match_path.read_text())
     ranked = sorted(fits.items(), key=lambda kv: -kv[1]['mean_iou'])
     for name, fit in ranked:
-        if (rm.BAKED / f'{class_name}_{name}.glb').exists():
+        if rm.painted_path(class_name, name, fit).exists():
             return name, fit
     return None
 
@@ -139,7 +139,7 @@ def main():
             print(f'{class_name}: no painted model, skipped')
             continue
         name, fit = found
-        meshes, height = load_painted(rm.BAKED / f'{class_name}_{name}.glb')
+        meshes, height = load_painted(rm.painted_path(class_name, name, fit))
         # Recoloured models (recolour_models.py) keep their own texture, which carries no real
         # light: render them lit. Projection-painted ones carry the real image's light: flat.
         renderer = rm.Renderer(meshes, height, flat=fit.get('paint') != 'recoloured')

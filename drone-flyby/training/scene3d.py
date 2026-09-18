@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import render_city as rc  # noqa: E402
 import synth_dataset as sd  # noqa: E402
 from model_sprites import painted_model  # noqa: E402
+from render_models import painted_path  # noqa: E402
 
 ROOT = rc.ROOT
 FRAMES = ROOT / 'backgrounds' / 'helsinki3d_frames'
@@ -188,7 +189,7 @@ def main():
         spot[2] = float(np.median(under))
         objects.append({
             'class': ann['object_id'], 'model': model, 'length_m': fit['length_m'],
-            'url': f'/compare/_baked/{ann["object_id"]}_{model}.glb',
+            'url': '/compare/_baked/' + painted_path(ann['object_id'], model, fit).name,
             'position': (TO_Y_UP[:3, :3] @ spot).round(2).tolist(),  # three.js coordinates
             # Sprite renders have the model's +y up the image; the frame's up is north turned by the camera yaw.
             'heading': (camera['yaw'] + ann['yaw']) % 360, 'bbox': ann['bbox'],

@@ -11,9 +11,16 @@ renderer's response to a texture change is not linear.
     python training/recolour_models.py                  # every class with a fit
     python training/recolour_models.py tank helicopter
 
-Writes datasets/model_match/_baked/<class>_<model>.glb (Y up, normalised as the fit) and
-marks the fit with "paint": "recoloured" in models/<class>/match.json, which tells
-model_sprites.py to render it lit instead of flat.
+Writes datasets/model_match/_baked/<class>_<model>_recoloured.glb (Y up, normalised as the
+fit) next to the projected <class>_<model>.glb. match.json's "paint" says which one the data
+uses (render_models.painted_path); it stays projected unless --use switches a class. Seen
+from above, as the data sees them, the projected paint matched the real objects better for
+every class (it carries the real camo and markings; recolouring keeps the model's own
+pattern, and the tank's bright green stripes turned yellow). Recoloured looks better only
+from the side, close up in the 3D viewer.
+
+    python training/recolour_models.py tank --use       # make it and use it
+    python training/recolour_models.py --projected tank # back to the projected paint
 """
 
 import argparse
@@ -150,7 +157,7 @@ def render_stats(path: Path, fit):
     return lab_stats(opaque_pixels(renders))
 
 
-def recolour(class_name: str):
+def recolour(class_name: str, use: bool = False):
     found = best_fit(class_name)
     if not found:
         print(f'{class_name}: no fit, skipped')
@@ -164,17 +171,15 @@ def recolour(class_name: str):
                     getattr(getattr(m.visual, 'material', None), 'image', None)) is not None for m in meshes)
     if not textured:  # plain colours (the procedural tower): a box that projection paints exactly
         print(f'  {class_name}/{name}: no texture; keeps the projected paint')
-        mark(class_name, name, 'projected')
         return
     meshes = slim(meshes)
     path = rm.BAKED / f'{class_name}_{name}.glb'
-    trial = path.with_name(f'{path.stem}_recolour.glb')  # the projected paint stays until this is accepted
+    trial = path.with_name(f'{path.stem}_recoloured.glb')  # next to the projected one, which is kept
     export(meshes, trial)
     spread = render_stats(trial, fit)[1][1:].max()
     if spread < MIN_TEXTURE_SPREAD:
         trial.unlink()
         print(f'  {class_name}/{name}: no real texture (colour spread {spread:.2f}); keeps the projected paint')
-        mark(class_name, name, 'projected')
         return
     path = trial
     for round_ in range(ROUNDS):
@@ -184,10 +189,9 @@ def recolour(class_name: str):
         recolour_meshes(meshes, source, target)
         export(meshes, path)
     source = render_stats(path, fit)
-    final = rm.BAKED / f'{class_name}_{name}.glb'
-    trial.replace(final)
-    print(f'  {class_name}/{name}: Lab mean error {np.abs(source[0] - target[0]).sum():.1f} -> {final.name}')
-    mark(class_name, name, 'recoloured')
+    print(f'  {class_name}/{name}: Lab mean error {np.abs(source[0] - target[0]).sum():.1f} -> {trial.name}')
+    if use:
+        mark(class_name, name, 'recoloured')
 
 
 def mark(class_name: str, name: str, paint: str):
@@ -201,12 +205,19 @@ def mark(class_name: str, name: str, paint: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('classes', nargs='*', help='default: every class')
+    parser.add_argument('--use', action='store_true', help='use the recoloured paint for the classes made')
+    parser.add_argument('--projected', nargs='*', default=[], metavar='CLASS',
+                        help='use the projected paint for these classes (no recolouring)')
     args = parser.parse_args()
-    unknown = set(args.classes) - set(rm.OBJECT_CLASSES)
+    unknown = (set(args.classes) | set(args.projected)) - set(rm.OBJECT_CLASSES)
     if unknown:
         parser.error(f'unknown classes: {", ".join(sorted(unknown))}')
-    for class_name in args.classes or sorted(rm.OBJECT_CLASSES):
-        recolour(class_name)
+    for class_name in args.projected:
+        name, _ = best_fit(class_name)
+        mark(class_name, name, 'projected')
+        print(f'  {class_name}/{name}: projected paint')
+    for class_name in args.classes or ([] if args.projected else sorted(rm.OBJECT_CLASSES)):
+        recolour(class_name, args.use)
 
 
 if __name__ == '__main__':
