@@ -191,7 +191,10 @@ def build_rag_messages(
     questions: Sequence[str], candidates_by_index, few_shot: Sequence[Tuple[str, str]] = ()
 ) -> List[Dict]:
     """Grounded RAG reader: answer + choose a candidate + quote from it."""
+    last = qid_for(len(questions) - 1) if questions else "q00"
     user = (
+        f"Answer EVERY question below ({qid_for(0)}..{last}); output exactly one "
+        "JSON entry per question, in order, even when the answer is no.\n\n"
         "CANDIDATES\n"
         f"{rag_candidates_block(questions, candidates_by_index)}\n\n"
         f"{RAG_SCHEMA_HINT}"
