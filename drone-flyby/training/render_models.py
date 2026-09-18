@@ -9,6 +9,7 @@ the sprite generator will use.
 
     python training/render_models.py hangar
     python training/render_models.py hangar --tilts 0 8 16 --yaw-step 3
+    python training/render_models.py hangar --drop Cube.032     # leave out the model's concrete apron
 
 Only silhouette, size and average colour survive at 20-180 px, so those are what is
 matched; camo patterns and markings are approximated by the colour fit, not copied.
@@ -65,12 +66,58 @@ def find_meshes(class_dir: Path):
     return unique
 
 
-def load_normalised(path: Path, up: str):
-    """Mesh list in a frame where +Z is up, centred, longest horizontal side = 1."""
+TEXTURE_MAX_SIDE = 512  # the sprite is at most ~185 px; bigger textures only cost memory
+
+
+def lighten_materials(meshes):
+    """Keep only a small base-colour texture per material.
+
+    Game-ready models ship 4K-8K normal, metallic and emissive maps; pyrender turns each
+    into float arrays, and one 123 MB .glb reached 11 GB of RAM before this. None of
+    those maps is visible in a colour render from 600 m, so drop them.
+    """
+    shrunk = {}
+    for mesh in meshes:
+        material = getattr(mesh.visual, 'material', None)
+        if material is None:
+            continue
+        for attribute in ('normalTexture', 'metallicRoughnessTexture', 'emissiveTexture', 'occlusionTexture'):
+            if getattr(material, attribute, None) is not None:
+                setattr(material, attribute, None)
+        # Without its texture the emissive factor alone would make the surface glow flat
+        # white (glTF multiplies the two), so nothing may emit light.
+        if getattr(material, 'emissiveFactor', None) is not None:
+            material.emissiveFactor = np.zeros(3)
+        for attribute in ('baseColorTexture', 'image'):  # PBR (glTF) and simple (OBJ) materials
+            image = getattr(material, attribute, None)
+            if image is None or not hasattr(image, 'size') or max(image.size) <= TEXTURE_MAX_SIDE:
+                continue
+            if id(image) not in shrunk:
+                small = image.copy()
+                small.thumbnail((TEXTURE_MAX_SIDE, TEXTURE_MAX_SIDE))
+                shrunk[id(image)] = small
+            setattr(material, attribute, shrunk[id(image)])
+
+
+def part_name(mesh):
+    return f"{mesh.metadata.get('name', '?')} ({mesh.metadata.get('node', '?')})"
+
+
+def load_normalised(path: Path, up: str, drop=()):
+    """Mesh list in a frame where +Z is up, centred, longest horizontal side = 1.
+
+    `drop` removes parts whose geometry or node name contains any of the given strings,
+    e.g. a concrete apron or display base the real object does not have.
+    """
     loaded = trimesh.load(str(path), force='scene')
     meshes = [g for g in loaded.dump(concatenate=False) if isinstance(g, trimesh.Trimesh) and len(g.faces)]
+    dropped = [m for m in meshes if any(d in part_name(m) for d in drop)]
+    meshes = [m for m in meshes if not any(d in part_name(m) for d in drop)]
+    for mesh in dropped:
+        print(f'    dropped part {part_name(mesh)}')
     if not meshes:
-        raise ValueError(f'{path}: no triangle meshes found')
+        raise ValueError(f'{path}: no triangle meshes left')
+    lighten_materials(meshes)
 
     if up == 'auto':
         up = 'y' if path.suffix.lower() in {'.glb', '.gltf'} else 'z'
@@ -238,6 +285,8 @@ def main():
                         help='camera tilt from straight down, degrees (the imagery is near-nadir)')
     parser.add_argument('--sun-azimuth', type=float, default=135)
     parser.add_argument('--up', choices=['auto', 'y', 'z'], default='auto')
+    parser.add_argument('--drop', nargs='*', default=[],
+                        help='parts to leave out, matched against geometry/node names (e.g. Cube.032)')
     parser.add_argument('--max-sprites', type=int, default=8)
     parser.add_argument('--out', default=str(ROOT / 'datasets' / 'model_match'))
     args = parser.parse_args()
@@ -260,7 +309,7 @@ def main():
     for path in mesh_paths:
         name = str(path.parent.relative_to(class_dir)) if path.parent != class_dir else path.stem
         try:
-            meshes, height = load_normalised(path, args.up)
+            meshes, height = load_normalised(path, args.up, args.drop)
         except Exception as exc:
             print(f'  {name}: cannot load ({exc})')
             continue
@@ -290,6 +339,7 @@ def main():
         if good:
             summary = {
                 'mesh': str(path.relative_to(ROOT)),
+                'dropped_parts': args.drop,
                 'mean_iou': round(float(np.mean([b['iou'] for b in good])), 3),
                 'mean_colour_error': round(float(np.mean([b['colour_error'] for b in good])), 1),
                 'length_m': round(float(np.median([b['length_m'] for b in good])), 1),
