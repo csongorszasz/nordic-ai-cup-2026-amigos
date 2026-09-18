@@ -34,8 +34,8 @@ CC0 or CC-BY is fine for training and we credit the author. Anything "editorial 
 | # | Class | Size (m) | Sprites | Local AP | Looks like | Status |
 |---|---|---|---|---|---|---|
 | 1 | `mine_roller` | 12.6 x 11.1 | 2 | 0.505 | camo cylinder on a vehicle, mine-clearing roller drum | **candidate found** — PT-34-85, see below |
-| 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | small dark launcher vehicle, hard to read | **wanted** — worst AP, rough sprites |
-| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless green blob at 23x30 px | **candidate found** — MIM-23 Hawk, see below |
+| 2 | `medium_launcher` | 9.9 x 9.3 | 10 (3 suspect) | 0.505 | dark cluster with barrels: a Hawk launcher | **candidate found** — MIM-23 Hawk, see below |
+| 3 | `small_launcher` | 6.3 x 4.6 | 25 | 0.810 | featureless pale green blob at 23x30 px; real shape unknowable | **no model** — see note below |
 | 4 | `ta-ta` | 6.7 x 3.6 | 25 | 0.758 | four-legged walker (AT-AT) | **candidate found** — AT-AT (CGTrader), licence to check |
 | 5 | `large_tower` | 13.9 x 12.6 | 19 | 0.771 | brown/camo rectangular structure, pale band across the middle | **2 candidates** — CGTrader watchtower preferred, see below |
 | 6 | `hangar` | 38.9 x 25.0 | 6 | 0.832 | dark curved roof, Quonset/arched hangar | **2 candidates** — Sketchfab hangar + NATO shelter, see below |
@@ -63,7 +63,7 @@ candidate as you find it, even an uncertain one: the URL is the part that gets l
 |---|---|---|---|---|
 | `mine_roller` | [PT-34-85 mine clearing vehicle](https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f) | 42manako | CC-BY (credit required, commercial ok) | candidate — T-34 hull with roller drum, extent close to the measured 12.6 x 11.1 m |
 | `spacecraft` | [Star Wars: TIE/in Interceptor](https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41) | Daniel | CC-BY (credit required) | candidate — silhouette matches the sprites |
-| `small_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — 3 rails on a trailer, ~5 m, fits the 6.3 x 4.6 m footprint |
+| `medium_launcher` | [MIM-23 Hawk SAM (game-ready)](https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) | Dominik Biały | CC-BY (credit required) | candidate — the dark cluster with barrels in the sprites; scale to 9.9 x 9.3 m. Was first filed under `small_launcher` by mistake |
 | `hangar` | [Hangar](https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05) | Vitor Augusto | CC-BY (credit required) | candidate — scale it to the measured 38.9 x 25.0 m; this class is 185x119 px, so the roof shape does matter |
 | `large_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — scale to 13.9 x 12.6 m. From above the sprites read as a brown/camo rectangular structure with a pale band across the middle, more camouflaged shelter than open tower, so check the render before trusting it |
 | `small_tower` | [Old Wooden Watchtower (House 3)](https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) | Blenderust | CC-BY (credit required) | candidate — Juan's pick for this class: tint green, scale to 12.6 x 12.0 m |
@@ -105,6 +105,10 @@ size (12.6 x 12.0 vs 13.9 x 12.6 m) and differ mainly in colour — green roof a
 camo — so the same watchtower is registered for both, to be rendered with a per-class tint.
 The renderer therefore needs a hue/saturation override per class, not just scale and angle.
 
+**`small_launcher` has no model on purpose.** All 25 cut-outs are the same pale green blob at
+23x30 px (6.3 x 4.6 m) with no visible structure, so there is no shape to match. It keeps
+training from its sprite cut-outs only, which already show everything the camera can see.
+
 ### How exact does a model have to be?
 
 It depends entirely on how many pixels the class covers, so check the Size column before
@@ -112,7 +116,7 @@ spending an hour on a search:
 
 - **Under ~35 px** (`small_launcher` 23x30, `ta-ta` 32x17, `jammer` 43x32): there is no
   structure to see. Every one of the 25 `small_launcher` cut-outs is a featureless green
-  blob. Footprint, colour and rough aspect ratio are all the detector can learn, so any
+  blob, which is why that class has no model. Footprint, colour and rough aspect ratio are all the detector can learn, so any
   plausible vehicle of the right size does the job.
 - **Over ~100 px** (`hangar` 185x119, `condor` 173x166, `large_launcher` 149x110,
   `helicopter` 116x94): the silhouette is clearly visible and the model matters. These are
