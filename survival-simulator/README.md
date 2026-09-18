@@ -152,6 +152,30 @@ You should see a stream of `Score | Agents alive | Time` lines, ending with a `G
 # Testing locally
 To test the simulation locally you can run [local_playground.py](local_playground.py). This can be used to get an idea of how the simulation works. It is recommended to use this file for any potential training with "verbose" set to False to run simulations faster.
 
+Run a rendered game from `survival-simulator` with the appropriate environment active:
+
+```powershell
+python local_playground.py --config .\training-results\ppo-gru-full\policy.json --seed 1 --fps 60
+python local_playground.py --config .\configs\controller-turnaway-rules.json --seed 1
+```
+
+Use the exported runtime `policy.json`, not the training experiment config. Neural
+policies require the training dependencies, the referenced checkpoint, and its
+`checkpoint.pt.json` sidecar. Checkpoint paths resolve from the working directory,
+as they do in benchmarks. Close the window or press Escape to stop.
+
+Omit `--config` for the original random policy. `--seed` controls both world and
+policy randomness; omitting it generates a random seed. `--fps` caps playback speed
+without changing simulation time steps. For a short check without a window:
+
+```powershell
+python local_playground.py --config .\training-results\ppo-gru-full\policy.json --seed 1 --headless --max-steps 10
+```
+
+The step cap includes the initial empty-action tick. It is a diagnostic run, not
+a complete benchmark result. The existing `local_simulation(verbose=False)` call
+remains supported.
+
 ## Comparing policies
 
 The benchmark evaluates **local Python policies** against the existing random policy
