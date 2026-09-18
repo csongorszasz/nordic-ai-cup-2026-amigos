@@ -13,6 +13,7 @@ locally off the cache with no GPU.
 
 import argparse
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -21,6 +22,8 @@ from typing import Callable, Dict, List, Optional, Tuple
 PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+logger = logging.getLogger(__name__)
 
 import answer as answer_module  # noqa: E402  (imports no heavy deps at module level)
 import asr  # noqa: E402
@@ -173,6 +176,7 @@ def run(
     force_transcribe: bool = False,
     debug_examples: int = 0,
     oof_path: Optional[str] = None,
+    batch_answerer=None,
 ) -> Statistics:
     statistics = Statistics()
 
@@ -187,6 +191,12 @@ def run(
         from verifier import nli as _nli
 
         _nli.warm_up()  # keep model load out of the per-request timings
+    elif batch_answerer is not None:
+        warm_up = getattr(batch_answerer, "warm_up", None)
+        if warm_up is not None:
+            warm_up()
+
+    batch_supports_info = bool(getattr(batch_answerer, "supports_info", False))
     debug_printed = 0
     timing = {"asr": [], "windows": [], "answer": [], "clause": [], "localize": [],
               "clause_pairs": 0, "candidate_pairs": 0, "trim_pairs": 0,
@@ -222,21 +232,55 @@ def run(
             for key in ("best", "padded", "wordrange", "localize"):
                 diag_accum[key].extend(diag[key])
 
-        for row in rows:
+        # Batch answerer (e.g. ModernBERT): one call per conversation.
+        batch_results = None
+        per_question_time = 0.0
+        if batch_answerer is not None:
+            batch_questions = [row["question"] for row in rows]
+            batch_started = time.perf_counter()
+            try:
+                if batch_supports_info:
+                    batch_results = batch_answerer.answer_all(
+                        batch_questions, transcript, return_info=True
+                    )
+                else:
+                    batch_results = batch_answerer.answer_all(
+                        batch_questions, transcript
+                    )
+            except Exception:
+                logger.exception("Batch answering failed; guessing.")
+                batch_results = None
+            per_question_time = (
+                time.perf_counter() - batch_started
+            ) / max(1, len(rows))
+
+        for row_index, row in enumerate(rows):
             label = int(row["label"])
             gold = gold_evidence(row)
             info = None
-            started = time.perf_counter()
-            try:
-                if nli_mode:
-                    answer, span, info = answerer(
-                        row["question"], words, windows, return_info=True
-                    )
+            if batch_answerer is not None:
+                entry = (
+                    batch_results[row_index]
+                    if batch_results is not None and row_index < len(batch_results)
+                    else (True, None)
+                )
+                if batch_supports_info and len(entry) == 3:
+                    answer, span, info = entry
                 else:
-                    answer, span = answerer(row["question"], words, windows)
-            except Exception:
-                answer, span = True, None
-            timing["answer"].append(time.perf_counter() - started)
+                    answer, span = entry[0], entry[1]
+                timing["answer"].append(per_question_time)
+            else:
+                started = time.perf_counter()
+                try:
+                    if nli_mode:
+                        answer, span, info = answerer(
+                            row["question"], words, windows, return_info=True
+                        )
+                    else:
+                        answer, span = answerer(row["question"], words, windows)
+                except Exception:
+                    answer, span = True, None
+                timing["answer"].append(time.perf_counter() - started)
 
             if info:
                 timing["clause"].append(info.get("t_clause", 0.0))
@@ -256,7 +300,7 @@ def run(
                         "transcript_id": row["transcript_id"],
                         "question_type": row["question_type"],
                         "label": label,
-                        "p": info.get("clause_score"),
+                        "p": info.get("p", info.get("clause_score")),
                         "guard_ok": bool(info.get("guard_ok", True)),
                         "span": list(span) if span is not None else None,
                         "gold": list(gold) if gold is not None else None,
@@ -480,8 +524,11 @@ def main() -> int:
                         help="One line per question.")
     parser.add_argument("--diagnostics", action="store_true",
                         help="Report window counts and gold-span coverage.")
-    parser.add_argument("--answer", choices=["true", "false", "nli"], default="true",
-                        help="Answerer: always true/false, or the real NLI pipeline.")
+    parser.add_argument("--answer",
+                        choices=["true", "false", "nli", "legacy", "modernbert"],
+                        default="true",
+                        help="Answerer: always true/false, the frozen NLI pipeline "
+                             "(nli/legacy), or the ModernBERT batch answerer.")
     parser.add_argument("--force-transcribe", action="store_true",
                         help="Ignore the transcript cache (needs a GPU).")
     parser.add_argument("--tag", default=None,
@@ -495,12 +542,18 @@ def main() -> int:
                              "Run with MEDAPP_NLI_TAU=0 so every question localizes.")
     args = parser.parse_args()
 
+    batch_answerer = None
     if args.answer == "true":
         answerer = answer_all_true
     elif args.answer == "false":
         answerer = answer_all_false
-    else:
+    elif args.answer in ("nli", "legacy"):
         answerer = answer_module.answer_question
+    else:  # modernbert
+        from answerers import get_answerer
+
+        answerer = answer_all_false  # unused: batch_answerer supplies the answers
+        batch_answerer = get_answerer("modernbert")
 
     started = time.time()
     statistics = run(
@@ -511,6 +564,7 @@ def main() -> int:
         force_transcribe=args.force_transcribe,
         debug_examples=args.debug,
         oof_path=args.oof_path,
+        batch_answerer=batch_answerer,
     )
     elapsed = time.time() - started
     print(statistics.report())

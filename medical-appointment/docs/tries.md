@@ -40,6 +40,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T028 | 2026-09-18 | merged + served caps + length-diverse cap | base | 0.882 | 0.314 | 0.541 | served-cap oracle 0.843 |
 | T029 | 2026-09-18 | same, large NLI | large | 0.938 | 0.318 | 0.566 | caps cost 0.013 vs T025 |
 | T030 | 2026-09-18 | OOF calibration run (τ=0) | large | — | — | 0.569 | LOCO τ 0.65 |
+| T031 | 2026-09-18 | ModernBERT passage retrieval recall gate | MiniLM | — | — | — | 64/32 + multi-qa top-8: sup 0.995 / ref 1.000 |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -230,4 +231,31 @@ CPU would not.
 
 Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 (decision 10.5, localization 8.8) ⇒ ~35 s mean, ~41 s worst per conversation.
+
+## T031 — ModernBERT passage retrieval recall gate
+
+- **Goal:** before training, confirm the sliding-window passages + MiniLM
+  retrieval surface the annotated evidence. A gold span not present in the
+  retrieved candidates cannot be recovered by any scorer.
+- **Tooling:** `answerers/passages.py` (sliding windows from ASR words),
+  `answerers/minilm.py` (MiniLM mean-pooled embeddings), and the gate in
+  `answerers/modernbert_data.py` (`python -m answerers.modernbert_data --sweep`).
+- **Finding:** the planned 28-word / 14-stride window leaves **5/195 gold spans
+  unserveable by construction** (0.974 containment). 48/24 gives **195/195**.
+- **Retriever:** `multi-qa-MiniLM-L6-cos-v1` beat the general `all-MiniLM`
+  models on question→passage retrieval. At 48/24:
+
+  | window | retriever | top-3 sup | top-5 sup | top-5 ref | top-8 sup | top-8 ref |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 28/14 | multi-qa-MiniLM-L6 | 0.831 | 0.903 | 0.840 | 0.938 | 0.920 |
+  | 48/24 | multi-qa-MiniLM-L6 | 0.897 | 0.944 | 0.952 | 0.985 | 0.976 |
+  | 64/32 | multi-qa-MiniLM-L6 | 0.913 | 0.964 | 0.984 | **0.995** | **1.000** |
+
+  The general `all-MiniLM-L6-v2` was worse (48/24 top-3 support 0.877, refute
+  0.832), so `multi-qa-*` is the retriever. 64/32 is better than 48/24 on every
+  axis *and* structurally guarantees containment up to 33 words
+  (`W-S+1`), above the observed max of 32.
+- **Conclusion:** adopt **64/32 + `multi-qa-MiniLM-L6-cos-v1` + top-8**;
+  top-5 (0.964/0.984) is the latency fallback on the 1650. Top-3 alone
+  (≈0.83–0.91 support) is **not** sufficient. Recorded before any training.
 

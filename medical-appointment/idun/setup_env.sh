@@ -48,4 +48,12 @@ AutoModelForSequenceClassification.from_pretrained(name)
 print("downloaded", name)
 PY
 
+echo "pre-downloading MiniLM retrieval model (ModernBERT answerer)"
+python - <<'PY'
+from huggingface_hub import snapshot_download
+name = "sentence-transformers/multi-qa-MiniLM-L6-cos-v1"
+snapshot_download(name)
+print("downloaded", name)
+PY
+
 echo "setup complete"
