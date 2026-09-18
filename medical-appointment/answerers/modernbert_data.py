@@ -58,6 +58,15 @@ def load_words(transcript_id: str) -> List[Dict]:
     return json.loads(path.read_text())["words"]
 
 
+def load_transcript(transcript_id: str) -> Dict:
+    """Full transcript dict (segments + words), preferring the large-v3 cache."""
+    preferred = TRANSCRIPTS / f"conversation_{transcript_id}.dc5ba020.json"
+    path = preferred if preferred.exists() else sorted(
+        TRANSCRIPTS.glob(f"conversation_{transcript_id}.*.json")
+    )[0]
+    return json.loads(path.read_text())
+
+
 def load_rows() -> List[Dict[str, str]]:
     with open(QUESTIONS, newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))

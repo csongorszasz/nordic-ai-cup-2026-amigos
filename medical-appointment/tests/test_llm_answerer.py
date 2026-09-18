@@ -21,7 +21,7 @@ def test_yes_with_quote():
     client = StubClient([
         '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg."}]}'
     ])
-    answerer = LLMAnswerer(client=client)
+    answerer = LLMAnswerer(client=client, few_shot=())
     assert answerer.answer_all(["Was the dose 100 mg?"], TRANSCRIPT) == [(True, (1.5, 2.9))]
 
 
@@ -29,11 +29,11 @@ def test_no_answer():
     client = StubClient([
         '{"answers":[{"id":"q01","answer":"no","evidence_quote":null}]}'
     ])
-    assert LLMAnswerer(client=client).answer_all(["Q?"], TRANSCRIPT) == [(False, None)]
+    assert LLMAnswerer(client=client, few_shot=()).answer_all(["Q?"], TRANSCRIPT) == [(False, None)]
 
 
 def test_parse_failure_is_no():
-    assert LLMAnswerer(client=StubClient(["garbage"])).answer_all(
+    assert LLMAnswerer(client=StubClient(["garbage"]), few_shot=()).answer_all(
         ["Q?"], TRANSCRIPT
     ) == [(False, None)]
 
@@ -42,12 +42,12 @@ def test_yes_with_unfindable_quote_has_no_span():
     client = StubClient([
         '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"one hundred milligrams"}]}'
     ])
-    assert LLMAnswerer(client=client).answer_all(["Q?"], TRANSCRIPT) == [(True, None)]
+    assert LLMAnswerer(client=client, few_shot=()).answer_all(["Q?"], TRANSCRIPT) == [(True, None)]
 
 
 def test_empty_transcript():
     client = StubClient(["{}"])
-    assert LLMAnswerer(client=client).answer_all(
+    assert LLMAnswerer(client=client, few_shot=()).answer_all(
         ["Q?"], {"words": [], "segments": []}
     ) == [(False, None)]
 
