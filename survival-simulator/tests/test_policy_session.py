@@ -18,12 +18,14 @@ class StatefulFixture:
     def __init__(self):
         self.calls = 0
         self.resets = 0
+        self.times = []
 
     def reset(self):
         self.resets += 1
 
     def act(self, step):
         self.calls += 1
+        self.times.append(step.sim_time)
         return [ActionRequest(
             agent_id=agent.agent_id, move_distance=self.calls, move_direction=0,
             turn_angle=0, spawn_agent=False,
@@ -31,9 +33,11 @@ class StatefulFixture:
 
 
 class SessionTests(unittest.TestCase):
-    def test_stateful_requires_explicit_contract(self):
-        with self.assertRaisesRegex(ValueError, "single-stream"):
-            PolicySession(StatefulFixture, stateful=True)
+    def test_stateful_session_can_run_without_time_order_contract(self):
+        session = PolicySession(StatefulFixture, stateful=True)
+        session.predict(frame())
+        session.predict(frame(count=2))
+        self.assertEqual(session.policy.calls, 2)
 
     def test_retry_is_idempotent_and_cached_actions_are_isolated(self):
         session = PolicySession(StatefulFixture, stateful=True, single_stream=True)
@@ -70,6 +74,29 @@ class SessionTests(unittest.TestCase):
         with self.assertRaises(SessionConflict):
             session.predict(frame(1))
         self.assertEqual(session.policy.resets, 0)
+
+    def test_omitted_time_uses_retry_signature_and_first_tick_reset(self):
+        session = PolicySession(StatefulFixture, stateful=True)
+        first = StepResponse.model_validate({
+            "game_status": "ok", "score": 0.1, "n_agents": 1,
+            "agent_status": [frame().agent_status[0].model_copy(update={"age": 0.1})],
+        })
+        later = StepResponse.model_validate({
+            "game_status": "ok", "score": 0.2, "n_agents": 1,
+            "agent_status": [frame().agent_status[0].model_copy(update={"age": 0.2})],
+        })
+        self.assertNotIn("sim_time", first.model_fields_set)
+        self.assertEqual(session.predict(first)[0].move_distance, 1)
+        self.assertEqual(session.predict(first)[0].move_distance, 1)
+        self.assertEqual(session.predict(later)[0].move_distance, 2)
+        self.assertEqual(session.policy.calls, 2)
+        self.assertEqual(session.policy.times, [0.1, 0.2])
+
+        next_game = first.model_copy(update={"score": 0.1})
+        next_game.model_fields_set.discard("sim_time")
+        self.assertEqual(session.predict(next_game)[0].move_distance, 3)
+        self.assertEqual(session.policy.resets, 1)
+        self.assertEqual(session.policy.times[-1], 0.1)
 
     def test_stateless_requests_have_no_cross_game_order_constraint(self):
         session = PolicySession(StatefulFixture)

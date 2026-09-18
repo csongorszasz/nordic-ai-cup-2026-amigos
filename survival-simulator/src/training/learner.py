@@ -100,6 +100,7 @@ def run_learning(
         "value_normalization": "scale_squared_raw_errors_only_std_floor_1",
         "recurrence": "detached_collected_boundary_then_identity_aligned_truncated_BPTT",
         "sequence_microbatches": "gradient_accumulation_equal_weight_per_team_tick",
+        "action_repeat": config.resources.action_repeat,
         "dataset_checkpointed": dataset is not None,
         "dataset_json_callback": dataset is not None and dataset_callback is not None,
     })

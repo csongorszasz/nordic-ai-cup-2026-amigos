@@ -5,13 +5,15 @@ from numbers import Integral
 import torch
 
 from src.policies.actions import sample_actions
-from src.policies.features import encode_step
+from src.policies.features import encode_step, validate_step
 from src.policies.memory import PolicyMemory
 from src.policies.networks import PolicyNetwork
 from src.utils.DTOs import ActionRequest, StepResponse
 
 
 class NeuralPolicy:
+    stateful = True
+
     def __init__(self, network: PolicyNetwork, seed: int, *, deterministic: bool = True):
         if isinstance(seed, bool) or not isinstance(seed, Integral):
             raise ValueError("Policy seed must be an integer.")
@@ -33,11 +35,15 @@ class NeuralPolicy:
             generator.manual_seed(self.seed)
 
     def act(self, step: StepResponse) -> list[ActionRequest]:
+        validate_step(step)
+        return self.act_validated(step)
+
+    def act_validated(self, step: StepResponse) -> list[ActionRequest]:
         # Canonical evaluation also removes reduction-order differences across DTO permutations.
         ordered = step.model_copy(update={
             "agent_status": sorted(step.agent_status, key=lambda agent: agent.agent_id),
         })
-        batch = encode_step(ordered, self.memory.previous_actions)
+        batch = encode_step(ordered, self.memory.previous_actions, validate=False)
         if not batch.agent_ids:
             self.reset()
             return []

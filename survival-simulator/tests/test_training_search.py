@@ -11,7 +11,7 @@ from unittest.mock import patch
 import numpy as np
 
 from src.policies.config import HeuristicConfig, SearchConfig
-from src.training.search import SearchResult, optimize_controller
+from src.training.search import aggregate_world_scores, SearchResult, optimize_controller
 
 
 def objective(config):
@@ -29,6 +29,24 @@ def settings(method="random", candidates=13, **changes):
 class ControllerSearchTests(unittest.TestCase):
     def setUp(self):
         self.base = HeuristicConfig(food_weight=3.7, danger_weight=7.5, wall_weight=3.25)
+
+    def test_world_score_objective_penalizes_lower_tail(self):
+        score = aggregate_world_scores(
+            [10.0, 20.0, 30.0, 100.0],
+            lower_tail_fraction=0.5, lower_tail_weight=0.4,
+        )
+        self.assertEqual(score.mean, 40.0)
+        self.assertEqual(score.lower_tail, 15.0)
+        self.assertEqual(score.objective, 30.0)
+        for values, fraction, weight in (
+            ([], 0.25, 0.0), ([1.0], 0.0, 0.0), ([1.0], 1.1, 0.0),
+            ([1.0], 0.25, -0.1), ([float("nan")], 0.25, 0.0),
+        ):
+            with self.subTest(values=values, fraction=fraction, weight=weight):
+                with self.assertRaises(ValueError):
+                    aggregate_world_scores(
+                        values, lower_tail_fraction=fraction, lower_tail_weight=weight,
+                    )
 
     def assert_bounds(self, result, search):
         for trial in result.trials[1:]:

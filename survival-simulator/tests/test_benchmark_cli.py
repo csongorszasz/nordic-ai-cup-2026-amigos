@@ -102,11 +102,20 @@ class CommandTests(unittest.TestCase):
         self.assertIn("not eligible for ranking", stdout)
 
     def test_invalid_numbers_are_argparse_errors(self):
-        for option, value in (("--repeats", "0"), ("--max-steps", "-1"), ("--repeats", "1.5")):
+        for option, value in (
+            ("--repeats", "0"), ("--max-steps", "-1"), ("--repeats", "1.5"),
+            ("--fixed-policy-seed", "-1"), ("--fixed-policy-seed", str(2**32)),
+        ):
             with self.subTest(option=option, value=value), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as caught:
                     benchmark.main(["run", "--output", "unused", option, value])
                 self.assertEqual(caught.exception.code, 2)
+
+    def test_fixed_policy_seed_is_recorded_in_manifest_request(self):
+        args = benchmark.parser().parse_args([
+            "run", "--output", "unused", "--fixed-policy-seed", "1",
+        ])
+        self.assertEqual(args.fixed_policy_seed, 1)
 
     def test_invalid_config_cannot_create_an_output_directory(self):
         with tempfile.TemporaryDirectory() as temporary:

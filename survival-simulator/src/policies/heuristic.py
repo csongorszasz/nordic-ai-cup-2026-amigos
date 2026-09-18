@@ -243,6 +243,9 @@ class HeuristicPolicy:
     def act(self, step: StepResponse) -> list[ActionRequest]:
         return [decision.action for decision in self._decisions(step)]
 
+    def act_validated(self, step: StepResponse) -> list[ActionRequest]:
+        return [decision.action for decision in self._decisions(step, validate=False)]
+
     def explain(self, step: StepResponse, limit: int = 32) -> tuple[Decision, ...]:
         """Return at most 128 decisions; retain no history and still validate the full step."""
         if isinstance(limit, bool) or not isinstance(limit, int) or not 0 <= limit <= MAX_EXPLANATIONS:
@@ -253,8 +256,9 @@ class HeuristicPolicy:
                 result.append(decision)
         return tuple(result)
 
-    def _decisions(self, step: StepResponse) -> Iterator[Decision]:
-        validate_step(step)
+    def _decisions(self, step: StepResponse, *, validate: bool = True) -> Iterator[Decision]:
+        if validate:
+            validate_step(step)
         for agent in step.agent_status:
             yield self._decide(agent, parse_entities(agent))
 
@@ -398,5 +402,13 @@ class HeuristicPolicy:
         return max(-cap, min(cap, wrap_angle(desired)))
 
 
-def create_policy(seed: int, config: dict) -> HeuristicPolicy:
-    return HeuristicPolicy(seed, HeuristicConfig.model_validate(config))
+def build_policy(seed: int, config: HeuristicConfig):
+    if config.backend == "hierarchical":
+        from src.policies.hierarchical import HierarchicalPolicy
+
+        return HierarchicalPolicy(seed, config)
+    return HeuristicPolicy(seed, config)
+
+
+def create_policy(seed: int, config: dict):
+    return build_policy(seed, HeuristicConfig.model_validate(config))

@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_VERSION = 1
-PROTOCOL_VERSION = "local-benchmark-v1"
+SCHEMA_VERSION = 2
+PROTOCOL_VERSION = "local-benchmark-v2"
 SEED_VERSION = "sha256-policy-seed-v1"
 BASELINE_NAME = "random-local-v1"
 SUITE_NAMES = ("quick", "standard", "holdout")
@@ -82,25 +82,40 @@ class EpisodeCase(Record):
     world_seed: Seed
     repeat_index: NonnegativeInt
     policy_seed: Seed
+    policy_seed_mode: Literal["derived", "fixed"] = "derived"
 
     @model_validator(mode="after")
     def valid_identity(self):
         if self.case_id != f"world-{self.world_seed}-repeat-{self.repeat_index}":
             raise ValueError("Case ID does not match its world seed and repeat index.")
-        if self.policy_seed != policy_seed(self.world_seed, self.repeat_index):
+        if (
+            self.policy_seed_mode == "derived"
+            and self.policy_seed != policy_seed(self.world_seed, self.repeat_index)
+        ):
             raise ValueError("Policy seed does not match the recorded derivation protocol.")
         return self
 
 
-def make_cases(suite: Suite, repeats: int = 1) -> list[EpisodeCase]:
+def make_cases(
+    suite: Suite, repeats: int = 1, *, fixed_policy_seed: int | None = None,
+) -> list[EpisodeCase]:
     if isinstance(repeats, bool) or not isinstance(repeats, int) or repeats < 1:
         raise ValueError("Repeats must be a positive integer.")
+    if fixed_policy_seed is not None and (
+        isinstance(fixed_policy_seed, bool) or not isinstance(fixed_policy_seed, int)
+        or not 0 <= fixed_policy_seed <= 2**32 - 1
+    ):
+        raise ValueError("Fixed policy seed must be a uint32.")
     return [
         EpisodeCase(
             case_id=f"world-{seed}-repeat-{repeat}",
             world_seed=seed,
             repeat_index=repeat,
-            policy_seed=policy_seed(seed, repeat),
+            policy_seed=(
+                fixed_policy_seed if fixed_policy_seed is not None
+                else policy_seed(seed, repeat)
+            ),
+            policy_seed_mode="fixed" if fixed_policy_seed is not None else "derived",
         )
         for seed in suite.seeds
         for repeat in range(repeats)
@@ -232,14 +247,15 @@ class EpisodeResult(Record):
 
 
 class RunManifest(Record):
-    schema_version: Literal[1] = SCHEMA_VERSION
-    protocol_version: Literal["local-benchmark-v1"] = PROTOCOL_VERSION
+    schema_version: Literal[1, 2] = SCHEMA_VERSION
+    protocol_version: Literal["local-benchmark-v1", "local-benchmark-v2"] = PROTOCOL_VERSION
     seed_version: Literal["sha256-policy-seed-v1"] = SEED_VERSION
     run_id: str
     created_at: str
     suite: Suite
     suite_sha256: Digest
     repeats: PositiveInt = 1
+    fixed_policy_seed: Seed | None = None
     simulation: SimulationSettings = Field(default_factory=SimulationSettings)
     max_steps: PositiveInt | None = None
     cases: list[EpisodeCase] = Field(min_length=1)
@@ -251,10 +267,19 @@ class RunManifest(Record):
 
     @model_validator(mode="after")
     def complete_case_definition(self):
+        expected_protocol = (
+            "local-benchmark-v1" if self.schema_version == 1 else PROTOCOL_VERSION
+        )
+        if self.protocol_version != expected_protocol:
+            raise ValueError("Manifest schema and runner protocol versions disagree.")
         if self.suite_sha256 != content_hash(self.suite.model_dump()):
             raise ValueError("Suite hash does not match the seed manifest.")
         actual = {case.case_id: case for case in self.cases}
-        expected = {case.case_id: case for case in make_cases(self.suite, self.repeats)}
+        expected = {
+            case.case_id: case for case in make_cases(
+                self.suite, self.repeats, fixed_policy_seed=self.fixed_policy_seed,
+            )
+        }
         if len(actual) != len(self.cases) or actual != expected:
             raise ValueError("Manifest cases must exactly cover the suite and repeat count.")
         return self

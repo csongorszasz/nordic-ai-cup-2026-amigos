@@ -203,7 +203,7 @@ def _paired_csv(report: dict) -> str:
     stream = io.StringIO(newline="")
     fields = [
         "candidate_key", "candidate_label", "reference_key", "reference_label",
-        "case_id", "world_seed", "repeat_index", "policy_seed",
+        "case_id", "world_seed", "repeat_index", "policy_seed", "policy_seed_mode",
         "reference_score", "candidate_score", "delta",
     ]
     writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")

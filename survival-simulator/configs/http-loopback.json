@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:9052/predict",
+  "per_request_timeout_seconds": 10.0,
+  "cumulative_timeout_seconds": 600.0,
+  "verify_tls": true,
+  "headers": {}
+}

@@ -19,7 +19,7 @@ from src.benchmarking.policies import validate_actions
 from src.policies.actions import sample_actions
 from src.policies.config import ExperimentConfig
 from src.policies.features import FeatureBatch, encode_step
-from src.policies.heuristic import HeuristicPolicy
+from src.policies.heuristic import build_policy
 from src.policies.memory import PolicyMemory
 from src.policies.networks import PolicyNetwork, PolicyOutput
 from src.training.env import EnvironmentAdapter
@@ -199,7 +199,7 @@ class RolloutCollector:
         state: dict | None = None,
         environment_factory: Callable[[], EnvironmentAdapter] | None = None,
         pool_factory: Callable[..., EnvironmentPool] | None = None,
-        teacher_factory: Callable[..., HeuristicPolicy] | None = None,
+        teacher_factory: Callable[..., object] | None = None,
     ):
         self.config = config
         self.network = network
@@ -208,7 +208,7 @@ class RolloutCollector:
         self.workers = config.resources.workers
         self._environment_factory = environment_factory or EnvironmentAdapter
         self._pool_factory = pool_factory or EnvironmentPool
-        self._teacher_factory = teacher_factory or HeuristicPolicy
+        self._teacher_factory = teacher_factory or build_policy
         self._stack: ExitStack | None = None
         self.pool = None
         self.environment = None
@@ -232,7 +232,7 @@ class RolloutCollector:
         self.episode_steps = [0] * self.workers
         self.episode_starts = [True] * self.workers
         self.done = [True] * self.workers
-        self.teachers: list[HeuristicPolicy] = []
+        self.teachers: list[object] = []
 
     def _restore_state(self, state: dict) -> None:
         if state.get("seed") != self.config.seed or state.get("workers") != self.workers:
@@ -308,11 +308,20 @@ class RolloutCollector:
         with ExitStack() as stack:
             stack.callback(self._release_environments)
             if self.workers == 1:
-                self.environment = self._environment_factory()
+                self.environment = (
+                    self._environment_factory()
+                    if self.config.resources.action_repeat == 1
+                    else self._environment_factory(
+                        action_repeat=self.config.resources.action_repeat,
+                    )
+                )
             else:
-                self.pool = stack.enter_context(self._pool_factory(
-                    self.workers, timeout_seconds=self.config.resources.worker_timeout_seconds,
-                ))
+                pool_kwargs = {
+                    "timeout_seconds": self.config.resources.worker_timeout_seconds,
+                }
+                if self.config.resources.action_repeat != 1:
+                    pool_kwargs["action_repeat"] = self.config.resources.action_repeat
+                self.pool = stack.enter_context(self._pool_factory(self.workers, **pool_kwargs))
             seeds = [self._next_seed() for _ in range(self.workers)]
             self.observations = (
                 self.pool.reset(seeds) if self.pool is not None
@@ -468,6 +477,8 @@ class RolloutCollector:
             tuple(tuple(trajectory) for trajectory in trajectories), tuple(last_values), policy_version,
             {
                 "frames": steps * self.workers, "agent_actions": agent_actions,
+                "action_repeat": self.config.resources.action_repeat,
+                "native_steps": steps * self.workers * self.config.resources.action_repeat,
                 "peak_frame_tokens": peak_tokens,
                 "completed_episodes": self.completed_episodes - completed_before,
                 "collection_seconds": time.perf_counter() - started,

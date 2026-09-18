@@ -20,7 +20,7 @@ Probability = Annotated[float, Field(ge=0, le=1)]
 
 
 class HeuristicConfig(Settings):
-    backend: Literal["scalar", "vectorized"] = "scalar"
+    backend: Literal["scalar", "vectorized", "hierarchical"] = "scalar"
     food_weight: float = Field(default=2.0, ge=0)
     danger_weight: float = Field(default=5.0, ge=0)
     wall_weight: float = Field(default=4.0, ge=0)
@@ -35,6 +35,36 @@ class HeuristicConfig(Settings):
     max_turn: float = Field(default=0.45, gt=0, le=3.141592653589793)
     scan_turn: float = Field(default=0.12, ge=0, le=3.141592653589793)
     directions: int = Field(default=16, ge=8, le=64, strict=True)
+    fruit_contact_radius: float = Field(default=10.0, ge=5.0, le=20.0)
+    patch_radius: PositiveFloat = 28.0
+    patch_tolerance: PositiveFloat = 8.0
+    patch_capacity: int = Field(default=2, ge=1, le=8, strict=True)
+    patch_move_fraction: float = Field(default=0.65, gt=0, le=1)
+    exploration_move_fraction: float = Field(default=0.35, ge=0, le=1)
+    scout_fraction: Probability = 0.2
+    breeder_fraction: Probability = 0.25
+    min_population: int = Field(default=7, ge=1, le=128, strict=True)
+    target_population: int = Field(default=12, ge=1, le=128, strict=True)
+    max_population: int = Field(default=16, ge=1, le=128, strict=True)
+    low_population_breeding_energy: PositiveFloat = 185.0
+    target_population_breeding_energy: PositiveFloat = 255.0
+    high_population_breeding_energy: PositiveFloat = 330.0
+    predator_face_turn: float = Field(default=1.2, gt=0, le=3.141592653589793)
+    emergency_spawn_distance: PositiveFloat = 35.0
+
+    @model_validator(mode="after")
+    def hierarchical_ranges(self):
+        if not self.min_population <= self.target_population <= self.max_population:
+            raise ValueError("Population settings must satisfy min <= target <= max.")
+        if not (
+            self.low_population_breeding_energy
+            <= self.target_population_breeding_energy
+            <= self.high_population_breeding_energy
+        ):
+            raise ValueError("Breeding energy settings must be nondecreasing.")
+        if self.patch_tolerance >= self.patch_radius:
+            raise ValueError("patch_tolerance must be smaller than patch_radius.")
+        return self
 
 
 class ModelConfig(Settings):
@@ -77,6 +107,8 @@ class SearchConfig(Settings):
     candidates: PositiveInt = 8
     worlds: PositiveInt = 3
     sigma: float = Field(default=0.2, gt=0, le=1)
+    lower_tail_fraction: float = Field(default=0.25, gt=0, le=1)
+    lower_tail_weight: Probability = 0.0
     parameters: dict[str, tuple[float, float]] = Field(default_factory=lambda: {
         "breeding_energy": (180.0, 320.0),
         "breeding_age": (40.0, 85.0),
@@ -106,6 +138,7 @@ class ResourceConfig(Settings):
     max_vram_mb: int = Field(default=6144, ge=256, le=8192, strict=True)
     max_tokens: PositiveInt = 32768
     worker_timeout_seconds: PositiveFloat = 180.0
+    action_repeat: int = Field(default=1, ge=1, le=10, strict=True)
 
 
 class ExperimentConfig(Settings):

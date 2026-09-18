@@ -7,23 +7,24 @@ from src.policies.config import ExperimentConfig, RuntimeConfig, SearchConfig, a
 
 
 class PolicyConfigTests(unittest.TestCase):
-    def test_default_serving_config_selects_vectorized_controller_without_checkpoint(self):
+    def test_default_serving_config_selects_hierarchical_controller_without_checkpoint(self):
         options = RuntimeConfig.model_validate(read_json(PROJECT_ROOT / "configs" / "controller.json"))
         self.assertEqual(options.policy, "heuristic")
-        self.assertEqual(options.heuristic.backend, "vectorized")
+        self.assertEqual(options.heuristic.backend, "hierarchical")
         self.assertIsNone(options.checkpoint)
 
     def test_nested_architecture_and_parameter_overrides(self):
         original = ExperimentConfig()
         changed = apply_overrides(original, [
             "model.memory=none", "model.encoder=attention", "model.team_context=false",
-            "optimizer.learning_rate=0.001", "resources.workers=2",
+            "optimizer.learning_rate=0.001", "resources.workers=2", "resources.action_repeat=5",
         ])
         self.assertEqual(changed.model.memory, "none")
         self.assertEqual(changed.model.encoder, "attention")
         self.assertFalse(changed.model.team_context)
         self.assertEqual(changed.optimizer.learning_rate, 0.001)
         self.assertEqual(changed.resources.workers, 2)
+        self.assertEqual(changed.resources.action_repeat, 5)
         self.assertEqual(original.model.memory, "gru")
 
     def test_unknown_nonfinite_and_incompatible_values_fail(self):
@@ -37,6 +38,14 @@ class PolicyConfigTests(unittest.TestCase):
                 apply_overrides(ExperimentConfig(), changes)
         with self.assertRaises(ValidationError):
             ExperimentConfig.model_validate({"extra": 1})
+        with self.assertRaises(ValidationError):
+            RuntimeConfig.model_validate({
+                "policy": "heuristic",
+                "heuristic": {
+                    "backend": "hierarchical", "min_population": 20,
+                    "target_population": 10, "max_population": 15,
+                },
+            })
 
     def test_search_bounds_must_match_a_valid_continuous_parameter(self):
         for parameters in (

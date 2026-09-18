@@ -77,7 +77,7 @@ def load_policy(
 
 
 def validate_actions(
-    proposed: Sequence[ActionRequest], expected_ids: Sequence[int],
+    proposed: Sequence[ActionRequest], expected_ids: Sequence[int], *, revalidate: bool = True,
 ) -> list[ActionRequest]:
     if not isinstance(proposed, Sequence) or isinstance(proposed, (str, bytes)):
         raise ValueError("Policy.act must return a sequence of ActionRequest objects.")
@@ -85,7 +85,10 @@ def validate_actions(
     for action in proposed:
         if not isinstance(action, ActionRequest):
             raise ValueError("Each policy action must be an ActionRequest object.")
-        validated = ActionRequest.model_validate(action.model_dump(), strict=True)
+        validated = (
+            ActionRequest.model_validate(action.model_dump(), strict=True)
+            if revalidate else action
+        )
         if not all(math.isfinite(value) for value in (
             validated.move_distance, validated.move_direction, validated.turn_angle,
         )):
