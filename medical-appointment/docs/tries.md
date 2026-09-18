@@ -47,6 +47,7 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T035 | 2026-09-18 | hybrid OOF analysis (legacy decide + MB span) | large+MB | 0.933 | 0.456 | 0.647 | B (OR) 0.661; offline only |
 | T036 | 2026-09-18 | **LLM probe L0/L1/L2** (39 convs, in-sample) | Qwen2.5-7B | 0.982 | 0.454 | **0.665** | L1 few-shot; L0 0.588, L2 0.611 |
 | T037 | 2026-09-18 | hybrid sim: LLM decision + MB span | Qwen+MB | 0.982 | 0.521 | **0.705** | offline join of T036/T033 |
+| T038 | 2026-09-18 | **LLM L1 with Gemma 4 E4B** (39 convs, in-sample) | Gemma4-E4B | 0.990 | 0.555 | **0.729** | quote_found 1.000, 0 parse fails |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -354,3 +355,35 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 - **Caveat:** in-sample ceiling (both components are scored on the 39 labelled
   conversations). Not served. Localization (occurrence choice) is still the
   largest remaining gap (0.521 vs the 0.843 served-cap oracle).
+
+## T038 — LLM L1 with Gemma 4 E4B (0.729, best measured)
+
+- **Model:** `google/gemma-4-e4b-it` (~8B params, fp16 15.9 GB, V100-32G),
+  plain `transformers`, text-only L1 prompt (whole transcript + 10 questions +
+  3 LOCO-safe few-shot turns). Loaded via `AutoModelForImageTextToText` since
+  the checkpoint is `Gemma4ForConditionalGeneration` (multimodal).
+- **Result (39 conversations, in-sample):**
+
+  | metric | Qwen2.5-7B (T036) | **Gemma 4 E4B** |
+  | --- | --- | --- |
+  | score | 0.665 | **0.729** |
+  | accuracy | 0.982 | **0.990** |
+  | mIoU | 0.454 | **0.555** |
+  | tIoU when yes | 0.464 | **0.567** |
+  | quote found | 0.954 | **1.000** |
+  | positive | 191/195 | 191/195 |
+  | hard_negative | 140/142 | **142/142** |
+  | off_topic | 52/53 | **53/53** |
+  | latency | 11.9 s | 21.2 s |
+
+- **Localization:** worst-case (tIoU<0.1) dropped **47 → 22**; `>=0.8` rose
+  43 → 55; 36 questions improved from tIoU<0.5 to >=0.5. Quote-found 1.000
+  (no unfindable quotes). Remaining 22 include degenerate gold spans
+  (`Good morning,`), alternate valid occurrences, and a few truly unsupported.
+- **Caveats:** in-sample ceiling (few-shot from other conversations only,
+  LOCO-safe), not validation. E4B fp16 needs 15.9 GB; int4 (~4 GB) is borderline
+  for the 4 GB 1650, E2B would fit. E4B also accepts **native audio** — an
+  untried angle.
+- **Conclusion:** a small modern instruction model beats both the larger older
+  Qwen2.5-7B and the 0.705 hybrid, and is close to a servable size. Next:
+  validate (needs serving) or use as teacher; test E2B/int4 for the 1650.
