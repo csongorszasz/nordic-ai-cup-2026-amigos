@@ -28,6 +28,15 @@ export MEDAPP_MAX_RANGE_WORDS="${MEDAPP_MAX_RANGE_WORDS:-10}"
 export MEDAPP_DEADLINE_S="${MEDAPP_DEADLINE_S:-50}"
 export MEDAPP_CAPTURE="${MEDAPP_CAPTURE:-1}"
 
+# Answerer selection. Default stays the frozen legacy NLI pipeline; to serve the
+# trained ModernBERT scorer (OOF 0.610 vs legacy 0.569), export
+#   MEDAPP_ANSWERER=modernbert
+#   MEDAPP_MB_CHECKPOINT=models/modernbert_final/final.pt
+#   MEDAPP_MB_TAU=0.16
+export MEDAPP_ANSWERER="${MEDAPP_ANSWERER:-legacy}"
+export MEDAPP_MB_CHECKPOINT="${MEDAPP_MB_CHECKPOINT:-}"
+export MEDAPP_MB_TAU="${MEDAPP_MB_TAU:-0.16}"
+
 server_pid() { pgrep -f "[p]ython api.py" || true; }
 tunnel_pid() { pgrep -f "[c]loudflared tunnel --url http://localhost:9054" || true; }
 

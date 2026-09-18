@@ -33,6 +33,24 @@ Set via environment (all read at process start):
 | `MEDAPP_DEADLINE_S` | `50` | stop answering and guess if a request runs long |
 | `MEDAPP_ASR_CACHE` | `1` | set `0` to disable transcript caching on serving |
 | `MEDAPP_CAPTURE` | `1` | record requests/responses to `captured/` |
+| `MEDAPP_ANSWERER` | `legacy` | `modernbert` uses the trained scorer (see below) |
+| `MEDAPP_MB_CHECKPOINT` | — | path to `final.pt` when `MEDAPP_ANSWERER=modernbert` |
+| `MEDAPP_MB_TAU` | `0.16` | ModernBERT decision threshold (LOCO-calibrated) |
+
+### ModernBERT answerer
+
+Out-of-fold it beats the legacy pipeline (T033 0.610 vs legacy T030 0.569:
+mIoU 0.444 vs 0.316), and on the 1650 the scoring path is ~2.5 s cached
+(ASR adds ~16–22 s), ~1 GB VRAM. To serve it:
+
+```bash
+export MEDAPP_ANSWERER=modernbert
+export MEDAPP_MB_CHECKPOINT=models/modernbert_final/final.pt
+export MEDAPP_MB_TAU=0.16
+bash local/serve.sh start
+```
+
+The legacy path stays the default until the flip is signed off.
 
 ## 3. Start / stop
 
