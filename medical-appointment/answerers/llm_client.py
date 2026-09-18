@@ -57,18 +57,33 @@ class HFClient:
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         logger.info("Loading LLM %s", self.model_name)
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        try:
+            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        except Exception:
+            from transformers import AutoProcessor
+
+            self._tokenizer = AutoProcessor.from_pretrained(self.model_name).tokenizer
+
         torch_dtype = getattr(torch, self.dtype, torch.float16)
+
         # transformers >=5 renamed `torch_dtype` to `dtype`; passing the old name
         # is silently ignored, which loads fp32 and OOMs a 7B on a 32 GB card.
+        def _from(factory):
+            try:
+                return factory(self.model_name, dtype=torch_dtype)
+            except TypeError:
+                return factory(self.model_name, torch_dtype=torch_dtype)
+
         try:
-            self._model = AutoModelForCausalLM.from_pretrained(
-                self.model_name, dtype=torch_dtype
-            )
-        except TypeError:
-            self._model = AutoModelForCausalLM.from_pretrained(
-                self.model_name, torch_dtype=torch_dtype
-            )
+            self._model = _from(AutoModelForCausalLM)
+        except Exception as exc:
+            # Multimodal checkpoints (e.g. google/gemma-4-e4b-it, whose config
+            # architecture is Gemma4ForConditionalGeneration) are not a
+            # CausalLM; load the image-text-to-text class and generate text.
+            logger.warning("CausalLM load failed (%s); trying image-text-to-text.", exc)
+            from transformers import AutoModelForImageTextToText
+
+            self._model = _from(AutoModelForImageTextToText)
         if DEVICE in ("cuda", "cpu"):
             self._device = DEVICE
         else:
