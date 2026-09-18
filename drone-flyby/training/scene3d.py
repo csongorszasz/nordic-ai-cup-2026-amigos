@@ -36,7 +36,9 @@ OUT = ROOT / 'datasets' / 'scene3d'
 TO_Y_UP = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])  # glTF and three.js are Y up
 TEXTURE_PX = 256       # per piece in the atlas; the mesh's own are 512 px
 KEEP_FACES = 1.0       # share of the city triangles kept: decimating tears the pieces open at their texture seams
-GROUND_RADIUS_M = 1.5  # mesh vertices this close (horizontally) give the ground height under an object
+GROUND_NEIGHBOURS = 12  # nearest mesh vertices that give the ground height at a point (flat ground has big triangles)
+FOOTPRINT_SAMPLES = 5   # per side, over the model's length, to stand it on the ground under all of it
+UNEVEN_M = 1.0          # warn when the ground under a model varies more than this
 
 
 def ray(pose, u, v):
@@ -45,16 +47,26 @@ def ray(pose, u, v):
     return pose[:3, 3], direction / np.linalg.norm(direction)
 
 
+def ground_height(tree, heights, xy):
+    """Ground height at each (x, y): the median of the nearest mesh vertices."""
+    _, near = tree.query(np.atleast_2d(xy), k=GROUND_NEIGHBOURS)
+    return np.median(heights[near], axis=1)
+
+
 def drop_on_ground(origin, direction, tree, heights, z0):
     """Where the ray meets the ground: intersect a level plane, re-read its height, repeat."""
     z = z0
     for _ in range(4):
         point = origin + direction * (z - origin[2]) / direction[2]
-        near = tree.query_ball_point(point[:2], GROUND_RADIUS_M)
-        if not near:
-            break
-        z = float(np.median(heights[near]))
+        z = float(ground_height(tree, heights, point[:2])[0])
     return origin + direction * (z - origin[2]) / direction[2]
+
+
+def footprint_heights(tree, heights, centre, length):
+    """Ground heights on a grid over the square the model can cover."""
+    offsets = np.linspace(-length / 2, length / 2, FOOTPRINT_SAMPLES)
+    grid = np.array([(centre[0] + dx, centre[1] + dy) for dx in offsets for dy in offsets])
+    return ground_height(tree, heights, grid)
 
 
 def decimate(mesh, keep):
@@ -164,6 +176,10 @@ def main():
         if not found:
             continue
         model, fit = found
+        under = footprint_heights(tree, heights, spot, fit['length_m'])
+        if under.max() - under.min() > UNEVEN_M:
+            print(f'  {ann["object_id"]}: ground under it varies {under.max() - under.min():.1f} m')
+        spot[2] = float(np.median(under))
         objects.append({
             'class': ann['object_id'], 'model': model, 'length_m': fit['length_m'],
             'url': f'/compare/_baked/{ann["object_id"]}_{model}.glb',
