@@ -97,7 +97,10 @@ def _pruned_candidate_oracle(words, windows, question, gold, neighbours: int = 1
         hi = min(len(windows) - 1, index + neighbours)
         first = windows[lo].first_word
         last = windows[hi].last_word
-        for i, j in answer_module._enumerate_candidates(words, first, last, content):
+        ranges = answer_module._cap_candidates(
+            sorted(answer_module._enumerate_candidates(words, first, last, content))
+        )
+        for i, j in ranges:
             span = (words[i]["start"], words[j]["end"])
             if span[1] < gold[0] or span[0] > gold[1]:
                 continue
@@ -169,6 +172,7 @@ def run(
     diagnostics: bool = False,
     force_transcribe: bool = False,
     debug_examples: int = 0,
+    oof_path: Optional[str] = None,
 ) -> Statistics:
     statistics = Statistics()
 
@@ -178,6 +182,7 @@ def run(
 
     window_counts: List[int] = []
     nli_mode = answerer is answer_module.answer_question
+    oof_records: List[Dict] = []
     if nli_mode:
         from verifier import nli as _nli
 
@@ -192,7 +197,9 @@ def run(
 
     for audio_filename, rows in conversations:
         audio_bytes = load_sample_audio(audio_filename)
-        cache_hit = (not force_transcribe) and asr.cache_path(audio_filename).exists()
+        cache_hit = (not force_transcribe) and asr.cache_path(
+            audio_filename, audio_bytes
+        ).exists()
 
         started = time.perf_counter()
         transcript = asr.transcribe_bytes(
@@ -242,6 +249,20 @@ def run(
                 row["question_type"], label, int(answer), gold, span
             )
 
+            if oof_path is not None and info is not None:
+                oof_records.append(
+                    {
+                        "question_id": row["question_id"],
+                        "transcript_id": row["transcript_id"],
+                        "question_type": row["question_type"],
+                        "label": label,
+                        "p": info.get("clause_score"),
+                        "guard_ok": bool(info.get("guard_ok", True)),
+                        "span": list(span) if span is not None else None,
+                        "gold": list(gold) if gold is not None else None,
+                    }
+                )
+
             if diagnostics and nli_mode and gold is not None and answer and span:
                 diag_accum["chosen"].append(temporal_iou(gold, span))
                 if info and info.get("neighbourhood"):
@@ -286,6 +307,13 @@ def run(
     statistics.diagnostics = diag_accum
     statistics.window_counts = window_counts
     statistics.timing = timing
+
+    if oof_path is not None:
+        out = Path(oof_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(oof_records, indent=2))
+        print(f"\nOOF records ({len(oof_records)}) -> {oof_path}")
+
     return statistics
 
 
@@ -462,6 +490,9 @@ def main() -> int:
                         help="Write a machine-readable summary to this path.")
     parser.add_argument("--debug", type=int, default=0,
                         help="Print N low-IoU positive examples.")
+    parser.add_argument("--oof", dest="oof_path", default=None,
+                        help="Write per-question OOF records (p, span, label) here. "
+                             "Run with MEDAPP_NLI_TAU=0 so every question localizes.")
     args = parser.parse_args()
 
     if args.answer == "true":
@@ -479,6 +510,7 @@ def main() -> int:
         diagnostics=args.diagnostics,
         force_transcribe=args.force_transcribe,
         debug_examples=args.debug,
+        oof_path=args.oof_path,
     )
     elapsed = time.time() - started
     print(statistics.report())

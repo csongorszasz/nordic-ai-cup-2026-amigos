@@ -37,6 +37,9 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T025 | 2026-09-17 | merged decision, large NLI | large | **0.938** | **0.340** | **0.579** | positive recall 0.944 |
 | T026 | 2026-09-17 | merged decision, large, τ 0.5 | large | 0.938 | 0.337 | 0.578 | |
 | T027 | 2026-09-17 | **validation: served merged config** | base | — | — | **0.545** | matches T024 exactly |
+| T028 | 2026-09-18 | merged + served caps + length-diverse cap | base | 0.882 | 0.314 | 0.541 | served-cap oracle 0.843 |
+| T029 | 2026-09-18 | same, large NLI | large | 0.938 | 0.318 | 0.566 | caps cost 0.013 vs T025 |
+| T030 | 2026-09-18 | OOF calibration run (τ=0) | large | — | — | 0.569 | LOCO τ 0.65 |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -167,6 +170,22 @@ question's number. Keep it (cheap insurance) but don't count on it.
 - **Conclusion:** ADR-0004 validated end-to-end (+0.088 over the single-clause
   dry run). The remaining headroom is localization (M3); large NLI would add
   ~0.03 but needs latency work on the 1650.
+
+## T028–T030 — Tier 0 hardening verification
+
+- **T028/T029 (candidate-cap fix):** the cap is now length-diverse (round-robin
+  across span lengths) instead of truncating by shortest. Served-cap oracle
+  **0.843** (vs 0.884 uncapped). Score: base **0.541**, large **0.566** — the
+  served caps cost ~0.013 vs the uncapped T025 (0.579), which is the price of
+  latency safety and is removed by the learned localizer.
+- **T030 (OOF calibration):** `dev_eval --oof` with τ=0 emits per-question `p`
+  and span for all 390 questions. `calibrate.py` (LOCO) selects **τ=0.65**
+  (stable across folds) giving **0.569** (acc 0.949, mIoU 0.316). The
+  score-aware formula gives τ≈0.331, but that assumes calibrated `p`; the
+  empirical LOCO optimum is more reliable here.
+- **Tier 0 (serving hardening):** audio-content cache keys, ASR compute-type
+  fallback chain (fp16→int8→fp32, for P100), deadline fallback, warm-up
+  inference, functional Dockerfile, `local/serve.sh` supervisor. Tests: 54.
 
 ## Latency (P100, transcripts cached, per conversation)
 

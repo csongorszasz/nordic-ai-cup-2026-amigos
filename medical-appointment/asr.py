@@ -34,6 +34,9 @@ DEVICE = os.environ.get("WHISPER_DEVICE", "cuda")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "float16")
 LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 
+# Transcript caching can be disabled for serving (cache correctness > speed).
+CACHE_ENABLED = os.environ.get("MEDAPP_ASR_CACHE", "1") != "0"
+
 _model = None
 
 
@@ -66,13 +69,43 @@ def get_model():
             device,
             compute_type,
         )
-        _model = WhisperModel(MODEL_SIZE, device=device, compute_type=compute_type)
+        attempts = []
+        for candidate in (compute_type, "int8", "float32"):
+            if candidate not in attempts:
+                attempts.append(candidate)
+        last_error: Optional[Exception] = None
+        for candidate in attempts:
+            try:
+                _model = WhisperModel(MODEL_SIZE, device=device, compute_type=candidate)
+                if candidate != compute_type:
+                    logger.warning(
+                        "compute_type=%s unavailable here; using %s.",
+                        compute_type,
+                        candidate,
+                    )
+                break
+            except Exception as exc:
+                last_error = exc
+                logger.warning("compute_type=%s failed (%s).", candidate, exc)
+        if _model is None:
+            raise last_error if last_error else RuntimeError("ASR load failed")
     return _model
 
 
 def warm_up() -> None:
-    """Force the model to load. Call once at import time in the server."""
-    get_model()
+    """Load the model and run one tiny inference to trigger CUDA kernels.
+
+    The first real request is the slowest and there is no warm-up budget, so
+    this is called at import time in the server.
+    """
+    model = get_model()
+    try:
+        import numpy as np
+
+        silence = np.zeros(16000, dtype="float32")
+        list(model.transcribe(silence, language=LANGUAGE)[0])
+    except Exception:  # pragma: no cover - warm-up is best-effort
+        logger.exception("Whisper warm-up inference failed (continuing).")
 
 
 def config_hash() -> str:
@@ -95,9 +128,22 @@ def config_hash() -> str:
     return hashlib.sha1(payload.encode()).hexdigest()[:8]
 
 
-def cache_path(audio_filename: str) -> Path:
-    """Where the transcript for one conversation is cached."""
-    return TRANSCRIPTS_DIR / f"{Path(audio_filename).stem}.{config_hash()}.json"
+def content_hash(audio_bytes: bytes) -> str:
+    """Short content hash of the audio, so a repeated filename cannot alias."""
+    return hashlib.sha256(audio_bytes).hexdigest()[:8]
+
+
+def cache_path(audio_filename: str, audio_bytes: Optional[bytes] = None) -> Path:
+    """Where the transcript for one conversation is cached.
+
+    The key combines the filename, the decoding configuration and (when the
+    bytes are supplied) the audio content, so reusing a filename for different
+    audio can never serve a stale transcript.
+    """
+    key = f"{Path(audio_filename).stem}.{config_hash()}"
+    if audio_bytes is not None:
+        key += f".{content_hash(audio_bytes)}"
+    return TRANSCRIPTS_DIR / f"{key}.json"
 
 
 def transcribe_bytes(
@@ -110,10 +156,11 @@ def transcribe_bytes(
 
     The returned dict carries both segments and a flat ``words`` list (each word
     tagged with the ``seg_idx`` it came from), so downstream code can build
-    phrase spans without re-running ASR. Results are cached to
-    ``transcripts/<stem>.json`` unless ``cache=False``.
+    phrase spans without re-running ASR. Results are cached unless
+    ``MEDAPP_ASR_CACHE=0`` or ``cache=False``.
     """
-    path = cache_path(audio_filename)
+    cache = cache and CACHE_ENABLED
+    path = cache_path(audio_filename, audio_bytes)
     if cache and not force and path.exists():
         try:
             return json.loads(path.read_text())

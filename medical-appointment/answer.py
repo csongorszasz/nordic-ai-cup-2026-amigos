@@ -77,7 +77,7 @@ def _content_tokens(question: str) -> set:
 def _enumerate_candidates(
     words: List[Dict], first: int, last: int, content: set
 ) -> List[Tuple[int, int]]:
-    """Contiguous word ranges in ``[first, last]``, optionally content-filtered."""
+    """All contiguous word ranges in ``[first, last]``, content-filtered."""
     ranges: List[Tuple[int, int]] = []
     for i in range(first, last + 1):
         for j in range(i, min(last, i + MAX_RANGE_WORDS - 1) + 1):
@@ -92,10 +92,33 @@ def _enumerate_candidates(
         if kept:
             ranges = kept
 
-    if len(ranges) > MAX_CANDIDATES:
-        ranges.sort(key=lambda ij: ij[1] - ij[0])
-        ranges = ranges[:MAX_CANDIDATES]
     return ranges
+
+
+def _cap_candidates(
+    ranges: List[Tuple[int, int]], limit: int = MAX_CANDIDATES
+) -> List[Tuple[int, int]]:
+    """Truncate to ``limit`` while keeping every span length represented.
+
+    The old cap sorted by shortest and truncated, which structurally discarded
+    the longer spans (gold spans often exceed 4 s). Here we round-robin across
+    lengths so the retained set spans short and long alike.
+    """
+    if len(ranges) <= limit:
+        return ranges
+
+    by_length: Dict[int, List[Tuple[int, int]]] = {}
+    for pair in ranges:
+        by_length.setdefault(pair[1] - pair[0], []).append(pair)
+
+    kept: List[Tuple[int, int]] = []
+    lengths = sorted(by_length)
+    while len(kept) < limit and any(by_length.values()):
+        for length in lengths:
+            bucket = by_length[length]
+            if bucket and len(kept) < limit:
+                kept.append(bucket.pop(0))
+    return kept
 
 
 def _decision_texts(windows: Sequence[Window], neighbours: int) -> List[str]:
@@ -136,6 +159,7 @@ def answer_question(
         "n_clause_pairs": 0,
         "n_candidate_pairs": 0,
         "n_trim_pairs": 0,
+        "guard_ok": True,
     }
 
     def result(is_true, span):
@@ -161,6 +185,7 @@ def answer_question(
         return result(False, None)
     if use_guard and not numeric_guard(question, decision_texts[best]):
         info["decided_by"] = "guard"
+        info["guard_ok"] = False
         return result(False, None)
 
     content = _content_tokens(question)
@@ -183,10 +208,7 @@ def answer_question(
         candidate_set.update(_enumerate_candidates(words, first, last, content))
 
     info["neighbourhood"] = (region_first, region_last)
-    candidates = sorted(candidate_set)
-    if len(candidates) > MAX_CANDIDATES:
-        candidates.sort(key=lambda pair: pair[1] - pair[0])
-        candidates = candidates[:MAX_CANDIDATES]
+    candidates = _cap_candidates(sorted(candidate_set))
     info["n_candidates"] = len(candidates)
 
     if not candidates:

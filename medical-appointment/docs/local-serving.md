@@ -30,9 +30,22 @@ Set via environment (all read at process start):
 | `MEDAPP_MAX_RANGE_WORDS` | `10` | latency cap |
 | `MEDAPP_NLI_TAU` | `0.3` | decision threshold |
 | `MEDAPP_DECISION_NEIGHBOURS` | `1` | merge clause ± 1 for the decision (ADR-0004) |
+| `MEDAPP_DEADLINE_S` | `50` | stop answering and guess if a request runs long |
+| `MEDAPP_ASR_CACHE` | `1` | set `0` to disable transcript caching on serving |
 | `MEDAPP_CAPTURE` | `1` | record requests/responses to `captured/` |
 
 ## 3. Start / stop
+
+Preferred: the supervisor script (server + tunnel, prints the URL).
+
+```bash
+bash local/serve.sh start     # start both, prints https://<id>.trycloudflare.com/predict
+bash local/serve.sh url       # re-print the current URL
+bash local/serve.sh status    # pids + GPU memory
+bash local/serve.sh stop
+```
+
+Manual equivalent:
 
 ```bash
 source ~/miniforge3/etc/profile.d/conda.sh && conda activate medapp-local
@@ -61,7 +74,9 @@ setsid nohup ~/.local/bin/cloudflared tunnel --url http://localhost:9054 \
   > /tmp/opencode/cloudflared.log 2>&1 &
 grep -aoE "https://[a-z0-9-]+\.trycloudflare\.com" /tmp/opencode/cloudflared.log
 ```
-Submit `<url>/predict`. The URL is **ephemeral** — a restart changes it.
+Submit `<url>/predict`. The URL is **ephemeral** — a restart changes it. With no
+Cloudflare domain, this is the fallback for validation and the evaluation; keep
+`bash local/serve.sh url` handy and re-submit if it changes.
 
 **Named tunnel (stable URL; use for the evaluation):** requires a domain on a
 Cloudflare account.

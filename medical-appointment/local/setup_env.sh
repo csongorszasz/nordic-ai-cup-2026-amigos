@@ -29,7 +29,13 @@ python -m pip install faster-whisper transformers
 echo "pre-downloading weights"
 python - <<'PY'
 from huggingface_hub import snapshot_download
-snapshot_download("Systran/faster-whisper-large-v3")
+# Serving model (matches docs/local-serving.md), plus a distil variant for the
+# ASR bake-off. large-v3 is optional and only used for offline dev on IDUN.
+for repo in (
+    "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+    "Systran/faster-distil-whisper-large-v3",
+):
+    snapshot_download(repo)
 
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 name = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"

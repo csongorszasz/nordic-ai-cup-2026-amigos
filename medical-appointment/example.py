@@ -22,6 +22,10 @@ from utils import decode_audio
 
 logger = logging.getLogger(__name__)
 
+# Leave a margin under the 60 s request budget: stop answering new questions and
+# return guesses once this much wall-clock has elapsed.
+DEADLINE_S = float(os.environ.get("MEDAPP_DEADLINE_S", "50"))
+
 # Load the models at import time: the first inference is the slowest and there
 # is no warm-up budget. Skipped in tests via MEDAPP_SKIP_WARMUP=1.
 if os.environ.get("MEDAPP_SKIP_WARMUP") != "1":
@@ -50,6 +54,7 @@ def predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
 
 
 def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
+    started = time.time()
     audio_bytes = decode_audio(request.audio_base64)
 
     try:
@@ -67,6 +72,16 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     evidence_end: List[Optional[float]] = []
 
     for question in request.questions:
+        # Budget guard: a valid guess beats blowing the 60 s request budget.
+        if time.time() - started > DEADLINE_S:
+            logger.warning(
+                "Deadline %.0fs reached; guessing remaining questions.", DEADLINE_S
+            )
+            answers.append(True)
+            evidence_start.append(None)
+            evidence_end.append(None)
+            continue
+
         try:
             is_true, span = answer_module.answer_question(question, words, windows)
         except Exception:
