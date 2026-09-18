@@ -202,6 +202,8 @@ def _rag_few_shot(
                 return row
         return None
 
+    example_k = min(top_k, 2)
+
     def add(row, question_type):
         if row is None or row["transcript_id"] not in transcripts:
             return
@@ -211,7 +213,7 @@ def _rag_few_shot(
         candidates = [
             p for p, _ in rag_module.retrieve(
                 row["question"], built, retriever,
-                passage_embeddings=embeddings, top_k=top_k,
+                passage_embeddings=embeddings, top_k=example_k,
             )
         ]
         if not candidates:
@@ -228,9 +230,10 @@ def _rag_few_shot(
                 render_rag_example(row["question"], candidates, False, None, None)
             )
 
+    # Keep the few-shot compact: one supported and one no example is enough to
+    # pin the citation schema without bloating the prompt.
     add(pick("positive"), "positive")
     add(pick("hard_negative", require_refute=True), "hard_negative")
-    add(pick("off_topic"), "off_topic")
     return examples
 
 
