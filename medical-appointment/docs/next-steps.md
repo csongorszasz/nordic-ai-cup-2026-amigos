@@ -1,79 +1,113 @@
 # Next steps
 
-Standing plan for the medical-appointment case, updated 2026-09-17 after the
-first successful served validation (T027, **0.545**). Threads A/B/C below;
-execution order is a judgement call, not a dependency.
+Standing plan for the medical-appointment case, updated 2026-09-18 after the
+served ModernBERT validation (**T034, 0.606**). Threads A/B/C below; execution
+order is a judgement call, not a dependency.
 
 ## State
 
-- Validated score **0.545** (merged decision premise, served locally). Floor
-  0.200; single-clause served 0.457.
-- `dev_eval` predicts the service exactly (training T024 0.545 == validation
-  T027 0.545), so iterate locally.
-- Remaining headroom is almost entirely **localization**: chosen span tIoU 0.36
-  vs searched-neighbourhood oracle 0.66 vs global candidate oracle 0.88.
-- Serving works: local GTX 1650, `large-v3-turbo` int8 + base NLI, cloudflared;
-  ~22 s mean / 31 s worst (cached transcripts), 1.6 GB VRAM.
+- **Validated score 0.606** (T034): `answerers/modernbert` behind
+  `MEDAPP_ANSWERER`, final model on all 39, 64/32 passages + `multi-qa-MiniLM`
+  top-8, ModernBERT-base cross-encoder, class weights, `psupport` decode τ 0.16.
+  Previous best: legacy merged 0.545 (T027). Floor 0.200.
+- **OOF predicts the service**: T033 OOF 0.610 vs T034 validation 0.606.
+- The pipeline is now **modular** (`answerers/` behind `MEDAPP_ANSWERER`,
+  default `legacy`), so legacy, ModernBERT and future answerers A/B against the
+  same contract and the same harness.
 
-## Thread A — the main path
+## Diagnosis (T033 OOF, class-weighted ModernBERT)
 
-- **A2 (next): learned span localizer** (ADR-0003). Train on the 195 gold spans,
-  LOCO over 39 conversations. Feature ranker (GBM/logreg) first; DeBERTa-base
-  `(question, span)` cross-encoder second. Wire into `answer.py` as the selector.
-  Side benefit: removes ~1000 candidate NLI calls/conv → frees latency for a
-  large-NLI decision. Gate: LOCO mIoU > 0.34 and score > 0.579.
-- **Neighbour sweep (optional, cheap):** `MEDAPP_DECISION_NEIGHBOURS ∈ {0,1,2,3}`
-  base/large, decision-only, to confirm the optimum sits at ±1 (recall saturates,
-  precision keeps falling). ~10–15 min on IDUN.
-- **Large NLI for the decision:** +0.03 on training (0.579) but ~2.5× cost; needs
-  premise-encoding reuse / batched hypotheses to fit the 60 s budget on the 1650.
-- **Serving:** local + **named tunnel** (stable URL) requires a Cloudflare-managed
-  domain; quick tunnel meanwhile. Re-serve + validate after A2.
+| type | recall | failures |
+| --- | --- | --- |
+| positive | 0.800 (156/195) | 39 missed, `p_support` ≈ 0 (paraphrase/abbreviation) |
+| hard_negative | 0.873 (124/142) | 18 false positives, all slot contradictions |
+| off_topic | 1.000 | — |
+
+- **Missed positives are paraphrases**, not threshold cases: `p_support` median
+  0.002. Examples: "NSAID" ↔ "anti-inflammatory painkillers", "ECG" ↔
+  "electrocardiogram", "proton pump inhibitor" ↔ "stomach protection".
+  **35/39 are caught by the legacy large-NLI decision.**
+- **False-positive hard negatives are slot contradictions** the model ignores:
+  dose 200 vs 100 mg, LDL 4.2 vs 2.2, seven vs three lesions, "foreign body
+  found" vs "no foreign body", antifungal vs moisturizing cream, throat vs mouth.
+- **mean tIoU when answering yes = 0.557** (n=156); mIoU 0.446 = 156/195 × 0.557.
+  tIoU buckets among yes: ≥0.8 → 40, 0.5–0.8 → 56, 0.3–0.5 → 25, 0.1–0.3 → 16,
+  <0.1 → 19. Gold and predicted durations match (2.7 s vs 2.6 s), and **119/156
+  predicted starts are earlier than gold** — the dominant error is picking a
+  different occurrence of repeated/paraphrased evidence, not span length.
+- Score arithmetic: recall loss ≈ 0.067; localization loss ≈ 0.21 (vs a perfect
+  contained span) / ≈ 0.09 (vs a realistic 0.75).
+
+## Improvement backlog (ranked)
+
+| # | improvement | expected gain | effort / risk |
+| --- | --- | --- | --- |
+| 1 | **Hybrid: legacy NLI decision + ModernBERT span** (A: legacy decides; B: `MB_yes OR legacy_yes`) | OOF 0.610 → **0.647 (A) / 0.661 (B)**, no retrain | M / low |
+| 2 | **Selective NLI gating** (run NLI only where MB says no / is uncertain) | keeps the hybrid at ~25–28 s mean, ~38 s worst | S / low |
+| 3 | **Base vs large decision + `NLI_HALF=1` fp16** measurement | closes the gap to #1 or frees latency | S / low |
+| 4 | **Occurrence-aware span training**: cross-occurrence negatives (same evidence restated elsewhere) | attacks the biggest loss, up to ~+0.09 | M / med |
+| 5 | **Boundary head / frame-level refiner** around the chosen region | tIoU 0.557 → toward the 0.89 word-time ceiling | L / med |
+| 6 | **Soft start/end targets + expected-tIoU loss** (currently near-inert) | modest mIoU; makes `q` usable | M / low |
+| 7 | **Calibrate `p_support`** (temperature scaling on OOF) | principled `p > 0.4/(0.8+1.2q)` decoder, eval robustness | S / low |
+| 8 | **Slot/contradiction features or head** (drug, dose, unit, polarity, anatomy) | hn 0.873 → legacy-like 0.93+ | M / med |
+| 9 | **Capacity/ensembling**: ModernBERT-large, fold ensemble, LR schedule, longer training | a few points; fold spread 0.522–0.663 | M / med |
+| 10 | **ASR/alignment bake-off** (medical Whisper, Parakeet, Qwen aligner) | small direct; enables #5 | L / med |
+| 11 | **Retrieval fusion** (BM25 + MiniLM) / clause-anchor union | tiny — recall already 0.995/1.000 | S / low |
+| 12 | **Data curation**: fix degenerate gold spans, review flagged rows, codify the occurrence convention | removes noise; feeds #4 | M / low |
+
+Priority: **1 + 2 + 3** (safe, no retrain) → **4 + 7** → 5/8/9.
+
+## Thread A — decide + localize
+
+- **A1 (next): hybrid decision.** Add `answerers/hybrid.py` (factory name
+  `hybrid`) that runs the legacy NLI *decision only* (merged clause premise +
+  numeric guard, no sub-range search) and ModernBERT for spans, with a mode flag
+  for strategy A vs B and selective NLI gating. Calibrate τ on grouped OOF.
+  Gate: OOF > 0.610 and 1650 latency within budget.
+- **A2: occurrence-aware span training.** Add cross-occurrence negatives to
+  `modernbert_data.build_examples` (other mentions of the same evidence in the
+  same conversation labelled NOT_MENTIONED / low target-tIoU) and re-train OOF.
+- **A3: boundary refiner** (frame-level offsets) once A2 plateaus.
+- **A4: calibration + decoder** — temperature-scale `p_support`, revisit the
+  score-aware rule.
+- **A5: capacity** — ModernBERT-large and/or fold ensembling.
 
 ## Thread B — LLM method (ceiling probe)
 
-Can a local instruction LLM beat NLI on the decision and localize via a verbatim
-quote resolved to word timestamps?
+Use a local instruction LLM to establish an upper bound on decision + quote-cited
+localization, then decide whether to serve a small quantised variant or use it as
+a teacher.
 
-- **Where:** IDUN GPUs. 7–8B instruct (Qwen2.5-7B / Llama-3.1-8B) via vLLM or
-  llama.cpp.
-- **Shape:** one call per conversation — timestamped, id'd transcript + all ten
-  questions → strict JSON `{answer, evidence_quote}`; few-shot examples from the
-  training split.
-- **Scoring:** reuse `dev_eval` metrics; align the quote back to `Word.start/end`
-  for tIoU. Compare against 0.545 (base) / 0.579 (large).
-- **Serving:** 4 GB cannot run 7B usefully → likely a ceiling probe, or a 3B/int4
-  / GGUF-on-CPU variant if it wins.
-- **Risks:** hallucinated/unfindable quotes, latency, prompt sensitivity; no tuning
-  on validation.
+- **Branch:** new branch off `medical-dominic` (to be created).
+- **Shape:** `answerers/llm.py` behind the factory (`MEDAPP_ANSWERER=llm`); one
+  call per conversation with a timestamped, id'd transcript + all ten questions
+  → strict JSON `{answer, evidence_quote}`; align the quote back to
+  `Word.start/end` with the aligner already in `annotations/build.py`.
+- **Where:** IDUN GPUs, 7–8B instruct (Qwen2.5-7B / Llama-3.1-8B) via vLLM.
+- **Scoring:** reuse `dev_eval` metrics; compare to 0.606 (ModernBERT served)
+  and the 0.647/0.661 hybrid estimates.
+- **Serving reality:** the 4 GB 1650 cannot run 7B usefully → the probe is a
+  ceiling, or the model becomes a **teacher** generating occurrence/paraphrase
+  supervision for Thread A (feeds #4/#8), or a 3B/int4 variant if it wins.
+- **High-value variant:** LLM as decision + occurrence selector (show it the
+  retrieved candidate passages and ask which occurrence a human would cite),
+  with a span head or aligner producing the exact timestamps.
+- **Risks:** hallucinated/unfindable quotes, prompt sensitivity, latency; no
+  tuning on validation.
 
 ## Thread C — medical-domain ASR
 
-Improve transcription of medical terms (drugs, doses) and see if it moves the
-score. Research done:
-
-- **Candidate model:** `Na0s/Medical-Whisper-Large-v3` — whisper-large-v3
-  fine-tuned on PriMock-derived doctor/patient data; self-reported WER 0.19 vs
-  0.33 baseline. Also `xpoon/medical-whisper-large-v3-ggml` (Q5_0 ≈ 1.0 GB) and
-  `Knowtex-ai/whisper-medical-govcloud`.
-- **Data:** **PriMock57** — 57 mock primary-care consultations with audio +
-  utterance-level transcripts + notes (`github.com/babylonhealth/primock57`;
-  text form on HF). Built as a medical-ASR benchmark.
-- **Phase 1 (running):** WER on a PriMock subset for large-v3 / turbo /
-  Medical-Whisper-Large-v3; convert the medical HF model to CTranslate2 for
-  `faster-whisper`. Transcribe on IDUN.
-- **Phase 2 (gate):** transcribe our 39 with the medical model (separate cache
-  hash), run `dev_eval`, compare to 0.545. Pursue only if the downstream score
-  improves — our ASR already preserves doses.
-- **Phase 3 (optional):** fine-tune **turbo** on PriMock57 on IDUN, convert and
-  re-evaluate. Serving a fine-tuned large-v3 int8 is ~3.6× on the 1650 (too slow
-  alongside NLI), so turbo is the serving-friendly target.
-- **Constraints:** no ground-truth transcripts for our 39 (only WER on PriMock +
-  downstream score); check PriMock/model licences; audio size.
+Unchanged from the earlier plan. `Na0s/Medical-Whisper-Large-v3` and a
+PriMock57 turbo fine-tune benchmarked by downstream score, not WER. Pursue only
+if it moves the score.
 
 ## Hygiene / open questions
 
-- Captures (`captured/`) and transcripts (`transcripts/`) are debug artifacts —
-  never train on validation/evaluation data.
-- Open: Cloudflare domain for the named tunnel? Priority between A2, B and C?
-  Whether to fine-tune (Thread C Phase 3) or just use the existing medical model.
+- Captures (`captured/`) and transcripts are debug artifacts — never train on
+  validation/evaluation data (evaluation is a different set).
+- The validated 0.606 is behind `MEDAPP_ANSWERER=modernbert`; `legacy` remains
+  the default and is one env var away.
+- Keep `models/modernbert_final/final.pt`; the per-fold checkpoints are large and
+  reproducible.
+- Open: named tunnel vs quick tunnel for the one-shot evaluation; whether to
+  fold the hybrid (#1) into the LLM branch or keep it on this branch.

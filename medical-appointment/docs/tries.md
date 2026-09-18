@@ -43,6 +43,8 @@ says otherwise, runs use `large-v3` ASR with cached transcripts (so ASR ≈ 0).
 | T031 | 2026-09-18 | ModernBERT passage retrieval recall gate | MiniLM | — | — | — | 64/32 + multi-qa top-8: sup 0.995 / ref 1.000 |
 | T032 | 2026-09-18 | ModernBERT scorer, first OOF (4 ep) | MB-base | 0.777 | 0.391 | 0.546 | +psupport decode 0.602 (LOCO τ .08) |
 | T033 | 2026-09-18 | **ModernBERT scorer, class-weighted (6 ep)** | MB-base | 0.854 | 0.446 | **0.609** | LOCO τ .16 → 0.610 |
+| T034 | 2026-09-18 | **validation: served ModernBERT** | MB-base | — | — | **0.606** | 19 convs, all 200 OK, worst 32.4 s |
+| T035 | 2026-09-18 | hybrid OOF analysis (legacy decide + MB span) | large+MB | 0.933 | 0.456 | 0.647 | B (OR) 0.661; offline only |
 
 Models: `base` = `MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli`,
 `large` = `MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli`.
@@ -282,4 +284,36 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
 - **Conclusion:** the learned path beats the frozen legacy pipeline out of fold
   on the training set. Next: final model on all 39, 1650 latency/VRAM check,
   then flip `MEDAPP_ANSWERER` (validation only with approval).
+
+## T034 — validation: served ModernBERT (0.606)
+
+- **Config:** `MEDAPP_ANSWERER=modernbert`, `models/modernbert_final/final.pt`
+  (trained on all 39, class weights, 6 epochs), `MEDAPP_MB_TAU=0.16`;
+  `large-v3-turbo` int8 ASR; local GTX 1650 + cloudflared quick tunnel.
+- **Results:** 19 validation conversations + verify, **all 200 OK, zero
+  timeouts**; latency mean **20.3 s**, worst **32.4 s** (uncached ASR ~14–32 s,
+  cached ~2.5–3 s); VRAM ~2.1 GB of 4 GB; **service score 0.606**.
+- **Correspondence:** 0.606 vs the T033 OOF estimate 0.610 — the OOF predicts the
+  service, as the legacy pipeline did.
+- **Conclusion:** the ModernBERT path is the best validated config so far
+  (legacy served 0.545, T027). The remaining loss is localization + decision
+  paraphrase/slot errors; the hybrid (T035) is the next no-retrain gain.
+
+## T035 — hybrid offline analysis (legacy decision + ModernBERT span)
+
+- **Method:** offline join of the legacy large-NLI OOF (`results/oof_T030.json`)
+  and the class-weighted ModernBERT OOF. Decide with the legacy NLI (merged
+  clause premise + guard); take the span from ModernBERT. Two strategies, τ
+  selected leave-one-conversation-out.
+- **A (legacy decides):** LOCO **0.647** (acc 0.933, mIoU 0.456, τ 0.30);
+  positive 0.944, hard_negative 0.930, off_topic 0.943.
+- **B (`MB_yes OR legacy p≥0.80`):** LOCO **0.661** (acc 0.928, mIoU 0.483,
+  τ 0.80); positive 0.979, hard_negative 0.852, off_topic 0.981.
+- **Why it works:** legacy MNLI recovers 35/39 paraphrase misses and rejects the
+  slot-contradiction hard negatives; ModernBERT supplies the tighter span
+  (tIoU 0.557 vs legacy ~0.36).
+- **Latency note:** only the legacy *decision* is needed (localization dropped,
+  ~8.8 s saved), and it can be gated to questions ModernBERT answers no.
+- **Status:** offline only; not yet implemented as an answerer or served. Next:
+  `answerers/hybrid.py`, OOF calibration, 1650 latency check, validate.
 

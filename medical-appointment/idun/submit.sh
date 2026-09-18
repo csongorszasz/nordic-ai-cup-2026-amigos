@@ -59,6 +59,14 @@ sync_code() {
     echo "Sync complete."
 }
 
+# Training reads cached transcripts directly; `sync` excludes transcripts/ so
+# remote caches are never deleted, so push the local ones explicitly.
+sync_transcripts() {
+    echo "Syncing transcripts -> ${REMOTE}:${REMOTE_DIR}/transcripts"
+    ssh "$REMOTE" "mkdir -p ${REMOTE_DIR}/transcripts"
+    rsync -avz "${PROJECT_ROOT}/transcripts/" "${REMOTE}:${REMOTE_DIR}/transcripts/"
+}
+
 # Copy experiment summaries (and transcripts) back from IDUN. results/ is
 # excluded from sync so it is never deleted remotely; pull it to keep a record.
 pull_results() {
@@ -113,7 +121,7 @@ case "$ACTION" in
         ;;
 
     train)
-        check_ssh; sync_code
+        check_ssh; sync_code; sync_transcripts
         shift || true
         ARGS="$*"
         JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_train_modernbert.slurm ${ARGS}")
