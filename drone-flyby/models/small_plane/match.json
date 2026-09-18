@@ -1,0 +1,95 @@
+{
+ "yak9": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 9.1,
+  "mean_colour_error": 24.7,
+  "mean_iou": 0.787,
+  "mesh": "models/small_plane/yak9/scene.gltf",
+  "offsets": [
+   107.8,
+   90.9,
+   70.7
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 25.5,
+    "file": "small_plane/f007_4.png",
+    "iou": 0.79,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 75
+   },
+   {
+    "colour_error": 26.0,
+    "file": "small_plane/f006_4.png",
+    "iou": 0.809,
+    "lean": 90,
+    "structure": 0.0,
+    "tilt": 16,
+    "yaw": 80
+   },
+   {
+    "colour_error": 24.2,
+    "file": "small_plane/f005_4.png",
+    "iou": 0.796,
+    "lean": 135,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 80
+   },
+   {
+    "colour_error": 24.8,
+    "file": "small_plane/f004_4.png",
+    "iou": 0.808,
+    "lean": 135,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 80
+   },
+   {
+    "colour_error": 23.8,
+    "file": "small_plane/f003_4.png",
+    "iou": 0.777,
+    "lean": 135,
+    "structure": 0.0,
+    "tilt": 8,
+    "yaw": 80
+   },
+   {
+    "colour_error": 25.1,
+    "file": "small_plane/f002_4.png",
+    "iou": 0.764,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 80
+   },
+   {
+    "colour_error": 23.7,
+    "file": "small_plane/f001_5.png",
+    "iou": 0.775,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 16,
+    "yaw": 80
+   },
+   {
+    "colour_error": 24.4,
+    "file": "small_plane/f000_5.png",
+    "iou": 0.773,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 16,
+    "yaw": 80
+   }
+  ],
+  "tilt": 20.0,
+  "up": "auto"
+ }
+}

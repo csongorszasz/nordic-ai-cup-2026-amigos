@@ -1,0 +1,11 @@
+Model Information:
+* title:	PT-34-85 mine clearing vehicle
+* source:	https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f
+* author:	42manako (https://sketchfab.com/42manako)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "PT-34-85 mine clearing vehicle" (https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f) by 42manako (https://sketchfab.com/42manako) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

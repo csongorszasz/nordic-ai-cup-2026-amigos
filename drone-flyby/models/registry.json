@@ -178,14 +178,14 @@
  "medium_launcher": [
   {
    "added": "2026-09-18",
-   "author": "Dominik Bia\u0142y",
+   "author": "Dominik Biały",
    "author_profile": "https://sketchfab.com/crazyyuan",
    "downloadable": true,
    "faces": 53030,
    "licence": "CC Attribution",
    "licence_requirements": "Author must be credited. Commercial use is allowed.",
    "note": "Juan: the dark cluster with barrels in the medium_launcher sprites is this Hawk launcher; scale to 9.9 x 9.3 m",
-   "status": "candidate",
+   "status": "downloaded",
    "title": "Mim-23 Hawk SAM air defence system (game-ready)",
    "url": "https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4"
   }
@@ -219,14 +219,14 @@
   },
   {
    "added": "2026-09-18",
-   "author": "Tommy",
+   "author": "an.s055163",
    "author_profile": "https://sketchfab.com/an.s055163",
    "downloadable": true,
    "faces": 9302,
    "licence": "CC Attribution",
    "licence_requirements": "Author must be credited. Commercial use is allowed.",
    "note": "alternative CC-BY Mustang, 9.3k faces",
-   "status": "candidate",
+   "status": "downloaded",
    "title": "P-51 Mustang",
    "url": "https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529"
   }
@@ -241,7 +241,7 @@
    "licence": "CC Attribution",
    "licence_requirements": "Author must be credited. Commercial use is allowed.",
    "note": "T-34 hull with roller drum; ground extent close to the measured 12.6 x 11.1 m",
-   "status": "candidate",
+   "status": "downloaded",
    "title": "PT-34-85 mine clearing vehicle",
    "url": "https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f"
   }
@@ -271,7 +271,7 @@
    "licence": "CC Attribution",
    "licence_requirements": "Author must be credited. Commercial use is allowed.",
    "note": "WW2 fighter; paint the red nose/tail markings seen in the sprites; scale to 10.5 x 9.0 m",
-   "status": "candidate",
+   "status": "downloaded",
    "title": "Yak-9",
    "url": "https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684"
   }
