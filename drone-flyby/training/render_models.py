@@ -706,6 +706,11 @@ def main():
             print(f'    mean IoU {summary["mean_iou"]:.3f}, colour error {summary["mean_colour_error"]:.1f}/255, '
                   f'implied length {summary["length_m"]} m')
 
+    # The projected paint above is only kept for models without a texture of their own; the
+    # rest keep their texture with its colours shifted to the real object's (recolour_models.py).
+    import recolour_models
+    recolour_models.recolour(args.class_name)
+
     # Sheet: one row per real cut-out, real sprite first, then each model's best match.
     rows = []
     for i, (file, sprite, _) in enumerate(sprites):

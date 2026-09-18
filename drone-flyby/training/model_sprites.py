@@ -140,7 +140,9 @@ def main():
             continue
         name, fit = found
         meshes, height = load_painted(rm.BAKED / f'{class_name}_{name}.glb')
-        renderer = rm.Renderer(meshes, height, flat=True)
+        # Recoloured models (recolour_models.py) keep their own texture, which carries no real
+        # light: render them lit. Projection-painted ones carry the real image's light: flat.
+        renderer = rm.Renderer(meshes, height, flat=fit.get('paint') != 'recoloured')
         rotor = None
         if class_name in ROTORS:  # hub: the top of the mast, the model's highest point
             vertices = np.vstack([m.vertices for m in meshes])

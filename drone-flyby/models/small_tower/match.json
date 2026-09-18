@@ -15,6 +15,7 @@
    -37.5,
    -40.0
   ],
+  "paint": "projected",
   "per_sprite": [
    {
     "colour_error": 24.8,
