@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_10_hard_no_q01",
+    "transcript_id": "sample_10",
+    "question": "Has the doctor found the condition to be unstable?",
+    "bucket": "refute",
+    "quote": "I would describe this as a stable situation.",
+    "reason": "Asserted unstable condition vs actual stable situation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q04",
+    "transcript_id": "sample_10",
+    "question": "Did the patient report new breathing symptoms?",
+    "bucket": "refute",
+    "quote": "Any new symptoms? No. Nothing new.",
+    "reason": "Asserted new breathing symptoms reported vs actual no new symptoms.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q01",
+    "transcript_id": "sample_10",
+    "question": "Does the patient need continued treatment?",
+    "bucket": "support",
+    "quote": "You do need to continue the treatment you are on.",
+    "reason": "Doctor states treatment must continue.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_off_topic_q02",
+    "transcript_id": "sample_10",
+    "question": "Did the patient mention owning a specific pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a pet.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_off_topic_q01",
+    "transcript_id": "sample_10",
+    "question": "Was any problem with housing discussed?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of housing.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q05",
+    "transcript_id": "sample_10",
+    "question": "Is the stomach acid medication being discontinued?",
+    "bucket": "refute",
+    "quote": "Dimista and Esomeprazole for the stomach acid. Both renewed.",
+    "reason": "Asserted stomach acid medication discontinued vs actual both renewed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q03",
+    "transcript_id": "sample_10",
+    "question": "Were abnormal sounds heard over the lungs?",
+    "bucket": "refute",
+    "quote": "Nothing abnormal on listening.",
+    "reason": "Asserted abnormal lung sounds vs actual nothing abnormal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q02",
+    "transcript_id": "sample_10",
+    "question": "Were the lungs and heart normal on auscultation?",
+    "bucket": "support",
+    "quote": "Your lungs and and your heart both sound normal.",
+    "reason": "Lungs and heart reported normal on listening.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q03",
+    "transcript_id": "sample_10",
+    "question": "Are the patient's complaints unchanged, with nothing new reported?",
+    "bucket": "support",
+    "quote": "Nothing you have described today points to something new.",
+    "reason": "Doctor confirms nothing new reported.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q02",
+    "transcript_id": "sample_10",
+    "question": "Does the plan include a referral to a lung specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of referral to a lung specialist.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  }
+]

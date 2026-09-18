@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_86_off_topic_q01",
+    "transcript_id": "sample_86",
+    "question": "Does the conversation mention a specific dish the patient plans to cook for dinner?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No dish or dinner plans are mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q01",
+    "transcript_id": "sample_86",
+    "question": "Is the patient free of fever?",
+    "bucket": "support",
+    "quote": "No fever.",
+    "reason": "Patient denies fever when asked.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q03",
+    "transcript_id": "sample_86",
+    "question": "Is the tenderness in the area described as severe?",
+    "bucket": "refute",
+    "quote": "there is slight tenderness there.",
+    "reason": "Asserted severe tenderness, but transcript states slight tenderness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q01",
+    "transcript_id": "sample_86",
+    "question": "Has surgery been scheduled to remove the swelling?",
+    "bucket": "refute",
+    "quote": "We wait and see how it develops.",
+    "reason": "Asserted surgery scheduled, but actual plan is to wait and see.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q05",
+    "transcript_id": "sample_86",
+    "question": "Were both testicles found to be enlarged and abnormal?",
+    "bucket": "refute",
+    "quote": "The testicles themselves feel normal to me on both sides.",
+    "reason": "Asserted both enlarged and abnormal, but exam found them normal on both sides.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q04",
+    "transcript_id": "sample_86",
+    "question": "Did the patient have a fever when he came in?",
+    "bucket": "refute",
+    "quote": "No fever.",
+    "reason": "Asserted fever present, but patient reported no fever.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q03",
+    "transcript_id": "sample_86",
+    "question": "Both testicles felt normal at the examination, correct?",
+    "bucket": "support",
+    "quote": "The testicles themselves feel normal to me on both sides.",
+    "reason": "Doctor states both testicles feel normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q02",
+    "transcript_id": "sample_86",
+    "question": "Does the doctor suspect a testicular torsion?",
+    "bucket": "refute",
+    "quote": "What I suspect is a spermatocele",
+    "reason": "Asserted torsion suspected, but doctor suspects spermatocele.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q06",
+    "transcript_id": "sample_86",
+    "question": "Was the swelling located on the left side of the scrotum?",
+    "bucket": "refute",
+    "quote": "a small swelling around the epididymis on the right",
+    "reason": "Asserted left side, but swelling is on the right.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q02",
+    "transcript_id": "sample_86",
+    "question": "Was a small swelling found around the epididymis?",
+    "bucket": "support",
+    "quote": "a small swelling around the epididymis on the right",
+    "reason": "Doctor reports small swelling around epididymis on right.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  }
+]

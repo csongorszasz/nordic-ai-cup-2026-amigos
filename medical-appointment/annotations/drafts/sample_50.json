@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_50_yes_q04",
+    "transcript_id": "sample_50",
+    "question": "Are further tests needed before the diagnosis can be settled?",
+    "bucket": "support",
+    "quote": "Further tests have been arranged to settle it.",
+    "reason": "Doctor states further tests arranged to settle the diagnosis.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q01",
+    "transcript_id": "sample_50",
+    "question": "Does the fasting blood sugar lie at 5.0 mmol/L?",
+    "bucket": "refute",
+    "quote": "Your fasting blood sugar was 7.0 millimoles per liter.",
+    "reason": "Asserted 5.0 vs actual 7.0 mmol/L.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_off_topic_q01",
+    "transcript_id": "sample_50",
+    "question": "Are the speakers discussing the patient's recent college experience?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of college experience occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q01",
+    "transcript_id": "sample_50",
+    "question": "The HbA1c came out at 47 mmol/mol, right?",
+    "bucket": "support",
+    "quote": "Your long-term sugar value was 47 millimoles per mole.",
+    "reason": "Long-term sugar (HbA1c) stated as 47.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q03",
+    "transcript_id": "sample_50",
+    "question": "Was the patient's BMI recorded as 29?",
+    "bucket": "support",
+    "quote": "Your body mass index is 29.",
+    "reason": "BMI explicitly stated as 29.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q03",
+    "transcript_id": "sample_50",
+    "question": "Has metformin treatment been started at this visit?",
+    "bucket": "refute",
+    "quote": "Nothing changes for you until we have them.",
+    "reason": "Asserted metformin started vs actual no changes pending further tests.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_off_topic_q02",
+    "transcript_id": "sample_50",
+    "question": "Was the patient talking about their recent weekend?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the recent weekend occurs; only a holiday is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q05",
+    "transcript_id": "sample_50",
+    "question": "Is the patient free of any symptoms at this visit?",
+    "bucket": "support",
+    "quote": "I feel completely normal.",
+    "reason": "Patient reports feeling completely normal with no symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q02",
+    "transcript_id": "sample_50",
+    "question": "Does the patient have a fasting blood sugar of 7.0 mmol/L?",
+    "bucket": "support",
+    "quote": "Your fasting blood sugar was 7.0 millimoles per liter.",
+    "reason": "Fasting blood sugar explicitly stated as 7.0.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q02",
+    "transcript_id": "sample_50",
+    "question": "Were the results enough to confirm type 2 diabetes already?",
+    "bucket": "refute",
+    "quote": "It is not confirmed. It is a suspicion.",
+    "reason": "Asserted confirmed diabetes vs actual unconfirmed suspicion.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  }
+]

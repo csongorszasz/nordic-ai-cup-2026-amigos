@@ -1,8 +1,10 @@
 """The model behind ``/predict``.
 
-Transcribe once per conversation with local ASR (word timestamps kept), build
-phrase-level windows, then answer each question by NLI entailment and return the
-tightest supporting word range. Nothing here calls a cloud API.
+Transcribe once per conversation with local ASR (word timestamps kept), then
+hand the questions to the answerer selected by ``MEDAPP_ANSWERER`` (see
+``answerers/``). The default is the frozen NLI pipeline; a task-trained
+cross-encoder can be A/B'd behind the same contract. Nothing here calls a cloud
+API.
 
 ``predict`` never raises: one exception would score all ten of a conversation's
 questions wrong, so every failure falls back to a well-formed guess.
@@ -13,9 +15,8 @@ import os
 import time
 from typing import List, Optional
 
-import answer as answer_module
 import asr
-import windows as windows_module
+from answerers import get_answerer
 from capture import maybe_capture
 from dtos import ASRQuestionRequestDto, ASRQuestionResponseDto
 from utils import decode_audio
@@ -31,9 +32,10 @@ DEADLINE_S = float(os.environ.get("MEDAPP_DEADLINE_S", "50"))
 if os.environ.get("MEDAPP_SKIP_WARMUP") != "1":
     try:
         asr.warm_up()
-        from verifier import nli as _nli
-
-        _nli.warm_up()
+        answerer = get_answerer()
+        warm_up = getattr(answerer, "warm_up", None)
+        if warm_up is not None:
+            warm_up()
     except Exception:  # pragma: no cover - startup environment issue
         logger.exception("Model warm-up failed; will load lazily on first request.")
 
@@ -59,8 +61,6 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
 
     try:
         transcript = asr.transcribe_bytes(audio_bytes, request.audio_filename)
-        words = transcript.get("words", [])
-        windows = windows_module.windows_from_transcript(transcript)
     except Exception:
         logger.exception(
             "Transcription failed for %s; returning guesses.", request.audio_filename
@@ -71,21 +71,23 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     evidence_start: List[Optional[float]] = []
     evidence_end: List[Optional[float]] = []
 
-    for question in request.questions:
-        # Budget guard: a valid guess beats blowing the 60 s request budget.
-        if time.time() - started > DEADLINE_S:
-            logger.warning(
-                "Deadline %.0fs reached; guessing remaining questions.", DEADLINE_S
-            )
-            answers.append(True)
-            evidence_start.append(None)
-            evidence_end.append(None)
-            continue
+    try:
+        answerer = get_answerer()
+        results = answerer.answer_all(
+            request.questions, transcript, deadline=started + DEADLINE_S
+        )
+    except Exception:
+        logger.exception(
+            "Answering failed for %s; returning guesses.", request.audio_filename
+        )
+        return _fallback(len(request.questions))
 
-        try:
-            is_true, span = answer_module.answer_question(question, words, windows)
-        except Exception:
-            logger.exception("Answering failed; guessing for: %s", question)
+    # Be defensive about the contract: the service scores by position and a
+    # wrong-length response loses every question about the conversation.
+    for question_index in range(len(request.questions)):
+        if question_index < len(results):
+            is_true, span = results[question_index]
+        else:
             is_true, span = True, None
 
         answers.append(bool(is_true))

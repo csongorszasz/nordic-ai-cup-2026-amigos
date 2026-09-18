@@ -1,23 +1,26 @@
 #!/bin/bash
-# Slow test suite (model-backed) on one GPU node.
+# Train the ModernBERT candidate scorer on a conversation-grouped split.
 #
-#   sbatch --account=share-ie-idi idun/job_test.slurm
+#   bash idun/submit.sh train --folds 5 --bf16
+#   bash idun/submit.sh train --loco
+#
+# fp16/bf16-capable node only: P100 (gpu16g) cannot do fp16 or int8.
 #
 #SBATCH --account=share-ie-idi
-#SBATCH --job-name=med_tests
-#SBATCH --time=0-00:30:00
+#SBATCH --job-name=med_train_mb
+#SBATCH --time=0-02:00:00
 #SBATCH --partition=GPUQ
 #SBATCH --gres=gpu:1
 #SBATCH --constraint="gpu32g|gpu40g|gpu80g"
-#SBATCH --mem=16G
+#SBATCH --mem=64G
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
-mkdir -p logs transcripts
+mkdir -p logs models transcripts
 
 module purge
 module load Anaconda3/2023.09-0
@@ -27,12 +30,17 @@ conda activate nordic
 
 export PYTHONUNBUFFERED=1
 export HF_HUB_OFFLINE=1
+export MEDAPP_SKIP_WARMUP=1
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 echo "########################################################################"
 
-python -m pytest -m "slow" -v
+echo ">>> fast test gate"
+python -m pytest -m "not slow" -q
+
+echo ">>> train"
+python train_modernbert.py "$@"
 
 echo "########################################################################"
 echo "finished $(date)"

@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_90_yes_q04",
+    "transcript_id": "sample_90",
+    "question": "Does the doctor consider the change harmless?",
+    "bucket": "support",
+    "quote": "the change looks harmless.",
+    "reason": "Doctor states change looks harmless.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q01",
+    "transcript_id": "sample_90",
+    "question": "Did the doctor find the change suspicious?",
+    "bucket": "refute",
+    "quote": "the change looks harmless.",
+    "reason": "Asserted suspicious, but doctor states harmless.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_off_topic_q01",
+    "transcript_id": "sample_90",
+    "question": "Does the patient talk about their job responsibilities?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Job responsibilities are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q03",
+    "transcript_id": "sample_90",
+    "question": "Did the patient notice a new mole?",
+    "bucket": "support",
+    "quote": "I have got a new mole on my thigh",
+    "reason": "Patient states they have a new mole on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q03",
+    "transcript_id": "sample_90",
+    "question": "Is the new mole sitting on the back?",
+    "bucket": "refute",
+    "quote": "a new mole on my thigh",
+    "reason": "Asserted back location, but mole is on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q01",
+    "transcript_id": "sample_90",
+    "question": "Was a photo sent in for assessment?",
+    "bucket": "support",
+    "quote": "You sent a photograph through to us",
+    "reason": "Doctor confirms photo sent and patient affirms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q05",
+    "transcript_id": "sample_90",
+    "question": "Has the doctor reviewed the photograph?",
+    "bucket": "support",
+    "quote": "I have looked at the photograph carefully.",
+    "reason": "Doctor states they reviewed the photograph.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_off_topic_q02",
+    "transcript_id": "sample_90",
+    "question": "Does the patient mention owning a cat?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Owning a cat is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q02",
+    "transcript_id": "sample_90",
+    "question": "Does the patient describe the mole as small and unchanged?",
+    "bucket": "refute",
+    "quote": "it is quite large.",
+    "reason": "Asserted small, but patient describes mole as quite large.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q02",
+    "transcript_id": "sample_90",
+    "question": "Is the mole located on the thigh?",
+    "bucket": "support",
+    "quote": "a new mole on my thigh",
+    "reason": "Patient states mole is on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  }
+]
