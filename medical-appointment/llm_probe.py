@@ -256,6 +256,13 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
     elapsed = time.perf_counter() - started
     parsed = parse_answers(raw, ids)
 
+    if sum(1 for value in parsed.values() if value is None) > len(ids) // 2:
+        logger.warning(
+            "RAG output parse issue (%d/%d); raw len=%d head=%r",
+            sum(1 for value in parsed.values() if value is None),
+            len(ids), len(raw or ""), (raw or "")[:800],
+        )
+
     records: List[Dict] = []
     parse_failures = 0
     for i, (row, qid) in enumerate(zip(rows, ids)):
