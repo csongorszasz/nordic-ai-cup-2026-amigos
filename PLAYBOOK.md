@@ -15,7 +15,7 @@ Deadline: **Sun 20 Sep, 16:00 CEST**. Per problem: unlimited validation attempts
 |---|---|---|
 | Juan's desktop | RTX 2060, 6 GB VRAM, 12 threads, 15 GB RAM | serving + light training |
 | Teammate laptop | 8 GB VRAM | serving + light training |
-| IDUN (NTNU) | big GPUs, SLURM jobs | heavy training / sweeps only, cannot serve |
+| IDUN (NTNU) | big GPUs, SLURM jobs | heavy training / sweeps only, cannot serve — see `drone-flyby/idun/README.md` |
 | Azure (parked) | CPU only, 2 VMs in Belgium | fallback host; `amigos-sim` is a cheap place for survival |
 
 **Exposing a laptop to the judges:** the evaluator must reach `http(s)://<host>/predict` from the internet. University/home networks usually block that, so use a tunnel:
