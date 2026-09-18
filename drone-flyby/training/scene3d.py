@@ -168,7 +168,8 @@ def main():
             'class': ann['object_id'], 'model': model, 'length_m': fit['length_m'],
             'url': f'/compare/_baked/{ann["object_id"]}_{model}.glb',
             'position': (TO_Y_UP[:3, :3] @ spot).round(2).tolist(),  # three.js coordinates
-            'heading': rng.uniform(0, 360), 'bbox': ann['bbox'],
+            # Sprite renders have the model's +y up the image; the frame's up is north turned by the camera yaw.
+            'heading': (camera['yaw'] + ann['yaw']) % 360, 'bbox': ann['bbox'],
         })
 
     out = OUT / name

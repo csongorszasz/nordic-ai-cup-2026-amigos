@@ -53,7 +53,7 @@ from make_dataset import (  # noqa: E402
     view_centres,
 )
 from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
-from drone_camera import lean_at  # noqa: E402
+from drone_camera import METRES_PER_PIXEL, lean_at  # noqa: E402
 
 SOURCE_W, SOURCE_H = 3840, 2160
 # Classes that tend to appear together in the supplied scenes, so the detector sees
@@ -72,6 +72,10 @@ GRADE_MEAN = (80, 115)
 GRADE_SATURATION = (80, 135)
 MAX_GAIN = 1.4  # lighting match: more than this turned the near-black hangars neon yellow
 MAX_SATURATION_BOOST = 2.5  # beyond this, colour noise and casts dominate
+# Objects on a ground mask keep this far from anything that is not open ground (walls, trees),
+# and all of their box must be on it: 70% let hangars run half into buildings.
+GROUND_CLEARANCE_M = 3.0
+GROUND_SHARE = 0.98
 
 
 def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: bool):
@@ -96,7 +100,7 @@ def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: boo
 
 
 def load_model_sprites(bank_dir: Path):
-    """{class: [(RGBA, tilt, lean)]} from model_sprites.py, or {} when there is no bank."""
+    """{class: [(RGBA, tilt, lean, yaw)]} from model_sprites.py, or {} when there is no bank."""
     index_path = bank_dir / 'index.json'
     if not index_path.exists():
         return {}
@@ -104,22 +108,22 @@ def load_model_sprites(bank_dir: Path):
     for entry in json.loads(index_path.read_text()):
         image = cv2.imread(str(bank_dir / entry['file']), cv2.IMREAD_UNCHANGED)
         if image is not None and image.shape[2] == 4:
-            by_class.setdefault(entry['class'], []).append((image, entry['tilt'], entry['lean']))
+            by_class.setdefault(entry['class'], []).append((image, entry['tilt'], entry['lean'], entry['yaw']))
     return by_class
 
 
 def pick_model_sprite(bank, cx: float, cy: float, rng: random.Random):
-    """The render (of a random few) whose tilt and lean best match frame position (cx, cy)."""
+    """The (RGBA, tilt, lean, yaw) render, of a random few, whose tilt and lean best match frame position (cx, cy)."""
     tilt, lean = lean_at(cx, cy)
     candidates = rng.sample(bank, min(60, len(bank)))
 
     def cost(item):
-        _, t, l = item
+        t, l = item[1], item[2]
         turn = abs((l - lean + 180) % 360 - 180)
         # Lean direction matters in proportion to how tilted the view is.
         return ((t - tilt) / 6) ** 2 + (turn / 25 * math.sin(math.radians(tilt))) ** 2
 
-    return min(candidates, key=cost)[0]
+    return min(candidates, key=cost)
 
 
 def transform_sprite(sprite: np.ndarray, rng: random.Random):
@@ -189,10 +193,15 @@ def grade(background: np.ndarray, rng: random.Random):
 
 
 def load_background(path: Path):
-    """(BGR frame, open-ground mask or None) for one background."""
+    """(BGR frame, open-ground mask shrunk by GROUND_CLEARANCE_M, or None) for one background."""
     mask_path = path.with_name(path.stem + '_ground.png')
     mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE) if mask_path.exists() else None
-    return cv2.imread(str(path)), (mask > 127 if mask is not None else None)
+    if mask is None:
+        return cv2.imread(str(path)), None
+    metres_per_px = METRES_PER_PIXEL * SOURCE_W / mask.shape[1]
+    r = int(math.ceil(GROUND_CLEARANCE_M / metres_per_px))
+    mask = cv2.erode((mask > 127).astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
+    return cv2.imread(str(path)), mask > 0
 
 
 def pick_spot(ground, rng: random.Random):
@@ -205,7 +214,7 @@ def pick_spot(ground, rng: random.Random):
     return (xs[i] + rng.random()) * sx, (ys[i] + rng.random()) * sy
 
 
-def on_ground(ground, box, share: float = 0.7) -> bool:
+def on_ground(ground, box, share: float = GROUND_SHARE) -> bool:
     """Whether most of the box lies on open ground (always, without a mask)."""
     if ground is None:
         return True
@@ -213,6 +222,12 @@ def on_ground(ground, box, share: float = 0.7) -> bool:
     x1, y1, x2, y2 = box
     patch = ground[int(y1 * sy):int(y2 * sy) + 1, int(x1 * sx):int(x2 * sx) + 1]
     return patch.size > 0 and patch.mean() >= share
+
+
+def class_size(name: str, sprites: dict, model_sprites: dict) -> float:
+    """Median on-screen size (px, longest side) of a class's sprites."""
+    images = [item[0] for item in model_sprites.get(name, [])] or sprites.get(name, [])
+    return float(np.median([max(image.shape[:2]) for image in images])) if images else 0.0
 
 
 def paste(canvas: np.ndarray, sprite: np.ndarray, x: int, y: int, shadow: tuple, rng: random.Random):
@@ -265,16 +280,19 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
         else:
             wanted.append(rng.choice(sorted(set(sprites) | set(model_sprites))))
     rng.shuffle(wanted)
+    wanted = wanted[:n_objects]
+    if ground is not None:  # big objects first, while there is still room for them on the open ground
+        wanted.sort(key=lambda name: -class_size(name, sprites, model_sprites))
 
-    for class_name in wanted[:n_objects]:
+    for class_name in wanted:
         use_model = class_name in model_sprites and (class_name not in sprites or rng.random() < model_share)
         sprite = None if use_model else transform_sprite(rng.choice(sprites[class_name]), rng)
         if sprite is None and not use_model:
             continue
-        for _ in range(30):  # try a few spots before giving up on this object
+        for _ in range(30 if ground is None else 80):  # try a few spots before giving up on this object
             cx, cy = pick_spot(ground, rng)
             if use_model:  # the spot decides the pose: pick the matching render
-                sprite = pick_model_sprite(model_sprites[class_name], cx, cy, rng)
+                sprite, _, _, yaw = pick_model_sprite(model_sprites[class_name], cx, cy, rng)
             h, w = sprite.shape[:2]
             if h >= SOURCE_H or w >= SOURCE_W:
                 break
@@ -290,6 +308,8 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
                 continue
             placed.append(pasted)
             annotations.append({'object_id': class_name, 'bbox': pasted})
+            if use_model:  # the render's yaw: scene3d.py turns the 3D model to match
+                annotations[-1]['yaw'] = yaw
             break
 
     if rng.random() < 0.7:  # sensor noise, so the pasted edges are not the only grain
