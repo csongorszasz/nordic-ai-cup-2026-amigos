@@ -3,8 +3,11 @@
   "mode": "imitation",
   "policy": "neural",
   "seed": 12345,
-  "updates": 20,
-  "rollout_steps": 128,
+  "updates": 80,
+  "rollout_steps": 512,
+  "heuristic": {
+    "backend": "hierarchical"
+  },
   "model": {
     "encoder": "pool",
     "memory": "gru",
@@ -14,12 +17,13 @@
   "imitation": {
     "epochs": 4,
     "teacher_probability": 1.0,
-    "dagger_rounds": 2,
-    "max_frames": 8192
+    "dagger_rounds": 4,
+    "max_frames": 16384
   },
   "resources": {
     "device": "auto",
-    "workers": 2,
+    "workers": 4,
+    "action_repeat": 5,
     "max_vram_mb": 6144
   }
 }

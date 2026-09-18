@@ -56,10 +56,14 @@ def is_bootstrap(step: StepResponse) -> bool:
 def validate_step(step: StepResponse) -> None:
     if step.game_status not in ("ok", "game_over"):
         raise ValueError(f"Unknown game status: {step.game_status!r}")
+    if isinstance(step.n_agents, bool) or not isinstance(step.n_agents, int) or step.n_agents < 0:
+        raise ValueError("n_agents must be a nonnegative integer.")
     if step.n_agents != len(step.agent_status) and not is_bootstrap(step):
         raise ValueError("n_agents does not match agent_status.")
     ids = [agent.agent_id for agent in step.agent_status]
-    if len(set(ids)) != len(ids) or any(value < 0 for value in ids):
+    if len(set(ids)) != len(ids) or any(
+        isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in ids
+    ):
         raise ValueError("Living agent IDs must be unique and nonnegative.")
     finite_number(step.score, "score")
     if finite_number(step.sim_time, "sim_time") < 0:
@@ -121,9 +125,11 @@ def parse_entities(agent: ObservationResponse) -> tuple[Entity, ...]:
 
 
 def encode_step(
-    step: StepResponse, previous_actions: Mapping[int, ActionRequest] | None = None,
+    step: StepResponse, previous_actions: Mapping[int, ActionRequest] | None = None, *,
+    validate: bool = True,
 ) -> FeatureBatch:
-    validate_step(step)
+    if validate:
+        validate_step(step)
     previous_actions = previous_actions or {}
     scalars, features, types, owners = [], [], [], []
     for index, agent in enumerate(step.agent_status):

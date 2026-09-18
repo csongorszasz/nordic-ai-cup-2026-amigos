@@ -4,21 +4,21 @@
 
 | Decision | Reason | Alternative / when to reconsider |
 | --- | --- | --- |
-| Keep the reference engine unchanged | Rendering consumes world RNG; "removing graphics" changes seeds. Cached observations and mutation edge cases are part of the contract. | A faster kernel only after behavior and distribution comparisons; never train against a silently repaired game. |
-| Controller -> imitation/DAgger -> recurrent PPO | A small, understandable controller is useful on its own and supplies recovery labels for the learner. | Keep the controller if learning fails to improve held-out native scores. |
-| Vectorized candidate scoring, scalar adjudication | Full scalar-controller episodes exceeded the local cumulative policy-time budget. NumPy scores all candidates together, then the scalar oracle settles close contenders and numerical boundaries. | `heuristic.backend=scalar` remains the oracle. Differential tests and real HTTP measurements are required before accepting a faster backend. |
+| Keep the reference benchmark engine unchanged | Rendering consumes world RNG; cached observations and mutation edge cases are part of the contract. | Training uses an RNG-equivalent headless core that consumes the historical render draws without allocating/painting surfaces. The ordinary core remains authoritative for selection. |
+| Hierarchical controller before learning | Direct controls, shared target assignment, patch camping, and population-aware breeding are substantially cheaper than per-agent candidate lattices and remain independently competitive. | Scalar/vectorized backends remain regression oracles. A learned policy must beat the hierarchical controller on score and HTTP budget. |
+| Privileged teacher -> DAgger -> optional learned residual | A full-state planner can supply coordination and long-horizon labels that the old reactive teacher does not contain. | Do not start a large neural run until simulator throughput and teacher quality are measured. |
 | Structured, ragged entity features | DTOs already describe objects. Per-type encoding and pooling handle arbitrary populations without pixels or dropping agents. | Configurable attention; require score evidence before adding more model complexity. |
 | Shared actor, identity-keyed GRU, pooled team critic | Agents share controls and the controller receives all observations. Births/deaths change actor state, not the ongoing team objective. | `model.memory=none`, `model.team_context=false`, or `model.critic=local` are ablations. This is centralized control, not strict decentralized MAPPO. |
 | Native team reward, no reward clipping | Score is elapsed time + eaten energy/1000 - energy lost to predation/100. Population is not a reward. | Any future shaping must be named, logged, and selected against the unmodified native score. |
-| Stateless HTTP default | The competition DTO has no episode ID and does not establish whether games can interleave. | Neural serving requires an explicitly agreed single stream and `SURVIVAL_SINGLE_STREAM=1`; do not assume a final terminal request arrives. |
-| No world model by default | Existing CPU simulation is expensive, but a world model adds its own observation/action/population adaptation and hardware risks. | Consider one small vector-input Dreamer-style challenger only after measured PPO/collection results justify it. No claim of a task-specific optimal policy. |
+| Serialized stateful HTTP default | The controller benefits from history, but the public DTO can omit `sim_time`. Retry identity and first-tick/reset detection therefore cannot depend on time alone. | `SURVIVAL_SINGLE_STREAM=1` additionally rejects explicit out-of-order timestamps. Use one server worker. |
+| No world model by default | Existing CPU simulation is expensive, but a world model adds observation/action/population adaptation and hardware risks. | Consider one small decoder-free recurrent challenger only after the headless/macro-action collector and privileged teacher are measured. |
 
 ## Component map
 
 ```text
 public StepResponse
     -> policies/features + geometry
-    -> heuristic OR networks + memory
+    -> hierarchical scene/assignment controller OR legacy heuristic OR neural policy
     -> actions -> validated ActionRequest[]
           ^                     |
           |                     v
@@ -33,10 +33,10 @@ benchmark factory ----- policies/runtime ----- serving/session + /predict
 | --- | --- | --- |
 | `policies/config.py` | Strict experiment/runtime settings and typed overrides | Reading model weights or engine state |
 | `policies/features.py`, `geometry.py` | Public observations, coordinate/cost semantics | Hidden map/seed, omniscient planning |
-| `policies/heuristic.py` | Stateless food/threat/wall/exploration/breeding decisions | Training or global simulation RNG |
-| `policies/vectorized.py` | Float64 batch scoring with conservative contender selection | Candidate generation, changed physics, or dropping observations/agents |
+| `policies/hierarchical.py` | Shared-frame reconstruction, target reservation, direct movement, threat response, and breeding roles | Hidden simulator state or expensive action lattices |
+| `policies/heuristic.py`, `vectorized.py` | Legacy scalar/vectorized candidate scoring and regression oracle | Default submission decisions |
 | `policies/networks.py`, `actions.py`, `memory.py` | Ragged encoding, hybrid controls, agent identities | HTTP sessions or world stepping |
-| `training/env.py`, `workers.py`, `seeds.py` | Reference stepping, isolated CPU workers, disjoint training worlds | GPU actor construction in children |
+| `training/env.py`, `workers.py`, `seeds.py` | RNG-equivalent headless stepping, optional macro actions, isolated CPU workers, disjoint worlds | Changing reference benchmark physics |
 | `training/rollout.py`, `imitation.py`, `ppo.py`, `learner.py` | Collection, sequence masks, losses and updates | Selecting a competition submission |
 | `training/artifacts.py` | Resolved configurations, provenance, checkpoints, failures | Replacing benchmark comparisons |
 | Existing `benchmarking/` | Full-horizon score measurements and paired comparisons | Training reward changes |
@@ -48,7 +48,9 @@ Movement is body-relative **before** turning. Energy is charged before terrain a
 Turning costs `min(pi, abs(turn))/(2*pi)`. Breeding requires energy **strictly greater**
 than 100 after movement/turning. Mutated walking speed may exceed sprint speed.
 The engine's `rel_dir` is an object-to-observer bearing, not a simple heading difference.
-Predator and fruit observations can be stale.
+Predator and fruit observations can be stale. Fruit observations already inside the
+minimum engine contact radius are ignored because collection occurs before the response
+is returned.
 
 Policies use `act(StepResponse) -> list[ActionRequest]` and cover every living agent.
 At time/score zero, the client may announce the configured initial population before
@@ -70,8 +72,9 @@ Run from `survival-simulator`. Architecture and parameter changes use a JSON pre
 `--set path=value`; unknown or incompatible settings fail rather than being ignored.
 Add a new architecture behind the network interface, not by editing the collector and API.
 Controller search batches independent candidate/world evaluations, while CMA adaptation
-waits for the complete population. Results keep candidate/world identities despite
-out-of-order completion; progress logging never changes the reference physics.
+waits for the complete population. The checked-in hierarchical search preset contains
+enough candidates for multiple CMA generations; it is configuration only and does not
+start training. Results keep candidate/world identities despite out-of-order completion.
 
 Each new output directory contains the resolved config, provenance manifest, incremental
 events, and summary. Learning also writes `checkpoint.pt`, its checksum/version sidecar,
@@ -82,7 +85,10 @@ Checkpoint paths in descriptors are relative to the use-case working directory.
 `--resume` restores learning state and targets the configured total update count, but
 restarts reference worlds; it does not promise an exact Pygame-state continuation.
 
-Training worlds exclude `standard` and `holdout`. Use standard for development, freeze a
+Training worlds exclude `standard` and `holdout`. The training adapter skips rendering
+surface work while preserving the reference render RNG stream. `resources.action_repeat`
+can suppress intermediate agent observations for explicit macro-action experiments;
+reproduction is applied only on the first repeated tick. Use standard for development, freeze a
 candidate, then use holdout without further tuning. Score uncertainty is over worlds,
 not agents or ticks. Windows results do not certify Linux/evaluator equivalence.
 Training completion and low imitation loss are not evidence that a model should replace
@@ -90,7 +96,8 @@ the controller. Compare complete native-score runs first.
 
 The endpoint budget is 10 seconds individually and 600 seconds accumulated per run.
 At the full horizon that is roughly 20 ms per complete HTTP request, including networking
-and serialization. Per-agent GPU timing is not a submission latency measurement.
+and serialization. `src.benchmarking.http:create_policy` enforces both limits against the
+actual endpoint. Per-agent GPU timing is not a submission latency measurement.
 
 ## Primary method references
 

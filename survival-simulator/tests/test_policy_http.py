@@ -7,6 +7,7 @@ import requests
 import uvicorn
 
 from agent_server import create_app
+from src.benchmarking.config import PROJECT_ROOT, read_json
 from src.policies.config import RuntimeConfig
 from src.policies.runtime import create_policy
 from src.utils.DTOs import ObservationResponse, StepResponse
@@ -15,7 +16,9 @@ from src.utils.DTOs import ObservationResponse, StepResponse
 class HTTPPolicyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.options = RuntimeConfig().model_dump(mode="json")
+        cls.options = RuntimeConfig.model_validate(
+            read_json(PROJECT_ROOT / "configs" / "controller.json"),
+        ).model_dump(mode="json")
         application = create_app(policy_factory=lambda: create_policy(1, cls.options))
         cls.socket = socket.socket()
         cls.socket.bind(("127.0.0.1", 0))
@@ -95,6 +98,30 @@ class HTTPPolicyTests(unittest.TestCase):
             "game_status": "ok", "sim_time": 1, "score": 1, "n_agents": 1, "agent_status": [],
         })
         self.assertEqual(response.status_code, 422)
+
+    def test_invalid_scalar_type_returns_explicit_client_error(self):
+        response = requests.post(self.url + "/predict", timeout=5, json={
+            "game_status": "running", "score": "1.0",
+            "agent_status": [],
+        })
+        self.assertEqual(response.status_code, 422)
+
+    def test_stateful_default_accepts_consecutive_official_frames_without_sim_time(self):
+        payload = {
+            "game_status": "running", "score": 0.1,
+            "agent_status": [{
+                "agent_id": 0, "observations": [], "energy": 150.0,
+                "biome": "forest", "age": 0.1, "speed": 10.0,
+                "sprint_speed": 20.0, "hearing_radius": 50.0,
+                "vision_angle": 1.0, "vision_range": 200.0, "max_energy": 500.0,
+            }],
+        }
+        first = requests.post(self.url + "/predict", timeout=5, json=payload)
+        payload["score"] = 0.2
+        payload["agent_status"][0]["age"] = 0.2
+        second = requests.post(self.url + "/predict", timeout=5, json=payload)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(second.status_code, 200, second.text)
 
 
 if __name__ == "__main__":

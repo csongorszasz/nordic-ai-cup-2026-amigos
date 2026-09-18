@@ -2,6 +2,7 @@
 
 import math
 import random
+import statistics
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from numbers import Real
@@ -28,6 +29,36 @@ class SearchResult:
     best_score: float
     trials: tuple[SearchTrial, ...]
     method: Literal["random", "cma"]
+
+
+@dataclass(frozen=True)
+class WorldScore:
+    mean: float
+    lower_tail: float
+    objective: float
+
+
+def aggregate_world_scores(
+    scores: Sequence[float], *, lower_tail_fraction: float = 0.25,
+    lower_tail_weight: float = 0.0,
+) -> WorldScore:
+    if (
+        not scores or not math.isfinite(lower_tail_fraction)
+        or not 0 < lower_tail_fraction <= 1
+        or not math.isfinite(lower_tail_weight)
+        or not 0 <= lower_tail_weight <= 1
+    ):
+        raise ValueError("World-score aggregation requires scores and valid tail settings.")
+    values = []
+    for value in scores:
+        if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+            raise ValueError("World scores must be finite real numbers.")
+        values.append(float(value))
+    mean = statistics.mean(values)
+    tail_count = max(1, math.ceil(len(values) * lower_tail_fraction))
+    lower_tail = statistics.mean(sorted(values)[:tail_count])
+    objective = (1.0 - lower_tail_weight) * mean + lower_tail_weight * lower_tail
+    return WorldScore(mean, lower_tail, objective)
 
 
 def _evaluate(

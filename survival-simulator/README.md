@@ -1,3 +1,5 @@
+> **Concluded problem categorization: The simulator is a cooperative, partially observed, continuous-space foraging-and-survival task with shared control, energy economics, predators, and a variable population.**
+
 # Survival simulator
 
 Improvise, adapt, overcome!
@@ -235,6 +237,21 @@ additional source/config files, especially dependencies outside the local policy
 source tree. Policies receive observations only, not the simulator or its RNG;
 these are trusted local plugins, not sandboxed programs.
 
+Use `--fixed-policy-seed 1` when measuring the exact deterministic policy instance
+served by the default endpoint. Without it, repeat zero intentionally uses each
+world seed as the policy seed for stochastic-policy comparisons.
+
+To make the documented 10-second/request and 600-second cumulative wait limits a
+hard benchmark gate, start the endpoint and run it through the HTTP policy:
+
+```powershell
+python benchmark.py run --policy src.benchmarking.http:create_policy --config .\configs\http-loopback.json --fixed-policy-seed 1 --suite quick --output .\benchmark-results\controller-http-quick
+```
+
+The run fails immediately on a non-200 response, malformed action payload, individual
+timeout, or cumulative wait-budget overrun. Replace the URL in a copied config when
+measuring the public tunnel rather than loopback.
+
 ### Measurements and saved reports
 
 **Mean native final score is the primary ranking metric.** Reports also include
@@ -319,10 +336,13 @@ Remove-Item Env:BENCHMARK_INTEGRATION
 
 ## Developing a policy
 
-The modular pipeline is **controller search -> imitation/DAgger -> recurrent PPO**.
-The controller remains a submission candidate; a completed training run is not evidence
-that a neural policy is better. See `docs\policy-architecture.md` for component boundaries,
-mechanics, design decisions, alternatives, and failure-isolation contracts.
+The primary submission candidate is now the **stateful hierarchical controller**:
+shared teammate-relative scene reconstruction, distinct fruit/tree assignments,
+patch camping, facing-aware predator escape, and population/trait-aware breeding.
+The older scalar/vectorized action lattice remains available as an oracle and ablation.
+Imitation/DAgger and recurrent PPO are experimental challengers and must beat the
+controller on native score and the real HTTP budget before selection. See
+`docs\policy-architecture.md` for component boundaries and decision rationale.
 
 Run all commands below from `survival-simulator`, using the existing virtual environment.
 Controller inference and ordinary benchmarks only need `requirements.txt`. Training/search
@@ -381,34 +401,35 @@ configurations, source/runtime provenance, incremental events, summaries, and an
 weights. Preserve them explicitly when moving machines. Training seeds exclude the
 standard/holdout suites; freeze a candidate before consulting holdout.
 
+Training adapters use an RNG-equivalent headless core: rendering surfaces and pixel writes
+are skipped while the historical render RNG draws are still consumed. The reference
+benchmark continues to use the ordinary rendering-inclusive core. An optional
+`resources.action_repeat` setting (1-10, default 1) can suppress intermediate agent
+observation generation for macro-action experiments; reproduction is executed only on
+the first repeated tick. Treat action repeat as a separate experiment because it changes
+the policy decision cadence.
+
 # Run on server
 You can serve your endpoint locally and test that everything starts without errors by running [agent_server.py](agent_server.py). Then open a browser and navigate to [http://localhost:9052](http://localhost:9052). You should see a message stating that the agent server is running. 
 Feel free to change the `HOST` and `PORT` settings in [agent_server.py](agent_server.py).
 
-The server now loads `configs\controller.json` once at startup and uses the same policy
-factory as the benchmark. To select another exported policy, set `SURVIVAL_POLICY_CONFIG`
-to its JSON descriptor. Paths inside a descriptor are relative to this use-case working
-directory.
-
-`configs\controller.json` contains the tuned vectorized controller exported by
-`training-results\controller-vectorized-search-plan-v1\policy.json`. It won the
-four-candidate search on two shared training seeds (mean score 1263.90 versus 1060.80
-for the untuned controller). These are training results, not held-out evidence.
-The untuned vectorized settings remain in `configs\controller-vectorized.json`.
-This selection does not establish HTTP-budget compliance: the earlier
-`controller-http-full-plan-v1` probe exceeded its response/wait budget.
-Restart the server after changing the selected configuration.
+The server loads `configs\controller.json` once at startup and uses the same policy
+factory as the benchmark. The default is the hierarchical controller; the previous
+vectorized lattice remains in `configs\controller-vectorized.json`. To select another
+exported policy, set `SURVIVAL_POLICY_CONFIG` to its JSON descriptor. Paths inside a
+descriptor are relative to this use-case working directory. Restart the server after
+changing the selected configuration.
 
 The HTTP boundary accepts both the official verifier payload (`game_status="running"`,
 omitted `sim_time`/`n_agents`, lowercase observation types) and the richer local
 simulator payload. Inputs are normalized before they reach the policy.
 
-The default controller is stateless. **Neural serving is deliberately opt-in** because
-the request DTO has no episode identifier: first confirm that your endpoint receives only
-one sequential game stream, then set `SURVIVAL_SINGLE_STREAM=1`. Use one server worker.
-Recurrent sessions reset at bootstrap/new-game boundaries, prune dead agents, and cache
-identical retries; conflicting/out-of-order requests return HTTP 409 rather than corrupting
-memory. Missing/bad checkpoints fail startup, never silently fall back to random actions.
+The default controller and neural policies retain state behind one process lock. They reset
+on bootstrap, explicit time rollback, or an observed first tick, including verifier payloads
+that omit `sim_time`; identical retries are cached. Set `SURVIVAL_SINGLE_STREAM=1` to enable
+strict out-of-order rejection when explicit times are present. Use one server worker because
+the public DTO has no episode identifier. Missing/bad checkpoints fail startup and never
+silently fall back to random actions.
 
 To run a simulation on the server, you can run [simulation_server.py](simulation_server.py) while the endpoint is running.
 

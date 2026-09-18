@@ -110,7 +110,10 @@ def _send_reply(connection: Connection, reply: _Reply) -> bool:
     return True
 
 
-def _worker_main(connection: Connection, settings: dict, adapter_factory: Callable | None):
+def _worker_main(
+    connection: Connection, settings: dict, adapter_factory: Callable | None,
+    action_repeat: int = 1,
+):
     os.environ.update(_CHILD_ENVIRONMENT)
     operation = "initialize"
     try:
@@ -120,7 +123,12 @@ def _worker_main(connection: Connection, settings: dict, adapter_factory: Callab
             from src.training.env import EnvironmentAdapter
 
             adapter_factory = EnvironmentAdapter
-        adapter = adapter_factory(SimulationSettings.model_validate(settings, strict=True))
+        resolved = SimulationSettings.model_validate(settings, strict=True)
+        adapter = (
+            adapter_factory(resolved)
+            if action_repeat == 1
+            else adapter_factory(resolved, action_repeat=action_repeat)
+        )
         if not _send_reply(connection, _Reply("ready")):
             return
         while True:
@@ -166,6 +174,7 @@ class EnvironmentPool:
         settings: SimulationSettings | None = None,
         *,
         timeout_seconds: float = 180,
+        action_repeat: int = 1,
         _adapter_factory: Callable[[SimulationSettings], EnvironmentAdapter] | None = None,
     ):
         if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
@@ -179,6 +188,11 @@ class EnvironmentPool:
             raise ValueError("Worker timeout must be a positive finite number of seconds.")
         if _adapter_factory is not None and not callable(_adapter_factory):
             raise TypeError("Adapter factory must be callable.")
+        if (
+            isinstance(action_repeat, bool) or not isinstance(action_repeat, int)
+            or not 1 <= action_repeat <= 10
+        ):
+            raise ValueError("action_repeat must be an integer in [1, 10].")
         from src.benchmarking.config import SimulationSettings
 
         if settings is not None and not isinstance(settings, SimulationSettings):
@@ -189,6 +203,7 @@ class EnvironmentPool:
         )
         self.workers = workers
         self.timeout_seconds = float(timeout_seconds)
+        self.action_repeat = action_repeat
         self._workers: list[_Worker] = []
         self._closed = False
         self._io_thread: threading.Thread | None = None
@@ -200,7 +215,10 @@ class EnvironmentPool:
                     try:
                         process = context.Process(
                             target=_worker_main,
-                            args=(child, settings.model_dump(), _adapter_factory),
+                            args=(
+                                child, settings.model_dump(), _adapter_factory,
+                                self.action_repeat,
+                            ),
                             name=f"survival-environment-{index}",
                             daemon=False,
                         )

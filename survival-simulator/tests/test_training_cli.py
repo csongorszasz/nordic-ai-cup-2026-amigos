@@ -53,7 +53,11 @@ class TrainingCLITests(unittest.TestCase):
                     contextlib.redirect_stdout(io.StringIO()):
                 result = train.run_search(config, run)
             completed = [event for event in events if event["event"] == "search_episode"]
+            summaries = [
+                event for event in events if event["event"] == "search_candidate_summary"
+            ]
             self.assertEqual(len(completed), 6)
+            self.assertEqual(len(summaries), 3)
             self.assertEqual({event["candidate"] for event in completed}, {0, 1, 2})
             for candidate in range(3):
                 self.assertEqual(
@@ -61,6 +65,7 @@ class TrainingCLITests(unittest.TestCase):
                      if event["candidate"] == candidate}, {91, 97},
                 )
             self.assertEqual(result["trials"], 3)
+            self.assertIn("best_training_lower_tail_score", result)
             self.assertTrue((run.path / "policy.json").is_file())
 
     def test_config_override_and_profile_orchestration(self):

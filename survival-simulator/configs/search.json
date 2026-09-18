@@ -3,9 +3,28 @@
   "mode": "search",
   "policy": "heuristic",
   "seed": 12345,
+  "heuristic": {
+    "backend": "hierarchical"
+  },
   "search": {
     "method": "cma",
-    "candidates": 8,
-    "worlds": 3
+    "candidates": 32,
+    "worlds": 8,
+    "lower_tail_fraction": 0.25,
+    "lower_tail_weight": 0.35,
+    "parameters": {
+      "breeding_age": [45.0, 80.0],
+      "exploration_move_fraction": [0.1, 0.5],
+      "patch_move_fraction": [0.35, 0.9],
+      "patch_radius": [20.0, 40.0],
+      "predator_face_turn": [0.6, 1.6],
+      "sprint_distance": [35.0, 90.0],
+      "target_population_breeding_energy": [210.0, 310.0],
+      "threat_distance": [100.0, 220.0]
+    }
+  },
+  "resources": {
+    "device": "cpu",
+    "workers": 4
   }
 }

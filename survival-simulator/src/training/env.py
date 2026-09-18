@@ -22,6 +22,16 @@ class EnvTransition:
     terminated: bool
 
 
+class TrainingSimulationCore(SimulationCore):
+    """Reference-equivalent core without allocating or painting render surfaces."""
+
+    def __init__(self, **kwargs):
+        super().__init__(rendering=False, **kwargs)
+
+    def step_training(self, actions, *, observe_agents: bool):
+        return super().step(actions, observe_agents=observe_agents)
+
+
 def _detached_value(value: object) -> object:
     if value is None or isinstance(value, (str, bool, int)):
         return value
@@ -100,7 +110,8 @@ class EnvironmentAdapter:
         self,
         settings: SimulationSettings | None = None,
         *,
-        simulation_factory: Callable[..., SimulationCore] = SimulationCore,
+        simulation_factory: Callable[..., SimulationCore] = TrainingSimulationCore,
+        action_repeat: int = 1,
     ):
         if settings is not None and not isinstance(settings, SimulationSettings):
             raise TypeError("Settings must be SimulationSettings or None.")
@@ -110,7 +121,13 @@ class EnvironmentAdapter:
         )
         if not callable(simulation_factory):
             raise TypeError("Simulation factory must be callable.")
+        if (
+            isinstance(action_repeat, bool) or not isinstance(action_repeat, int)
+            or not 1 <= action_repeat <= 10
+        ):
+            raise ValueError("action_repeat must be an integer in [1, 10].")
         self._simulation_factory = simulation_factory
+        self.action_repeat = action_repeat
         self._simulation: SimulationCore | None = None
         self._observation: StepResponse | None = None
         self._seed: int | None = None
@@ -161,7 +178,7 @@ class EnvironmentAdapter:
             )
         finally:
             self._initialization_seconds = time.perf_counter() - started
-        response = self._tick([])
+        response = self._tick([], repeats=1)
         self._remember(response)
         return response
 
@@ -171,14 +188,19 @@ class EnvironmentAdapter:
         if self._done:
             raise RuntimeError("Cannot step a terminal environment; reset it first.")
         validated = validate_actions(actions, self._expected_ids)
-        response = self._tick([(action.agent_id, action) for action in validated])
+        response = self._tick(
+            [(action.agent_id, action) for action in validated],
+            repeats=self.action_repeat,
+        )
         reward = response.score - self._native_score
         if not math.isfinite(reward):
             raise ValueError("Simulator score delta is non-finite.")
         self._remember(response)
         return EnvTransition(response, reward, self._done)
 
-    def _tick(self, actions: list[tuple[int, ActionRequest]]) -> StepResponse:
+    def _tick(
+        self, actions: list[tuple[int, ActionRequest]], *, repeats: int,
+    ) -> StepResponse:
         if self._simulation is None:
             raise RuntimeError("Reset the environment before stepping it.")
         # A failed native tick may already have mutated the world. It cannot be
@@ -186,9 +208,36 @@ class EnvironmentAdapter:
         self._needs_reset = True
         started = time.perf_counter()
         try:
-            state = self._simulation.step(actions)
+            state = None
+            repeated = actions
+            training_step = getattr(self._simulation, "step_training", None)
+            for repeat in range(repeats):
+                native_env = getattr(self._simulation, "env", None)
+                native_time = getattr(native_env, "time", None)
+                crosses_horizon = (
+                    isinstance(native_time, (int, float))
+                    and native_time + self.settings.dt > self.settings.time_limit
+                )
+                final = repeat == repeats - 1 or crosses_horizon
+                state = (
+                    training_step(repeated, observe_agents=final)
+                    if callable(training_step) else self._simulation.step(repeated)
+                )
+                if state["num_agents"] == 0 or state["sim_time"] > self.settings.time_limit:
+                    break
+                if repeat == 0 and any(action.spawn_agent for _, action in repeated):
+                    repeated = [
+                        (
+                            agent_id,
+                            action.model_copy(update={"spawn_agent": False})
+                            if action.spawn_agent else action,
+                        )
+                        for agent_id, action in repeated
+                    ]
         finally:
             self._simulation_seconds += time.perf_counter() - started
+        if state is None:
+            raise RuntimeError("Training tick executed no native simulation steps.")
         return _observation(state, self.settings.time_limit)
 
     def _remember(self, response: StepResponse) -> None:

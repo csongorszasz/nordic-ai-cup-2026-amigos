@@ -3,7 +3,6 @@
 import argparse
 import os
 import random
-import statistics
 import sys
 import time
 import traceback
@@ -32,7 +31,7 @@ def parser() -> argparse.ArgumentParser:
 
 class _ProgressSimulation(SimulationCore):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(rendering=False, **kwargs)
         self._progress_ticks = 0
 
     def step(self, actions):
@@ -58,11 +57,12 @@ def _search_episode(arguments):
 
 
 def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
-    from src.training.search import optimize_controller
+    from src.training.search import aggregate_world_scores, optimize_controller
 
     worlds = training_seeds(config.seed, config.search.worlds)
     run.emit({"event": "training_worlds", "seeds": worlds, "full_horizon": True})
     evaluation_index = 0
+    candidate_metrics = {}
 
     def evaluate_many(configurations):
         nonlocal evaluation_index
@@ -107,14 +107,28 @@ def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
                         for queued in pending:
                             queued.cancel()
                         raise
-        means = []
+        objectives = []
         for index in range(start, evaluation_index):
             if set(scores[index]) != set(worlds):
                 raise ValueError("Controller search requires every world before ranking a candidate.")
-            score = statistics.mean(scores[index][seed] for seed in worlds)
-            means.append(score)
-            print(f"candidate={index} mean_score={score:.6f}", flush=True)
-        return means
+            metrics = aggregate_world_scores(
+                [scores[index][seed] for seed in worlds],
+                lower_tail_fraction=config.search.lower_tail_fraction,
+                lower_tail_weight=config.search.lower_tail_weight,
+            )
+            candidate_metrics[index] = metrics
+            objectives.append(metrics.objective)
+            run.emit({
+                "event": "search_candidate_summary", "candidate": index,
+                "mean_score": metrics.mean, "lower_tail_score": metrics.lower_tail,
+                "objective": metrics.objective,
+            })
+            print(
+                f"candidate={index} mean_score={metrics.mean:.6f} "
+                f"lower_tail={metrics.lower_tail:.6f} objective={metrics.objective:.6f}",
+                flush=True,
+            )
+        return objectives
 
     result = optimize_controller(
         config.heuristic, config.search, config.seed, lambda options: evaluate_many([options])[0],
@@ -122,9 +136,17 @@ def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
     )
     selected = RuntimeConfig(policy="heuristic", heuristic=result.best_config)
     write_json(run.path / "policy.json", selected.model_dump(mode="json"))
+    best_trial = max(result.trials, key=lambda trial: (trial.score, -trial.index))
+    best_metrics = candidate_metrics[best_trial.index]
     return {
         "mode": "search", "method": result.method, "trials": len(result.trials),
-        "worlds": worlds, "best_training_mean_score": result.best_score,
+        "worlds": worlds, "best_training_objective": result.best_score,
+        "best_training_mean_score": best_metrics.mean,
+        "best_training_lower_tail_score": best_metrics.lower_tail,
+        "objective": {
+            "lower_tail_fraction": config.search.lower_tail_fraction,
+            "lower_tail_weight": config.search.lower_tail_weight,
+        },
         "selected_config": selected.model_dump(mode="json"),
         "ranking_scope": "training worlds only; not held-out evidence",
     }
@@ -132,19 +154,27 @@ def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
 
 def run_profile(config: ExperimentConfig, run: TrainingRun) -> dict:
     from src.policies.features import encode_step
-    from src.policies.heuristic import HeuristicPolicy
+    from src.policies.heuristic import build_policy
     from src.training.env import EnvironmentAdapter
     from src.training.workers import EnvironmentPool
 
     workers = config.resources.workers
     seeds = iter(training_seeds(config.seed, workers * (config.rollout_steps + 1)))
-    policies = [HeuristicPolicy(config.seed + index, config.heuristic) for index in range(workers)]
+    policies = [build_policy(config.seed + index, config.heuristic) for index in range(workers)]
     started = time.perf_counter()
     with ExitStack() as stack:
+        pool_kwargs = {"timeout_seconds": config.resources.worker_timeout_seconds}
+        if config.resources.action_repeat != 1:
+            pool_kwargs["action_repeat"] = config.resources.action_repeat
         pool = stack.enter_context(EnvironmentPool(
-            workers, timeout_seconds=config.resources.worker_timeout_seconds,
+            workers, **pool_kwargs,
         )) if workers > 1 else None
-        adapter = EnvironmentAdapter() if workers == 1 else None
+        adapter = (
+            EnvironmentAdapter()
+            if workers == 1 and config.resources.action_repeat == 1
+            else EnvironmentAdapter(action_repeat=config.resources.action_repeat)
+            if workers == 1 else None
+        )
         observations = pool.reset([next(seeds) for _ in range(workers)]) if pool else [adapter.reset(next(seeds))]
         initialization = time.perf_counter() - started
         policy_seconds = encoding_seconds = 0.0
@@ -165,15 +195,26 @@ def run_profile(config: ExperimentConfig, run: TrainingRun) -> dict:
                 if result.terminated:
                     episodes += 1
                     observations[index] = pool.reset_at(index, next(seeds)) if pool else adapter.reset(next(seeds))
+                    reset = getattr(policies[index], "reset", None)
+                    if callable(reset):
+                        reset()
         stepping = time.perf_counter() - stepping_started
     result = {
         "mode": "profile", "workers": workers, "transitions": transitions,
+        "action_repeat": config.resources.action_repeat,
+        "native_transitions": transitions * config.resources.action_repeat,
         "initialization_seconds": initialization, "collection_seconds": stepping,
         "transitions_per_second": transitions / stepping,
+        "native_transitions_per_second": (
+            transitions * config.resources.action_repeat / stepping
+        ),
         "policy_seconds": policy_seconds, "encoding_seconds": encoding_seconds,
         "mean_policy_batch_ms": 1000 * policy_seconds / transitions,
         "peak_frame_tokens": peak_tokens, "completed_episodes": episodes,
-        "measurement": "unprofiled reference engine, includes any mid-collection resets; not HTTP latency",
+        "measurement": (
+            "RNG-equivalent headless training core, includes any mid-collection "
+            "resets; not reference-benchmark or HTTP latency"
+        ),
     }
     run.emit({"event": "profile", **result})
     return result

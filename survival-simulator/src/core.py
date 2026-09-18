@@ -8,7 +8,7 @@ class SimulationCore:
 
     def __init__(self, env_width=1600, env_height=1200, chunk_size=400,
                  starting_agents=5, starting_predators=0, starting_fruits=None,
-                 starting_trees=50, seed=None, dt=1/10):
+                 starting_trees=50, seed=None, dt=1/10, rendering=True):
         self.env_width = env_width
         self.env_height = env_height
         self.chunk_size = chunk_size
@@ -17,6 +17,7 @@ class SimulationCore:
         self.starting_fruits = starting_fruits or env_width // 50
         self.starting_trees = starting_trees
         self.dt = dt
+        self.rendering = rendering
 
         if seed is None: # If no seed is provided, generate a random one
             seed = random.randint(0, 2**32 - 1)
@@ -34,15 +35,16 @@ class SimulationCore:
             starting_predators=self.starting_predators,
             starting_fruits=self.starting_fruits,
             starting_trees=self.starting_trees,
-            rng=self.rng
+            rng=self.rng,
+            rendering=self.rendering,
         )
 
-    def step(self, actions):
+    def step(self, actions, *, observe_agents=True):
         """
         Advance the environment by one timestep using the given actions.
         Returns the updated state.
         """
-        state = step_environment(self.env, actions, self.dt)
+        state = step_environment(self.env, actions, self.dt, observe_agents=observe_agents)
         return state
 
     def reset(self):

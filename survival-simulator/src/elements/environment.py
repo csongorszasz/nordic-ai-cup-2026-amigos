@@ -16,8 +16,12 @@ class Environment:
     """
     Environment class defines the environment in which the agents live. Handles all interactions.
     """
-    def __init__(self, width: int, height: int, chunk_size: int, rng: random.Random): # Chunk size must at least be the maximum visible distance
+    def __init__(
+        self, width: int, height: int, chunk_size: int, rng: random.Random,
+        rendering: bool = True,
+    ): # Chunk size must at least be the maximum visible distance
         self.rng: random.Random = rng
+        self.rendering = rendering
 
         self.width: int = width
         self.height: int = height
@@ -37,14 +41,18 @@ class Environment:
         # Set up biomes
         map_generator = Map_generator(self.width, self.height, self.rng, num_biomes=10, num_rivers=1)
         self.biome_map: np.ndarray = map_generator.generate()
-        # Cache surface for biome rendering
-        self.biome_surface = pygame.Surface((self.width, self.height))
-        self._render_biome_surface()
-        self.static_surface = self.biome_surface.copy() # Static surface for rendering static elements
-
-        # Cache surfaces for shadow and obstacle rendering
-        self.shadow_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        self.obstacle_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        if self.rendering:
+            self.biome_surface = pygame.Surface((self.width, self.height))
+            self._render_biome_surface()
+            self.static_surface = self.biome_surface.copy()
+            self.shadow_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.obstacle_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        else:
+            self.biome_surface = None
+            self.static_surface = None
+            self.shadow_surface = None
+            self.obstacle_surface = None
+            self._consume_biome_render_rng()
 
         # Set up chunking for efficiency
         self.chunk_size: int = chunk_size  # size of each grid cell for spatial partitioning
@@ -54,6 +62,9 @@ class Environment:
         self.grid_obstacles: Dict[Tuple[int, int], Set[Obstacle]] = defaultdict(set)
         self.grid_edges: Dict[Tuple[int, int], Set[Tuple[Tuple[float, float], Tuple[float, float]]]] = defaultdict(set)
         self.grid_predators: Dict[Tuple[int, int], Set[Predator]] = defaultdict(set)
+        self._local_edge_cache: Dict[
+            Tuple[int, int], Tuple[Tuple[Tuple[float, float], Tuple[float, float]], ...]
+        ] = {}
 
         # Store all agents observations to avoid recalculating
         self.agent_observations: Dict[int, dict] = {}
@@ -61,11 +72,14 @@ class Environment:
         self._create_boundaries(thickness=30) # Encapsulate environment
         self._update_spatial_grid() # Build grid
     
-        # Create an offscreen surface the size of the environment
-        self.world_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        # Create vision and leaf surfaces
-        self.vision_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        self.leaf_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        if self.rendering:
+            self.world_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.vision_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.leaf_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        else:
+            self.world_surface = None
+            self.vision_screen = None
+            self.leaf_screen = None
 
 
     def _render_biome_surface(self):
@@ -76,6 +90,11 @@ class Environment:
                 self.biome_surface.set_at((x, y), color)
         # Optional: smooth edges
         smooth_surface(self.biome_surface, size=3)
+
+    def _consume_biome_render_rng(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                self.rng.choice(self.biome_map[x, y].color_palette)
 
     # ------------------- Grid functions -------------------
     def to_chunk(self, x: int, y: int) -> Tuple[int, int]:
@@ -128,6 +147,7 @@ class Environment:
     def _update_edge_grid(self):
         """Rebuilds the spatial grid for all edges."""
         self.grid_edges = defaultdict(set)
+        self._local_edge_cache = {}
         for edge in self.edges:
             # Edge may span multiple chunks
             min_cx, min_cy = self.to_chunk(edge[0][0], edge[0][1])
@@ -159,7 +179,6 @@ class Environment:
         local_trees = set()
         local_obstacles = set()
         local_predators = set()
-        local_edges = set()
         chunks = self._get_neighboring_chunks(creature.x, creature.y)
         for ch in chunks:
             local_agents.update(self.grid_agents.get(ch, []))
@@ -167,7 +186,6 @@ class Environment:
             local_trees.update(self.grid_trees.get(ch, []))
             local_obstacles.update(self.grid_obstacles.get(ch, []))
             local_predators.update(self.grid_predators.get(ch, []))
-            local_edges.update(self.grid_edges.get(ch, []))
 
         # Remove self from agents/predators
         if creature in local_agents:
@@ -175,7 +193,10 @@ class Environment:
         elif creature in local_predators:
             local_predators.remove(creature)
 
-        return local_agents, local_fruits, local_trees, local_obstacles, local_predators, local_edges
+        return (
+            local_agents, local_fruits, local_trees, local_obstacles, local_predators,
+            self._get_local_edges(creature),
+        )
     
     def _get_local_agents(self, creature: Creature):
         """Return only the agents in neighboring chunks."""
@@ -224,11 +245,17 @@ class Environment:
     
     def _get_local_edges(self, creature: Creature):
         """Return only the edges in the creature's neighboring chunks."""
+        chunk = self.to_chunk(creature.x, creature.y)
+        cached = self._local_edge_cache.get(chunk)
+        if cached is not None:
+            return cached
         local_edges = set()
         chunks = self._get_neighboring_chunks(creature.x, creature.y)
         for ch in chunks:
             local_edges.update(self.grid_edges.get(ch, []))
-        return local_edges
+        result = tuple(local_edges)
+        self._local_edge_cache[chunk] = result
+        return result
 
 
 
@@ -261,9 +288,13 @@ class Environment:
 
         obs = Obstacle(x, y, width=width, height=height, color=color)
         self.obstacles.append(obs)
-        shadow_color = np.clip(obs.color - np.array([50,50,50]), 0, 255)
-        obs.draw_shadow(self.shadow_surface, color=tuple(shadow_color))
-        pygame.draw.rect(self.obstacle_surface, color, pygame.Rect(obs.x, obs.y, obs.width, obs.height)) # Update static surface
+        if self.rendering:
+            shadow_color = np.clip(obs.color - np.array([50,50,50]), 0, 255)
+            obs.draw_shadow(self.shadow_surface, color=tuple(shadow_color))
+            pygame.draw.rect(
+                self.obstacle_surface, color,
+                pygame.Rect(obs.x, obs.y, obs.width, obs.height),
+            )
 
         # Rebuild all edges
         self.edges = set()
@@ -624,7 +655,7 @@ class Environment:
 
     # ------------------- SIMULATION STEP -------------------
 
-    def non_agent_step(self, dt: float):
+    def non_agent_step(self, dt: float, *, observe_agents: bool = True):
         """
         Update environment one step
 
@@ -648,16 +679,16 @@ class Environment:
             
             local_agents, local_fruits, local_trees, local_obstacles, local_predators, local_edges = self._get_local_objects(agent)
             
-            # Get observation
-            observation = agent.observe(
-                agents=local_agents,
-                fruits=local_fruits,
-                trees=local_trees,
-                obstacles=local_obstacles,
-                predators=local_predators,
-                edges=local_edges
-            )
-            self.agent_observations[agent.agent_id] = observation
+            if observe_agents:
+                observation = agent.observe(
+                    agents=local_agents,
+                    fruits=local_fruits,
+                    trees=local_trees,
+                    obstacles=local_obstacles,
+                    predators=local_predators,
+                    edges=local_edges
+                )
+                self.agent_observations[agent.agent_id] = observation
 
             # Handle fruit interactions
             if local_fruits:
@@ -811,6 +842,8 @@ class Environment:
         """
         Visualize the environment scaled to fit the screen (zoomed out if needed).
         """
+        if not self.rendering:
+            raise RuntimeError("This environment was created without rendering surfaces.")
         # Clear all layers
         self.world_surface.fill((0, 0, 0, 0))
         self.vision_screen.fill((0, 0, 0, 0))

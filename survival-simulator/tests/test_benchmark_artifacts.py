@@ -408,6 +408,39 @@ class ProvenanceTests(unittest.TestCase):
         renamed = self.build(policy=self.policy.model_copy(update={"label": "different display label"}))
         self.assertEqual(before.provenance.policy.sha256, renamed.provenance.policy.sha256)
 
+    def test_fixed_policy_seed_is_recorded_with_every_case(self):
+        record = self.build(repeats=2, fixed_policy_seed=7)
+        self.assertEqual(record.fixed_policy_seed, 7)
+        self.assertEqual({case.policy_seed for case in record.cases}, {7})
+        self.assertEqual({case.policy_seed_mode for case in record.cases}, {"fixed"})
+
+    def test_v1_artifacts_are_migrated_explicitly(self):
+        writer = RunWriter(self.root / "v1-run", self.build())
+        for case in writer.manifest.cases:
+            writer.append(episode(case))
+        writer.finalize("complete")
+        manifest_path = writer.output / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest.update(schema_version=1, protocol_version="local-benchmark-v1")
+        manifest.pop("fixed_policy_seed")
+        for case in manifest["cases"]:
+            case.pop("policy_seed_mode")
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        path = writer.output / "episodes.jsonl"
+        rows = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            row["case"].pop("policy_seed_mode")
+            rows.append(json.dumps(row, separators=(",", ":")))
+        path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        loaded = load_run(writer.output)
+        self.assertEqual(loaded.manifest.schema_version, 1)
+        self.assertEqual(loaded.manifest.protocol_version, "local-benchmark-v1")
+        self.assertIsNone(loaded.manifest.fixed_policy_seed)
+        self.assertEqual(
+            {case.policy_seed_mode for case in loaded.manifest.cases}, {"derived"},
+        )
+
     def test_missing_explicit_artifacts_and_sources_fail(self):
         missing = self.root / "missing.bin"
         with self.assertRaises(FileNotFoundError):

@@ -9,9 +9,9 @@ from src.policies.config import RuntimeConfig
 def create_policy(seed: int, config: dict) -> Policy:
     settings = RuntimeConfig.model_validate(config)
     if settings.policy == "heuristic":
-        from src.policies.heuristic import HeuristicPolicy
+        from src.policies.heuristic import build_policy
 
-        return HeuristicPolicy(seed, settings.heuristic)
+        return build_policy(seed, settings.heuristic)
     import torch
     from src.policies.neural import NeuralPolicy
     from src.training.artifacts import load_checkpoint

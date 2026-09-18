@@ -35,11 +35,24 @@ class SuiteTests(unittest.TestCase):
             with self.subTest(repeats=repeats), self.assertRaises(ValueError):
                 make_cases(load_suite("quick"), repeats)
 
+    def test_fixed_policy_seed_matches_deployment_across_worlds_and_repeats(self):
+        cases = make_cases(load_suite("quick"), 2, fixed_policy_seed=7)
+        self.assertEqual({case.policy_seed for case in cases}, {7})
+        self.assertEqual({case.policy_seed_mode for case in cases}, {"fixed"})
+        for invalid in (-1, 2**32, True, 1.5):
+            with self.subTest(seed=invalid), self.assertRaises(ValueError):
+                make_cases(load_suite("quick"), fixed_policy_seed=invalid)
+
     def test_mismatched_case_identity_is_rejected(self):
         with self.assertRaises(ValidationError):
             EpisodeCase(case_id="world-1-repeat-0", world_seed=1, repeat_index=0, policy_seed=2)
         with self.assertRaises(ValidationError):
             EpisodeCase(case_id="wrong", world_seed=1, repeat_index=0, policy_seed=1)
+        fixed = EpisodeCase(
+            case_id="world-1-repeat-0", world_seed=1, repeat_index=0,
+            policy_seed=2, policy_seed_mode="fixed",
+        )
+        self.assertEqual(fixed.policy_seed, 2)
 
     def test_policy_config_is_finite_json(self):
         with self.assertRaises(ValidationError):

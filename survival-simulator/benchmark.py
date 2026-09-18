@@ -27,6 +27,16 @@ def positive_integer(value: str) -> int:
     return number
 
 
+def uint32(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Must be an integer between 0 and 2^32 - 1.") from exc
+    if not 0 <= number <= 2**32 - 1:
+        raise argparse.ArgumentTypeError("Must be an integer between 0 and 2^32 - 1.")
+    return number
+
+
 def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(
         description="Compare local policies without changing the competition simulator.",
@@ -38,6 +48,10 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--config", type=Path, help="JSON object passed to the policy factory.")
     run.add_argument("--suite", choices=SUITE_NAMES, default="quick")
     run.add_argument("--repeats", type=positive_integer, default=1, help="Policy trials per world seed.")
+    run.add_argument(
+        "--fixed-policy-seed", type=uint32,
+        help="Use one deployment-equivalent policy seed for every world and repeat.",
+    )
     run.add_argument(
         "--max-steps", type=positive_integer,
         help="Diagnostic cap, including the initial empty-action tick. Not rankable.",
@@ -69,7 +83,8 @@ def run_command(args: argparse.Namespace) -> int:
     loaded = load_policy(args.policy, label=args.label, config=config)
     manifest = build_manifest(
         PROJECT_ROOT, load_suite(args.suite), loaded.spec,
-        repeats=args.repeats, simulation=SimulationSettings(), max_steps=args.max_steps,
+        repeats=args.repeats, fixed_policy_seed=args.fixed_policy_seed,
+        simulation=SimulationSettings(), max_steps=args.max_steps,
         policy_sources=loaded.source_files, extra_artifacts=args.artifact,
     )
     writer = RunWriter(args.output, manifest)

@@ -261,6 +261,7 @@ def build_manifest(
     policy: PolicySpec,
     *,
     repeats: int = 1,
+    fixed_policy_seed: int | None = None,
     simulation: SimulationSettings | None = None,
     max_steps: int | None = None,
     policy_sources: Sequence[Path] = (),
@@ -272,7 +273,7 @@ def build_manifest(
     in ``extra_artifacts``; every explicitly declared file must exist.
     """
     root = Path(project_root).resolve(strict=True)
-    cases = make_cases(suite, repeats)
+    cases = make_cases(suite, repeats, fixed_policy_seed=fixed_policy_seed)
     engine_paths = [root / path for path in _ENGINE_FILES]
     elements = root / "src" / "elements"
     if not elements.is_dir():
@@ -283,6 +284,7 @@ def build_manifest(
     return RunManifest(
         run_id=uuid.uuid4().hex, created_at=datetime.now(timezone.utc).isoformat(),
         suite=suite, suite_sha256=content_hash(suite.model_dump()), repeats=repeats,
+        fixed_policy_seed=fixed_policy_seed,
         simulation=simulation or SimulationSettings(), max_steps=max_steps, cases=cases,
         policy=policy,
         provenance=Provenance(
@@ -458,6 +460,7 @@ def summarize_run(manifest: RunManifest, episodes: Sequence[EpisodeResult]) -> d
         "interrupted_cases": counts["interrupted"], "truncated_cases": counts["truncated"],
         "missing_cases": len(missing), "missing_case_ids": missing,
         "world_count": len(manifest.suite.seeds), "repeats": manifest.repeats,
+        "fixed_policy_seed": manifest.fixed_policy_seed,
         "score": describe([row.score for row in measured]),
         "survival_seconds": describe([row.survival_seconds for row in measured]),
         "sim_time": describe([row.sim_time for row in measured]),
@@ -561,6 +564,11 @@ def _run_markdown(manifest: RunManifest, summary: dict) -> str:
         f"# {title}", "", f"Policy: {_markdown(manifest.policy.label)}",
         f"Run ID: `{manifest.run_id}`",
         f"Suite: {_markdown(manifest.suite.name)}; status: {manifest.status}",
+        (
+            f"Policy seed: fixed `{manifest.fixed_policy_seed}`"
+            if manifest.fixed_policy_seed is not None
+            else f"Policy seed: derived per case using `{manifest.seed_version}`"
+        ),
         f"Cases: {summary['recorded_cases']}/{summary['expected_cases']} recorded; "
         f"{summary['successful_cases']} successful; {summary['missing_cases']} missing.",
         "", "| Native score statistic | Value |", "| --- | --- |",
@@ -653,8 +661,12 @@ def _require_stored_fields(value: object, model, name: str) -> None:
 def load_run(path: Path) -> SavedRun:
     path = Path(path)
     data = read_json(path / "manifest.json")
+    data.setdefault("fixed_policy_seed", None)
+    for case in data.get("cases", []):
+        if isinstance(case, dict):
+            case.setdefault("policy_seed_mode", "derived")
     _require_stored_fields(data, RunManifest, "Manifest")
-    if type(data["schema_version"]) is not int or data["schema_version"] != SCHEMA_VERSION:
+    if type(data["schema_version"]) is not int or data["schema_version"] not in (1, SCHEMA_VERSION):
         raise ValueError(f"Unsupported manifest schema version: {data['schema_version']!r}")
     for field, model in (("suite", Suite), ("simulation", SimulationSettings), ("policy", PolicySpec)):
         _require_stored_fields(data[field], model, f"Manifest {field}")
@@ -666,6 +678,8 @@ def load_run(path: Path) -> SavedRun:
                 raise ValueError(f"Truncated episodes.jsonl line {number} in {path}.")
             try:
                 data = json.loads(line)
+                if isinstance(data, dict) and isinstance(data.get("case"), dict):
+                    data["case"].setdefault("policy_seed_mode", "derived")
                 _require_stored_fields(data, EpisodeResult, "Episode")
                 _require_stored_fields(data["timings"], Timings, "Episode timings")
                 episodes.append(EpisodeResult.model_validate(data))

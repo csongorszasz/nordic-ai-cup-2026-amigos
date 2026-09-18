@@ -9,7 +9,8 @@ from unittest.mock import Mock, patch
 
 from src.benchmarking.config import SimulationSettings, load_suite
 from src.benchmarking.policies import validate_actions
-from src.training.env import EnvironmentAdapter, EnvTransition
+from src.core import SimulationCore
+from src.training.env import EnvironmentAdapter, EnvTransition, TrainingSimulationCore
 from src.training.seeds import training_seeds
 from src.utils.DTOs import ActionRequest, StepResponse
 
@@ -61,6 +62,79 @@ def adapter_for(*frames, settings=None):
 
 
 class EnvironmentAdapterTests(unittest.TestCase):
+    def test_headless_training_core_preserves_world_rng_and_state(self):
+        options = dict(
+            env_width=400, env_height=300, chunk_size=150, starting_agents=1,
+            starting_predators=1, starting_fruits=2, starting_trees=2, seed=19,
+        )
+        reference = SimulationCore(**options)
+        training = TrainingSimulationCore(**options)
+        self.assertTrue(reference.env.rendering)
+        self.assertFalse(training.env.rendering)
+        self.assertIsNone(training.env.world_surface)
+        self.assertEqual(reference.rng.getstate(), training.rng.getstate())
+
+        def agents(core):
+            return [
+                (
+                    value.agent_id, value.x, value.y, value.direction, value.energy,
+                    value.max_age, value.speed, value.sprint_speed,
+                )
+                for value in core.env.agents
+            ]
+
+        self.assertEqual(agents(reference), agents(training))
+        for _ in range(3):
+            left = reference.step([])
+            right = training.step([])
+            self.assertEqual(left["score"], right["score"])
+            self.assertEqual(left["sim_time"], right["sim_time"])
+            self.assertEqual(left["num_agents"], right["num_agents"])
+            self.assertEqual(agents(reference), agents(training))
+            self.assertEqual(reference.rng.getstate(), training.rng.getstate())
+
+    def test_action_repeat_accumulates_reward_and_spawns_only_once(self):
+        simulation = FakeSimulation([
+            frame(0.1, 0.1), frame(0.2, 0.2), frame(0.3, 0.3), frame(0.4, 0.4),
+        ])
+        adapter = EnvironmentAdapter(
+            simulation_factory=lambda **kwargs: simulation, action_repeat=3,
+        )
+        adapter.reset(1)
+        transition = adapter.step([action(spawn_agent=True)])
+        self.assertAlmostEqual(transition.reward, 0.3)
+        self.assertEqual(transition.observation.sim_time, 0.4)
+        repeated = simulation.inputs[1:]
+        self.assertEqual(len(repeated), 3)
+        self.assertTrue(repeated[0][0][1].spawn_agent)
+        self.assertFalse(repeated[1][0][1].spawn_agent)
+        self.assertFalse(repeated[2][0][1].spawn_agent)
+
+    def test_action_repeat_observes_the_tick_that_crosses_time_limit(self):
+        class RepeatSimulation(FakeSimulation):
+            def __init__(self):
+                super().__init__([
+                    frame(0.1, 0.1), frame(0.2, 0.2), frame(0.3, 0.3),
+                ])
+                self.env = type("Env", (), {"time": 0.0})()
+                self.observe = []
+
+            def step_training(self, actions, *, observe_agents):
+                value = self.step(actions)
+                self.env.time = value["sim_time"]
+                self.observe.append(observe_agents)
+                return value
+
+        simulation = RepeatSimulation()
+        adapter = EnvironmentAdapter(
+            SimulationSettings(time_limit=0.25),
+            simulation_factory=lambda **kwargs: simulation, action_repeat=3,
+        )
+        adapter.reset(1)
+        transition = adapter.step([action()])
+        self.assertTrue(transition.terminated)
+        self.assertEqual(simulation.observe, [True, False, True])
+
     def test_construction_is_deferred_and_reset_passes_native_settings_and_seed(self):
         settings = SimulationSettings(starting_agents=2, starting_trees=0, time_limit=0.3)
         simulation = FakeSimulation([frame(ids=(7, 2))])
@@ -324,6 +398,9 @@ class EnvironmentAdapterTests(unittest.TestCase):
             EnvironmentAdapter({})
         with self.assertRaises(TypeError):
             EnvironmentAdapter(simulation_factory=None)
+        for repeat in (0, 11, True, 1.5):
+            with self.subTest(action_repeat=repeat), self.assertRaises(ValueError):
+                EnvironmentAdapter(action_repeat=repeat)
         with self.assertRaises(ValueError):
             EnvironmentAdapter(SimulationSettings().model_copy(update={"starting_agents": True}))
 
