@@ -70,9 +70,9 @@ class HFClient:
         # is silently ignored, which loads fp32 and OOMs a 7B on a 32 GB card.
         def _from(factory):
             try:
-                return factory(self.model_name, dtype=torch_dtype)
+                return factory.from_pretrained(self.model_name, dtype=torch_dtype)
             except TypeError:
-                return factory(self.model_name, torch_dtype=torch_dtype)
+                return factory.from_pretrained(self.model_name, torch_dtype=torch_dtype)
 
         try:
             self._model = _from(AutoModelForCausalLM)
