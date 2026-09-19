@@ -8,8 +8,8 @@ runs can be combined:
    f+1. A homography rather than a shift, because the camera is pitched: the ground near
    the bottom of the frame moves faster and grows as it comes closer (up to 6% in the
    six frames a view is reused over). A single shift per frame misplaced views by up to
-   95 px; the homographies place them within a pixel. Frames with no Level-0 view get an
-   even share of the step across the gap (fractional matrix power).
+   95 px; the homographies place them within a pixel. For the frames with no Level-0 view
+   the motion is measured from their own zoomed views (register_gaps).
 2. Each frame F starts from its Level-0 view (upscaled; the nearest one, warped, when F
    has none). Then Level-1 and Level-2 views from all runs within --max-age frames are
    warped into F, closest-in-time on top, so views recorded at F itself end up on top
@@ -64,6 +64,64 @@ def register(l0_by_frame: dict) -> dict:
     return steps
 
 
+def register_gaps(steps: dict, l0_by_frame: dict, zoomed: list, image) -> None:
+    """Measure the motion into frames with no Level-0 view instead of interpolating it.
+
+    An even share of the step across the gap is only right if the drone moved evenly;
+    around frame 238 it did not, and everything anchored there came out ~35 px off. Such a
+    frame still has its own zoomed views: matched against the Level-0 view before the gap,
+    they give its homography directly. Falls back to the even share when they match badly.
+    """
+    sift, matcher = cv2.SIFT_create(4000), cv2.BFMatcher()
+    frames = sorted(l0_by_frame)
+    for a, b in zip(frames, frames[1:]):
+        if b - a == 1:
+            continue
+        ref_view = l0_by_frame[a]
+        ref = cv2.resize(cv2.cvtColor(cv2.imread(str(ref_view['run'] / ref_view['file'])), cv2.COLOR_BGR2GRAY),
+                         (W, H), interpolation=cv2.INTER_CUBIC)
+        direct = {a: np.eye(3), b: between(steps, a, b)}
+        for m in range(a + 1, b):
+            guess = between(steps, a, m)
+            src, dst = [], []
+            for v in [v for v in zoomed if v['frame'] == m]:
+                view = cv2.cvtColor(image(v), cv2.COLOR_BGR2GRAY)
+                h, w = view.shape
+                # At the reference's (Level-0) sharpness, or the features do not match.
+                view = cv2.resize(cv2.resize(view, (w // 4, h // 4), interpolation=cv2.INTER_AREA), (w, h),
+                                  interpolation=cv2.INTER_CUBIC)
+                to_m = placement(v)
+                corners = cv2.perspectiveTransform(np.float32([[[0, 0]], [[w, h]]]), np.linalg.inv(guess) @ to_m)[:, 0]
+                x0, y0 = np.maximum(corners.min(axis=0) - 300, 0).astype(int)
+                x1, y1 = np.minimum(corners.max(axis=0) + 300, (W, H)).astype(int)
+                if x1 - x0 < 64 or y1 - y0 < 64:
+                    continue
+                kv, dv = sift.detectAndCompute(view, None)
+                kr, dr = sift.detectAndCompute(ref[y0:y1, x0:x1], None)
+                if dv is None or dr is None or len(dr) < 2:
+                    continue
+                for m1, m2 in matcher.knnMatch(dv, dr, k=2):
+                    if m1.distance < 0.75 * m2.distance:
+                        src.append(np.array(kr[m1.trainIdx].pt) + (x0, y0))                        # frame a
+                        dst.append(cv2.perspectiveTransform(np.float32([[kv[m1.queryIdx].pt]]), to_m)[0, 0])  # frame m
+            found = None
+            if len(src) >= 30:
+                found, inliers = cv2.findHomography(np.float32(src), np.float32(dst), cv2.RANSAC, 3.0)
+                if found is None or inliers.sum() < 60:
+                    found = None
+            if found is None:
+                print(f'  frame {m}: its views do not match frame {a}; motion interpolated')
+                direct[m] = guess
+            else:
+                moved = np.hypot(*(cv2.perspectiveTransform(np.float32([[[1920, 1080]]]), found)
+                                   - cv2.perspectiveTransform(np.float32([[[1920, 1080]]]), guess))[0, 0])
+                print(f'  frame {m}: measured from {int(inliers.sum())} matches ({moved:.0f} px from the interpolation)')
+                direct[m] = found / found[2, 2]
+        for f in range(a, b):
+            step = direct[f + 1] @ np.linalg.inv(direct[f])
+            steps[f] = step / step[2, 2]
+
+
 def between(steps: dict, f: int, F: int) -> np.ndarray:
     """Homography taking frame f's 4K pixels to frame F's."""
     M = np.eye(3)
@@ -114,9 +172,6 @@ def main():
     for v in views:
         if v['level'] == 0:
             l0_by_frame.setdefault(v['frame'], v)
-    steps = register(l0_by_frame)
-    print(f'registered {len(steps)} frame steps from {len(l0_by_frame)} Level-0 views')
-
     zoomed = [v for v in views if v['level'] in (1, 2)]
     print(f'{len(zoomed)} zoomed views from {len(runs)} runs')
     cache = {}
@@ -129,6 +184,10 @@ def main():
                 img = cv2.resize(img, None, fx=UPSCALE[v['level']], fy=UPSCALE[v['level']], interpolation=cv2.INTER_CUBIC)
             cache[key] = img
         return cache[key]
+
+    steps = register(l0_by_frame)
+    register_gaps(steps, l0_by_frame, zoomed, image)
+    print(f'registered {len(steps)} frame steps from {len(l0_by_frame)} Level-0 views')
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
