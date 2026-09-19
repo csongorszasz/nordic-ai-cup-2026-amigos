@@ -4724,5 +4724,343 @@
   ],
   "note": null,
   "at": "2026-09-19T15:11:53"
+ },
+ "f058_2330_0441": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 58,
+  "best_box": [
+   2318.0,
+   424.0,
+   2344.0,
+   459.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:37:04"
+ },
+ "f057_1854_1808": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 57,
+  "best_box": [
+   1838.0,
+   1795.0,
+   1870.0,
+   1821.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:37:20"
+ },
+ "f062_1264_0522": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 62,
+  "best_box": [
+   1233.0,
+   504.0,
+   1296.0,
+   540.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:37:30"
+ },
+ "f067_2158_0454": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 67,
+  "best_box": [
+   2147.0,
+   443.0,
+   2169.0,
+   466.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:37:38"
+ },
+ "f071_2679_1858": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 71,
+  "best_box": [
+   2619.0,
+   1828.0,
+   2740.0,
+   1890.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:37:46"
+ },
+ "f123_1593_1156": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 123,
+  "best_box": [
+   1502.0,
+   1080.0,
+   1684.0,
+   1233.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:04"
+ },
+ "f113_2926_0541": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 113,
+  "best_box": [
+   2840.0,
+   450.0,
+   3014.0,
+   632.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:11"
+ },
+ "f124_2431_1195": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 124,
+  "best_box": [
+   2320.0,
+   1040.0,
+   2542.0,
+   1350.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:19"
+ },
+ "f116_1653_0678": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 116,
+  "best_box": [
+   1600.0,
+   577.0,
+   1706.0,
+   780.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:27"
+ },
+ "f123_1221_0866": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 123,
+  "best_box": [
+   1120.0,
+   744.0,
+   1322.0,
+   990.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:33"
+ },
+ "f136_0549_1645": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 136,
+  "best_box": [
+   526.0,
+   1620.0,
+   572.0,
+   1671.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:39"
+ },
+ "f150_1292_1830": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 150,
+  "best_box": [
+   1182.0,
+   1770.0,
+   1402.0,
+   1890.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:38:53"
+ },
+ "f148_2503_0507": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 148,
+  "best_box": [
+   2488.0,
+   489.0,
+   2519.0,
+   525.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:06"
+ },
+ "f166_1741_1556": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 166,
+  "best_box": [
+   1726.0,
+   1541.0,
+   1757.0,
+   1572.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:13"
+ },
+ "f162_1869_1125": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 162,
+  "best_box": [
+   1818.0,
+   1080.0,
+   1920.0,
+   1172.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:22"
+ },
+ "f154_1462_1330": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 154,
+  "best_box": [
+   1417.0,
+   1288.0,
+   1507.0,
+   1373.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:29"
+ },
+ "f165_0729_1090": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 165,
+  "best_box": [
+   712.0,
+   1073.0,
+   747.0,
+   1107.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:45"
+ },
+ "f186_0851_1390": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 186,
+  "best_box": [
+   837.0,
+   1370.0,
+   867.0,
+   1410.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:39:56"
+ },
+ "f204_1888_2051": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 204,
+  "best_box": [
+   1866.0,
+   2032.0,
+   1910.0,
+   2072.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:40:07"
+ },
+ "f180_1622_0103": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 180,
+  "best_box": [
+   1610.0,
+   94.0,
+   1634.0,
+   112.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:40:22"
+ },
+ "f221_1685_1325": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 221,
+  "best_box": [
+   1673.0,
+   1313.0,
+   1697.0,
+   1339.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:40:49"
+ },
+ "f223_1231_0334": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 223,
+  "best_box": [
+   1210.0,
+   313.0,
+   1252.0,
+   355.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:41:14"
+ },
+ "f235_1936_1063": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   1918.0,
+   1040.0,
+   1955.0,
+   1086.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:41:26"
+ },
+ "f240_2255_1399": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 240,
+  "best_box": [
+   2240.0,
+   1383.0,
+   2270.0,
+   1416.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:41:30"
+ },
+ "f236_1094_1155": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 236,
+  "best_box": [
+   1080.0,
+   1142.0,
+   1108.0,
+   1170.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:41:36"
+ },
+ "f229_3082_1038": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 229,
+  "best_box": [
+   3070.0,
+   1028.0,
+   3095.0,
+   1049.0
+  ],
+  "note": null,
+  "at": "2026-09-19T16:41:46"
  }
 }
