@@ -8,6 +8,7 @@ import logging
 import math
 import time
 from collections import Counter
+from copy import deepcopy
 from pathlib import Path
 
 from answerers.boundaries import adjusted_span
@@ -220,7 +221,8 @@ def main():
         client._model, str(adapter), is_trainable=True, local_files_only=True,
     )
     client._model = model
-    completion_eos = configure_completion_eos(client._tokenizer, model.generation_config.eos_token_id)
+    inference_generation = deepcopy(model.generation_config)
+    inference_eos = client._tokenizer.eos_token
     records, expected_ids = [], {}
     for row in training:
         record, ids = prompt_record(row, transcripts[row["transcript_id"]], client._tokenizer)
@@ -237,6 +239,7 @@ def main():
     if not args.smoke:
         before, _ = evaluate(client, validation, transcripts, request_times, args.output, "sft_replay")
         validate_coverage(before, validation)
+    completion_eos = configure_completion_eos(client._tokenizer, model.generation_config.eos_token_id)
     initial = {
         name: parameter.detach().cpu().clone()
         for name, parameter in model.named_parameters() if parameter.requires_grad
@@ -334,6 +337,8 @@ def main():
     model.gradient_checkpointing_disable()
     model.set_adapter("default")
     model.eval()
+    client._tokenizer.eos_token = inference_eos
+    model.generation_config = inference_generation
     model.save_pretrained(args.output / "adapter", selected_adapters=["default"], safe_serialization=True)
     if args.smoke:
         row = reward.rows[records[0]["question_id"]]

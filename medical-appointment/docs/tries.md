@@ -888,6 +888,7 @@ reward is an achieved held-out score.
 | [SelfCite](https://arxiv.org/abs/2502.09604), June 15, 2025 revision | Citation quality uses context removal/retention, not the quote's generation probability. | The rejected quote-NLL reranker did not implement this objective; do not label that result a SelfCite test. |
 | [EvoGround](https://arxiv.org/abs/2605.13803), May 13, 2026 | Coupled proposer/solver agents create grounding supervision from unlabeled video. | Possible later training-data axis, not permission to generate or alter held-out labels. |
 | [TimeLens2](https://arxiv.org/abs/2607.17423), July 19, 2026 | GRPO combines tIoU with exact temporal Wasserstein distance, distinguishing some zero-overlap near misses. | Implement its interval geometry for this task's single span, while retaining the official scorer unchanged. |
+| [Binary Discriminative Temporal Grounding](https://arxiv.org/abs/2608.08315), August 7, 2026 | Coarse-to-fine window verification avoids direct timestamp generation. | A later candidate-selection axis; our previous topic-overlap NLI is not a reproduction of its fine-tuned window verifier. |
 | [Qwen3 forced aligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf) | Dedicated audio/text alignment instead of relying only on ASR word times. | Separate timing experiment; an aligner cannot repair selection of the wrong supporting occurrence by itself. |
 
 These are verified primary sources available before the review date, not a
@@ -939,6 +940,23 @@ full-OOF result or deployment is claimed by this implementation alone.
   Local real-artifact preflight covers 143 training positives, 70 held-out
   questions and all 39 content-hashed transcripts. GPU behavior remains a
   separate gate.
+- **GRPO feasibility passed:** `grpo-gradient-smoke-be8cf4c9`, eight real
+  updates / 32 rollouts. Seven groups had nonconstant rewards, 29 rollouts
+  grounded uniquely, 26 overlapped their training reference. Adapter movement
+  L2 0.04160, finite nonzero gradients, 17.48 GB peak, training 49.73 s;
+  post-update greedy generation grounded successfully. The SFT KL reference
+  remained bit-identical. These are feasibility measurements, not held-out
+  score improvement.
+- Restore native inference generation settings after GRPO: the trainer
+  aligns its model config to the single training EOS, whereas pre/post
+  held-out replay must retain identical original stopping behavior.
+  Proceed to the one-epoch fixed fold-0 pilot from the **original** SFT
+  checkpoint, not the eight-update smoke adapter.
+- **Independent timing preparation:** `cache-qwen-aligner-b4ced968` cached
+  all six required native-HF files, 1,847,225,867 bytes, at official revision
+  `c07281df297b9905d24a508279258cccf987a064`. Native alignment prepare/decode
+  APIs are present in transformers 5.17.0. This CPU-only preparation made no
+  predictions and does not establish timing accuracy or request latency.
 
 ## ASR stream lifecycle check
 
