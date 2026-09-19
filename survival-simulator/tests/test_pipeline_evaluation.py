@@ -200,6 +200,42 @@ class EvaluationTests(unittest.TestCase):
         scheduler.assert_called_once_with(123)
         self.assertEqual(result["state"], "incomplete")  # Future updates weren't fabricated.
 
+    def test_watcher_drains_final_checkpoint_published_during_evaluation(self):
+        self.publish(0)
+        write_json(self.run / "manifest.json", {"status": "running"})
+        original = evaluate_pending
+        calls = []
+
+        def delayed_publication(run):
+            calls.append(run)
+            result = original(run, executor=fake_episode, refresh=False)
+            if len(calls) == 1:
+                self.publish(1)
+                self.publish(2)
+                write_json(self.run / "manifest.json", {"status": "complete"})
+            return result
+
+        with patch("idun.watch_checkpoints.training_active", return_value=True), \
+                patch("src.training.evaluation.evaluate_pending", side_effect=delayed_publication):
+            result = monitor_scheduled(self.run, 123, poll_seconds=0)
+        self.assertEqual(result["state"], "complete")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(progress_data(self.run)["latest_evaluated_update"], 2)
+
+    def test_cli_watcher_does_not_create_trainer_output_directory(self):
+        import idun.watch_checkpoints as watcher
+        destination = self.run.parent / "not-started"
+
+        def monitor(run, *args, **kwargs):
+            self.assertEqual(run, destination)
+            self.assertFalse(run.exists())
+            return {"state": "complete"}
+
+        with patch("sys.argv", ["watch_checkpoints", "--run", str(destination), "--training-job", "123"]), \
+                patch("idun.watch_checkpoints.monitor_scheduled", side_effect=monitor):
+            self.assertEqual(watcher.main(), 0)
+        self.assertFalse(destination.exists())
+
     def test_both_learning_modes_publish_due_weights_using_synthetic_rollouts(self):
         for mode in ("ppo", "imitation"):
             with self.subTest(mode=mode):

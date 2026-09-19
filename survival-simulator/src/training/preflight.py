@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import Field
 
 from src.benchmarking.config import PROJECT_ROOT, content_hash, load_suite, read_json
-from src.policies.config import ExperimentConfig, Settings
+from src.policies.config import ExperimentConfig, ModelConfig, Settings
 from src.training.teacher import resolve_teacher, sha256
 
 
@@ -139,7 +139,7 @@ def build_run_plan(
     if source is not None:
         source = source if source.is_absolute() else root / source
         header = read_json(source.with_suffix(source.suffix + ".json"))
-        if (header.get("model") != config.model.model_dump(mode="json")
+        if (header.get("model") is None or ModelConfig.model_validate(header["model"]) != config.model
                 or header.get("action_repeat") != config.resources.action_repeat):
             raise ValueError("Checkpoint architecture/cadence is incompatible or lacks review metadata.")
         if (header.get("teacher_sha256") != config.teacher.sha256

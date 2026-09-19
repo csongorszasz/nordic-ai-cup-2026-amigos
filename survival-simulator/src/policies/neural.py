@@ -44,7 +44,8 @@ class NeuralPolicy:
             "agent_status": sorted(step.agent_status, key=lambda agent: agent.agent_id),
         })
         batch = encode_step(ordered, self.memory.previous_actions, validate=False,
-                            public_context=self.network.config.public_context)
+                            public_context=self.network.config.public_context,
+                            peer_context=self.network.config.peer_context)
         if not batch.agent_ids:
             self.reset()
             return []

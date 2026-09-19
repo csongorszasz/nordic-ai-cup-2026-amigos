@@ -10,7 +10,8 @@ import torch
 from src.policies.actions import ACTION_VERSION, imitation_loss
 from src.policies.config import ExperimentConfig
 from src.policies.features import (
-    ENTITY_DIM, FEATURE_VERSION, PUBLIC_FEATURE_VERSION, SCALAR_DIM, PUBLIC_SCALAR_DIM, FeatureBatch,
+    ENTITY_DIM, FEATURE_VERSION, FEATURE_VERSIONS, SCALAR_DIM, PUBLIC_SCALAR_DIM,
+    FeatureBatch, feature_version,
 )
 from src.policies.networks import PolicyNetwork
 from src.training.rollout import Rollout, RolloutFrame, require_finite, sequence_chunks, unroll_sequence
@@ -92,6 +93,7 @@ def _frame_state(frame: RolloutFrame, *, json_tensors: bool = False) -> dict:
         **{name: getattr(frame, name) for name in _SCALAR_FIELDS},
         "features": {
             "agent_ids": list(features.agent_ids),
+            "feature_version": features.feature_version,
             **{
                 name: _tensor_state(torch.from_numpy(getattr(features, name)), json_tensors)
                 for name in ("scalars", "entities", "entity_types", "entity_owners")
@@ -103,7 +105,7 @@ def _frame_state(frame: RolloutFrame, *, json_tensors: bool = False) -> dict:
     }
 
 
-def _restore_frame(state: dict) -> RolloutFrame:
+def _restore_frame(state: dict, expected_features: str | None = None) -> RolloutFrame:
     for name in ("terminated", "episode_start"):
         if type(state.get(name)) is not bool:
             raise ValueError(f"Saved imitation {name} must be boolean.")
@@ -143,6 +145,15 @@ def _restore_frame(state: dict) -> RolloutFrame:
         ))
     ):
         raise ValueError("Saved imitation features have inconsistent ragged dimensions.")
+    schema = data.get("feature_version", expected_features or feature_version(
+        arrays["scalars"].shape[1] == PUBLIC_SCALAR_DIM,
+    ))
+    if (
+        schema not in FEATURE_VERSIONS
+        or (expected_features is not None and schema != expected_features)
+        or arrays["scalars"].shape[1] != (SCALAR_DIM if schema == FEATURE_VERSION else PUBLIC_SCALAR_DIM)
+    ):
+        raise ValueError("Saved imitation feature schema does not match its arrays or snapshot.")
     tensors = {}
     for name in _TENSOR_FIELDS:
         tensor = state[name]
@@ -167,7 +178,7 @@ def _restore_frame(state: dict) -> RolloutFrame:
     ):
         raise ValueError("Saved imitation labels do not match the observed agent identities.")
     return RolloutFrame(
-        features=FeatureBatch(agent_ids=agent_ids, **arrays), step=step,
+        features=FeatureBatch(agent_ids=agent_ids, feature_version=schema, **arrays), step=step,
         actions=actions, teacher_actions=teachers, **tensors,
         **{name: state[name] for name in _SCALAR_FIELDS},
     )
@@ -231,9 +242,16 @@ class ImitationDataset:
         """Bounded checkpoint/artifact payload accepted by torch.load(weights_only=True)."""
         return {
             "version": 1, "max_frames": self.max_frames, "total_seen": self.total_seen,
+            "feature_version": self._feature_version(),
             "evicted_frames": self.evicted_frames,
             "frames": [_frame_state(frame) for frame in self._frames],
         }
+
+    def _feature_version(self) -> str:
+        schemas = {frame.features.feature_version for frame in self._frames}
+        if len(schemas) > 1 or not schemas.issubset(FEATURE_VERSIONS):
+            raise ValueError("Imitation replay cannot mix feature schemas.")
+        return next(iter(schemas), FEATURE_VERSION)
 
     def json_snapshot(self) -> dict:
         """Independent JSON-only replay artifact, bounded by max_frames.
@@ -246,10 +264,7 @@ class ImitationDataset:
         """
         return {
             "format": "imitation-dataset-json", "version": 1,
-            "feature_version": (
-                PUBLIC_FEATURE_VERSION if self._frames and self._frames[0].features.scalars.shape[1] == PUBLIC_SCALAR_DIM
-                else FEATURE_VERSION
-            ), "action_version": ACTION_VERSION,
+            "feature_version": self._feature_version(), "action_version": ACTION_VERSION,
             "max_frames": self.max_frames, "total_seen": self.total_seen,
             "evicted_frames": self.evicted_frames,
             "eviction_policy": "oldest_collected_team_tick_first",
@@ -260,7 +275,7 @@ class ImitationDataset:
         """Rebuild bounded replay from json.loads of a compatible artifact."""
         if (
             snapshot.get("format") != "imitation-dataset-json" or snapshot.get("version") != 1
-            or snapshot.get("feature_version") not in (FEATURE_VERSION, PUBLIC_FEATURE_VERSION)
+            or snapshot.get("feature_version") not in FEATURE_VERSIONS
             or snapshot.get("action_version") != ACTION_VERSION
             or snapshot.get("max_frames") != self.max_frames
         ):
@@ -275,7 +290,7 @@ class ImitationDataset:
                 **frame,
                 **{name: _tensor_from_json(frame[name]) for name in _TENSOR_FIELDS},
                 "features": {
-                    "agent_ids": features["agent_ids"],
+                    **features,
                     **{
                         name: _tensor_from_json(features[name])
                         for name in ("scalars", "entities", "entity_types", "entity_owners")
@@ -287,6 +302,9 @@ class ImitationDataset:
     def load_state_dict(self, state: dict) -> None:
         if state.get("version") != 1 or state.get("max_frames") != self.max_frames:
             raise ValueError("Resume requires the same imitation dataset version and max_frames.")
+        schema = state.get("feature_version")
+        if schema is not None and schema not in FEATURE_VERSIONS:
+            raise ValueError("Incompatible saved imitation feature schema.")
         frames = state.get("frames")
         seen, evicted = state.get("total_seen"), state.get("evicted_frames")
         if (
@@ -295,7 +313,9 @@ class ImitationDataset:
             or evicted < 0 or seen != evicted + len(frames)
         ):
             raise ValueError("Saved imitation dataset counts are inconsistent.")
-        restored = [_restore_frame(frame) for frame in frames]
+        restored = [_restore_frame(frame, schema) for frame in frames]
+        if len({frame.features.feature_version for frame in restored}) > 1:
+            raise ValueError("Imitation replay cannot mix feature schemas.")
         self._frames = deque(restored)
         self.total_seen, self.evicted_frames = seen, evicted
 

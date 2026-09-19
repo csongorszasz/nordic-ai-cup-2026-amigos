@@ -17,7 +17,7 @@ from src.benchmarking.config import (
     PROJECT_ROOT, PolicySpec, Suite, canonical_json, read_json,
 )
 from src.policies.config import ExperimentConfig, ModelConfig
-from src.policies.features import FEATURE_VERSION, PUBLIC_FEATURE_VERSION
+from src.policies.features import FEATURE_VERSIONS, feature_version
 from src.training.teacher import resolve_teacher
 
 if TYPE_CHECKING:
@@ -130,22 +130,22 @@ def save_checkpoint(
     path: Path, network: "PolicyNetwork", config: ExperimentConfig,
     optimizer: "torch.optim.Optimizer | None" = None, training_state: dict | None = None,
     *, inference_only: bool = False,
+    rng_state: dict | None = None,
 ) -> str:
     import torch
-    from src.policies.actions import ACTION_VERSION
+    from src.policies.actions import model_action_version
 
     if network.config != config.model:
         raise ValueError("Cannot save weights with a different model configuration.")
     payload = {
-        "version": CHECKPOINT_VERSION, "feature_version": (
-            PUBLIC_FEATURE_VERSION if config.model.public_context else FEATURE_VERSION
-        ),
-        "action_version": ACTION_VERSION, "config": config.model_dump(mode="json"),
+        "version": CHECKPOINT_VERSION,
+        "feature_version": feature_version(config.model.public_context, config.model.peer_context),
+        "action_version": model_action_version(config.model), "config": config.model_dump(mode="json"),
         "model": {key: tensor.detach().cpu() for key, tensor in network.state_dict().items()},
         "optimizer": optimizer.state_dict() if optimizer is not None else None,
         "training_state": training_state or {},
         "teacher": resolve_teacher(config).provenance,
-        "rng": {} if inference_only else {
+        "rng": {} if inference_only else rng_state if rng_state is not None else {
             "python": random.getstate(), "torch": torch.random.get_rng_state(),
             "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_initialized() else [],
         },
@@ -163,7 +163,7 @@ def save_checkpoint(
     digest = file_hash(path)
     write_json(path.with_suffix(path.suffix + ".json"), {
         "sha256": digest, "version": CHECKPOINT_VERSION,
-        "feature_version": payload["feature_version"], "action_version": ACTION_VERSION,
+        "feature_version": payload["feature_version"], "action_version": payload["action_version"],
         "model": config.model.model_dump(mode="json"),
         "teacher_sha256": config.teacher.sha256 if config.teacher else None,
         "action_repeat": config.resources.action_repeat,
@@ -178,7 +178,7 @@ def load_checkpoint(
     expected_sha256: str | None = None,
 ) -> LoadedCheckpoint:
     import torch
-    from src.policies.actions import ACTION_VERSION
+    from src.policies.actions import ACTION_VERSION, VECTOR_ACTION_VERSION, model_action_version
     from src.policies.networks import PolicyNetwork
 
     digest = file_hash(path)
@@ -188,12 +188,14 @@ def load_checkpoint(
     payload = torch.load(path, map_location="cpu", weights_only=True)
     if not isinstance(payload, dict) or (
         payload.get("version") != CHECKPOINT_VERSION
-        or payload.get("feature_version") not in (FEATURE_VERSION, PUBLIC_FEATURE_VERSION)
-        or payload.get("action_version") != ACTION_VERSION
+        or payload.get("feature_version") not in FEATURE_VERSIONS
+        or payload.get("action_version") not in (ACTION_VERSION, VECTOR_ACTION_VERSION)
     ):
         raise ValueError("Incompatible checkpoint format, feature schema, or action codec.")
     config = ExperimentConfig.model_validate(payload["config"])
-    expected_features = PUBLIC_FEATURE_VERSION if config.model.public_context else FEATURE_VERSION
+    if payload["action_version"] != model_action_version(config.model):
+        raise ValueError("Checkpoint action codec does not match its model.")
+    expected_features = feature_version(config.model.public_context, config.model.peer_context)
     if payload["feature_version"] != expected_features:
         raise ValueError("Checkpoint feature schema does not match its model.")
     if expected_model is not None and config.model != expected_model:

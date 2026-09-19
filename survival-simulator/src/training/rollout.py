@@ -400,7 +400,8 @@ class RolloutCollector:
                     for index, observation in enumerate(self.observations):
                         memory = self.memories[index]
                         features = encode_step(observation, memory.previous_actions,
-                                               public_context=self.network.config.public_context)
+                                               public_context=self.network.config.public_context,
+                                               peer_context=self.network.config.peer_context)
                         peak_tokens = max(
                             peak_tokens, feature_tokens(features, self.config.resources.max_tokens),
                         )
@@ -482,7 +483,8 @@ class RolloutCollector:
                         continue
                     memory = self.memories[index]
                     features = encode_step(observation, memory.previous_actions,
-                                           public_context=self.network.config.public_context)
+                                           public_context=self.network.config.public_context,
+                                           peer_context=self.network.config.peer_context)
                     feature_tokens(features, self.config.resources.max_tokens)
                     hidden = memory.prepare(features.agent_ids, self.network.config.hidden_size, self.device)
                     output = self.network(

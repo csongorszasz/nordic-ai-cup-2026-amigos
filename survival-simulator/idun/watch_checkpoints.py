@@ -193,7 +193,7 @@ def monitor(run_path: Path, output: Path, reference: Path, job_id: int,
 
 def monitor_scheduled(run_path: Path, job_id: int | None, *, poll_seconds: float = 5, once: bool = False) -> dict:
     """User-launched monitor for durable requests; never submits another job."""
-    from src.training.evaluation import evaluate_pending, schedule_path
+    from src.training.evaluation import evaluate_pending, pending_updates, schedule_path
     from src.training.progress import render_progress, progress_data
 
     while True:
@@ -212,6 +212,13 @@ def monitor_scheduled(run_path: Path, job_id: int | None, *, poll_seconds: float
             }), flush=True)
             status = read_json(manifest)["status"] if manifest.exists() else "running"
             if once or not active or status in ("complete", "failed", "interrupted", "paused"):
+                # The trainer can publish its final checkpoint while an earlier
+                # snapshot list is being evaluated. Drain that durable tail too.
+                if not once:
+                    while pending_updates(run_path):
+                        evaluate_pending(run_path)
+                    render_progress(run_path)
+                    data = progress_data(run_path)
                 failed = any(point["state"] == "failed" for point in data["points"])
                 missing = any(point["state"] != "complete" for point in data["points"])
                 return {"state": "finished_with_errors" if failed else "incomplete" if missing else "complete",
@@ -237,7 +244,8 @@ def main() -> int:
         if args.training_job is None and not args.once:
             parser.error("Provide --training-job or --once.")
         from src.training.evaluation import evaluation_lock
-        with evaluation_lock(args.run / "progress" / "watcher"):
+        run_path = args.run.resolve()
+        with evaluation_lock(run_path.parent / ".watcher-locks" / run_path.name):
             status = monitor_scheduled(args.run.resolve(), args.training_job,
                                        poll_seconds=args.poll_seconds, once=args.once)
         return 0 if status["state"] == "complete" else 1

@@ -79,12 +79,16 @@ class ModelConfig(Settings):
     critic: Literal["team", "local"] = "team"
     entity_chunk_size: PositiveInt = 4096
     public_context: bool = False
+    peer_context: bool = False
+    angle_head: Literal["bounded", "vector_bc"] = "bounded"
     log_std_min: float = -5.0
     log_std_max: float = 2.0
     initial_log_std: float = -0.5
 
     @model_validator(mode="after")
     def variance_bounds(self):
+        if self.peer_context and not self.public_context:
+            raise ValueError("peer_context requires public_context=True.")
         if not self.log_std_min < self.initial_log_std < self.log_std_max:
             raise ValueError("Require log_std_min < initial_log_std < log_std_max.")
         return self
@@ -203,6 +207,8 @@ class ExperimentConfig(Settings):
     def compatible(self):
         if self.mode in ("imitation", "ppo") and self.policy != "neural":
             raise ValueError("Learning modes require policy='neural'.")
+        if self.mode == "ppo" and self.model.angle_head != "bounded":
+            raise ValueError("The vector BC angle head has no validated stochastic PPO codec.")
         if self.mode == "search" and self.policy != "heuristic":
             raise ValueError("Search mode requires policy='heuristic'.")
         if self.mode == "profile" and self.policy != "heuristic":

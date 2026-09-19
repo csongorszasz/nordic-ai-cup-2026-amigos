@@ -360,6 +360,10 @@ Remove-Item Env:BENCHMARK_INTEGRATION
 
 ## Developing a policy
 
+For the current **BC convergence** work, see `docs\bc-convergence.md`: immutable complete
+teacher demonstrations, offline optimizer steps, current-weight recurrent validation,
+and copying/score gates. It does not advance to DAgger or PPO merely because a budget ends.
+
 The primary submission candidate is now the **stateful hierarchical controller**:
 shared teammate-relative scene reconstruction, distinct fruit/tree assignments,
 patch camping, facing-aware predator escape, and population/trait-aware breeding.

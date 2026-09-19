@@ -106,6 +106,16 @@ def initialize_schedule(run: Path, config: ExperimentConfig, manifest: dict, *, 
             write_json(run / "evaluation" / "historical-teacher.json", read_json(reference))
         schedule["stage"] = previous["stage"]
         schedule["updates"] = [update for update in schedule["updates"] if update > lineage["resume_update"]]
+    elif lineage is not None and lineage["kind"] == "fork":
+        first = lineage["start_optimizer_step"]
+        if type(first) is not int or not 0 <= first <= config.updates:
+            raise ValueError("Fork evaluation start must be within the optimizer-step budget.")
+        schedule["updates"] = sorted({first, *(update for update in schedule["updates"] if update > first)})
+        if lineage.get("data_comparison"):
+            arm = lineage["data_comparison"]["arm"]
+            if arm not in ("bc-control", "bc-dagger"):
+                raise ValueError("Unknown matched-data comparison arm.")
+            schedule["stage"] = arm
     schedule["schedule_id"] = content_hash(schedule)
     if destination.exists() and load_schedule(run) != schedule:
         raise ValueError("An existing evaluation schedule cannot be replaced.")
