@@ -14,6 +14,8 @@ Environment overrides:
 * ``WHISPER_DEVICE``        default ``cuda`` (falls back to CPU)
 * ``WHISPER_COMPUTE_TYPE``  default ``float16`` (falls back to ``int8`` on CPU)
 * ``WHISPER_LANGUAGE``      default ``en``
+* ``WHISPER_INITIAL_PROMPT`` optional context for the initial decoding window
+* ``WHISPER_HOTWORDS``       optional vocabulary hints repeated across windows
 """
 
 import hashlib
@@ -33,11 +35,33 @@ MODEL_SIZE = os.environ.get("WHISPER_MODEL", "large-v3")
 DEVICE = os.environ.get("WHISPER_DEVICE", "cuda")
 COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "float16")
 LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
+INITIAL_PROMPT = os.environ.get("WHISPER_INITIAL_PROMPT", "").strip()
+HOTWORDS = os.environ.get("WHISPER_HOTWORDS", "").strip()
 
 # Transcript caching can be disabled for serving (cache correctness > speed).
 CACHE_ENABLED = os.environ.get("MEDAPP_ASR_CACHE", "1") != "0"
 
 _model = None
+
+
+def prompting_options(model=None):
+    options = {
+        name: value.strip()
+        for name, value in (("initial_prompt", INITIAL_PROMPT), ("hotwords", HOTWORDS))
+        if value and value.strip()
+    }
+    if model is not None and options:
+        tokens = sum(
+            len(model.hf_tokenizer.encode(" " + value, add_special_tokens=False).ids)
+            for value in options.values()
+        )
+        budget = model.max_length // 2 - 1
+        if tokens > budget:
+            raise ValueError(
+                f"ASR hints use {tokens} tokens, exceeding the shared {budget}-token budget; "
+                "shorten the vocabulary instead of silently truncating it."
+            )
+    return options
 
 
 def _resolve_device() -> tuple:
@@ -106,7 +130,7 @@ def warm_up() -> None:
         import numpy as np
 
         silence = np.zeros(16000, dtype="float32")
-        list(model.transcribe(silence, language=LANGUAGE)[0])
+        list(model.transcribe(silence, language=LANGUAGE, **prompting_options(model))[0])
     except Exception:  # pragma: no cover - startup environment issue
         logger.exception("Whisper warm-up inference failed.")
         raise
@@ -119,16 +143,16 @@ def config_hash() -> str:
     (e.g. to ``large-v3-turbo`` for serving) never silently reuses a transcript
     produced by different settings.
     """
-    payload = json.dumps(
-        {
-            "model": MODEL_SIZE,
-            "compute_type": COMPUTE_TYPE,
-            "language": LANGUAGE,
-            "vad_filter": True,
-            "condition_on_previous_text": False,
-        },
-        sort_keys=True,
-    )
+    config = {
+        "model": MODEL_SIZE,
+        "compute_type": COMPUTE_TYPE,
+        "language": LANGUAGE,
+        "vad_filter": True,
+        "condition_on_previous_text": False,
+    }
+    # Omit disabled hints so existing unprompted cache/calibration identities stay valid.
+    config.update(prompting_options())
+    payload = json.dumps(config, sort_keys=True)
     return hashlib.sha1(payload.encode()).hexdigest()[:8]
 
 
@@ -172,6 +196,7 @@ def transcribe_bytes(
             logger.warning("Corrupt transcript cache %s; re-transcribing.", path)
 
     model = get_model()
+    hints = prompting_options(model)
 
     with io.BytesIO(audio_bytes) as handle:
         segment_iter, info = model.transcribe(
@@ -180,6 +205,7 @@ def transcribe_bytes(
             word_timestamps=True,
             vad_filter=True,
             condition_on_previous_text=False,
+            **hints,
         )
 
         segments: List[Dict] = []
@@ -224,6 +250,8 @@ def transcribe_bytes(
         "segments": segments,
         "words": words,
     }
+    if hints:
+        transcript["prompting"] = hints
 
     if cache:
         TRANSCRIPTS_DIR.mkdir(exist_ok=True)

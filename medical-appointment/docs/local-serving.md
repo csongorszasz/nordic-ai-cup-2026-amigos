@@ -123,6 +123,22 @@ preserves all incumbent fallbacks. No serving calibration artifact is
 written: aligner model/revision/dtype must remain distinct from the
 original Whisper timing context.
 
+### Optional ASR vocabulary experiments
+
+`WHISPER_INITIAL_PROMPT` and `WHISPER_HOTWORDS` default to empty. Hotwords
+are repeated across decoding windows; initial context is reset under the
+current no-previous-text policy. Keep hints short and do not include doses,
+full questions or proposed answers. Enabling hints changes the ASR cache
+identity and invalidates a calibration artifact bound to the unprompted
+configuration; it is not a live toggle for the qualified endpoint.
+
+`probe_asr_hints.py` runs an isolated CPU comparison of control, initial
+context and hotwords. Supply `--baseline`, explicit `--transcript-ids` and a
+comma-separated `--glossary` through the CPU runner. It uses pinned turbo
+weights and no transcript cache, and flags number/negation changes without
+claiming they are errors. CPU int8 results need a matched served-device
+comparison and complete downstream score/latency gates before promotion.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

@@ -143,9 +143,17 @@ Gemma E4B alone (0.729) already exceeds it.
 
 ## Thread C — medical-domain ASR
 
-Unchanged from the earlier plan. `Na0s/Medical-Whisper-Large-v3` and a
-PriMock57 turbo fine-tune benchmarked by downstream score, not WER. Pursue only
-if it moves the score.
+First compare current turbo with a bounded, fixed medical vocabulary:
+initial context versus per-window hotwords, with dose/negation changes
+flagged and no question answers injected into ASR. Cached transcripts show
+medication spelling discrepancies, but the examined yes/no decisions were
+already correct; judge downstream evidence quality as well as recognition.
+
+`Na0s/Medical-Whisper-Large-v3` is a verified checkpoint candidate, not a
+proven competition improvement. The older unspecified PriMock57 turbo
+checkpoint is unverified. Assess checkpoint/runtime licensing, actual
+compute type, timestamps and full request latency before replacing turbo.
+See `tries.md` for the current evidence and diagnostic limits.
 
 ## Hygiene / open questions
 

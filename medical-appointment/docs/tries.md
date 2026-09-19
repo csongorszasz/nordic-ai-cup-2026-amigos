@@ -1108,6 +1108,59 @@ full-OOF result or deployment is claimed by this implementation alone.
   baseline decision. This needs no new model or GPU call.
   Use `evaluate_adapter_agreement.py --proposal-kind grpo`; the default
   still reads the original SFT `adapted_oof.json` files.
+- **GRPO agreement outcome:** `grpo-agreement-17b507b0` did not qualify
+  either rule. Adapter-on-agreement delta **+0.000184**, interval
+  **[-0.008438, +0.009260]**; midpoint delta **-0.000664**, interval
+  **[-0.004880, +0.003565]**. Both changed 20 questions. Keep the incumbent.
+
+## Medication transcription and ASR vocabulary audit
+
+The user requested an audit of turbo ASR, medical Whisper fine-tunes and
+vocabulary prompting. Current cached transcripts contain spelling
+discrepancies against positive question wording: `panadil` / Panodil,
+`Activel` / Activelle, and `Ibumedin` / Ibumetin. These are candidate
+recognition/orthography problems, not audio-verified error labels.
+All nine examined positive questions mentioning the selected medicines
+were already answered correctly. Better recognition could still change
+citation selection; do not infer a score gain from spelling alone.
+
+The wrapper previously supplied neither initial context nor hotwords.
+In the pinned faster-whisper 1.2.1 implementation, our
+`condition_on_previous_text=False` resets previous tokens between decoded
+windows; `initial_prompt` therefore does not persist through the whole
+consultation. `hotwords` is supplied to each window. Relevant primary
+implementation: [v1.2.1 transcribe.py](https://github.com/SYSTRAN/faster-whisper/blob/v1.2.1/faster_whisper/transcribe.py).
+
+Optional `WHISPER_INITIAL_PROMPT` and `WHISPER_HOTWORDS` are now supported,
+disabled by default. Disabled hints preserve the original unprompted cache
+hash and transcript schema. Enabled hints are included in the configuration
+hash and transcript metadata, and their combined token budget is checked
+instead of allowing silent truncation. Existing serving snapshots are not
+changed.
+
+`probe_asr_hints.py` compares unprompted CPU turbo, initial context, and
+repeated hotwords with the exact same pinned weights, CPU compute type and
+random seed. Use a short fixed vocabulary, no doses, full questions or
+answer assertions. Disable transcript cache reads/writes. Record word edits,
+number/negation changes and newly introduced vocabulary for review.
+The cached GPU transcript is a comparison, **not a human reference**;
+this diagnostic reports neither WER nor end-to-end competition score.
+
+Primary model candidates reviewed September 19, 2026:
+
+- [Na0s/Medical-Whisper-Large-v3](https://huggingface.co/Na0s/Medical-Whisper-Large-v3):
+  a full large-v3 checkpoint trained on doctor/patient material. The model
+  card's WER claims are on its own data, not this competition. Full-v3
+  decoding cost, medication/dose errors and word timestamps need matched
+  assessment before a swap.
+- [CrisperWhisper 2.0 turbo](https://huggingface.co/nyralabs/CrisperWhisper2.0_turbo):
+  a timing/verbatim-focused alternative, not a demonstrated medical-domain
+  winner here. Its card uses a custom runtime and non-commercial research
+  license; Pro hotword boosting is a separate commercial feature. Do not
+  confuse that restriction with our current faster-whisper hotwords support
+  or assume the checkpoint is a drop-in replacement.
+- The older backlog's unspecified PriMock57 **turbo** checkpoint remains
+  unverified. Do not turn that note into a claimed available model or result.
 
 ## ASR stream lifecycle check
 
