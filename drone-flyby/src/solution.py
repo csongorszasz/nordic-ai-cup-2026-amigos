@@ -130,6 +130,12 @@ SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1400), (1920, 1400), (960,
 # lands, one or two frames late). 'stuck': from the view received when the camera did not move
 # since the last frame (a dropped command). 'always' (or 1): always from the view received; live
 # 2026-09-19 that halved the sweep's speed when commands landed two frames late (0.357).
+# Dives: the sweep is Level 1, where the view is halved and a ta-ta (33 source px) arrives at
+# ~16 px. DRONE_DIVE=1 spends single frames at Level 2, centred on a remembered small object that
+# has never been seen zoomed in, then returns to Level 1 where it left off.
+DIVE = os.environ.get('DRONE_DIVE', '0') != '0'
+DIVE_CLASSES = os.environ.get('DRONE_DIVE_CLASSES', 'ta-ta,small_launcher,medium_launcher,mine_roller').split(',')
+DIVE_EVERY = int(os.environ.get('DRONE_DIVE_EVERY', 6))   # frames between dives
 SWEEP_HOLD = int(os.environ.get('DRONE_SWEEP_HOLD', 0))   # >0: time-based sweep, each position asked this many frames
 SWEEP_FROM_VIEW = {'1': 'always', '0': ''}.get(os.environ.get('DRONE_SWEEP_FROM_VIEW', '0'), os.environ.get('DRONE_SWEEP_FROM_VIEW'))
 if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540": Level-1 centres, in order
@@ -264,6 +270,7 @@ class SequenceState:
         # the old view while our last command is about to take effect. Remember it until seen.
         self.pending: Optional[Tuple[int, int, int]] = None
         self.last_view: Optional[Tuple[int, int, int]] = None   # the view received on the previous frame
+        self.last_dive: int = -99                               # frame of the last Level-2 dive
 
     def velocity_at(self, p) -> np.ndarray:
         return self.velocity + self.field @ ((np.asarray(p) - _CENTRE) / 1000)
@@ -610,6 +617,20 @@ def choose_next_view(request: DroneFlybyPredictRequestDto, state: SequenceState)
     # one-frame delay: 0.198 mAP50, 165 moves in 248 frames).
     base = state.pending or (current.resolution_level, current.center_x, current.center_y)
     view = (current.resolution_level, current.center_x, current.center_y)
+    if DIVE and view[0] == 2:   # back to Level 1 where we dived, then the sweep goes on from there
+        min_x, max_x, min_y, max_y = center_bounds_for_level(1)
+        return RequestedViewDto(resolution_level=1, center_x=int(min(max(view[1], min_x), max_x)),
+                                center_y=int(min(max(view[2], min_y), max_y)))
+    if DIVE and request.frame - state.last_dive >= DIVE_EVERY and 2 in constraints.allowed_resolution_levels:
+        min_x, max_x, min_y, max_y = center_bounds_for_level(2)
+        for track in sorted(state.tracks, key=lambda t: -t.conf):
+            if track.cls not in DIVE_CLASSES or track.best_level >= 2:
+                continue
+            c = track.centre(state.predicted_box(track, request.frame + 1))
+            target = (2, int(min(max(c[0], min_x), max_x)), int(min(max(c[1], min_y), max_y)))
+            if _legal(view, target) and (state.pending is None or _legal(state.pending, target)):
+                state.last_dive = request.frame
+                return RequestedViewDto(resolution_level=2, center_x=target[1], center_y=target[2])
     if SWEEP_HOLD and current.resolution_level == 1:
         # Time-based: the target depends only on the frame number and is asked for SWEEP_HOLD frames
         # in a row, so a command that lands late or not at all is covered by the repeat.
