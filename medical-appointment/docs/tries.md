@@ -693,6 +693,21 @@ dose, and qualifiers; later contradictory statements or generic acknowledgements
 are not substitutes. Model, demonstrations, ASR and output schema stay fixed.
 No question-specific or timestamp-specific rules are introduced.
 
+- **Outcome:** `final-statement-9a77a11e` rejected. Fixed-offset score
+  **0.7938**, one added alignment failure/missed positive; non-demo delta
+  **-0.007585**, interval **[-0.019900, +0.001271]**. A generic later-statement
+  preference is not a reliable substitute for reference occurrence selection.
+
+## Preregistered blind local extraction
+
+The earlier anchored refiner kept 191/194 citations. Test whether showing the
+existing answer over-anchors generation: retain the same +/-24-word regions,
+base decisions, excluded demonstration pool, and 20-second added-call cap,
+but hide the current quote and request an independent exact local citation.
+Reference examples emit quotes rather than keep/edit labels. Invalid or
+ambiguous proposals still retain the baseline. No live integration without
+paired non-demo improvement and a real end-to-end latency gate.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

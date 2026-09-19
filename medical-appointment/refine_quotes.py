@@ -34,6 +34,18 @@ SCHEMA = (
     '{"id":"q02","keep":false,"evidence_quote":"exact local transcript text"}]}. '
     "Return one entry for every listed id."
 )
+BLIND_SYSTEM = (
+    "Select evidence citations, not answers. Every listed question has already "
+    "been answered yes. For each question, copy a contiguous phrase from its "
+    "provided local transcript context, following the reference convention in "
+    "the examples. Preserve necessary qualifiers. The quote may be a fragment "
+    "because surrounding context supplies meaning. Never paraphrase or invent "
+    "words. Identify a unique occurrence within that context. Return JSON only."
+)
+BLIND_SCHEMA = (
+    'Return {"answers":[{"id":"q01","evidence_quote":"exact local transcript text"}]}. '
+    "Return one entry for every listed id."
+)
 
 
 def make_case(row, transcript, qid, context=24):
@@ -49,16 +61,18 @@ def make_case(row, transcript, qid, context=24):
     }
 
 
-def render(cases):
-    return "\n\n".join(
-        f"{case['qid']}: {case['row']['question']}\n"
-        f"CURRENT: {case['row']['quote']}\n"
-        f"CONTEXT [{case['start']:.2f}-{case['end']:.2f}]: {case['context']}"
-        for case in cases
-    ) + "\n\n" + SCHEMA
+def render(cases, blind=False):
+    blocks = []
+    for case in cases:
+        lines = [f"{case['qid']}: {case['row']['question']}"]
+        if not blind:
+            lines.append(f"CURRENT: {case['row']['quote']}")
+        lines.append(f"CONTEXT [{case['start']:.2f}-{case['end']:.2f}]: {case['context']}")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks) + "\n\n" + (BLIND_SCHEMA if blind else SCHEMA)
 
 
-def build_examples(rows, transcripts, pool, exclude_tid):
+def build_examples(rows, transcripts, pool, exclude_tid, blind=False):
     examples, sources = [], []
     for want_keep in (True, False):
         for row in rows:
@@ -75,10 +89,12 @@ def build_examples(rows, transcripts, pool, exclude_tid):
             if gold_range is None or not case["first"] <= gold_range[0] <= gold_range[1] <= case["last"]:
                 continue
             entry = {"id": "q01", "keep": want_keep}
-            if not want_keep:
+            if blind:
+                entry.pop("keep")
+            if blind or not want_keep:
                 entry["evidence_quote"] = text_between(transcripts[tid]["words"], *row["gold"])
             examples.extend([
-                {"role": "user", "content": render([case])},
+                {"role": "user", "content": render([case], blind)},
                 {"role": "assistant", "content": json.dumps({"answers": [entry]})},
             ])
             sources.append(tid)
@@ -111,6 +127,7 @@ def main():
     parser.add_argument("--revision", required=True)
     parser.add_argument("--output", type=Path, default=Path("results/local_refinement"))
     parser.add_argument("--call-budget", type=float, default=20.0)
+    parser.add_argument("--blind", action="store_true")
     args = parser.parse_args()
     if not math.isfinite(args.call_budget) or not 0 < args.call_budget <= 20:
         parser.error("--call-budget must be positive and no greater than 20 seconds.")
@@ -143,9 +160,9 @@ def main():
         selected = [row for row in rows if row["transcript_id"] == tid]
         positives = [row for row in selected if row["answer"] and row["span"]]
         cases = [make_case(row, transcripts[tid], qid_for(index)) for index, row in enumerate(positives)]
-        examples, sources = build_examples(rows, transcripts, pool, tid)
-        messages = [{"role": "system", "content": SYSTEM}, *examples,
-                    {"role": "user", "content": render(cases)}]
+        examples, sources = build_examples(rows, transcripts, pool, tid, args.blind)
+        messages = [{"role": "system", "content": BLIND_SYSTEM if args.blind else SYSTEM}, *examples,
+                    {"role": "user", "content": render(cases, args.blind)}]
         started = time.monotonic()
         generation_failed = False
         try:
@@ -191,6 +208,7 @@ def main():
         "max_refinement_s": max(item["refinement_s"] for item in logs),
         "max_estimated_combined_s": max(item["estimated_combined_s"] for item in logs),
         "generation_failures": sum(item["generation_failed"] for item in logs),
+        "visible_anchor": not args.blind,
         "latency_note": "Sum of separate measurements, not an HTTP acceptance result.",
     }
     write_json(args.output / "summary.json", summary)

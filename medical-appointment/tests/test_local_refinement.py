@@ -1,6 +1,6 @@
 """Refinement cannot change decisions or escape the supplied local region."""
 
-from refine_quotes import decode_refinement
+from refine_quotes import decode_refinement, render
 
 
 WORDS = [
@@ -24,3 +24,15 @@ def test_unique_refinement_aligns_inside_the_region():
     assert decode_refinement({"quote": "100 mg."}, CASE, TRANSCRIPT) == ([1.4, 1.9], "refined")
     narrow = {**CASE, "last": 2}
     assert decode_refinement({"quote": "100 mg."}, narrow, TRANSCRIPT) == ([0.2, 1.9], "unaligned")
+
+
+def test_blind_extraction_hides_only_the_anchor():
+    case = {
+        "qid": "q01", "row": {"question": "Q?", "quote": "the proposed answer"},
+        "context": "unchanged local words", "start": 1.0, "end": 3.0,
+    }
+    normal, blind = render([case]), render([case], blind=True)
+    assert "CURRENT: the proposed answer" in normal
+    assert "CURRENT:" not in blind and "the proposed answer" not in blind
+    assert "CONTEXT [1.00-3.00]: unchanged local words" in blind
+    assert '"keep"' not in blind
