@@ -485,7 +485,7 @@ def paint_classes():
                         proposed_label={'_proposed': 'proposed new paint', '_recoloured':
                                         'recoloured (model texture shifted to the real colours)',
                                         '': 'projected'}[proposed],
-                        dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'])
+                        dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'], up=fit.get('up', 'auto'))
         pool = [e['file'] for e in sprites if e['class'] == cls]
         item['sprites'] = random.Random(cls).sample(pool, min(8, len(pool)))
         item['helsinki'] = helsinki[cls]
