@@ -1,4 +1,4 @@
-"""CPU feasibility/pilot for frozen contextual word features and exact span risk."""
+"""CPU feasibility/pilot for contextual word boundaries and exact span risk."""
 
 import argparse
 import gc
@@ -32,6 +32,8 @@ def main():
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--fold", type=int, default=0)
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument("--train-encoder", action="store_true",
+                        help="Fine-tune the public encoder for a fixed three-epoch pilot.")
     parser.add_argument("--output", type=Path, default=Path("results/local_span_risk"))
     args = parser.parse_args()
     rows, requests, transcripts, _ = load_inputs(args.baseline)
@@ -44,6 +46,9 @@ def main():
         raise FileExistsError("Use a fresh local-span experiment directory.")
     if os.environ.get("CUDA_VISIBLE_DEVICES") != "":
         raise RuntimeError("This frozen-feature feasibility/pilot is CPU-only.")
+    encoder_output = Path("models/local_span_encoder")
+    if args.train_encoder and encoder_output.exists():
+        raise FileExistsError("Use a fresh encoder checkpoint destination.")
     import resource
     import torch
     from transformers import AutoModel, AutoTokenizer
@@ -98,6 +103,11 @@ def main():
         dtype=torch.float32, attn_implementation="eager", trust_remote_code=False,
     ).eval()
     encoder.requires_grad_(False)
+
+    def encode_vectors(entry):
+        hidden = encoder(**entry["inputs"]).last_hidden_state[0]
+        return torch.stack([hidden[indices].mean(dim=0) for indices in entry["mapping"]])
+
     first = prepared[selected[0]["question_id"]]
     with torch.no_grad():
         encoder(**first["inputs"])
@@ -107,8 +117,7 @@ def main():
         started = time.monotonic()
         entry = prepared[qid]
         with torch.no_grad():
-            hidden = encoder(**entry["inputs"]).last_hidden_state[0]
-            vectors = torch.stack([hidden[indices].mean(dim=0) for indices in entry["mapping"]])
+            vectors = encode_vectors(entry)
         if not torch.isfinite(vectors).all():
             raise RuntimeError(f"Non-finite frozen word features for {qid}.")
         case = candidates[qid]
@@ -119,19 +128,22 @@ def main():
         }
         encoding_times[qid] = entry["prepare_s"] + time.monotonic() - started
     hidden_size = encoder.config.hidden_size
-    del encoder, prepared, hidden, vectors
+    del vectors
+    if not args.train_encoder:
+        del encoder, prepared
     gc.collect()
     head = torch.nn.Linear(hidden_size, 2, bias=False)
     torch.nn.init.zeros_(head.weight)
 
-    def logits(qid):
+    def logits(qid, cached=False):
         feature = features[qid]
-        endpoint = head(feature["words"])
+        words = encode_vectors(prepared[qid]) if args.train_encoder and not cached else feature["words"]
+        endpoint = head(words)
         pairs = feature["pairs"]
         return endpoint[pairs[:, 0], 0] + endpoint[pairs[:, 1], 1] + feature["prior"]
 
     with torch.no_grad():
-        if any(int(logits(row["question_id"]).argmax()) != 0 for row in selected):
+        if any(int(logits(row["question_id"], cached=True).argmax()) != 0 for row in selected):
             raise RuntimeError("The zero-initialized scorer did not preserve every baseline span.")
     targets = {
         row["question_id"]: torch.tensor([
@@ -140,8 +152,11 @@ def main():
         for row in eligible_training
     }
     args.output.mkdir(parents=True, exist_ok=True)
+    epochs = 2 if args.smoke else 3 if args.train_encoder else EPOCHS
+    head_lr = 0.001 if args.train_encoder else 0.01
+    decay = 0.01 if args.train_encoder else 0.1
     write_json(args.output / "provenance.json", {
-        "model": MODEL, "revision": REVISION, "frozen_encoder": True,
+        "model": MODEL, "revision": REVISION, "frozen_encoder": not args.train_encoder,
         "seed": SEED, "fold": args.fold, "smoke_only": args.smoke,
         "excluded_demonstration_tids": sorted(excluded),
         "training_tids": sorted({row["transcript_id"] for row in training}),
@@ -149,15 +164,25 @@ def main():
         "training_no_anchor_count": sum(not row["answer"] for row in training),
         "validation_tids": folds[args.fold],
         "context_words": 24, "prior_scale_words": 8.0,
-        "epochs": 2 if args.smoke else EPOCHS, "learning_rate": 0.01, "weight_decay": 0.1,
+        "epochs": epochs, "learning_rate": head_lr, "weight_decay": decay,
+        "encoder_learning_rate": 3e-5 if args.train_encoder else None,
         "baseline_sha256": hashlib.sha256((args.baseline / "base_legacy_questions.json").read_bytes()).hexdigest(),
         "runtime": {name: importlib.metadata.version(name) for name in ("torch", "transformers")},
     })
-    optimizer = torch.optim.AdamW(head.parameters(), lr=0.01, weight_decay=0.1)
+    parameters = list(head.parameters())
+    groups = [{"params": parameters, "lr": head_lr}]
+    if args.train_encoder:
+        encoder.requires_grad_(True).train()
+        encoder_parameters = list(encoder.parameters())
+        groups.append({"params": encoder_parameters, "lr": 3e-5})
+        parameters = [*parameters, *encoder_parameters]
+        probe_name, probe_parameter = list(encoder.named_parameters())[-1]
+        initial_encoder_probe = probe_parameter.detach().clone()
+    optimizer = torch.optim.AdamW(groups, weight_decay=decay)
     rng = random.Random(SEED)
-    losses, norms = [], []
+    losses, norms, encoder_norms = [], [], []
     started = time.monotonic()
-    for epoch in range(2 if args.smoke else EPOCHS):
+    for epoch in range(epochs):
         order = list(eligible_training)
         rng.shuffle(order)
         optimizer.zero_grad()
@@ -171,13 +196,17 @@ def main():
             (loss / divisor).backward()
             losses.append(float(loss.detach()))
             if (index + 1) % 4 == 0 or index + 1 == len(order):
-                norm = float(torch.nn.utils.clip_grad_norm_(head.parameters(), 1.0))
+                if args.train_encoder:
+                    encoder_norms.append(
+                        float(probe_parameter.grad.norm()) if probe_parameter.grad is not None else 0.0
+                    )
+                norm = float(torch.nn.utils.clip_grad_norm_(parameters, 1.0))
                 if not math.isfinite(norm):
                     raise RuntimeError("Local span gradients are non-finite.")
                 norms.append(norm)
                 optimizer.step()
                 optimizer.zero_grad()
-        if epoch == 0 or (epoch + 1) % 10 == 0:
+        if epoch == 0 or epoch + 1 == epochs or (epoch + 1) % 10 == 0:
             print(f"epoch {epoch + 1}: risk={sum(losses[-len(order):])/len(order):.6f}", flush=True)
     movement = float(head.weight.detach().norm())
     training_report = {
@@ -189,7 +218,20 @@ def main():
         "first_epoch_risk": sum(losses[:len(eligible_training)]) / len(eligible_training),
         "last_epoch_risk": sum(losses[-len(eligible_training):]) / len(eligible_training),
         "variable_reward_cases": sum(float(values.max() - values.min()) > 0 for values in targets.values()),
+        "encoder_trained": args.train_encoder,
     }
+    if args.train_encoder:
+        encoder_movement = float((probe_parameter.detach() - initial_encoder_probe).norm())
+        training_report.update({
+            "encoder_probe_parameter": probe_name, "encoder_probe_update_l2": encoder_movement,
+            "encoder_probe_nonzero_gradient": any(value > 0 for value in encoder_norms),
+        })
+        if (
+            not math.isfinite(encoder_movement) or encoder_movement <= 0
+            or not all(math.isfinite(value) for value in encoder_norms)
+            or not training_report["encoder_probe_nonzero_gradient"]
+        ):
+            raise RuntimeError("The requested encoder fine-tuning produced no finite parameter update.")
     write_json(args.output / "training.json", training_report)
     if not math.isfinite(movement) or movement <= 0 or not training_report["finite_nonzero_gradient"]:
         raise RuntimeError("Local span scorer failed its actual-update gate.")
@@ -197,6 +239,11 @@ def main():
     if args.smoke:
         print(json.dumps({"smoke_only": True, **training_report}), flush=True)
         return 0
+    if args.train_encoder:
+        encoder.eval()
+        encoder.save_pretrained(encoder_output, safe_serialization=True)
+        training_report["encoder_checkpoint"] = str(encoder_output.resolve())
+        write_json(args.output / "training.json", training_report)
     predicted, oracle = [], []
     elapsed_by_tid = {}
     with torch.no_grad():
@@ -215,8 +262,9 @@ def main():
                     "local_span_word_range": [case["first_word"] + value for value in case["pairs"][index]],
                     "local_span_reason": "kept" if index == 0 else "edited",
                 })
+                preprocessing = prepared[qid]["prepare_s"] if args.train_encoder else encoding_times[qid]
                 elapsed_by_tid[row["transcript_id"]] = elapsed_by_tid.get(row["transcript_id"], 0.0) + (
-                    encoding_times[qid] + time.monotonic() - start
+                    preprocessing + time.monotonic() - start
                 )
                 if row["label"] == 1 and row["gold"] is not None:
                     best = max(case["spans"], key=lambda span: temporal_iou(row["gold"], span))

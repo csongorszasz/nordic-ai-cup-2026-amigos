@@ -1263,6 +1263,22 @@ reproduced SOTA.
   The only unused checkpoint weights were the public model's MLM head,
   expected when loading its encoder. Proceed to the fixed 70-question
   fold-0 pilot from freshly zeroed heads, not the smoke weights.
+- **Frozen-encoder pilot rejected:** `local-span-risk-pilot-bdefbb90`
+  scored **0.6714** versus incumbent **0.8362** on the same 70 held-out
+  questions; mIoU **0.4524** versus **0.7271**, decisions unchanged.
+  Delta **-0.164802**, interval **[-0.228799, -0.110348]**.
+  It changed 26 spans despite lower training risk. The actual candidate
+  oracle was 0.9236 composite / 0.8727 mIoU, explicitly not achieved.
+  Do not run full OOF or deploy this frozen-feature policy.
+- **Bounded capacity follow-up:** adapt the public encoder along with the
+  zero-initialized heads, not a larger contextual window or a held-out
+  threshold search. Fixed three epochs, encoder lr 3e-5, head lr 1e-3,
+  weight decay 0.01, same fold/seed/lattice/prior. The existing frozen
+  experiment remains reproducible without `--train-encoder`.
+  First require a real CPU gradient smoke, including nonzero encoder
+  gradients and parameter movement (weight decay alone cannot pass).
+  Recompute held-out features after training and include that encoder time
+  in the latency estimate; never evaluate with stale frozen features.
 
 ## ASR stream lifecycle check
 

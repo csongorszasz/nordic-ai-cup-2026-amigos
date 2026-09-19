@@ -167,6 +167,13 @@ used. The encoder is frozen and labels only enter the training risk and
 final scoring. Every baseline decision remains fixed; a gold-assisted
 candidate oracle is explicitly separate from achieved performance.
 
+`--train-encoder` is a separate, fixed three-epoch capacity experiment:
+it updates the public encoder and fresh boundary heads, checks actual
+encoder gradients, and writes encoder weights under the isolated run's
+`models/local_span_encoder`. Use its own `--smoke` first. Held-out
+features are recomputed after training; they are not reused from the
+initial frozen-feature pass.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
