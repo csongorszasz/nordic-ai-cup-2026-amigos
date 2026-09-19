@@ -92,6 +92,9 @@ H_UPGRADE_WEIGHT = float(os.environ.get('H_UPGRADE', 1.0))   # object never seen
 _V2 = os.environ.get('DRONE_V2', '0')
 V2_GMC = os.environ.get('V2_GMC', '1') != '0'
 V2_INTEGRATE = os.environ.get('V2_INTEGRATE', '1') != '0'   # predicted_box: step through the motion field, growing the box
+# Remembered boxes moved this many frames' worth of ground motion further (Copenhagen replay,
+# boxes seen before: 0.1 -> 0.607 to 0.627; 0.2 and more lose, so it is a small correction).
+MEMORY_LEAD = float(os.environ.get('DRONE_MEMORY_LEAD', 0))
 V2_GROUND = os.environ.get('V2_GROUND', _V2) != '0'
 V2_VOTES = os.environ.get('V2_VOTES', _V2) != '0'
 V2_TRUNC = os.environ.get('V2_TRUNC', _V2) != '0'
@@ -109,6 +112,15 @@ GMC_PRIOR_T = np.array([0.0, 66.3])
 GMC_PRIOR_A = np.array([[7.3, -0.07], [0.36, 12.78]])
 VOTE_LINK_IOU = 0.3          # a detection of another class continues a track when it overlaps it this much
 RUNNER_UP_SHARE = 0.25       # report the second class too when it has this share of the votes
+# Hedges: every reported box again at a tiny confidence, as the classes it is easily confused
+# with (DRONE_HEDGE containing 'class') and/or slightly smaller and larger ('box'). COCO AP ranks
+# them after the real answers, so a wrong hedge costs almost nothing, and a right one is recall
+# the main answer missed (wrong launcher size, a box just under IoU 0.5).
+HEDGE = os.environ.get('DRONE_HEDGE', '')
+HEDGE_SCALE = float(os.environ.get('DRONE_HEDGE_SCALE', 0.01))
+HEDGE_GROUPS = [('small_launcher', 'medium_launcher', 'large_launcher'), ('small_plane', 'medium_plane', 'jet_plane'),
+                ('small_tower', 'large_tower'), ('tank', 'mine_roller'), ('ta-ta', 'small_launcher')]
+HEDGE_BOX_SCALES = (0.8, 1.25)
 TRUNC_MARGIN = 3             # view px: a box this close to a view edge is cut by it
 GRID_COLS, GRID_ROWS = (16, 8) if V2_GROUND else (8, 4)       # 240x270 or 480x540 cells
 
@@ -267,6 +279,9 @@ class SequenceState:
             c = np.array([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2]) + self.velocity_at(track.centre(box)) + offset
             half = np.array([box[2] - box[0], box[3] - box[1]]) * grow / 2
             box = np.array([c[0] - half[0], c[1] - half[1], c[0] + half[0], c[1] + half[1]])
+        if MEMORY_LEAD:   # remembered boxes still trailed their objects: a little further along
+            v = (self.velocity_at(track.centre(box)) + offset) * MEMORY_LEAD
+            box = box + np.array([v[0], v[1], v[0], v[1]])
         return box
 
     def _add_motion(self, p, v: np.ndarray, weight: float):
@@ -441,6 +456,17 @@ class SequenceState:
             if any(k[1] == cls and _iou(k[2], box) > 0.3 for k in kept):
                 continue
             kept.append((conf, cls, box))
+        hedges = []
+        for conf, cls, box in kept:
+            if 'class' in HEDGE:
+                for group in HEDGE_GROUPS:
+                    if cls in group:
+                        hedges += [(conf * HEDGE_SCALE, other, box) for other in group
+                                   if other != cls and not any(k[1] == other and _iou(k[2], box) > 0.3 for k in kept)]
+            if 'box' in HEDGE:
+                c, half = (box[:2] + box[2:]) / 2, (box[2:] - box[:2]) / 2
+                hedges += [(conf * HEDGE_SCALE, cls, np.concatenate([c - half * f, c + half * f])) for f in HEDGE_BOX_SCALES]
+        kept += sorted(hedges, key=lambda h: -h[0])
         for conf, cls, box in kept[:500]:
             g = clip_bbox_to_frame((box[0] / IMAGE_WIDTH, box[1] / IMAGE_HEIGHT, box[2] / IMAGE_WIDTH, box[3] / IMAGE_HEIGHT))
             if g is None:
