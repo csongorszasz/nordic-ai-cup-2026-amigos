@@ -505,7 +505,13 @@ def choose_next_view(request: DroneFlybyPredictRequestDto, state: SequenceState)
     if 1 not in constraints.allowed_resolution_levels:
         return None
     bounds = constraints.bounds_for_level(1)
-    limit = constraints.maximum_center_delta
+    # Plan from where the camera will be: the live service applies a command about a frame late,
+    # so our last command may still be pending. Planning from the view we were sent made every
+    # other move unreachable and the sweep bounced between two top positions (Copenhagen with a
+    # one-frame delay: 0.198 mAP50, 165 moves in 248 frames).
+    base = state.pending or (current.resolution_level, current.center_x, current.center_y)
+    if base[0] == 1:   # continue after the sweep position the camera is at (or nearest to)
+        state.sweep_index = min(range(len(SWEEP)), key=lambda i: np.hypot(SWEEP[i][0] - base[1], SWEEP[i][1] - base[2]))
 
     # Advance through the sweep, skipping positions we cannot reach in one move.
     for step in range(1, len(SWEEP) + 1):
@@ -513,7 +519,7 @@ def choose_next_view(request: DroneFlybyPredictRequestDto, state: SequenceState)
         cx, cy = SWEEP[idx]
         cx = int(min(max(cx, bounds.minimum_center_x), bounds.maximum_center_x))
         cy = int(min(max(cy, bounds.minimum_center_y), bounds.maximum_center_y))
-        if limit is None or np.hypot(cx - current.center_x, cy - current.center_y) <= limit:
+        if _legal(base, (1, cx, cy)):
             state.sweep_index = idx
             return RequestedViewDto(resolution_level=1, center_x=cx, center_y=cy)
     return None

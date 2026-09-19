@@ -15,7 +15,7 @@ clipped, and kept where at least MIN_VISIBLE of it is inside the frame.
 
 note_fixes.json holds what each review note means, by track id: {"status": "accepted" or
 "rejected", "class": the right class, "frames": only these frames' boxes are the object,
-"why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes}.json, writes labels.json
+"partial": true when the box covers only part of the object, "why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes,manual_boxes}.json, writes labels.json
 ({frame: [{object_id, bbox}]}) next to them.
 """
 
@@ -34,6 +34,15 @@ from reconstruct_frames import between  # noqa: E402
 MIN_VISIBLE = 0.5    # share of the box inside the frame for the object to count as in view
 EDGE = 3             # px: a box this close to the frame edge is cut by it
 DUPLICATE_IOU = 0.5  # two tracks of one class overlapping this much in the reference frame are one object
+MANUAL_REPLACE_IOU = 0.3  # a hand-drawn box replaces an object of its class it overlaps this much
+PARTIAL_INSIDE = 0.5  # a partial track this much inside a whole object of its class is that object
+
+
+def inside_share(a, b):
+    """How much of box a lies inside box b."""
+    w = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    h = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    return w * h / max((a[2] - a[0]) * (a[3] - a[1]), 1e-9)
 
 
 def object_box(candidate, steps, ref, only_frames=None):
@@ -82,17 +91,37 @@ def main():
         c = candidates[cid]
         cls = fix.get('class') or d.get('class') or c['class']
         ref = c['best_frame']
-        objects.append({'id': cid, 'class': cls, 'ref': ref, 'box': object_box(c, steps, ref, fix.get('frames'))})
+        objects.append({'id': cid, 'class': cls, 'ref': ref, 'box': object_box(c, steps, ref, fix.get('frames')),
+                        'partial': fix.get('partial', False)})
 
     # One label per object: merge tracks of the same class that are the same thing.
+    # A track the review says covers only part of its object is the same object as a whole one it
+    # mostly lies inside; partial tracks go last so the whole ones are there to match.
     merged = []
-    for o in sorted(objects, key=lambda o: -len(candidates[o['id']]['frames'])):
-        same = next((m for m in merged if m['class'] == o['class']
-                     and iou(move(o['box'], between(steps, o['ref'], m['ref'])), m['box']) >= DUPLICATE_IOU), None)
+    for o in sorted(objects, key=lambda o: (o['partial'], -len(candidates[o['id']]['frames']))):
+        def same_object(m):
+            if m['class'] != o['class']:
+                return False
+            box = move(o['box'], between(steps, o['ref'], m['ref']))
+            if o['partial']:
+                return inside_share(box, m['box']) >= PARTIAL_INSIDE
+            return iou(box, m['box']) >= DUPLICATE_IOU
+        same = next((m for m in merged if same_object(m)), None)
         if same:
             same['merged'].append(o['id'])
         else:
             merged.append({**o, 'merged': []})
+
+    # Boxes drawn by hand in the playback page: an object nobody's track found, or a better box
+    # for one that was (it replaces any object of its class it overlaps).
+    manual_path = OUT / 'manual_boxes.json'
+    for mid, m in (json.loads(manual_path.read_text()) if manual_path.exists() else {}).items():
+        box = np.array(m['box'], float)
+        replaced = [o for o in merged if o['class'] == m['class']
+                    and iou(move(o['box'], between(steps, o['ref'], m['frame'])), box) >= MANUAL_REPLACE_IOU]
+        merged = [o for o in merged if o not in replaced]
+        merged.append({'id': mid, 'class': m['class'], 'ref': m['frame'], 'box': box, 'partial': False,
+                       'merged': [i for o in replaced for i in [o['id']] + o['merged']]})
 
     labels = {}
     for frame in frames:
@@ -117,6 +146,9 @@ def main():
     print(f'{len(merged)} objects ({len(objects) - len(merged)} duplicate tracks merged), '
           f'{sum(map(len, labels.values()))} boxes over {len(frames)} frames -> {OUT / "labels.json"}')
     print('  ' + ', '.join(f'{k} {v}' for k, v in sorted(per_class.items(), key=lambda kv: -kv[1])))
+    alone = [m['id'] for m in merged if m['partial']]
+    if alone:
+        print(f'  partial tracks with no whole object to join, labelled with their own (partial) box: {", ".join(alone)}')
     for cid, why in skipped:
         print(f'  skipped {cid}: {why}')
 

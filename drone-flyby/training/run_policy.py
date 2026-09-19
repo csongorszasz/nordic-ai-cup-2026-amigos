@@ -48,6 +48,8 @@ def main():
     parser.add_argument('--conf', type=float, help='DRONE_CONF')
     parser.add_argument('--set', nargs='*', default=[], metavar='KEY=VALUE', help='more settings for solution.py')
     parser.add_argument('--name', help='trace name (default: scene, camera, weights and time)')
+    parser.add_argument('--lag', type=int, default=0,
+                        help='frames a camera command waits before it applies (the live service: about 1)')
     args = parser.parse_args()
 
     # solution.py reads its settings when imported, so they go in first.
@@ -75,7 +77,7 @@ def main():
     solution.run_detector = recording_detector
 
     frames = scene_frames(args.scene)
-    camera, feedback, steps, predictions = Camera(), None, [], {}
+    camera, feedback, steps, predictions, queue = Camera(), None, [], {}, []
     started = time.monotonic()
     for index, (frame, load) in enumerate(frames.items()):
         seen.clear()
@@ -95,8 +97,11 @@ def main():
             step['motion_field'] = [[round(float(v), 2) for v in row] for row in state.field]
         feedback = None
         if response.requested_view is not None:
-            r = response.requested_view
-            step['next'] = [r.resolution_level, r.center_x, r.center_y]
+            step['next'] = [response.requested_view.resolution_level, response.requested_view.center_x,
+                            response.requested_view.center_y]
+        queue.append(response.requested_view)
+        r = queue.pop(0) if len(queue) > args.lag else None   # the command that applies now
+        if r is not None:
             try:
                 camera.apply(r.resolution_level, r.center_x, r.center_y)
             except CameraRejection as exc:

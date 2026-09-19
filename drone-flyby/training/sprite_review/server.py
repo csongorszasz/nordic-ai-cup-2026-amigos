@@ -136,7 +136,7 @@ def flyby_labels(frame: int, source: str = 'helsinki'):
         path = REVIEW / 'labels.json'
         if not path.exists():
             return []
-        return [{'class': a['object_id'], 'bbox': a['bbox']}
+        return [{'class': a['object_id'], 'bbox': a['bbox'], 'track': a['track']}
                 for a in json.loads(path.read_text())['labels'].get(str(frame), [])]
     return [{'class': a['object_id'], 'bbox': a['bbox']} for a in load_annotations(frame)]
 
@@ -214,10 +214,22 @@ def reference_sprites(per_class: int = 3) -> dict:
 @app.get('/review/crop/{frame}.jpg')
 def review_crop(frame: int, box: str, side: int = 360):
     """A square crop around the box (three times its size, at least 200 px), box drawn in."""
-    x1, y1, x2, y2 = (int(float(v)) for v in box.split(','))
     image = recorded_frame(frame)
     if image is None:
         raise HTTPException(404, 'unknown frame')
+    return boxed_crop(image, [float(v) for v in box.split(',')], side)
+
+
+@app.get('/flyby/refcrop/{file:path}')
+def reference_crop(file: str, side: int = 200):
+    """A labelled Helsinki object framed exactly as /review/crop frames a Copenhagen box, so the
+    two can be compared side by side: how much room the official label leaves around it."""
+    e = entry_or_404(file)
+    return boxed_crop(frame_image(e['frame']), e['bbox'], side)
+
+
+def boxed_crop(image, box, side: int):
+    x1, y1, x2, y2 = (int(v) for v in box)
     half = max(max(x2 - x1, y2 - y1) * 1.5, 100)
     cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
     a, b = int(max(cx - half, 0)), int(max(cy - half, 0))
@@ -229,6 +241,87 @@ def review_crop(frame: int, box: str, side: int = 360):
     cv2.rectangle(crop, p(x1, y1), p(x2, y2), (0, 230, 255), 1 if side < 250 else 2)
     ok, jpg = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
     return Response(jpg.tobytes(), media_type='image/jpeg', headers={'Cache-Control': 'max-age=3600'})
+
+
+# Boxes drawn by hand in the playback page, for objects the detector never found (or found
+# with a bad box). copenhagen_labels.py carries each through the flight like a reviewed track.
+MANUAL_BOXES = REVIEW / 'manual_boxes.json'
+
+
+def rebuild_labels():
+    import subprocess
+    done = subprocess.run([sys.executable, str(ROOT / 'training' / 'copenhagen_labels.py')],
+                          capture_output=True, text=True, cwd=ROOT)
+    if done.returncode != 0:
+        raise HTTPException(500, 'label rebuild failed: ' + done.stderr[-500:])
+    return done.stdout.splitlines()[0] if done.stdout else ''
+
+
+def write_json(path: Path, data):
+    tmp = path.with_suffix('.tmp')
+    tmp.write_text(json.dumps(data, indent=1))
+    tmp.replace(path)  # never a half-written file
+
+
+@app.get('/api/flyby/references')
+def flyby_references():
+    refs = reference_sprites()
+    return {'classes': list(OBJECT_CLASSES), 'references': refs,
+            'sizes': {f: index[f]['bbox'] for fs in refs.values() for f in fs}}
+
+
+class ManualBox(BaseModel):
+    frame: int
+    box: List[float]     # 4K source px
+    cls: str
+
+
+@app.post('/api/flyby/manual')
+def flyby_manual(m: ManualBox):
+    if m.cls not in OBJECT_CLASSES:
+        raise HTTPException(400, 'bad class')
+    x1, y1, x2, y2 = m.box
+    if x2 - x1 < 4 or y2 - y1 < 4:
+        raise HTTPException(400, 'box too small')
+    boxes = json.loads(MANUAL_BOXES.read_text()) if MANUAL_BOXES.exists() else {}
+    mid = f'm{m.frame:03d}_{int((x1 + x2) / 2):04d}_{int((y1 + y2) / 2):04d}'
+    boxes[mid] = {'frame': m.frame, 'box': [round(v, 1) for v in m.box], 'class': m.cls,
+                  'at': datetime.now().isoformat(timespec='seconds')}
+    write_json(MANUAL_BOXES, boxes)
+    return {'ok': True, 'id': mid, 'labels': rebuild_labels()}
+
+
+class RemoveLabel(BaseModel):
+    track: str
+
+
+@app.post('/api/flyby/remove')
+def flyby_remove(r: RemoveLabel):
+    """Take an object out of the labels: a hand-drawn box is deleted, a reviewed track (and the
+    duplicates merged into it) is marked rejected."""
+    boxes = json.loads(MANUAL_BOXES.read_text()) if MANUAL_BOXES.exists() else {}
+    if r.track in boxes:
+        del boxes[r.track]
+        write_json(MANUAL_BOXES, boxes)
+        return {'ok': True, 'labels': rebuild_labels()}
+    labels = json.loads((REVIEW / 'labels.json').read_text())
+    obj = next((o for o in labels['objects'] if o['id'] == r.track), None)
+    if obj is None:
+        raise HTTPException(404, 'unknown object')
+    decisions = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
+    for tid in [obj['id']] + obj['merged']:
+        d = decisions.get(tid, {'best_frame': obj['ref'], 'best_box': obj['box']})
+        decisions[tid] = {**d, 'status': 'rejected', 'note': 'removed in the playback page',
+                          'at': datetime.now().isoformat(timespec='seconds')}
+    write_json(DECISIONS, decisions)
+    # A note fix would override the rejection: drop it.
+    fixes_path = REVIEW / 'note_fixes.json'
+    if fixes_path.exists():
+        fixes = json.loads(fixes_path.read_text())
+        for tid in [obj['id']] + obj['merged']:
+            fixes.pop(tid, None)
+        write_json(fixes_path, fixes)
+    return {'ok': True, 'labels': rebuild_labels()}
 
 
 class ReviewDecision(BaseModel):
