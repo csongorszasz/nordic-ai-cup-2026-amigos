@@ -214,6 +214,36 @@ does not select a new answer/span, train a model, or change the endpoint.
 See ADR-0005 for the experimental scope and the distinction from legacy
 minimal-word-range localization.
 
+### Inverse-question likelihood feasibility
+
+The source ranker is an **offline CPU diagnostic**, not a new serving backend.
+Cache `google/flan-t5-base` at
+`7bcac572ce56db69c1ea7c8af255c5d7c9672fc2` with `idun\cache_model.py`,
+an explicit `--max-bytes 1100000000`, and a separately checked own-user quota.
+The cache includes the SentencePiece vocabulary as well as safe tensors and
+tokenizer JSON; training pickles are not downloaded.
+
+Submit the shared probe with `--mode rank --cache-manifest
+<cache-run>/results/model_cache.json --smoke`, alongside the existing
+`--baseline` and `--audit` arguments. Use an isolated CPU snapshot with
+eight cores / 16 GB and the verified training interpreter via `MEDAPP_PYTHON`.
+No serving dependency is upgraded.
+
+The smoke uses two longest conversations, two incumbent-positive questions
+per conversation, and at most eight candidates each. It checks real offline
+model execution and cached/batched likelihood against direct teacher forcing;
+it reports no quality score. A fresh run without `--smoke` retains all 390
+questions and compares the three frozen source-only/context/support-gain
+policies against the exact incumbent, including a demo-disjoint comparison.
+
+The question is only a decoder target; it is not interpolated into the source
+prompt. Context masking is by word occurrence, not first string match. Encoder
+states are shared only within the current conversation, and neither source
+nor question tokens may be silently truncated. Every scoring failure is logged,
+keeps the complete incumbent outputs, and fails the feasibility flag.
+This older small model tests a different ranking objective, not a claimed SOTA
+result or a solution to the still-insufficient source-extent coverage.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

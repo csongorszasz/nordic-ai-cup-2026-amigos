@@ -142,3 +142,22 @@ def test_overlapping_and_zero_length_words_do_not_get_silently_dropped():
         {"word": " second", "start": 0.2, "end": 0.2},
     ]
     validate_word_clock(words, 1.0)
+
+
+def test_greeting_reference_is_flagged_without_relabeling_or_dropping_it():
+    words = [
+        {"word": " Good", "start": 0.0, "end": 0.3},
+        {"word": " morning.", "start": 0.3, "end": 0.6},
+        {"word": " Normal.", "start": 3.0, "end": 3.5},
+    ]
+    row = {
+        **ROW, "question": "Was the test normal?", "gold": [0.0, 0.26],
+        "quote": "Normal.", "word_range": [2, 2], "span": [3.0, 3.5],
+    }
+    audited, report = audit_records(
+        [row], [{"demonstration_tids": []}], {"s": {"words": words, "duration": 6.0}},
+    )
+    assert report["reference"]["opening_greeting_reference_ids"] == ["q1"]
+    assert report["incumbent"]["positives"] == 1 and report["incumbent"]["mean_tiou"] == 0
+    assert audited[0]["gold"] == [0.0, 0.26]
+    assert audited[0]["answer"] is True and audited[0]["span"] == [3.2, 3.5]

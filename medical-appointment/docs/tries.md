@@ -1407,3 +1407,51 @@ coverage. It searches globally and keeps separate identical-text occurrences;
 the lexical score is only an initial retrieval seed. Runtime inputs and
 reference diagnostics are separate files. The probe preserves every decision,
 does not train a selector, and cannot claim a score improvement from an oracle.
+
+- **Geometry outcome:** `source-unit-geometry-9feabc68`, CPU job `25407249`,
+  kept all 390 questions. Full-pool oracle mIoU was **0.882069** with perfect
+  decisions / **0.877047** with frozen decisions. The fixed shortlist reached
+  **0.838940** (demo-disjoint **0.835412**), with at most 33 candidates.
+  This does not pass the near-perfect coverage gate. No selector was fitted
+  and no deployment gain is claimed.
+- Further geometry reports distinguish whole-unit coverage from the
+  reference-assisted best word sub-range *inside one shortlisted citation*.
+  That diagnostic cannot search interpretation context or bridge distinct
+  units, and it is not an implemented sub-range selector.
+
+### Annotation-integrity finding (#16)
+
+The original CSV points `sample_63_yes_q02` (normal lipid profile) at
+`[0.0, 0.26]` and `sample_64_yes_q02` (no wounds on examination) at
+`[0.0, 0.16]`. Both audio-hash-matched, immutable **full-v3 and turbo** caches
+place these intervals in the opening greeting. The qualified supporting
+citations instead occur at **[50.64, 52.88]** ("your lipid profile is normal
+as well") and **[63.12, 64.46]** ("There are no sores").
+
+Filed **#16**, mentioning **@Domynis**, after checking the original CSV and
+independent cached transcripts. This is strong automated evidence of a
+reference/support mismatch, not a claim of a human relabeling or a proven
+generator bug. The audit now flags intervals inside opening greetings without
+automatically declaring them invalid, removing them, or changing any label.
+The two cases account for at most about **0.006154 composite points** when
+semantically valid later citations receive zero overlap; they do not explain
+the whole plateau or establish an unseen-set error rate.
+
+### Prepared inverse-question likelihood probe
+
+Test a different pretrained signal before fitting another selector:
+`log P(question | selected source, interpretation context)`. Pin
+`google/flan-t5-base` at
+`7bcac572ce56db69c1ea7c8af255c5d7c9672fc2`, CPU FP32, batch eight,
+512 source tokens and 128 target tokens, no truncation. The model weights
+stay frozen; this older small model is a feasibility choice, not a SOTA claim.
+
+The primary policy uses context-conditioned question likelihood. Source-only
+and context-minus-masked-source scores are fixed diagnostic alternatives, not
+a gold-selected per-question ensemble. The target includes its native EOS;
+padding is excluded. Candidate encodings are cached within each conversation,
+and a smoke compares batched/cached likelihood with direct teacher forcing.
+Question text never enters the encoder prompt through the target argument.
+The insufficient geometry gate remains explicit: this tests source-ranking
+signal without pretending that current unit extents can reach near-perfect
+localization, and it does not fit a larger selector.

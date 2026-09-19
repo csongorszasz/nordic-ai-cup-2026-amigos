@@ -34,3 +34,13 @@ def test_whisper_tokenizer_merges_are_included_but_training_pickles_are_not():
     assert {entry["path"] for entry in planned_files(files, 110)} == {
         "model.safetensors", "merges.txt", "vocab.json",
     }
+
+
+def test_sentencepiece_vocabulary_is_cached_without_allowing_arbitrary_model_files():
+    files = [
+        SimpleNamespace(rfilename="model.safetensors", size=100),
+        SimpleNamespace(rfilename="spiece.model", size=5),
+        SimpleNamespace(rfilename="unsafe.model", size=500),
+        SimpleNamespace(rfilename="pytorch_model.bin", size=500),
+    ]
+    assert {entry["path"] for entry in planned_files(files, 105)} == {"model.safetensors", "spiece.model"}

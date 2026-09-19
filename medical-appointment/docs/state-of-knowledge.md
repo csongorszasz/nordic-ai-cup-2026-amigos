@@ -27,6 +27,29 @@ contract and shared ASR:
   **26B/base + turbo int8**. The **0.744 official validation was E4B**, not
   a verified score for the current 26B process.
 
+## Current local localization checkpoint
+
+The qualified 26B/base + turbo int8 release with its fixed start +0.2 s
+correction scores **0.8007415 locally**, accuracy **389/390**, mean tIoU
+**0.6696119**. The provenance-bound source-event audit reproduced every
+qualified response and that unrounded score. The demo-disjoint comparison
+is a different cohort: **0.7978423** over 350 questions / 178 positives.
+
+Source occurrence, evidence extent, and acoustic timing remain distinct
+problems. A new hierarchy retaining short replies and multi-sentence episodes
+has whole-unit oracle mIoU **0.882069**, falling to **0.838940** after the fixed
+32-unit shortlist plus incumbent. These are diagnostic ceilings, not achieved
+improvements; they do not support a near-perfect claim. The qualified service
+is unchanged.
+
+**Reference agreement is not always semantic correctness.** CSV references
+`sample_63_yes_q02` and `sample_64_yes_q02` point to the opening greeting
+instead of the later medical fact in both immutable, audio-matched full-v3 and
+turbo transcripts. This is tracked in **#16** with **@Domynis** mentioned.
+No labels or denominators were changed. Those two cases alone cannot explain
+the plateau, but exact-span training should not mistake a high oracle score
+on an unrelated greeting for successful medical grounding.
+
 ## What works
 
 - **ASR.** `faster-whisper` with word timestamps; `large-v3` and `large-v3-turbo`

@@ -119,6 +119,15 @@ def _unit_oracle(units, gold):
     }
 
 
+def reference_inside_opening_greeting(words, gold):
+    tokens = [word["word"].strip(" .,!?:;").casefold() for word in words[:2]]
+    count = (
+        2 if len(tokens) == 2 and tokens[0] == "good" and tokens[1] in {"morning", "afternoon", "evening"}
+        else 1 if tokens and tokens[0] in {"hello", "hi"} else 0
+    )
+    return bool(count and words[0]["start"] <= gold[0] < gold[1] <= words[count - 1]["end"] + 1e-9)
+
+
 def audit_question(row, transcript, units):
     result = dict(baseline_prediction(row))
     if row["label"] != 1:
@@ -166,6 +175,7 @@ def audit_question(row, transcript, units):
         "nearest_end_pause_boundary_s": min(abs(value - gold[1]) for value in pauses) if pauses else None,
         "overlapping_word_range": list(overlap) if overlap is not None else None,
         "overlapping_word_text": word_text(words, *overlap) if overlap is not None else None,
+        "reference_inside_opening_greeting": reference_inside_opening_greeting(words, gold),
         "identical_quote_occurrences": [
             {"span": list(match[:2]), "word_range": list(match[2:])} for match in matches
         ],
@@ -217,6 +227,9 @@ def audit_records(rows, requests, transcripts):
             "exact_word_start_count": sum(entry["nearest_start_word_boundary_s"] <= 1e-8 for entry in entries),
             "exact_word_end_count": sum(entry["nearest_end_word_boundary_s"] <= 1e-8 for entry in entries),
             "duplicate_question_groups": duplicate_groups,
+            "opening_greeting_reference_ids": [
+                row["question_id"] for row in positives if row["audit"]["reference_inside_opening_greeting"]
+            ],
         },
         "overlapping_error_counts": {
             "missed_positives": sum(entry["missed_positive"] for entry in entries),
@@ -245,6 +258,7 @@ def audit_records(rows, requests, transcripts):
             "The annotation grid does not establish the generator or acoustic boundary accuracy.",
             "Observed source/extent/timing losses overlap; oracle gains are not additive.",
             "Grouped partitions of this repeatedly inspected corpus are not virgin holdouts.",
+            "Greeting-overlap flags describe the reference location; they do not relabel or exclude any question.",
         ],
     }
     return audited, report

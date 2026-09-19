@@ -1,14 +1,19 @@
 """Source-localization geometry cannot use reference fields to retrieve evidence."""
 
 import copy
+import json
+import sys
+from types import SimpleNamespace
 
 import pytest
 
+import probe_source_localization as probe
 from answerers.evidence_units import SOURCE_RECIPE, build_evidence_units
 from audit_localization import exact_score
 from benchmark_alignment import baseline_prediction
 from probe_source_localization import (
-    build_runtime_case, geometry_summary, probe_geometry, validate_audit_replay,
+    build_runtime_case, contained_subrange_oracle, geometry_summary, probe_geometry,
+    ranked_prediction, validate_audit_replay,
 )
 
 
@@ -97,3 +102,82 @@ def test_stale_or_partial_audit_cannot_seed_the_geometry_probe(change):
         recipe["offsets_s"] = [0.0, 0.0]
     with pytest.raises(ValueError):
         validate_audit_replay(rows, audited, summary, recipe)
+
+
+def test_subrange_oracle_never_searches_interpretation_context_or_bridges_units():
+    row, transcript = fixture()
+    units = build_evidence_units(transcript["words"], 3.0)
+    first = next(unit for unit in units if unit.word_range() == (0, 0))
+    assert "Normal." in first.context_text
+    oracle = contained_subrange_oracle([first], row["gold"], transcript["words"], 3.0)
+    assert oracle["tiou"] == 0
+    assert oracle["requires_unimplemented_subrange_selection"] is True
+
+
+def test_ranked_prediction_changes_only_a_grounded_span_and_preserves_calibration():
+    row, transcript = fixture()
+    pool = build_evidence_units(transcript["words"], 3.0)
+    _, _, selected = build_runtime_case(row, transcript, pool)
+    scores = [{"source_only": -1.0, "with_context": -1.0, "masked_source": -2.0} for _ in selected]
+    baseline = ranked_prediction(row, selected, scores, "with_context")
+    assert baseline["span"] == [0.2, 0.5] and baseline["source_timing"] == "qualified"
+    normal = next(index for index, unit in enumerate(selected) if unit.text == "Normal.")
+    scores[normal]["with_context"] = -0.1
+    changed = ranked_prediction(row, selected, scores, "with_context")
+    assert changed["span"] == [2.2, 2.5] and changed["quote"] == "Normal."
+    assert changed["answer"] is True and changed["prediction"] == 1
+    assert changed["gold"] == row["gold"] and changed["baseline_word_range"] == [0, 0]
+
+
+def test_partial_source_scores_cannot_silently_change_the_candidate_order():
+    row, transcript = fixture()
+    _, _, selected = build_runtime_case(row, transcript, build_evidence_units(transcript["words"], 3.0))
+    with pytest.raises(ValueError, match="one likelihood row"):
+        ranked_prediction(row, selected, [], "with_context")
+
+
+@pytest.mark.parametrize("fail,smoke", [(False, False), (True, False), (False, True)])
+def test_rank_driver_retains_complete_outputs_and_distinguishes_smoke_from_quality(
+    monkeypatch, tmp_path, fail, smoke,
+):
+    row, transcript = fixture()
+    negative = {
+        **row, "question_id": "negative", "answer": False, "prediction": 0,
+        "label": 0, "gold": None, "span": None, "word_range": None,
+        "question_type": "hard_negative",
+    }
+
+    class Scorer:
+        last_metrics = {"cached_direct_max_abs_delta": 0.0}
+
+        def load(self):
+            pass
+
+        def score(self, cases, words, *, check_direct):
+            assert check_direct is smoke
+            if fail:
+                raise RuntimeError("forced source model failure")
+            return [
+                [{"source_only": -1.0, "with_context": -1.0, "masked_source": -2.0} for _ in units]
+                for _, units in cases
+            ]
+
+    monkeypatch.setattr(probe, "InverseQuestionScorer", Scorer)
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
+    monkeypatch.setitem(sys.modules, "resource", SimpleNamespace(
+        RUSAGE_SELF=0, getrusage=lambda _: SimpleNamespace(ru_maxrss=2048),
+    ))
+    status = probe.run_ranking([row, negative], {"s": transcript}, [], tmp_path, smoke=smoke)
+    report = json.loads((tmp_path / "summary.json").read_text())
+    assert status == int(fail)
+    assert report["likelihood_feasibility_passed"] is (not fail)
+    assert report["deployment_qualified"] is False
+    assert report["smoke_only"] is smoke
+    assert bool(report["comparisons"]) is (not smoke)
+    for policy in probe.POLICIES:
+        predictions = json.loads((tmp_path / f"{policy}_questions.json").read_text())
+        assert len(predictions) == 2
+        assert predictions[0]["span"] == [0.2, 0.5]
+        assert predictions[1]["answer"] is False and predictions[1]["span"] is None
+        if fail:
+            assert predictions[0]["source_reason"] == "conversation_error_keep"
