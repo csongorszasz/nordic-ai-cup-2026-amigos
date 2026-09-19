@@ -4,6 +4,26 @@ from answerers import get_answerer
 from answerers.llm import LLMAnswerer
 from answerers.llm_client import StubClient
 
+
+def test_chat_template_kwargs_defaults_to_empty(monkeypatch):
+    from answerers import llm_client
+
+    monkeypatch.delenv("MEDAPP_LLM_ENABLE_THINKING", raising=False)
+    monkeypatch.delenv("MEDAPP_LLM_REASONING_EFFORT", raising=False)
+    assert llm_client.chat_template_kwargs() == {}
+
+
+def test_chat_template_kwargs_thinking_toggle(monkeypatch):
+    from answerers import llm_client
+
+    monkeypatch.setenv("MEDAPP_LLM_ENABLE_THINKING", "0")
+    assert llm_client.chat_template_kwargs() == {"enable_thinking": False}
+    monkeypatch.setenv("MEDAPP_LLM_ENABLE_THINKING", "1")
+    monkeypatch.setenv("MEDAPP_LLM_REASONING_EFFORT", "low")
+    assert llm_client.chat_template_kwargs() == {
+        "enable_thinking": True, "reasoning_effort": "low",
+    }
+
 WORDS = [
     {"word": " The", "start": 1.5, "end": 1.7},
     {"word": " dose", "start": 1.8, "end": 2.0},

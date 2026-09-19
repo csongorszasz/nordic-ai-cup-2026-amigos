@@ -19,6 +19,25 @@ DEVICE = os.environ.get("MEDAPP_LLM_DEVICE", "auto").lower()
 DTYPE = os.environ.get("MEDAPP_LLM_DTYPE", "float16")
 
 
+def chat_template_kwargs() -> Dict:
+    """Extra chat-template variables, empty unless explicitly requested.
+
+    Thinking models (e.g. Qwen3.8) emit a reasoning block by default, which
+    would hide the strict JSON citation from the parser. Set
+    ``MEDAPP_LLM_ENABLE_THINKING=0`` to ask for a direct answer;
+    ``MEDAPP_LLM_REASONING_EFFORT`` tunes the depth. Both are unset by default
+    so non-thinking checkpoints and their templates are unchanged.
+    """
+    kwargs: Dict = {}
+    thinking = os.environ.get("MEDAPP_LLM_ENABLE_THINKING")
+    if thinking is not None:
+        kwargs["enable_thinking"] = thinking != "0"
+    effort = os.environ.get("MEDAPP_LLM_REASONING_EFFORT")
+    if effort:
+        kwargs["reasoning_effort"] = effort
+    return kwargs
+
+
 class StubClient:
     """Deterministic client for tests and dry prompt rendering."""
 
@@ -113,7 +132,17 @@ class HFClient:
             logger.warning("CausalLM load failed (%s); trying image-text-to-text.", exc)
             from transformers import AutoModelForImageTextToText
 
-            self._model = _from(AutoModelForImageTextToText)
+            try:
+                self._model = _from(AutoModelForImageTextToText)
+            except ValueError as exc2:
+                # Newer multimodal architectures (e.g. Qwen3.8-27B,
+                # Qwen3_5ForConditionalGeneration) expose the catch-all loader.
+                logger.warning("Image-text-to-text load failed (%s); trying multimodal.", exc2)
+                try:
+                    from transformers import AutoModelForMultimodalLM
+                except ImportError as exc3:
+                    raise exc2 from exc3
+                self._model = _from(AutoModelForMultimodalLM)
         if DEVICE in ("cuda", "cpu"):
             self._device = DEVICE
         else:
@@ -150,7 +179,8 @@ class HFClient:
 
         self._load()
         prompt = self._tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True,
+            **chat_template_kwargs(),
         )
         encoded = self._tokenizer(
             prompt, return_tensors="pt", add_special_tokens=self.legacy_special_tokens
