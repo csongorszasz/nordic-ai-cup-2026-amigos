@@ -15,7 +15,9 @@ clipped, and kept where at least MIN_VISIBLE of it is inside the frame.
 
 note_fixes.json holds what each review note means, by track id: {"status": "accepted" or
 "rejected", "class": the right class, "frames": only these frames' boxes are the object,
-"partial": true when the box covers only part of the object, "why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes,manual_boxes}.json, writes labels.json
+"partial": true when the box covers only part of the object, "boxes_from": take the track's
+boxes from this round's file (e.g. candidates_r2.json) when an earlier round's are loose,
+"why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes,manual_boxes}.json, writes labels.json
 ({frame: [{object_id, bbox}]}) next to them.
 """
 
@@ -89,6 +91,8 @@ def main():
             skipped.append((cid, 'no longer among the candidates'))
             continue
         c = candidates[cid]
+        if fix.get('boxes_from'):  # a later round tracked the object more tightly
+            c = next(x for x in json.loads((OUT / fix['boxes_from']).read_text())['candidates'] if x['id'] == cid)
         cls = fix.get('class') or d.get('class') or c['class']
         ref = c['best_frame']
         objects.append({'id': cid, 'class': cls, 'ref': ref, 'box': object_box(c, steps, ref, fix.get('frames')),
