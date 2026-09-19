@@ -87,6 +87,7 @@ datasets/*
 !datasets/model_match/
 datasets/model_match/*
 !datasets/model_match/paint_review.json
+!datasets/model_match/proposals.json
 !datasets/model_match/_baked/
 training_artifacts/
 runs/

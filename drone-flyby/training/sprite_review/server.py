@@ -468,6 +468,8 @@ def paint_classes():
     cph = json.loads((REVIEW / 'labels.json').read_text())['objects'] if (REVIEW / 'labels.json').exists() else []
     review = json.loads(PAINT_REVIEW.read_text()) if PAINT_REVIEW.exists() else {}
     helsinki = reference_sprites(8)
+    # What each _proposed.glb changes, for the page: {class: text}.
+    proposals = json.loads((MODEL_MATCH / 'proposals.json').read_text()) if (MODEL_MATCH / 'proposals.json').exists() else {}
     out = []
     for cls in OBJECT_CLASSES:
         match_path = MODELS / cls / 'match.json'
@@ -482,7 +484,7 @@ def paint_classes():
             item.update(original=m.get('url'), current=baked_url(cls, name, used),
                         current_label='recoloured' if used else 'projected from the Helsinki cut-outs',
                         proposed=baked_url(cls, name, proposed) if proposed != used else None,
-                        proposed_label={'_proposed': 'proposed new paint', '_recoloured':
+                        proposed_label={'_proposed': proposals.get(cls, 'proposed new paint'), '_recoloured':
                                         'recoloured (model texture shifted to the real colours)',
                                         '': 'projected'}[proposed],
                         dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'], up=fit.get('up', 'auto'))
