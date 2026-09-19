@@ -1000,6 +1000,20 @@ full-OOF result or deployment is claimed by this implementation alone.
   processor reports 0.08-second timestamp classes. No neural alignment
   predictions, audio timing quality, or latency gains have been measured.
   Keep the future GPU timing trial separate from the active GRPO OOF run.
+- **Real timing probe implemented, not yet run:** `benchmark_alignment.py`
+  loads the pinned native Qwen model entirely offline, aligns the original
+  MP3 waveform and frozen transcript, and transfers only timestamps.
+  Baseline quotes, their exact word-index occurrences, and all yes/no
+  decisions remain fixed. Audio/transcript hashes and every baseline
+  question/reference/anchor are checked before model loading.
+- The predeclared smoke covers the three longest conversations, selected
+  without labels. Compare raw Qwen times (no Whisper-fitted correction)
+  against the incumbent's +0.2s spans. Invalid proposals or conversation
+  errors explicitly retain incumbent evidence and remain in every score
+  denominator. Save raw alignment units before checking bounds.
+  Profile added time and model-only memory; a separate-run latency sum is
+  not a co-resident HTTP gate. Do not launch while GRPO OOF holds the sole
+  experimental GPU.
 
 ## ASR stream lifecycle check
 

@@ -96,6 +96,14 @@ the verified GRPO interpreter. This loads only the pinned Qwen processor,
 not model weights. Its report explicitly labels synthetic timing values;
 passing it establishes token/index compatibility, not localization accuracy.
 
+After that CPU preflight and once the experimental GPU is free,
+`benchmark_alignment.py --baseline <frozen-run>/results/benchmark --smoke`
+runs the real pinned aligner on the three longest clips. Use the verified
+GRPO interpreter. It never re-runs the decision LLM or changes quote
+occurrences. Remove `--smoke` only after feasibility; full results must
+include every question, failure fallback, and the demonstration-disjoint
+paired comparison. Zero new offsets are the primary alignment policy.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
