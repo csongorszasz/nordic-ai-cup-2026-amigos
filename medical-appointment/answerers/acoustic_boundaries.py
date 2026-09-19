@@ -8,6 +8,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
+from contextlib import contextmanager
 from decimal import Decimal
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from .passages import validate_word_clock
 MODEL = "facebook/wav2vec2-base-960h"
 REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 PACKAGES = {"num2words": "0.5.14", "docopt": "0.6.2"}
+INFERENCE_AUGMENTATION = {"apply_spec_augment": False, "mask_time_prob": 0.0, "mask_feature_prob": 0.0}
 RECIPE = {
     "version": 1, "model": MODEL, "revision": REVISION,
     "sampling_rate": 16000, "conv_kernel": [10, 3, 3, 3, 3, 2, 2],
@@ -26,6 +28,8 @@ RECIPE = {
     "max_endpoint_positions": 8, "dtype": "float32", "device": "cpu",
     "primary_policy": "ctc_frame_cells", "extra_offset_s": [0.0, 0.0],
     "max_abs_number": "1000000000",
+    "inference_augmentation": INFERENCE_AUGMENTATION,
+    "eval_augmentation_equivalence_atol": 1e-5,
 }
 _NUMBER = re.compile(r"[+-]?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?|\.\d+)")
 _UNITS = {
@@ -44,6 +48,20 @@ class NormalizationError(AcousticSkip):
     def __init__(self, index, text):
         self.word_index = index
         super().__init__(f"Unsupported CTC spoken form at word {index}: {text!r}")
+
+
+@contextmanager
+def temporary_augmentation(config, values):
+    if set(values) != set(INFERENCE_AUGMENTATION):
+        raise ValueError("Only the declared training-augmentation fields may be changed.")
+    previous = {name: getattr(config, name) for name in values}
+    try:
+        for name, value in values.items():
+            setattr(config, name, value)
+        yield
+    finally:
+        for name, value in previous.items():
+            setattr(config, name, value)
 
 
 def load_number_renderer(manifest_path):
@@ -304,6 +322,7 @@ class ConditionalCTC:
         self.processor = None
         self.model = None
         self.runtime = {}
+        self.original_augmentation = None
 
     def load(self):
         if self.model is not None:
@@ -311,7 +330,7 @@ class ConditionalCTC:
         import os
         import torch
         import torchaudio
-        from transformers import AutoModelForCTC, AutoProcessor
+        from transformers import AutoConfig, AutoModelForCTC, AutoProcessor
 
         if torch.cuda.is_available():
             raise RuntimeError("The conditional CTC probe requires a CPU-only allocation.")
@@ -325,12 +344,18 @@ class ConditionalCTC:
         processor = AutoProcessor.from_pretrained(
             MODEL, revision=REVISION, local_files_only=True, trust_remote_code=False,
         )
-        model, loading = AutoModelForCTC.from_pretrained(
+        config = AutoConfig.from_pretrained(
             MODEL, revision=REVISION, local_files_only=True, trust_remote_code=False,
+        )
+        original_augmentation = {name: getattr(config, name) for name in INFERENCE_AUGMENTATION}
+        for name, value in INFERENCE_AUGMENTATION.items():
+            setattr(config, name, value)
+        model, loading = AutoModelForCTC.from_pretrained(
+            MODEL, revision=REVISION, config=config, local_files_only=True, trust_remote_code=False,
             dtype=torch.float32, attn_implementation="eager", output_loading_info=True,
         )
         model.eval()
-        if loading["missing_keys"] or loading["unexpected_keys"] or loading.get("mismatched_keys"):
+        if loading["missing_keys"] or loading["unexpected_keys"] or loading.get("mismatched_keys") or loading.get("error_msgs"):
             raise ValueError(f"The pinned CTC weights did not load exactly: {loading}")
         if (
             list(model.config.conv_kernel) != RECIPE["conv_kernel"]
@@ -345,6 +370,9 @@ class ConditionalCTC:
             for name in ("torch", "torchaudio", "transformers", "huggingface-hub", "num2words")
         }
         self.runtime["threads"] = torch.get_num_threads()
+        self.runtime["checkpoint_augmentation"] = original_augmentation
+        self.runtime["eval_augmentation_max_abs_delta"] = None
+        self.original_augmentation = original_augmentation
         self.processor, self.model = processor, model
 
     def align(self, waveform, words, anchor, baseline_span):
@@ -370,6 +398,13 @@ class ConditionalCTC:
             logits = self.model(**inputs).logits
             if logits.shape[1] != clock.frames or not torch.isfinite(logits).all():
                 raise ValueError("Acoustic frame count or logits differ from the explicit convolution clock.")
+            if self.runtime["eval_augmentation_max_abs_delta"] is None:
+                with temporary_augmentation(self.model.config, self.original_augmentation):
+                    reference = self.model(**inputs).logits
+                delta = float((reference - logits).abs().max())
+                if not math.isfinite(delta) or delta > RECIPE["eval_augmentation_equivalence_atol"]:
+                    raise RuntimeError("Disabling training-only augmentation changed evaluation logits.")
+                self.runtime["eval_augmentation_max_abs_delta"] = delta
             log_probs = logits.log_softmax(dim=-1)
             if not torch.isfinite(log_probs).all():
                 raise ValueError("The CTC acoustic log probabilities are not finite.")

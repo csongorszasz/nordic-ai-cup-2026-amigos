@@ -1530,3 +1530,13 @@ annotation posterior. The script rechecks the complete qualified replay before
 model loading, then reports exact matched scores, grouped uncertainty,
 eligibility/failure counts, model/runtime provenance, and component timing.
 No acoustic-quality result has been established merely by preparing this code.
+
+- **Initial CTC smoke:** `conditional-ctc-smoke-f600d268`, CPU job
+  `25407861`, stopped before scoring because strict loading found the absent
+  training-only `masked_spec_embed` parameter. Inspection of the installed
+  model confirmed it is created only for augmentation and is unused in
+  evaluation without supplied masking indices.
+  Load with explicit inference-only augmentation settings instead of accepting
+  arbitrary missing weights. The retry must still load every inference weight
+  exactly and verify identical evaluation logits with the checkpoint's original
+  augmentation flags before accepting its first acoustic alignment.

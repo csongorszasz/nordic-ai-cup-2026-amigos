@@ -10,6 +10,7 @@ from answerers import acoustic_boundaries as acoustic
 from answerers.acoustic_boundaries import (
     AcousticSkip, FrameClock, NormalizationError, RECIPE, boundary_proposals,
     choose_crop, convolution_geometry, encode_words, endpoint_frames, validate_token_spans,
+    temporary_augmentation,
 )
 
 
@@ -204,3 +205,17 @@ def test_normalizer_manifest_binds_helpers_and_protected_runtime(monkeypatch, tm
     versions["torch"] = "changed"
     with pytest.raises(ValueError, match="runtime changed"):
         acoustic.load_number_renderer(path)
+
+
+def test_evaluation_configuration_comparison_restores_flags_even_after_failure():
+    config = SimpleNamespace(**acoustic.INFERENCE_AUGMENTATION, hidden_size=768)
+    original = {"apply_spec_augment": True, "mask_time_prob": 0.05, "mask_feature_prob": 0.0}
+    with pytest.raises(RuntimeError, match="forced"):
+        with temporary_augmentation(config, original):
+            assert config.apply_spec_augment is True and config.mask_time_prob == 0.05
+            raise RuntimeError("forced comparison failure")
+    assert {name: getattr(config, name) for name in acoustic.INFERENCE_AUGMENTATION} == acoustic.INFERENCE_AUGMENTATION
+    assert config.hidden_size == 768
+    with pytest.raises(ValueError, match="augmentation fields"):
+        with temporary_augmentation(config, {"hidden_size": 1}):
+            pass
