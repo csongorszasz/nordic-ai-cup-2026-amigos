@@ -909,6 +909,14 @@ memory on one GPU. Then evaluate a fixed held-out fold with all questions
 retained and unchanged 26B decisions. No SOTA reproduction, score gain,
 full-OOF result or deployment is claimed by this implementation alone.
 
+- **Dependency gate:** `grpo-env-b96d8c5a` failed before model loading:
+  TRL 1.13.0 imports `FSDPModule`, absent from shared torch 2.5.1.
+  The next fresh overlay explicitly pins torch 2.7.1/cu126 and matching
+  vision/audio wheels. The owned node's driver is 575.57.08; no FSDP import
+  monkey patch or shared-package upgrade is used. Setup verifies the base
+  environment still has its original versions and records both runtimes.
+  Pre/post-training SFT replay must therefore use this same training runtime.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
