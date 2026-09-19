@@ -76,6 +76,15 @@ def test_source_policies_are_fixed_and_ties_retain_the_incumbent():
     assert select_source(scores, "support_gain") == 1
 
 
+def test_batched_floating_point_noise_cannot_break_an_incumbent_tie():
+    scores = [
+        {"source_only": -1.000001, "with_context": -1.000001, "masked_source": -2.0},
+        {"source_only": -1.0, "with_context": -1.0, "masked_source": -2.0},
+    ]
+    for policy in ("source_only", "with_context", "support_gain"):
+        assert select_source(scores, policy) == 0
+
+
 @pytest.mark.parametrize("entry", [
     {}, {"source_only": -1.0}, {mode: float("nan") for mode in MODES},
     {mode: True for mode in MODES}, {mode: 1.0 for mode in MODES},

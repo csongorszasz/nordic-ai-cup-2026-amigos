@@ -270,6 +270,7 @@ def run_ranking(rows, transcripts, excluded, output, *, smoke=False):
         "serving_artifact_written": False, "deployment_qualified": False,
         "trained": False, "primary_policy": RANK_RECIPE["primary_policy"],
         "model": MODEL, "revision": REVISION, "device": "cpu", "load_s": load_s,
+        "runtime": scorer.runtime,
         "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
         "scored_question_count": len(traces), "conversation_failures": failures,
         "likelihood_feasibility_passed": bool(traces) and not failures,

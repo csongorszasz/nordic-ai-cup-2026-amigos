@@ -150,6 +150,7 @@ def test_rank_driver_retains_complete_outputs_and_distinguishes_smoke_from_quali
 
     class Scorer:
         last_metrics = {"cached_direct_max_abs_delta": 0.0}
+        runtime = {"stub": True}
 
         def load(self):
             pass

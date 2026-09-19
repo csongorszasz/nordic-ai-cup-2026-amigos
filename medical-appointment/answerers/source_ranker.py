@@ -1,5 +1,6 @@
 """Offline inverse-question likelihood with occurrence-scoped context ablations."""
 
+import importlib.metadata
 import math
 import os
 import time
@@ -22,6 +23,7 @@ RANK_RECIPE = {
     "modes": list(MODES), "policies": list(POLICIES), "primary_policy": "with_context",
     "instruction": INSTRUCTION, "include_target_eos": True,
     "normalization": "mean log probability over non-padding target tokens",
+    "score_tie_atol": 1e-5,
     "training": False,
 }
 
@@ -79,7 +81,8 @@ def select_source(scores, policy):
         values.append(
             entry["with_context"] - entry["masked_source"] if policy == "support_gain" else entry[policy]
         )
-    return max(range(len(values)), key=values.__getitem__)
+    best = max(values)
+    return next(index for index, value in enumerate(values) if best - value <= RANK_RECIPE["score_tie_atol"])
 
 
 class InverseQuestionScorer:
@@ -87,6 +90,7 @@ class InverseQuestionScorer:
         self.tokenizer = None
         self.model = None
         self.last_metrics = {}
+        self.runtime = {}
 
     def load(self):
         if self.model is not None:
@@ -112,6 +116,11 @@ class InverseQuestionScorer:
         ).eval()
         if not self.model.config.is_encoder_decoder or next(self.model.parameters()).dtype != torch.float32:
             raise ValueError("The pinned encoder-decoder did not load in the declared precision.")
+        self.runtime = {
+            "torch": torch.__version__, "threads": torch.get_num_threads(),
+            "tokenizer_class": type(self.tokenizer).__name__, "model_class": type(self.model).__name__,
+            **{name: importlib.metadata.version(name) for name in ("transformers", "huggingface_hub", "tokenizers")},
+        }
 
     def score(self, cases, words, *, check_direct=False):
         self.load()
@@ -186,7 +195,7 @@ class InverseQuestionScorer:
                         decoder_attention_mask=direct_target["attention_mask"], use_cache=False,
                     )
                     direct_delta = abs(float(means[0]) + float(direct.loss))
-                    if not math.isfinite(direct_delta) or direct_delta > 1e-5:
+                    if not math.isfinite(direct_delta) or direct_delta > RANK_RECIPE["score_tie_atol"]:
                         raise RuntimeError("Cached batched likelihood disagrees with direct teacher forcing.")
         for scores in result:
             select_source(scores, "with_context")

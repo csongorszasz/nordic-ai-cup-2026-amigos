@@ -1465,3 +1465,12 @@ localization, and it does not fit a larger selector.
   The verifier and cache reuse path now explicitly request only their
   manifested files. No unsafe pickle/alternate weights were downloaded,
   networking was not enabled for inference, and no quality result is claimed.
+- **Actual model feasibility:** `inverse-q-smoke-94773daf`, CPU job
+  `25407420`, passed on all four selected questions / 96 likelihood jobs.
+  Batched cached scores agreed with direct teacher forcing to at most
+  **1.20e-6** mean-log-probability difference. Peak RSS was **1.88 GiB**;
+  model load took 44.38 s, and the two partial-conversation scoring components
+  took **2.14 / 1.50 s**. This is not full-request latency or a quality result.
+  The full comparison retains incumbent-first ties within the predeclared
+  numerical equivalence tolerance **1e-5**, preventing padding/batch roundoff
+  from choosing another equal-likelihood occurrence.
