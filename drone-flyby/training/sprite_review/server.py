@@ -130,6 +130,28 @@ def flyby_labels(frame: int):
     return [{'class': a['object_id'], 'bbox': a['bbox']} for a in load_annotations(frame)]
 
 
+TRACES = ROOT / 'datasets' / 'policy_traces'  # training/run_policy.py
+
+
+@app.get('/api/flyby/traces')
+def flyby_traces():
+    """Saved policy runs, newest first, without their steps."""
+    out = []
+    for path in sorted(TRACES.glob('*.json'), key=lambda p: -p.stat().st_mtime):
+        trace = json.loads(path.read_text())
+        trace.pop('steps', None)
+        out.append(trace)
+    return out
+
+
+@app.get('/api/flyby/trace/{name}')
+def flyby_trace(name: str):
+    path = TRACES / f'{name}.json'
+    if path.parent != TRACES or not path.exists():
+        raise HTTPException(404, 'unknown trace')
+    return FileResponse(path)
+
+
 @app.get('/api/models')
 def models_3d():
     """Every mesh with its fit from match.json, if render_models.py has run on it."""

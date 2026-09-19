@@ -37,6 +37,8 @@
   <a href="/">&larr; sprite review</a> · <a href="/scene3d">3D scene</a>
   <h1>Flight playback</h1>
   <select id="source"></select>
+  <select id="drive" title="Who flies the camera"></select>
+  <div id="traceInfo" class="stat" style="display:none"></div>
   <input type="range" id="scrub" min="0" max="0" value="0">
   <div class="row"><button id="play">Play</button><button id="slower">&minus;</button><button id="faster">+</button></div>
   <div class="stat">Frame <b id="sFrame">-</b></div>
@@ -44,6 +46,10 @@
   <div class="stat">Level <b id="sLevel">0</b></div>
   <div class="stat">View centre <b id="sCentre">-</b></div>
   <div class="stat">Labels <b id="sLabels">-</b></div>
+  <div class="stat" id="predRow" style="display:none">Detections <b id="sPred">-</b></div>
+  <div class="stat" id="confRow" style="display:none">Min confidence <b id="sConf">0.25</b></div>
+  <input type="range" id="conf" min="0" max="0.9" step="0.05" value="0.25" style="display:none">
+  <div id="sNote" class="stat" style="color:#ff9f6b"></div>
   <canvas id="mini" width="384" height="216"></canvas>
   <div class="help">
     The big view is what the drone receives: always 960&times;540.<br>
@@ -51,7 +57,11 @@
     <kbd>Shift</kbd> zoom into the yellow frame<br>
     <kbd>Space</kbd> back to level 0 &nbsp;·&nbsp; <kbd>Q</kbd> up one level<br>
     <kbd>P</kbd> play / pause &nbsp;·&nbsp; <kbd>[</kbd> <kbd>]</kbd> speed<br>
-    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame &nbsp;·&nbsp; <kbd>B</kbd> labels on/off
+    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame &nbsp;·&nbsp; <kbd>B</kbd> labels on/off<br>
+    With a policy flying: the yellow frame is the view it asked for next (red: refused).
+    Solid boxes are what it reports for the whole frame (scored), thin dashed ones what the
+    detector saw in this view. <kbd>N</kbd> detections on/off. Any move key takes over the camera.<br>
+    New runs: <code>python training/run_policy.py --scene helsinki --camera hybrid --model runs/&lt;run&gt;/weights/best.pt</code>
   </div>
 </aside>
 <main>
@@ -64,7 +74,7 @@
 <script>
 const W = 3840, H = 2160;
 const SIZE = { 0: [3840, 2160], 1: [1920, 1080], 2: [960, 540] };  // source region per level
-const FPS = 2;                     // playback at 1x: two frames a second
+const FPS = 3;                     // playback at 1x: the evaluator's 3 frames a second
 const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
 const PAN_PER_SECOND = 0.6;        // of the region being moved, per second a key is held
 
@@ -75,7 +85,8 @@ const mini = $('mini'), mctx = mini.getContext('2d');
 vctx.imageSmoothingQuality = 'high';
 
 let sources = [], source = null, frames = [], index = 0;
-let playing = false, speed = 2, showLabels = true;
+let playing = false, speed = 1, showLabels = true;
+let traces = [], trace = null, showPred = true, minConf = 0.25;
 let level = 0;
 const centre = { 1: [1920, 1080], 2: [1920, 1080] };   // centre of the level-1 and level-2 regions
 let cursor = [1920, 1080];                                // yellow frame, one level down
@@ -87,7 +98,29 @@ const clampCentre = (c, [w, h], box = [0, 0, W, H]) => [
   Math.min(Math.max(c[0], box[0] + w / 2), box[2] - w / 2),
   Math.min(Math.max(c[1], box[1] + h / 2), box[3] - h / 2)];
 const regionOf = (c, [w, h]) => [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2];
-const current = () => level === 0 ? regionOf([1920, 1080], SIZE[0]) : regionOf(centre[level], SIZE[level]);
+const step = () => trace && trace.steps[index];
+const current = () => trace ? step().region : level === 0 ? regionOf([1920, 1080], SIZE[0]) : regionOf(centre[level], SIZE[level]);
+// The yellow frame: where manual zooming goes, or the view the policy asked for next.
+function target() {
+  if (!trace) return level < 2 ? { box: regionOf(cursor, SIZE[level + 1]) } : null;
+  const s = step();
+  if (!s.next) return null;
+  const [l, x, y] = s.next;
+  return { box: regionOf([x, y], SIZE[l]), refused: !!s.refused };
+}
+// A move key while a policy flies: continue by hand from the policy's current view.
+function takeOver() {
+  if (!trace) return;
+  const s = step();
+  level = s.level;
+  if (level > 0) centre[level] = s.center.slice();
+  if (level === 2) centre[1] = clampCentre(s.center, SIZE[1]);  // where Q goes back up to
+  cursor = level === 0 ? [1920, 1080] : level === 1 ? clampCentre(s.center, SIZE[2], s.region) : cursor;
+  trace = null;
+  $('drive').value = '';
+  showTraceInfo();
+  dirty = true;
+}
 
 function image(i) {
   const n = frames[i];
@@ -123,6 +156,7 @@ function setIndex(i) {
 }
 
 function zoomIn() {
+  takeOver();
   if (level === 2) return;
   level += 1;
   centre[level] = cursor.slice();
@@ -130,6 +164,7 @@ function zoomIn() {
   dirty = true;
 }
 function zoomOut(toZero) {
+  takeOver();
   if (level === 0) return;
   cursor = centre[level].slice();
   level = toZero ? 0 : level - 1;
@@ -141,6 +176,7 @@ function move(dt) {
   let dx = (held.has('d') ? 1 : 0) - (held.has('a') ? 1 : 0);
   let dy = (held.has('s') ? 1 : 0) - (held.has('w') ? 1 : 0);
   if (!dx && !dy) return;
+  takeOver();
   if (level === 2) {  // nothing below: pan the view itself
     const step = SIZE[2][0] * PAN_PER_SECOND * dt;
     centre[2] = clampCentre([centre[2][0] + dx * step, centre[2][1] + dy * step], SIZE[2]);
@@ -174,22 +210,30 @@ function draw() {
   const toScreen = ([a, b, c, d]) => [(a - x1) * scale * k, (b - y1) * scale * k, (c - a) * scale * k, (d - b) * scale * k];
   octx.clearRect(0, 0, over.width, over.height);
   const boxes = labels.get(frames[index]) || [];
-  if (showLabels) {
-    octx.font = `${Math.round(11 * devicePixelRatio)}px system-ui`;
-    octx.lineWidth = Math.max(1, devicePixelRatio);
-    for (const b of boxes) {
-      const [sx, sy, sw, sh] = toScreen(b.bbox);
-      if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) continue;
-      octx.strokeStyle = octx.fillStyle = colour(b.class);
-      octx.strokeRect(sx, sy, sw, sh);
-      octx.fillText(b.class, sx, sy - 3 * devicePixelRatio);
-    }
+  const d = devicePixelRatio;
+  octx.font = `${Math.round(11 * d)}px system-ui`;
+  const drawBox = (bbox, col, text, width, dash) => {
+    const [sx, sy, sw, sh] = toScreen(bbox);
+    if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) return;
+    octx.strokeStyle = octx.fillStyle = col;
+    octx.lineWidth = width * d;
+    octx.setLineDash(dash ? [3 * d, 3 * d] : []);
+    octx.strokeRect(sx, sy, sw, sh);
+    if (text) octx.fillText(text, sx, sy - 3 * d);
+  };
+  if (showLabels) for (const b of boxes) drawBox(b.bbox, colour(b.class), trace && showPred ? '' : b.class, 1, false);
+  const s = step();
+  const reported = s && showPred ? s.reported.filter(p => p.conf >= minConf) : [];
+  if (s && showPred) {
+    for (const p of s.seen.filter(p => p.conf >= minConf)) drawBox(p.bbox, colour(p.class), '', 1, true);
+    for (const p of reported) drawBox(p.bbox, colour(p.class), `${p.class} ${p.conf.toFixed(2)}`, 2.5, false);
   }
-  if (level < 2) {
-    const [sx, sy, sw, sh] = toScreen(regionOf(cursor, SIZE[level + 1]));
-    octx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--cursor');
-    octx.lineWidth = 2 * devicePixelRatio;
-    octx.setLineDash([8 * devicePixelRatio, 5 * devicePixelRatio]);
+  const t = target();
+  if (t) {
+    const [sx, sy, sw, sh] = toScreen(t.box);
+    octx.strokeStyle = t.refused ? '#ff4d4d' : getComputedStyle(document.body).getPropertyValue('--cursor');
+    octx.lineWidth = 2 * d;
+    octx.setLineDash([8 * d, 5 * d]);
     octx.strokeRect(sx, sy, sw, sh);
     octx.setLineDash([]);
   }
@@ -199,23 +243,26 @@ function draw() {
   const m = mini.width / W;
   mctx.lineWidth = 1.5;
   mctx.strokeStyle = '#fff';
-  if (level > 0) mctx.strokeRect(x1 * m, y1 * m, (x2 - x1) * m, (y2 - y1) * m);
-  if (level < 2) {
-    const [a, b, c, d] = regionOf(cursor, SIZE[level + 1]);
-    mctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--cursor');
-    mctx.strokeRect(a * m, b * m, (c - a) * m, (d - b) * m);
+  const lv = trace ? s.level : level;
+  if (lv > 0) mctx.strokeRect(x1 * m, y1 * m, (x2 - x1) * m, (y2 - y1) * m);
+  if (t) {
+    const [a, b, c, e] = t.box;
+    mctx.strokeStyle = t.refused ? '#ff4d4d' : getComputedStyle(document.body).getPropertyValue('--cursor');
+    mctx.strokeRect(a * m, b * m, (c - a) * m, (e - b) * m);
   }
 
   const visible = boxes.filter(b => b.bbox[2] > x1 && b.bbox[0] < x2 && b.bbox[3] > y1 && b.bbox[1] < y2).length;
-  const c = level === 0 ? [1920, 1080] : centre[level];
+  const c = [(x1 + x2) / 2, (y1 + y2) / 2];
   $('sFrame').textContent = `${frames[index]} (${index + 1}/${frames.length})`;
   $('sSpeed').textContent = `${speed}x · ${playing ? 'playing' : 'paused'}`;
-  $('sLevel').textContent = `${level} · ${SIZE[level].join('×')} source`;
+  $('sLevel').textContent = `${lv} · ${SIZE[lv].join('×')} source`;
+  $('sPred').textContent = s ? `${s.seen.length} in view · ${reported.length} reported · ${s.ms} ms` : '';
+  $('sNote').textContent = s && s.refused ? `camera move refused: ${s.refused}` : '';
   $('sCentre').textContent = `${Math.round(c[0])}, ${Math.round(c[1])}`;
   $('sLabels').textContent = source.labelled ? `${visible} in view / ${boxes.length}` : 'none (unlabelled)';
   $('play').textContent = playing ? 'Pause' : 'Play';
-  $('hud').innerHTML = `<span class="lv">L${level}</span> · frame ${frames[index]} · ${speed}x ${playing ? '▶' : '❚❚'}` +
-    (level === 0 ? '' : ` · shrunk ${SIZE[level][0] / 960}×`) + (ready(img) ? '' : ' · <span id="warn">loading…</span>');
+  $('hud').innerHTML = (trace ? `${trace.camera} · ` : '') + `<span class="lv">L${lv}</span> · frame ${frames[index]} · ${speed}x ${playing ? '▶' : '❚❚'}` +
+    (lv === 0 || lv === 2 ? '' : ` · shrunk ${SIZE[lv][0] / 960}×`) + (lv === 0 ? ' · shrunk 4×' : '') + (ready(img) ? '' : ' · <span id="warn">loading…</span>');
 }
 
 function tick(now) {
@@ -246,6 +293,7 @@ addEventListener('keydown', e => {
   else if (key === 'ArrowRight') setIndex(index + 1);
   else if (key === 'ArrowLeft') setIndex(index - 1);
   else if (key === 'b') { showLabels = !showLabels; dirty = true; }
+  else if (key === 'n') { showPred = !showPred; dirty = true; }
 });
 addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
 addEventListener('blur', () => held.clear());
@@ -256,6 +304,8 @@ $('slower').onclick = () => { speed = SPEEDS[Math.max(SPEEDS.indexOf(speed) - 1,
 $('faster').onclick = () => { speed = SPEEDS[Math.min(SPEEDS.indexOf(speed) + 1, SPEEDS.length - 1)]; dirty = true; };
 $('scrub').oninput = e => setIndex(+e.target.value);
 $('source').onchange = e => pick(e.target.value);
+$('drive').onchange = e => fly(e.target.value);
+$('conf').oninput = e => { minConf = +e.target.value; $('sConf').textContent = minConf.toFixed(2); dirty = true; };
 for (const el of document.querySelectorAll('button, input')) el.addEventListener('keydown', e => e.key === ' ' && e.preventDefault());
 
 function pick(name) {
@@ -263,15 +313,45 @@ function pick(name) {
   frames = source.frames;
   images.clear(); labels.clear();
   $('scrub').max = frames.length - 1;
-  level = 0; cursor = [1920, 1080];
+  level = 0; cursor = [1920, 1080]; trace = null;
+  const mine = traces.filter(t => t.scene === name);
+  $('drive').innerHTML = '<option value="">You fly the camera (manual)</option>' + mine.map(t =>
+    `<option value="${t.name}">${t.camera} · ${t.model.split('/').slice(-3, -2)[0] || t.model}` +
+    `${t.map50 !== undefined ? ' · mAP ' + t.map50.toFixed(3) : ''} · ${t.created.slice(5, 16).replace('T', ' ')}</option>`).join('');
+  showTraceInfo();
   setIndex(0);
+}
+
+async function fly(name) {
+  if (!name) { takeOver(); trace = null; showTraceInfo(); dirty = true; return; }
+  trace = await (await fetch(`/api/flyby/trace/${encodeURIComponent(name)}`)).json();
+  // Steps follow the frames the policy was sent; line them up with the source's frames.
+  const byFrame = new Map(trace.steps.map(s => [s.frame, s]));
+  trace.steps = frames.map(f => byFrame.get(f) || { frame: f, level: 0, center: [1920, 1080], region: [0, 0, W, H],
+                                                     seen: [], reported: [], next: null, refused: null, ms: 0 });
+  showTraceInfo();
+  dirty = true;
+}
+
+function showTraceInfo() {
+  const on = !!trace;
+  for (const id of ['predRow', 'confRow', 'conf']) $(id).style.display = on ? '' : 'none';
+  $('traceInfo').style.display = on ? '' : 'none';
+  if (on) $('traceInfo').innerHTML = `Levels L0/L1/L2 <b>${[0, 1, 2].map(l => trace.levels[l] || 0).join(' / ')}` +
+    `${trace.refused ? ' · ' + trace.refused + ' refused' : ''}</b>`;
 }
 
 (async () => {
   sources = await (await fetch('/api/flyby/sources')).json();
+  traces = await (await fetch('/api/flyby/traces')).json();
   $('source').innerHTML = sources.map(s => `<option value="${s.name}">${s.label} · ${s.frames.length}</option>`).join('');
   fit();
-  pick(sources[0].name);
+  // #trace=<name> opens a policy run straight away.
+  const wanted = new URLSearchParams(location.hash.slice(1)).get('trace');
+  const run = traces.find(t => t.name === wanted);
+  pick(run ? run.scene : sources[0].name);
+  $('source').value = source.name;
+  if (run) { $('drive').value = run.name; await fly(run.name); }
   requestAnimationFrame(tick);
 })();
 </script>
