@@ -24,8 +24,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 logger = logging.getLogger(__name__)
 
 
-def word_soft_labels(words, spans):
-    """Per-word evidence probability = share of annotator spans covering it."""
+def word_soft_labels(words, spans, mode="union"):
+    """Per-word evidence target: ``union`` (any annotator) or ``soft`` (vote share)."""
     n = len(words)
     if not spans:
         return [0.0] * n
@@ -36,10 +36,12 @@ def word_soft_labels(words, spans):
             continue
         for index in range(rng[0], rng[1] + 1):
             counts[index] += 1.0
-    return [value / len(spans) for value in counts]
+    if mode == "soft":
+        return [value / len(spans) for value in counts]
+    return [1.0 if value > 0 else 0.0 for value in counts]
 
 
-def build_examples(base, transcripts, evidence, drafts):
+def build_examples(base, transcripts, evidence, drafts, target="union"):
     examples = []
     for qid, record in base.items():
         if record.get("label", 1) != 1 or not record.get("answer"):
@@ -65,7 +67,7 @@ def build_examples(base, transcripts, evidence, drafts):
                 "question_id": qid,
                 "transcript_id": tid,
                 "words": ["".join(w["word"].split()) or " " for w in words],
-                "soft": word_soft_labels(words, spans),
+                "soft": word_soft_labels(words, spans, target),
                 "base_span": record.get("span"),
             }
         )
@@ -82,6 +84,8 @@ def main() -> int:
     parser.add_argument("--lr", type=float, default=3e-5)
     parser.add_argument("--max-length", type=int, default=8192)
     parser.add_argument("--seed", type=int, default=13)
+    parser.add_argument("--target", choices=("union", "soft"), default="union",
+                        help="Per-word target from multiple annotators.")
     parser.add_argument("--output", type=Path,
                         default=PROJECT_ROOT / "results" / "soft_span_questions.json")
     args = parser.parse_args()
@@ -97,7 +101,7 @@ def main() -> int:
         (PROJECT_ROOT / "annotations" / "drafts" / "ALL.json").read_text())}
     tids = sorted({row["transcript_id"] for row in base.values()})
     transcripts = {tid: data.load_transcript(tid) for tid in tids}
-    examples = build_examples(base, transcripts, evidence, drafts)
+    examples = build_examples(base, transcripts, evidence, drafts, args.target)
     logger.info("soft examples: %d", len(examples))
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -191,20 +195,23 @@ def main() -> int:
                 buckets[wid].append(probs[token_index])
         word_probs = [sum(buckets[i]) / len(buckets[i]) if buckets[i] else 0.0
                       for i in range(len(example["words"]))]
-        runs, current = [], []
+        # Maximum-subarray on (p - 0.5): the contiguous run with the strongest
+        # evidence excess, so a span is always produced.
+        best, best_sum = None, 0.0
+        current, current_sum = None, 0.0
         for index, probability in enumerate(word_probs):
-            if probability > 0.5:
+            excess = probability - 0.5
+            if current is None or current_sum + excess < excess:
+                current, current_sum = [index], excess
+            else:
                 current.append(index)
-            elif current:
-                runs.append(current)
-                current = []
-        if current:
-            runs.append(current)
-        if not runs:
-            return example["base_span"], max(word_probs)
-        run = max(runs, key=len)
+                current_sum += excess
+            if current_sum > best_sum:
+                best, best_sum = list(current), current_sum
+        if not best:
+            return example["base_span"], 0.0
         words = transcripts[example["transcript_id"]]["words"]
-        return [words[run[0]]["start"], words[run[-1]]["end"]], max(word_probs)
+        return [words[best[0]]["start"], words[best[-1]]["end"]], best_sum
 
     changed = 0
     for fold_index, held_out in enumerate(folds):
@@ -216,7 +223,7 @@ def main() -> int:
         for example in test_items:
             span, confidence = predict(model, head, example)
             record = base[example["question_id"]]
-            if span is not None and confidence >= 0.5:
+            if span is not None and confidence > 0:
                 record["span"] = list(span)
                 changed += 1
 
