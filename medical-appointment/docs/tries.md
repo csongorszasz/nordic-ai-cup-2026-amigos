@@ -791,6 +791,22 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   quote is supplied as an inference candidate, no threshold is fitted, and
   base decisions remain fixed. Record model-scoring overhead separately.
 
+- **Likelihood outcome:** `adapter-nll-e2e0d52d` remains unqualified. It
+  preferred the adapter in 54/57 differing proposals; score 0.8019 versus
+  0.7978, delta **+0.004080**, interval **[-0.019149, +0.027775]**.
+  Scoring added at most 0.99 s per compared question, but uncertainty does not
+  justify adding the serving model.
+
+## Training-target boundary audit
+
+Supervised targets currently include every word that overlaps a reference
+interval, potentially adding a word that overlaps by only a few milliseconds.
+Audit the exact contiguous word range maximizing official tIoU after the
+retained +0.2-second correction. Report both the unconstrained oracle and
+uniquely decodable quotes, since the runtime preserves baseline evidence for
+ambiguous text. Original reference timestamps stay unchanged; this is a
+training-label derivation diagnostic, not achieved inference quality.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
