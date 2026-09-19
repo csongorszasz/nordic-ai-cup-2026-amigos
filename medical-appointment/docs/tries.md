@@ -1310,6 +1310,28 @@ reproduced SOTA.
   three total epochs and fixed fold unchanged. Tied zero-reward cases
   prefer candidate zero. Validation labels never enter supervision or
   applicability. Report cross-entropy loss and expected-IoU risk separately.
+- **Supervised warm-start pilot rejected:** `span-supervised-pilot-62c341f7`
+  scored **0.8083** versus **0.8362** on the same 70 questions; mIoU
+  **0.6805** versus **0.7271**. Delta **-0.027941**, interval
+  **[-0.046285, -0.013777]**, ten changed spans. All decisions and
+  validation coverage stayed fixed. Close this local neural-refinement
+  family without deployment or further tuning on the pilot fold.
+
+## Duration-aware boundary correction
+
+Try one low-capacity, model-free alternative to the regressive learned
+selectors: let boundary trimming depend on the existing citation duration.
+Use the raw frozen incumbent spans, with the qualified constant correction
+included exactly in the candidate family.
+
+`calibrate_duration.py` preregisters 64 combinations: start offset
+{0.2, 0.0}s, end offset {0.0, -0.2}s, and independently a start/end trim
+fraction from {0, 0.025, 0.05, 0.1} of the original span duration. Keep the
+existing audio-bound/collapse behavior, all base decisions, and every
+question. Fit only on training conversations, exclude all four demo
+sources, and evaluate five folds under seeds 13 and 37. Exact ties favor
+the existing baseline. Do not write a serving artifact or claim a gain
+from a full-data fit or a single seed.
 
 ## ASR stream lifecycle check
 
