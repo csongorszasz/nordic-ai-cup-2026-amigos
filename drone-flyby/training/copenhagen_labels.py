@@ -15,7 +15,7 @@ clipped, and kept where at least MIN_VISIBLE of it is inside the frame.
 
 note_fixes.json holds what each review note means, by track id: {"status": "accepted" or
 "rejected", "class": the right class, "frames": only these frames' boxes are the object,
-"why": the note in short}. Reads datasets/copenhagen_test/{candidates,decisions,note_fixes}.json, writes labels.json
+"why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes}.json, writes labels.json
 ({frame: [{object_id, bbox}]}) next to them.
 """
 
@@ -54,7 +54,13 @@ def object_box(candidate, steps, ref, only_frames=None):
 
 
 def main():
-    candidates = {c['id']: c for c in json.loads((OUT / 'candidates.json').read_text())['candidates']}
+    # Every review round's candidates (candidates_r1.json, ... kept in git; candidates.json is the
+    # round being reviewed), so decisions keep pointing at their tracks after a regeneration.
+    candidates = {}
+    for path in sorted(OUT.glob('candidates_r*.json')) + [OUT / 'candidates.json']:
+        if path.exists():
+            for c in json.loads(path.read_text())['candidates']:
+                candidates.setdefault(c['id'], c)
     decisions = json.loads((OUT / 'decisions.json').read_text())
     fixes_path = OUT / 'note_fixes.json'
     fixes = json.loads(fixes_path.read_text()) if fixes_path.exists() else {}
