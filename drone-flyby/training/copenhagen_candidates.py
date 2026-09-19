@@ -13,8 +13,9 @@ measure we have of how the detector does on unseen imagery.
     python training/copenhagen_candidates.py --model runs/<run>/weights/best.pt
 
 Writes datasets/copenhagen_test/candidates.json. Decisions are kept apart, in
-datasets/copenhagen_test/decisions.json, keyed by track id and carrying the track's box
-so they can be matched again if the candidates are regenerated with another model.
+datasets/copenhagen_test/decisions.json, keyed by track id. Before regenerating, copy the
+reviewed candidates.json to the next candidates_r<N>.json (kept in git): a regenerated track
+that is the same object as a decided one takes its id, so only new objects need a review.
 """
 
 import argparse
@@ -90,6 +91,34 @@ def move(box, M):
     return np.array([*pts.min(axis=0), *pts.max(axis=0)])
 
 
+CARRY_IOU = 0.5    # a new track is an already-decided one if their boxes overlap this much (median over shared frames)
+
+
+def carry_over(candidates) -> int:
+    """Give a new track the id of an already-decided track of an earlier round (candidates_r*.json)
+    that is the same object, so the decision applies to it and it is not reviewed again."""
+    decisions_path = OUT / 'decisions.json'
+    if not decisions_path.exists():
+        return 0
+    decided = set(json.loads(decisions_path.read_text()))
+    old = {}
+    for path in sorted(OUT.glob('candidates_r*.json')):
+        for c in json.loads(path.read_text())['candidates']:
+            if c['id'] in decided:
+                old.setdefault(c['id'], dict(zip(c['frames'], c['boxes'])))
+    carried = 0
+    for c in candidates:
+        best, best_overlap = None, CARRY_IOU
+        for oid, boxes in old.items():
+            shared = [iou(box, boxes[f]) for f, box in zip(c['frames'], c['boxes']) if f in boxes]
+            if len(shared) >= 2 and np.median(shared) >= best_overlap:
+                best, best_overlap = oid, float(np.median(shared))
+        if best:
+            c['id'] = best
+            carried += 1
+    return carried
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', required=True)
@@ -150,6 +179,7 @@ def main():
             'confs': [round(c, 3) for c in t['confs']], 'classes': t['classes'],
         })
     candidates.sort(key=lambda c: -c['score'])
+    carried = carry_over(candidates)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'candidates.json').write_text(json.dumps({
         'model': str(Path(args.model).resolve()), 'conf': args.conf, 'min_score': args.min_score,
@@ -158,7 +188,8 @@ def main():
     per_class = {}
     for c in candidates:
         per_class[c['class']] = per_class.get(c['class'], 0) + 1
-    print(f'{len(candidates)} candidate tracks (of {len(tracks)}) -> {OUT / "candidates.json"}')
+    print(f'{len(candidates)} candidate tracks (of {len(tracks)}) -> {OUT / "candidates.json"}; '
+          f'{carried} are tracks already decided in an earlier round (their decision applies)')
     print('  by class: ' + ', '.join(f'{k} {v}' for k, v in sorted(per_class.items(), key=lambda kv: -kv[1])))
 
 
