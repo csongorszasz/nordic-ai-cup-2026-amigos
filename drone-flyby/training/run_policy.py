@@ -50,6 +50,9 @@ def main():
     parser.add_argument('--name', help='trace name (default: scene, camera, weights and time)')
     parser.add_argument('--lag', type=int, default=0,
                         help='frames a camera command waits before it applies (the live service: about 1)')
+    parser.add_argument('--live-timing', action='store_true',
+                        help='camera commands as the live service applied them (2026-09-19 log, 244 frames): '
+                             '65%% on the next frame, 19%% one frame later, 16%% never; replaces --lag')
     args = parser.parse_args()
 
     # solution.py reads its settings when imported, so they go in first.
@@ -78,6 +81,8 @@ def main():
 
     frames = scene_frames(args.scene)
     camera, feedback, steps, predictions, queue = Camera(), None, [], {}, []
+    import random
+    timing_rng = random.Random(0)
     started = time.monotonic()
     for index, (frame, load) in enumerate(frames.items()):
         seen.clear()
@@ -99,8 +104,16 @@ def main():
         if response.requested_view is not None:
             step['next'] = [response.requested_view.resolution_level, response.requested_view.center_x,
                             response.requested_view.center_y]
-        queue.append(response.requested_view)
-        r = queue.pop(0) if len(queue) > args.lag else None   # the command that applies now
+        if args.live_timing:   # each command due on the next frame, the one after, or never; the newest due wins
+            u = timing_rng.random()
+            if response.requested_view is not None and u < 0.84:
+                queue.append((index + (1 if u < 0.65 else 2), response.requested_view))
+            due = [c for d, c in queue if d == index + 1]
+            queue = [(d, c) for d, c in queue if d > index + 1]
+            r = due[-1] if due else None
+        else:
+            queue.append(response.requested_view)
+            r = queue.pop(0) if len(queue) > args.lag else None   # the command that applies now
         if r is not None:
             try:
                 camera.apply(r.resolution_level, r.center_x, r.center_y)

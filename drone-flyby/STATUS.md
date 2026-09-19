@@ -11,11 +11,16 @@ For anyone (person or agent) picking this up. Final submission deadline: 2026-09
 - Serve from a public IP (the Azure VM, `deploy_vm.sh`). Tunnels (cloudflared, ngrok) lost 20-60 of the
   249 frames and cost 0.03-0.16 mAP.
 
-## Best so far: live 0.474 (248/249 frames answered)
+## Best so far: live 0.517 (247/249 frames answered)
 
 ```bash
-bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15_int8_openvino_model DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1
+bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15_int8_openvino_model DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
 ```
+
+Next candidate (not yet validated live): add `DRONE_SWEEP_FROM_VIEW=1`. The live log shows camera commands
+applied on the next frame 65% of the time, a frame later 19%, never 16%; the sweep that plans from its last
+command then skips positions (live never looked at the bottom corners). Replayed with that timing
+(`run_policy.py --live-timing`): 0.459 -> 0.608.
 
 - Detector: YOLO11s trained on 400 synthetic 4K frames for 30 epochs (`idun/submit.sh train-synth`), epoch 15,
   OpenVINO int8 on a 4-vCPU VM (~183 ms per request; keep it well under the 333 ms frame interval).
@@ -30,7 +35,8 @@ bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15
 | + repainted models, per-scene darkness | 0.377 | 0.431 |
 | + int8, second small-object pass | 0.423 | 0.485 |
 | + motion integration | 0.441 | 0.524 |
-| + neighbour placement data, V2_TRUNC | **0.474** | **0.574** |
+| + neighbour placement data, V2_TRUNC | 0.474 | 0.574 |
+| + labels cleaned, memory lead 0.1 | **0.517** | **0.640** |
 
 ## Scoring offline
 
