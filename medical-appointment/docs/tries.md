@@ -782,6 +782,15 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   the incumbent. No policy/threshold fitting on OOF features is performed,
   avoiding cross-fold meta-training leakage. Report both rules honestly.
 
+- **Agreement outcome:** neither rule qualifies. Adapter-on-agreement delta
+  **+0.001286**, interval **[-0.006953, +0.009396]**; midpoint delta
+  **-0.000026**, interval **[-0.004391, +0.003869]**. Keep the incumbent.
+- **Next bounded diagnostic:** use each frozen outer-fold adapter's mean
+  supervised-completion NLL to choose between its own grounded OOF proposal
+  and the incumbent quote. Only differing proposals are scored; no reference
+  quote is supplied as an inference candidate, no threshold is fitted, and
+  base decisions remain fixed. Record model-scoring overhead separately.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
