@@ -1057,6 +1057,23 @@ full-OOF result or deployment is claimed by this implementation alone.
   longest-three selection was a stress smoke, not a representative quality
   sample. Preserve this negative subset result; no offset fitting or
   longest-clip exclusion based on its labels.
+- **Full unbounded CPU outcome:** `alignment-cpu-full-7d939813` scored all
+  390 questions, including explicit incumbent fallbacks. Composite
+  **0.7858**, mIoU **0.6447**, versus 0.8007 / 0.6696. On the same 350
+  non-demo questions: 0.7828 versus 0.7978, delta **-0.015050**,
+  interval **[-0.021038, -0.009380]**. The 30 smoke predictions replayed
+  exactly and every decision/quote/anchor/reference was preserved.
+- The process exited nonzero because three conversations had a final
+  predicted word ending beyond the audio: 0.16s, 0.24s, and 0.16s
+  overshoot. Fourteen positive spans consequently kept incumbent evidence.
+  Raw units were retained, so this is a diagnosed model-bound failure,
+  not missing data or a hidden denominator change.
+- Fix decoding at its source: before argmax, restrict timestamp labels to
+  those at or before the actual waveform end. This uses audio duration,
+  never annotations, and retains the existing strict word/time validation.
+  Do not special-case those conversations or silently clamp all timestamps.
+  Repeat the same full CPU comparison once with bounded decoding; retain
+  the unfavorable unbounded result and make no score-improvement claim.
 
 ## ASR stream lifecycle check
 

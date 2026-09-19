@@ -4,7 +4,9 @@ import copy
 
 import pytest
 
-from benchmark_alignment import alignment_gates, baseline_prediction, retime_prediction, word_anchor
+from benchmark_alignment import (
+    alignment_gates, baseline_prediction, retime_prediction, valid_timestamp_classes, word_anchor,
+)
 
 
 WORDS = [
@@ -17,6 +19,27 @@ ROW = {
     "span": [3.0, 3.5], "gold": [3.1, 3.4], "duration": 5.0,
     "quote": "Good.", "word_range": [1, 1],
 }
+
+
+@pytest.mark.parametrize("duration,expected", [
+    (0.04, 1), (0.08, 2), (0.16, 3), (10.03, 126),
+    (168.72, 2110), (102.16, 1278), (130.48, 1632),
+])
+def test_timestamp_decoding_cannot_select_labels_beyond_real_audio(duration, expected):
+    count = valid_timestamp_classes(duration, 80, 5000)
+    assert count == expected
+    assert (count - 1) * 0.08 <= duration + 1e-9
+    assert count * 0.08 > duration
+    assert valid_timestamp_classes(duration, 80, 1) == 1
+
+
+@pytest.mark.parametrize("duration,quantum,classes", [
+    (0, 80, 5000), (10, 0, 5000), (float("nan"), 80, 5000),
+    (10, float("inf"), 5000), (True, 80, 5000), (10, 80, 0), (10, 80, True),
+])
+def test_invalid_timestamp_class_geometry_fails(duration, quantum, classes):
+    with pytest.raises(ValueError, match="Timestamp"):
+        valid_timestamp_classes(duration, quantum, classes)
 
 
 @pytest.mark.parametrize("latency", [1.0, 300.0])

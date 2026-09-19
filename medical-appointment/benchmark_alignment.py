@@ -112,6 +112,21 @@ def load_inputs(directory):
     return rows, requests, transcripts, audio
 
 
+def valid_timestamp_classes(duration, quantum_ms, classes):
+    if any(
+        isinstance(value, bool) or not isinstance(value, (int, float))
+        or not math.isfinite(value) or value <= 0
+        for value in (duration, quantum_ms)
+    ):
+        raise ValueError("Timestamp support requires positive finite duration and quantum.")
+    if isinstance(classes, bool) or not isinstance(classes, int) or classes < 1:
+        raise ValueError("Timestamp head must have a positive integer class count.")
+    maximum = duration * 1000 / quantum_ms
+    if not math.isfinite(maximum):
+        raise ValueError("Timestamp class support is not finite.")
+    return min(classes, math.floor(maximum + 1e-9) + 1)
+
+
 def align_audio(model, processor, audio_bytes, transcript):
     import torch
     from faster_whisper.audio import decode_audio
@@ -129,8 +144,11 @@ def align_audio(model, processor, audio_bytes, transcript):
         logits = model(**inputs).logits
     if not torch.isfinite(logits).all().item():
         raise RuntimeError("Forced aligner produced non-finite logits.")
+    classes = valid_timestamp_classes(
+        min(duration, transcript["duration"]), processor.timestamp_segment_time, logits.shape[-1],
+    )
     batches = processor.decode_forced_alignment(
-        logits=logits, input_ids=inputs["input_ids"], word_lists=word_lists,
+        logits=logits[..., :classes], input_ids=inputs["input_ids"], word_lists=word_lists,
         timestamp_token_id=model.config.timestamp_token_id,
     )
     if len(batches) != 1 or len(batches[0]) != len(word_lists[0]):
@@ -254,6 +272,7 @@ def main():
             "Separate-run sum with only aligner loaded, not a co-resident HTTP gate."
         ),
         "word_text_and_anchors_frozen": True, "aligner_offsets": [0.0, 0.0],
+        "timestamp_classes_bounded_by_audio": True,
     }
     report.update(alignment_gates(report))
     write_json(args.output / "summary.json", report)
