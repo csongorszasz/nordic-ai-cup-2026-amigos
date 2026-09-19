@@ -45,7 +45,7 @@ class LegacyAnswerer:
         answers: List[Answer] = []
         for question in questions:
             # Budget guard: a valid guess beats blowing the 60 s request budget.
-            if deadline is not None and time.time() > deadline:
+            if deadline is not None and time.monotonic() >= deadline:
                 logger.warning(
                     "Deadline reached; guessing remaining %d questions.",
                     len(questions) - len(answers),
@@ -59,7 +59,7 @@ class LegacyAnswerer:
                 )
             except Exception:
                 logger.exception("Answering failed; guessing for: %s", question)
-                is_true, span = True, None
+                is_true, span = False, None
 
             answers.append((bool(is_true), span))
 

@@ -38,11 +38,11 @@ def test_parse_failure_is_no():
     ) == [(False, None)]
 
 
-def test_yes_with_unfindable_quote_has_no_span():
+def test_yes_with_unfindable_quote_becomes_no():
     client = StubClient([
         '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"one hundred milligrams"}]}'
     ])
-    assert LLMAnswerer(client=client, few_shot=()).answer_all(["Q?"], TRANSCRIPT) == [(True, None)]
+    assert LLMAnswerer(client=client, few_shot=()).answer_all(["Q?"], TRANSCRIPT) == [(False, None)]
 
 
 def test_empty_transcript():
@@ -54,3 +54,81 @@ def test_empty_transcript():
 
 def test_factory_builds_llm():
     assert get_answerer("llm").name == "llm"
+
+
+def test_scoped_quote_uses_the_cited_occurrence():
+    words = [
+        {**word, "seg_idx": 0} for word in WORDS
+    ] + [
+        {**word, "start": word["start"] + 10, "end": word["end"] + 10, "seg_idx": 1}
+        for word in WORDS
+    ]
+    transcript = {
+        "words": words,
+        "segments": [
+            TRANSCRIPT["segments"][0],
+            {"id": 1, "start": 11.5, "end": 12.9, "text": "The dose is 100 mg."},
+        ],
+    }
+    client = StubClient([
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg.",'
+        '"segment_start":"s01","segment_end":"s01"}]}'
+    ])
+    answerer = LLMAnswerer(client=client, few_shot=(), variant="scoped")
+    assert answerer.answer_all(["Was the dose 100 mg?"], transcript) == [(True, (11.5, 12.9))]
+
+
+def test_scoped_quote_cannot_fall_back_to_global_search():
+    client = StubClient([
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg.",'
+        '"segment_start":"s99","segment_end":"s99"}]}'
+    ])
+    answerer = LLMAnswerer(client=client, few_shot=(), variant="scoped")
+    assert answerer.answer_all(["Was the dose 100 mg?"], TRANSCRIPT) == [(False, None)]
+
+
+def test_measured_boundary_correction_is_optional_and_preserves_decisions():
+    import asr
+    from answerers.boundaries import OffsetCalibration
+
+    client = StubClient([
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"The dose is 100 mg."}]}'
+    ])
+    client.model_name = "model"
+    client.revision = "revision"
+    calibration = OffsetCalibration(
+        0.2, 0.0, asr.config_hash(), "model", "revision", "base", "hash"
+    )
+    answerer = LLMAnswerer(client=client, few_shot=(), calibration=calibration)
+    assert answerer.answer_all(["Was the dose 100 mg?"], TRANSCRIPT) == [(True, (1.7, 2.9))]
+
+
+def test_l1_probe_uses_serving_parse_fallback():
+    from llm_probe import _decide_and_cite
+
+    rows = [{
+        "question_id": "q1", "transcript_id": "s1", "question": "Was the dose 200 mg?",
+        "question_type": "hard_negative", "label": "0",
+        "evidence_start": "", "evidence_end": "",
+    }]
+    records, _, failures = _decide_and_cite(
+        "L1", StubClient(["broken"]), TRANSCRIPT, rows, ()
+    )
+    assert failures == 1
+    assert records[0]["prediction"] == 0
+    assert records[0]["span"] is None
+
+
+def test_unknown_prompt_is_rejected_before_model_loading():
+    import pytest
+
+    with pytest.raises(ValueError, match="Unknown LLM prompt"):
+        LLMAnswerer(client=StubClient(["{}"]), few_shot=(), variant="unknown")
+
+
+def test_nonpositive_generation_budget_is_rejected_without_loading_weights():
+    import pytest
+    from answerers.llm_client import HFClient
+
+    with pytest.raises(ValueError, match="positive integer"):
+        HFClient(max_new_tokens=0)

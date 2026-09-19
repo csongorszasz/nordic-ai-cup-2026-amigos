@@ -27,7 +27,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from answerers import modernbert_data as data  # noqa: E402
 from answerers import rag as rag_module  # noqa: E402
-from answerers.align import align_span, text_between  # noqa: E402
+from answerers.base import normalize_answer  # noqa: E402
+from answerers.llm import LLMAnswerer  # noqa: E402
+from answerers.align import align_quote, align_span, text_between  # noqa: E402
 from answerers.llm_client import HFClient  # noqa: E402
 from answerers.llm_parse import parse_answers, parse_decisions  # noqa: E402
 from answerers.llm_prompt import (  # noqa: E402
@@ -61,12 +63,8 @@ def _generate(client, messages) -> str:
 
 
 def load_transcript(transcript_id: str) -> Dict:
-    """Full transcript dict (segments + words), preferring the large-v3 cache."""
-    preferred = data.TRANSCRIPTS / f"conversation_{transcript_id}.dc5ba020.json"
-    path = preferred if preferred.exists() else sorted(
-        data.TRANSCRIPTS.glob(f"conversation_{transcript_id}.*.json")
-    )[0]
-    return json.loads(path.read_text())
+    """Full transcript dict resolved by the shared deterministic loader."""
+    return data.load_transcript(transcript_id)
 
 
 def _documents(limit: Optional[int]):
@@ -100,9 +98,19 @@ def _decide_and_cite(
         parsed = parse_answers(raw, ids)
         entries = {qid: parsed.get(qid) for qid in ids}
     elif rung == "L1":
-        raw = _generate(client, build_l1_messages(transcript, questions, few_shot))
-        parsed = parse_answers(raw, ids)
-        entries = {qid: parsed.get(qid) for qid in ids}
+        results = LLMAnswerer(client=client, few_shot=few_shot).answer_all(
+            questions, transcript, return_info=True
+        )
+        entries = {
+            qid: {
+                "answer": answer, "quote": info.get("quote"),
+                "resolved_span": span,
+                "parse_failed": info.get("decided_by") == "parse",
+                "decided_by": info.get("decided_by"),
+                "raw_answer": info.get("raw_answer"),
+            }
+            for qid, (answer, span, info) in zip(ids, results)
+        }
     else:  # L2 two-pass
         decide_raw = _generate(client, build_l2_decide_messages(transcript, questions, few_shot))
         decisions = parse_decisions(decide_raw, ids)
@@ -133,13 +141,21 @@ def _decide_and_cite(
         entry = entries.get(qid)
         if entry is None or entry.get("answer") is None:
             parse_failures += 1
-            prediction, span, quote = UNANSWERED, None, None
+            logger.warning("Missing probe answer for %s; guessing no.", qid)
+            prediction, span, quote = 0, None, None
         elif entry["answer"]:
             quote = entry.get("quote")
-            span = align_span(words, quote or "")
+            span = entry.get("resolved_span") if "resolved_span" in entry else align_span(words, quote or "")
             prediction = 1
         else:
-            prediction, span, quote = 0, None, None
+            prediction, span, quote = 0, None, entry.get("quote")
+        if entry is not None and entry.get("parse_failed"):
+            parse_failures += 1
+        normalized, span = normalize_answer(
+            (prediction == 1, span), duration=transcript.get("duration"),
+            context=row["question_id"],
+        )
+        prediction = int(normalized)
         records.append(
             {
                 "question_id": row["question_id"],
@@ -156,6 +172,8 @@ def _decide_and_cite(
                 ),
                 "quote": quote,
                 "rung": rung,
+                "raw_answer": entry.get("raw_answer", entry.get("answer")) if entry else None,
+                "decided_by": entry.get("decided_by") if entry else "parse",
             }
         )
     return records, elapsed, parse_failures
@@ -304,8 +322,18 @@ def _run_rag(client, transcript, rows, index, retriever, top_k, few_shot=()):
                 candidates_by_index[loc[0]][loc[1]]
                 if loc is not None and loc[0] == i else None
             )
-            span = align_span(words, quote or "")
-            grounded = bool(passage and quote and _norm(quote) in _norm(passage.text))
+            aligned = (
+                align_quote(
+                    words,
+                    quote or "",
+                    first_word=passage.first_word,
+                    last_word=passage.last_word,
+                )
+                if passage is not None
+                else None
+            )
+            span = (aligned[0], aligned[1]) if aligned is not None else None
+            grounded = aligned is not None
             cited_gold = bool(
                 passage and gold_range and contains(passage, gold_range)
             )
@@ -345,7 +373,8 @@ def score_records(records: List[Dict]) -> Dict:
     positives = [r for r in records if r["label"] == 1]
     yes_positives = [r for r in positives if r["answer"]]
     yes_answers = [r for r in records if r["answer"]]
-    found = [r for r in yes_answers if r["span"] is not None]
+    raw_yes_answers = [r for r in records if r.get("raw_answer", r["answer"]) is True]
+    found = [r for r in raw_yes_answers if r["span"] is not None]
     by_type = {
         name: {"correct": value[0], "total": value[1]}
         for name, value in statistics.by_type.items()
@@ -357,8 +386,9 @@ def score_records(records: List[Dict]) -> Dict:
         "by_type": by_type,
         "positive_recall": round(len(yes_positives) / len(positives), 4)
         if positives else 0.0,
-        "quote_found_rate": round(len(found) / len(yes_answers), 4)
-        if yes_answers else 0.0,
+        "quote_found_rate": round(len(found) / len(raw_yes_answers), 4)
+        if raw_yes_answers else 0.0,
+        "alignment_failures": sum(r.get("decided_by") == "alignment" for r in records),
         "yes_answers": len(yes_answers),
         "tious_answered_yes": round(statistics.mean_tiou_answered_yes, 4),
         "questions": len(records),

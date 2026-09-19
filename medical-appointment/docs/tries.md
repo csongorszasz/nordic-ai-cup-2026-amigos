@@ -439,3 +439,215 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
   more parameters.
 - **Serving:** 26B fp16 holds an 80 GB node; E4B (validated 0.744, 14–19 s)
   stays the default unless 26B is chosen for the evaluation.
+
+## Loop baseline smoke — baseline-smoke-6f41260d
+
+- **Observed incumbent:** the active IDUN process runs Gemma 26B L1/base,
+  turbo int8 ASR, not E4B. The historical 0.744 validation belongs to E4B;
+  it must not be attributed to this process.
+- **Isolation:** `idun/run.py` snapshots source/configuration into a separate
+  run directory, copies only supplied-training transcripts, and refuses a
+  second active experimental job. No live files or captures are synchronized.
+- **Smoke:** job `25405036`, A100 80 GB, revision
+  `4d7ae4984b7db7de8f8457170b3f1a419ee76d52`. Thirty questions from three
+  supplied conversations: accuracy 1.000, mIoU 0.7104, score 0.8262,
+  no parsing/alignment failures. All ASR was cached; request latency
+  17.90 s mean / 18.31 s maximum. This is a plumbing gate, **not** a
+  full-corpus improvement or an uncached latency result.
+- **Cold load:** model loading alone took over five minutes on this allocation.
+  Readiness must wait for actual warm-up, and recovery must return bounded
+  guesses while the owned worker reloads.
+- **Tokenizer audit:** the pinned E4B and 26B tokenizers produce identical
+  token IDs with and without added special tokens. The general duplicate-BOS
+  risk is not an observed defect for these checkpoints.
+- **Measurement corrections:** retain question and passage provenance and split
+  before negative generation; save proposed spans even for no decisions; decode
+  ordered, non-padding spans; reject ungrounded evidence instead of citing a
+  whole passage; count unsent conversations after abort; restrict candidate
+  oracles and alignment to legal cited regions.
+- **Next measurement:** complete, uncached 26B/turbo baseline followed by
+  matched-transcript v2/scoped prompt comparisons. Boundary calibration excludes
+  demonstration-source conversations from its cross-validation pool.
+
+## Loop full baseline and boundary calibration — full-grounding-f8bf809f
+
+- **Baseline stage complete:** 39 conversations / 390 questions through
+  `example.predict`, 26B/base revision as above, turbo int8, uncached ASR for
+  every conversation, output cap 1024. Score **0.7886**, accuracy **0.9974**,
+  mIoU **0.6494**, positive recall 194/195; all hard negatives and off-topic
+  questions correct. No parse/alignment fallbacks. In-process latency mean
+  **18.81 s**, p95 **23.02 s**, maximum **23.63 s**.
+- This measures the actual incumbent configuration more faithfully than the
+  old large-v3 probe. It is **not** a new official validation score, an HTTP
+  latency gate, or a claimed improvement caused by changing the live service.
+- **Offset hypothesis:** fit a predeclared 64-pair grid of small constant
+  boundary corrections, keeping decisions fixed. Exclude every conversation
+  used as a demonstration anywhere in the input records (`sample_10`,
+  `sample_17`, `sample_18`, `sample_19`) before grouped calibration.
+- **Result:** on the remaining 35 conversations / 350 questions, five-fold
+  score **0.7859 -> 0.7978** (mIoU **0.6452 -> 0.6650**), unchanged accuracy.
+  Both seeds 13 and 37 select **start +0.2 s, end +0.0 s** in every fold.
+  Paired conversation-bootstrap 95% intervals for score gain:
+  **[+0.00715, +0.01701]** and **[+0.00721, +0.01669]**.
+- **Decision:** retain the offset candidate for an uncached HTTP gate. The
+  artifact is bound to ASR configuration `e75a7f6e`, the exact LLM revision,
+  base prompt, and input-record hash. A correction that collapses a short
+  citation preserves its original span. The live endpoint remains unchanged.
+- **Prompt comparison completed:** minimal-quote v2 scored **0.7740**
+  (delta -0.01457, bootstrap interval [-0.03900, +0.00743]); segment-scoped
+  scored **0.7681** (delta -0.02051, interval [-0.04690, +0.00319]), with
+  three alignment failures and 26.48 s mean cached latency. Neither
+  demonstrates improvement; both are rejected for deployment. Keep base.
+- **Next gate:** `offset-http-be360d39`, job `25405044`, runs the offset
+  candidate over the complete corpus through an owned loopback HTTP endpoint
+  with ASR caching disabled. Its source and calibration artifact are frozen,
+  and inputs are copied from the completed comparison. No live change yet.
+
+## Offset release qualification and publication
+
+- **Normal-order HTTP:** `offset-http-be360d39`, score **0.8007415**,
+  accuracy **0.9974359**, mIoU **0.6696119**, 390 questions, no failures or
+  timeouts, p95 **21.93 s**, maximum **23.81 s**, ASR caching disabled.
+  Every prediction exactly matched the baseline decision and intended
+  boundary transform. No unexpected span changes or runtime fallback logs.
+- **Question-order confirmation:** `offset-shuffle-e67b7a89`, score
+  **0.8045887**, same accuracy, no failures/timeouts, maximum **22.03 s**.
+  This is a robustness check, not a reason to optimize a shuffle seed.
+- **Release:** `offset-release-dns-2732ab44`, job `25405052`, repeated
+  the full gate at **0.8007415**, maximum **23.88 s**. External root and
+  ten-question prediction checks returned 200; predictions matched the
+  local trace, round trip **20.48 s**. The qualified endpoint is recorded in
+  its `endpoint.json`; no competition attempt or settings were changed.
+- **Publication failure and fix:** the first release passed inference gates
+  but fresh-host DNS returned NXDOMAIN from IDUN. A CPU nonce-only tunnel
+  probe reproduced that while the external controller reached the same
+  tunnel successfully. Publication now waits for an external root and actual
+  prediction check, allows DNS propagation, and retains TLS verification.
+  The first failed release was stopped; the original service was untouched.
+
+## Rejected CPU refinements
+
+- **Anchored delta-IoU ridge**, `span-ridge-53acfa67`: candidates within the
+  calibrated quote +/- 4 words plus the unchanged citation; 24 runtime-only
+  features, actual candidate-minus-baseline tIoU targets, nested grouped
+  policy selection, demonstration conversations excluded. Candidate oracle
+  mIoU **0.7978**, but scores **0.7958 / 0.7964** versus retained **0.7978**
+  for seeds 13/37. Only 5/7 changes, with negative mean deltas and intervals
+  including harm. **Rejected; no runtime integration.**
+- **Fine offsets**, `fine-offset13-09e841c5`: start grid 0.10–0.30 and end
+  -0.10–0.10 in 0.05-second increments. Full-data fit preferred +0.25/0,
+  but grouped score fell **0.7978 -> 0.7977**; delta -0.000134,
+  interval [-0.001522, +0.001312]. **Rejected at the first gate**, without
+  changing the retained +0.2/0 artifact.
+- **Residual evidence:** calibrated mIoU 0.6696; gold-assisted within-quote
+  oracle 0.7511, quote +/- 24 words 0.8763, raw-word oracle 0.9273.
+  Best-of-base/v2 span oracle 0.7137, all three prompts 0.7307.
+  These are ceilings, not achieved improvements. Selection still matters more
+  than medical word recognition.
+
+## Prepared full-context demonstration ablation
+
+- **Hypothesis:** the positive few-shot currently shows only a gold-centered
+  excerpt, hiding alternative supporting occurrences elsewhere in the same
+  conversation. `full_context` reveals that complete positive-example
+  conversation while keeping its question, reference answer, demonstration
+  count/source selection, negative examples, and target output schema unchanged.
+- **Run:** `full-context-bbcac1a3`, job `25405056`, is dependency-blocked on
+  original serving job `25404584`. It holds **no GPU allocation while pending**.
+  The qualified offset endpoint stays running; the old service is not stopped
+  early. Comparisons require identical audio/transcript hashes and report both
+  raw and fixed +0.2-second policies on demonstration-disjoint questions.
+
+- **Outcome:** completed after the old allocation's natural expiry. Raw score
+  0.7895 vs 0.7886, but fixed-offset score **0.8005 vs 0.8007**.
+  Demonstration-disjoint delta **-0.000284**, interval
+  **[-0.008549, +0.008071]**; decisions unchanged, identical transcript hashes,
+  no parse/alignment failures. **No reliable gain; rejected for deployment.**
+- **Next controlled change:** `two-positive-dbbb3183`, job `25405084`, adds
+  exactly one positive demonstration, keeping the base excerpt representation
+  and one hard-negative/one off-topic example (counts 2/1/1). Reference
+  comparisons exclude the union of all demonstration-source conversations.
+  The qualified release remains unchanged.
+
+- **Additional-positive outcome:** rejected. Raw score **0.7773** and
+  fixed-offset score **0.7876**, with one additional missed positive overall.
+  On the common 34-conversation non-demo cohort, fixed-offset delta
+  **-0.011869**, interval **[-0.029378, -0.000398]**. Additional examples did
+  not improve localization; the base demonstration policy stays unchanged.
+
+## Turbo precision ablation — turbo-fp16-65db8c47
+
+- **Hypothesis:** int8 was selected to fit the old 4 GB host. Test whether
+  float16 changes downstream word alignment/citation quality on the permitted
+  80 GB target, keeping the LLM revision and base prompt unchanged.
+- **Run:** job `25405086`, uncached ASR over all 39 clips. The harness records
+  CTranslate2's actual compute type/device and requires `float16`, so a fallback
+  cannot masquerade as this experiment.
+- Audio hashes must match the baseline. Transcript differences are explicitly
+  labeled as the tested ASR axis rather than bypassing method-comparison
+  checks silently. Compare raw and fixed-offset scores on the common
+  demonstration-disjoint cohort; do not change the live int8 release yet.
+
+- **Outcome:** actual CUDA float16 verified, 390 questions, same 0.9974
+  accuracy. Raw score **0.7941**, transferred-offset score **0.8062**,
+  maximum uncached latency **22.66 s**. The non-demo offset delta is
+  **+0.006140**, but its interval **[-0.005811, +0.019742]** includes harm.
+  **Promising point estimate, not qualified for promotion.**
+- **Crossover diagnosis**, `precision-cross-6c5bf9c2`: word text was identical
+  in 13/39 conversations; word timestamps differed in all 39. Keeping int8
+  quotes and swapping matched fp16 timings gave only **+0.000607**
+  (inconclusive). Fp16 quotes mapped back to int8 timings gave **+0.007395**
+  (also inconclusive). Separate fp16 grouped calibration still chose +0.2/0
+  in every fold for both seeds. The point-estimate gain mainly accompanies
+  changed citation selection, not a demonstrated timing improvement.
+
+## Numeric-timestamp serialization ablation — no-timestamps-7cbd936f
+
+- The model outputs quotes, and code supplies their timestamps. Test whether
+  redundant numeric time headers affect evidence selection: retain segment IDs,
+  words, order, demonstrations, and output schema, but omit the time numbers
+  from target and demonstration text.
+- Job `25405091` uses the frozen int8 transcripts and the same 26B revision.
+  Audio/transcript hashes must match. Compare raw and fixed-offset outcomes
+  on the common non-demo cohort; keep the qualified endpoint unchanged.
+
+- **Outcome:** rejected. Raw score **0.7818**, fixed-offset score **0.7939**,
+  one additional alignment failure/missed positive. Non-demo fixed-offset
+  delta **-0.007461**, interval **[-0.022315, +0.007240]**. Retain timestamped
+  base serialization.
+
+## Anchored localization-only refinement — local-refine-5fa55487
+
+- **Different from earlier L2:** freeze all baseline decisions and refine only
+  positive citations within the current quote +/-24 words. Two keep/refine
+  demonstrations come only from the already excluded support pool. Every
+  predicted positive is attempted regardless of whether gold lies in its
+  region; missing, ambiguous, or unaligned proposals retain the baseline.
+- **Run:** job `25405097`, same frozen 26B revision, at most 20 seconds for
+  the added call. The probe records actual added latency and a sum with the
+  earlier uncached baseline timings; that sum is only an estimate, not an
+  end-to-end HTTP result.
+- Require non-demo paired improvement before building a serving path. The
+  published base+offset model remains unchanged.
+
+- **Outcome:** rejected. The model kept **191/194** positive citations and
+  refined three. Score **0.8003 vs 0.8007**, unchanged decisions; non-demo
+  delta **-0.000703**, interval **[-0.002158, 0]**. Added latency peaked at
+  14.46 s; the maximum sum with earlier baseline latency was 38.09 s, still
+  only an estimate. No generation failures, but no quality gain to justify
+  extra inference or serving integration.
+
+## ASR stream lifecycle check
+
+- Hard termination of an ASR worker can bypass Python temporary-file cleanup.
+  The working implementation now passes an in-memory MP3 stream through the
+  installed faster-whisper `BinaryIO` interface, retaining it until lazy
+  segments have been consumed.
+- CPU run `audio-stream-ea8199a8`, job `25405058`, proved **bit-identical
+  float32 waveforms for all 39 clips** between file and stream decoding.
+  This is lifecycle hardening, not a claimed score improvement, and does not
+  modify the already-frozen live release.
+- The sole decision miss (`sample_82_yes_q01`) already has the relevant
+  diagnostic term in ASR text. It suggests a clinical-language/certainty
+  interpretation issue rather than justification for a broad ASR replacement.
+  No question-specific answer rule was added.

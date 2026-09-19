@@ -5,6 +5,21 @@
 - **Context:** medical-appointment, Nordic AI Cup 2026
 - **Related:** `docs/azure-gpu-quota.md` (why not Azure)
 
+## Amendment: IDUN is the current main target
+
+The user approved IDUN for both experimentation and final inference. The
+observed serving process uses local Gemma 26B weights with turbo int8 ASR on an
+80 GB allocation. The local GTX 1650 remains a fallback, not the binding
+constraint for the current improvement loop. The no-hosted-inference-API
+rule is unchanged.
+
+Use immutable isolated experiment/release directories, never synchronize code
+over the live working directory, and gate replacements on complete local
+replay, latency, recovery, and rollback evidence. The quick tunnel and finite
+SLURM allocation remain operational risks; this amendment does not claim that
+a stable named tunnel has been provisioned. No competition validation or final
+evaluation submission is authorized by the current loop.
+
 ## Context
 
 `/predict` must be reachable from the internet and run entirely on our own

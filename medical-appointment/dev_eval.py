@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 import answer as answer_module  # noqa: E402  (imports no heavy deps at module level)
 import asr  # noqa: E402
 import windows as windows_module  # noqa: E402
+from answerers.base import normalize_answer  # noqa: E402
 from local_evaluator import Statistics  # noqa: E402
 from utils import (  # noqa: E402
     Span,
@@ -262,12 +263,17 @@ def run(
                 entry = (
                     batch_results[row_index]
                     if batch_results is not None and row_index < len(batch_results)
-                    else (True, None)
+                    else None
                 )
-                if batch_supports_info and len(entry) == 3:
-                    answer, span, info = entry
-                else:
-                    answer, span = entry[0], entry[1]
+                if (
+                    batch_supports_info and isinstance(entry, (tuple, list))
+                    and len(entry) == 3 and isinstance(entry[2], dict)
+                ):
+                    info = entry[2]
+                answer, span = normalize_answer(
+                    entry, duration=transcript.get("duration"),
+                    context=row["question_id"],
+                )
                 timing["answer"].append(per_question_time)
             else:
                 started = time.perf_counter()
@@ -279,7 +285,13 @@ def run(
                     else:
                         answer, span = answerer(row["question"], words, windows)
                 except Exception:
-                    answer, span = True, None
+                    logger.exception("Answering failed for %s; guessing no.", row["question_id"])
+                    answer, span = False, None
+                if nli_mode:
+                    answer, span = normalize_answer(
+                        (answer, span), duration=transcript.get("duration"),
+                        context=row["question_id"],
+                    )
                 timing["answer"].append(time.perf_counter() - started)
 
             if info:
@@ -302,7 +314,11 @@ def run(
                         "label": label,
                         "p": info.get("p", info.get("clause_score")),
                         "guard_ok": bool(info.get("guard_ok", True)),
+                        "threshold_inclusive": info.get("threshold_inclusive", True),
                         "span": list(span) if span is not None else None,
+                        "proposed_span": (
+                            list(info["span"]) if info.get("span") is not None else None
+                        ),
                         "gold": list(gold) if gold is not None else None,
                     }
                 )

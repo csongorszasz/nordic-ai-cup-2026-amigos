@@ -81,4 +81,4 @@ def test_legacy_deadline_returns_guesses(monkeypatch):
         ["a?", "b?"], transcript, deadline=0.0
     )
 
-    assert answers == [(True, None), (True, None)]
+    assert answers == [(False, None), (False, None)]

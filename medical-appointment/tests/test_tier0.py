@@ -53,7 +53,7 @@ def test_deadline_fallback_returns_valid_guess(monkeypatch):
     )
     response = example.predict(request)
     validate_response(response, 10)
-    assert response.answers == [True] * 10
+    assert response.answers == [False] * 10
     assert response.evidence_start == [None] * 10
 
 
@@ -74,3 +74,73 @@ def test_calibrate_predict_and_score():
     assert abs(accuracy - 2 / 3) < 1e-9
     assert abs(mean_tiou - 0.5) < 1e-9
     assert abs(score - (0.4 * (2 / 3) + 0.6 * 0.5)) < 1e-9
+
+
+def test_calibrate_uses_proposed_span_for_lower_threshold():
+    record = {
+        "label": 1,
+        "p": 0.4,
+        "span": None,
+        "proposed_span": [1.0, 2.0],
+        "gold": [1.0, 2.0],
+    }
+    prediction, span = calibrate.predict(record, tau=0.3)
+    assert prediction is True
+    assert span == (1.0, 2.0)
+
+
+def test_asr_model_cannot_download_in_the_request_path(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    calls = []
+
+    class FakeWhisper:
+        def __init__(self, model, **kwargs):
+            calls.append(kwargs)
+
+    monkeypatch.setattr(asr, "_model", None)
+    monkeypatch.setattr(asr, "_resolve_device", lambda: ("cpu", "int8"))
+    monkeypatch.setitem(sys.modules, "faster_whisper", SimpleNamespace(WhisperModel=FakeWhisper))
+    asr.get_model()
+    assert calls == [{"device": "cpu", "compute_type": "int8", "local_files_only": True}]
+
+
+def test_calibration_preserves_strict_threshold_and_invalid_span_guard():
+    record = {
+        "p": 0.5, "threshold_inclusive": False, "guard_ok": True,
+        "proposed_span": [1.0, 2.0],
+    }
+    assert calibrate.predict(record, 0.5) == (False, None)
+    record["guard_ok"] = False
+    assert calibrate.predict(record, 0.4) == (False, None)
+
+
+def test_transcription_uses_a_stream_that_stays_open_for_lazy_segments(monkeypatch):
+    import io
+    from types import SimpleNamespace
+
+    streams = []
+    word = SimpleNamespace(word=" hello", start=0.0, end=0.4, probability=0.99)
+    segment = SimpleNamespace(
+        words=[word], start=0.0, end=0.4, text=" hello",
+        avg_logprob=-0.1, no_speech_prob=0.0, compression_ratio=1.0, temperature=0.0,
+    )
+
+    class Model:
+        def transcribe(self, audio, **kwargs):
+            assert isinstance(audio, io.BytesIO)
+            streams.append(audio)
+
+            def segments():
+                assert not audio.closed
+                assert audio.read() == b"audio"
+                yield segment
+
+            info = SimpleNamespace(language="en", language_probability=1.0, duration=0.5)
+            return segments(), info
+
+    monkeypatch.setattr(asr, "get_model", lambda: Model())
+    transcript = asr.transcribe_bytes(b"audio", "sample.mp3", cache=False)
+    assert transcript["words"][0]["word"] == " hello"
+    assert streams[0].closed

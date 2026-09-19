@@ -17,10 +17,10 @@ Environment overrides:
 """
 
 import hashlib
+import io
 import json
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -76,7 +76,10 @@ def get_model():
         last_error: Optional[Exception] = None
         for candidate in attempts:
             try:
-                _model = WhisperModel(MODEL_SIZE, device=device, compute_type=candidate)
+                _model = WhisperModel(
+                    MODEL_SIZE, device=device, compute_type=candidate,
+                    local_files_only=True,
+                )
                 if candidate != compute_type:
                     logger.warning(
                         "compute_type=%s unavailable here; using %s.",
@@ -104,8 +107,9 @@ def warm_up() -> None:
 
         silence = np.zeros(16000, dtype="float32")
         list(model.transcribe(silence, language=LANGUAGE)[0])
-    except Exception:  # pragma: no cover - warm-up is best-effort
-        logger.exception("Whisper warm-up inference failed (continuing).")
+    except Exception:  # pragma: no cover - startup environment issue
+        logger.exception("Whisper warm-up inference failed.")
+        raise
 
 
 def config_hash() -> str:
@@ -169,11 +173,9 @@ def transcribe_bytes(
 
     model = get_model()
 
-    with tempfile.NamedTemporaryFile(suffix=".mp3") as handle:
-        handle.write(audio_bytes)
-        handle.flush()
+    with io.BytesIO(audio_bytes) as handle:
         segment_iter, info = model.transcribe(
-            handle.name,
+            handle,
             language=LANGUAGE,
             word_timestamps=True,
             vad_filter=True,

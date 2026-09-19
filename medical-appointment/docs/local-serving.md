@@ -1,5 +1,66 @@
 # Local serving runbook
 
+## Current IDUN experiment path
+
+The approved main target is IDUN; the GTX 1650 instructions below describe the
+older local fallback. From PowerShell, use `python idun\run.py` to create an
+isolated snapshot rather than synchronizing over the active service:
+
+```powershell
+python idun\run.py submit --tag compare --gpu80 --script benchmark.py `
+  --env WHISPER_MODEL=large-v3-turbo --env WHISPER_COMPUTE_TYPE=int8 -- `
+  --model google/gemma-4-26b-a4b-it `
+  --revision 4d7ae4984b7db7de8f8457170b3f1a419ee76d52 --variants base v2 --force-asr
+python idun\run.py status --run-id <returned-run-id>
+python idun\run.py wait --run-id <returned-run-id>
+python idun\run.py pull --run-id <returned-run-id>
+```
+
+The helper snapshots source and request configuration, copies only training
+transcripts, preserves remote-only source/captures, and prevents overlapping
+experimental jobs. Summaries and logs are pulled under `results\idun_runs`.
+An 80 GB allocation is necessary for the current fp16 26B comparison.
+
+For a **qualified candidate** server, `MEDAPP_INFERENCE_WORKER=1` isolates ASR
+and LLM in a preloaded owned process. `MEDAPP_REQUIRE_WARMUP=1` refuses startup
+when model/demonstration preparation fails. The parent enforces
+`MEDAPP_DEADLINE_S` (default 50 seconds), returns valid no/null guesses on a
+stalled worker, and reloads it without queueing requests behind the reload.
+This mode is opt-in until its uncached HTTP gate passes. The active incumbent
+has not been changed.
+
+All inference artifacts must be available locally. Pin `MEDAPP_LLM_REVISION`
+and retain the run's package/GPU/transcript metadata. New local results do not
+authorize competition validation or the one-shot evaluation submission.
+
+Use `--reference-run <run-id>` when staging a follow-up: it copies the prior
+isolated run's training audio/transcripts rather than reading mutable live
+caches. Explicit small JSON model artifacts can be packaged with
+`--asset models\span_offset_base.json`. `MEDAPP_SPAN_CALIBRATION` enables a
+context-checked boundary-calibration artifact; leave it unset for the baseline.
+On IDUN, the environment value uses a Linux-relative path such as
+`models/span_offset_base.json`.
+
+`http_benchmark.py` runs the final local acceptance replay through a separately
+owned loopback socket, with ASR caching disabled and the deadline worker
+enabled. It creates no tunnel and does not contact competition services.
+Use `--shuffle-seed` to exercise question-order handling.
+
+For a qualified long-running release, submit with `--role serving` and an
+explicit `--walltime`, and pass `--serve --min-score <gate>` to
+`http_benchmark.py`. It replays the full corpus before exposing a tunnel.
+`python idun\run.py ready --run-id <id>` then verifies the public root and
+the first supplied conversation against the release's own accepted predictions.
+Only that successful external check permits `endpoint.json` publication.
+TLS verification stays enabled. New quick-tunnel hostnames can be negatively
+cached by DNS if queried too early, so future releases include a propagation
+grace period rather than treating a fresh NXDOMAIN as a model failure.
+
+The helper refuses a third medical GPU allocation. CPU-only analyses use
+`--cpu` and a separate CPUQ job/lock; they cannot load a visible GPU.
+Serving allocations remain finite, and quick tunnels have no uptime guarantee.
+Do not change competition submission settings automatically.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

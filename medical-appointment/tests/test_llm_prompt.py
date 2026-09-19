@@ -8,6 +8,7 @@ from answerers.llm_prompt import (
     build_l2_decide_messages,
     qid_for,
     serialize_transcript,
+    render_example,
 )
 
 
@@ -57,6 +58,37 @@ def test_l2_builders():
     assert "q01: Q?" in cite[-1]["content"]
 
 
+def test_full_context_changes_only_positive_demonstration_visibility():
+    transcript = {
+        "segments": [
+            {"id": index, "start": float(index), "end": index + 0.8, "text": f"line {index}"}
+            for index in range(15)
+        ],
+        "words": [],
+    }
+    base, target = render_example(transcript, "Q?", True, "line 12", (12.0, 12.8), "base")
+    full, full_target = render_example(
+        transcript, "Q?", True, "line 12", (12.0, 12.8), "full_context"
+    )
+    assert "[s00 " not in base and "[s00 " in full
+    assert "[s14 " in full
+    assert full_target == target
+    negative, _ = render_example(transcript, "Q?", False, None, (12.0, 12.8), "full_context")
+    assert "[s00 " not in negative
+
+
+def test_timestamp_ablation_preserves_segment_ids_text_and_targets():
+    transcript = make_transcript("x")
+    messages = build_l1_messages(transcript, ["Was the dose 100 mg?"], variant="no_timestamps")
+    assert "[s01] x dose is 100 mg" in messages[-1]["content"]
+    assert "1.50-2.90" not in messages[-1]["content"]
+    assert "timestamped transcript" not in messages[0]["content"]
+    base_user, base_answer = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "base")
+    user, answer = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "no_timestamps")
+    assert "[s01]" in user and "1.50-2.90" not in user
+    assert base_answer == answer
+
+
 def test_build_few_shot_balanced_and_loco_safe():
     rows_by_tid = {
         "s1": [{
@@ -87,6 +119,15 @@ def test_build_few_shot_balanced_and_loco_safe():
     # Excluding s1 drops the only positive example -> 2 turns remain.
     fewer = build_few_shot(rows_by_tid, transcripts, evidence, exclude_tid="s1")
     assert len(fewer) == 2
+
+    rows_by_tid["s4"] = [{**rows_by_tid["s1"][0], "question_id": "q_s4", "transcript_id": "s4"}]
+    transcripts["s4"] = make_transcript("s4")
+    more = build_few_shot(
+        rows_by_tid, transcripts, evidence, exclude_tid="s0", variant="two_positive"
+    )
+    assert len(more) == 4
+    assert sum('"answer": "yes"' in assistant for _, assistant in more) == 2
+    assert sum('"answer": "no"' in assistant for _, assistant in more) == 2
 
 
 from answerers.llm_prompt import (

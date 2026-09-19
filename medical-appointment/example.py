@@ -11,52 +11,82 @@ questions wrong, so every failure falls back to a well-formed guess.
 """
 
 import logging
+import multiprocessing
 import os
 import time
 from typing import List, Optional
 
 import asr
-from answerers import get_answerer
+from answerers import Answerer, get_answerer
+from answerers.base import normalize_answer
 from capture import maybe_capture
 from dtos import ASRQuestionRequestDto, ASRQuestionResponseDto
-from utils import decode_audio
+from utils import decode_audio, validate_response
 
 logger = logging.getLogger(__name__)
 
 # Leave a margin under the 60 s request budget: stop answering new questions and
 # return guesses once this much wall-clock has elapsed.
 DEADLINE_S = float(os.environ.get("MEDAPP_DEADLINE_S", "50"))
-
-# Load the models at import time: the first inference is the slowest and there
-# is no warm-up budget. Skipped in tests via MEDAPP_SKIP_WARMUP=1.
-if os.environ.get("MEDAPP_SKIP_WARMUP") != "1":
-    try:
-        asr.warm_up()
-        answerer = get_answerer()
-        warm_up = getattr(answerer, "warm_up", None)
-        if warm_up is not None:
-            warm_up()
-    except Exception:  # pragma: no cover - startup environment issue
-        logger.exception("Model warm-up failed; will load lazily on first request.")
+USE_WORKER = os.environ.get("MEDAPP_INFERENCE_WORKER", "0") == "1"
+_worker = None
 
 
-def predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
+def warm_models() -> None:
+    asr.warm_up()
+    answerer = get_answerer()
+    warm_up = getattr(answerer, "warm_up", None)
+    if warm_up is not None:
+        warm_up()
+
+
+def get_worker():
+    global _worker
+    if _worker is None:
+        import atexit
+        from inference_worker import InferenceWorker
+
+        _worker = InferenceWorker()
+        atexit.register(_worker.close)
+    return _worker
+
+
+def predict(
+    request: ASRQuestionRequestDto, *, answerer: Optional[Answerer] = None
+) -> ASRQuestionResponseDto:
     """Answer every question about one conversation. Never raises."""
-    started = time.time()
+    started = time.monotonic()
     try:
-        response = _predict(request)
+        if USE_WORKER and answerer is None:
+            payload = get_worker().predict(
+                request.model_dump(), deadline=started + DEADLINE_S
+            )
+            response = (
+                ASRQuestionResponseDto.model_validate(payload)
+                if payload is not None else _fallback(len(request.questions))
+            )
+        else:
+            response = _predict(request, answerer=answerer, deadline=started + DEADLINE_S)
+        validate_response(response, len(request.questions))
     except Exception:
         logger.exception(
             "predict failed for %s; returning guesses.", request.audio_filename
         )
         response = _fallback(len(request.questions))
 
-    maybe_capture(request, response, time.time() - started)
+    maybe_capture(request, response, time.monotonic() - started)
     return response
 
 
-def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
-    started = time.time()
+def _predict(
+    request: ASRQuestionRequestDto, *, answerer: Optional[Answerer] = None,
+    deadline: Optional[float] = None,
+) -> ASRQuestionResponseDto:
+    started = time.monotonic()
+    deadline = min(deadline, started + DEADLINE_S) if deadline is not None else started + DEADLINE_S
+    if started >= deadline:
+        logger.warning("Request deadline expired before transcription.")
+        return _fallback(len(request.questions))
     audio_bytes = decode_audio(request.audio_base64)
 
     try:
@@ -72,9 +102,9 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     evidence_end: List[Optional[float]] = []
 
     try:
-        answerer = get_answerer()
+        answerer = answerer if answerer is not None else get_answerer()
         results = answerer.answer_all(
-            request.questions, transcript, deadline=started + DEADLINE_S
+            request.questions, transcript, deadline=deadline
         )
     except Exception:
         logger.exception(
@@ -85,10 +115,11 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     # Be defensive about the contract: the service scores by position and a
     # wrong-length response loses every question about the conversation.
     for question_index in range(len(request.questions)):
-        if question_index < len(results):
-            is_true, span = results[question_index]
-        else:
-            is_true, span = True, None
+        entry = results[question_index] if question_index < len(results) else None
+        is_true, span = normalize_answer(
+            entry, duration=transcript.get("duration"),
+            context=f"{request.audio_filename} question {question_index}",
+        )
 
         answers.append(bool(is_true))
         evidence_start.append(span[0] if span is not None else None)
@@ -104,7 +135,22 @@ def _predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
 def _fallback(count: int) -> ASRQuestionResponseDto:
     """A well-formed guess when the expensive half fails outright."""
     return ASRQuestionResponseDto(
-        answers=[True] * count,
+        answers=[False] * count,
         evidence_start=[None] * count,
         evidence_end=[None] * count,
     )
+
+
+if (
+    os.environ.get("MEDAPP_SKIP_WARMUP") != "1"
+    and multiprocessing.current_process().name == "MainProcess"
+):
+    try:
+        if USE_WORKER:
+            get_worker().warm_up()
+        else:
+            warm_models()
+    except Exception:
+        logger.exception("Model warm-up failed.")
+        if os.environ.get("MEDAPP_REQUIRE_WARMUP", "0") == "1":
+            raise

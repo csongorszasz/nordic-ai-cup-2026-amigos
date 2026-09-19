@@ -1,5 +1,25 @@
 # Next steps
 
+## Current execution policy
+
+The continuing improvement loop uses IDUN for experiments and final inference.
+Keep at most one single-GPU experimental job besides serving; use an 80 GB
+allocation when justified. `idun/run.py` creates isolated source snapshots and
+preserves the live directory. Live changes require complete paired local
+results, uncached HTTP/latency/recovery gates, and rollback. **Do not queue
+competition validation or final evaluation.** Captures remain debug-only.
+
+After each substantial implementation change, run the appropriate checks,
+commit, and push the working branch. Keep models, captures, result bundles,
+and session artifacts out of source commits.
+
+The actual incumbent is 26B/base + turbo int8; the historical 0.744 validation
+belongs to E4B. Current priorities are trustworthy measurement, bounded
+inference, matched-ASR baselines, then occurrence and boundary improvements.
+Retain the failed remote refiner results and the negative tokenizer/duplicate
+quote diagnostics. The older ranked backlog below is historical, not a mandate
+to restart the legacy hybrid or repeat those experiments.
+
 Standing plan for the medical-appointment case, updated 2026-09-18 after the
 served ModernBERT validation (**T034, 0.606**). Threads A/B/C below; execution
 order is a judgement call, not a dependency.

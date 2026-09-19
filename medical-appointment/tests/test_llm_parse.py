@@ -45,3 +45,24 @@ def test_parse_decisions():
     text = '{"answers":[{"id":"q01","answer":"yes"},{"id":"q02","answer":"no"}]}'
     decisions = parse_decisions(text, IDS)
     assert decisions == {"q01": True, "q02": False, "q03": None}
+
+
+def test_truncated_json_preserves_complete_slots_only():
+    text = (
+        '{"answers":[{"id":"q01","answer":"yes","evidence_quote":"A } quote"},'
+        '{"id":"q02","answer":"no"},'
+        '{"id":"q03","answer":"ye'
+    )
+    parsed = parse_answers(text, IDS)
+    assert parsed["q01"]["quote"] == "A } quote"
+    assert parsed["q02"]["answer"] is False
+    assert parsed["q03"] is None
+
+
+def test_wrong_answer_container_does_not_raise():
+    assert parse_answers('{"answers":17}', IDS) == dict.fromkeys(IDS)
+
+
+def test_duplicate_id_is_not_silently_overwritten():
+    text = '{"answers":[{"id":"q01","answer":"yes"},{"id":"q01","answer":"no"}]}'
+    assert parse_answers(text, IDS)["q01"] is None

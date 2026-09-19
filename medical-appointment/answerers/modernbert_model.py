@@ -29,6 +29,7 @@ from .span_utils import (
     LABEL_NOT_MENTIONED,
     LABEL_REFUTE,
     LABEL_SUPPORT,
+    best_passage_span,
     char_span_to_words,
     target_token_span,
     token_span_to_char,
@@ -226,15 +227,6 @@ def compute_loss(
     }
 
 
-def _best_passage_token(logits: torch.Tensor, sequence_ids: Sequence) -> int:
-    """Argmax over passage tokens only."""
-    masked = logits.clone()
-    for i, seq in enumerate(sequence_ids):
-        if seq != 1:
-            masked[i] = float("-inf")
-    return int(torch.argmax(masked).item())
-
-
 def predicted_span_seconds(
     passage: Passage,
     words: Sequence[Dict],
@@ -280,8 +272,10 @@ def score_pairs(model, tokenizer, pairs, device, max_length: int = MAX_LENGTH):
     for i in range(len(pairs)):
         row = probs[i]
         label = int(torch.argmax(row).item())
-        start_index = _best_passage_token(starts[i], sequence_ids[i])
-        end_index = _best_passage_token(ends[i], sequence_ids[i])
+        span = best_passage_span(
+            starts[i].tolist(), ends[i].tolist(), sequence_ids[i]
+        )
+        start_index, end_index = span if span is not None else (-1, -1)
         results.append(
             {
                 "probs": row.tolist(),

@@ -37,13 +37,6 @@ from answerers.modernbert import predict_transcript  # noqa: E402
 from utils import temporal_iou  # noqa: E402
 
 
-def grouped_folds(tids, n_folds: int, seed: int = 0):
-    """Conversation-grouped folds: no conversation is split across folds."""
-    shuffled = list(tids)
-    random.Random(seed).shuffle(shuffled)
-    return [shuffled[i::n_folds] for i in range(n_folds)]
-
-
 def native_score(records):
     correct = 0
     tious = []
@@ -147,8 +140,13 @@ def evaluate_conversations(model, tokenizer, retriever, args, device, tids, word
                     "question_type": row["question_type"],
                     "label": int(row["label"]),
                     "p": info.get("p"),
+                    "guard_ok": info.get("guard_ok", True),
+                    "threshold_inclusive": info.get("threshold_inclusive", False),
                     "answer": bool(answer),
                     "span": list(span) if span is not None else None,
+                    "proposed_span": (
+                        list(info["span"]) if info.get("span") is not None else None
+                    ),
                     "gold": (
                         [float(row["evidence_start"]), float(row["evidence_end"])]
                         if row["question_type"] == "positive"
@@ -192,13 +190,6 @@ def main() -> int:
     torch.manual_seed(args.seed)
     random.seed(args.seed)
 
-    print("building candidate examples ...")
-    examples = data.build_examples(
-        window=args.window, stride=args.stride, top_k=args.top_k,
-        n_cross_negatives=args.cross_negatives, limit=args.limit, seed=args.seed,
-    )
-    print(f"  {len(examples)} examples")
-
     rows = data.load_rows()
     if args.limit:
         rows = rows[: args.limit]
@@ -211,9 +202,27 @@ def main() -> int:
     tokenizer = model_module.AutoTokenizer.from_pretrained(model_module.MODEL_NAME)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    retriever = MiniLMRetriever()
+
+    def build_training_examples(training_rows):
+        examples = data.build_examples(
+            window=args.window, stride=args.stride, top_k=args.top_k,
+            n_cross_negatives=args.cross_negatives, seed=args.seed,
+            retriever=retriever, rows=training_rows,
+        )
+        allowed = {row["transcript_id"] for row in training_rows}
+        if any(
+            e["question_transcript_id"] not in allowed
+            or e["passage_transcript_id"] not in allowed
+            for e in examples
+        ):
+            raise ValueError("Training examples contain a held-out conversation.")
+        print(f"  {len(examples)} training examples")
+        return examples
 
     if args.train_all:
         print(f"training on all {len(tids)} conversations (serving model)")
+        examples = build_training_examples(rows)
         model = train_fold(examples, tokenizer, args, device)
         model.save(str(output_dir / "final.pt"))
         print(f"final -> {output_dir / 'final.pt'}")
@@ -222,16 +231,18 @@ def main() -> int:
     if args.loco:
         folds = [[tid] for tid in tids]
     else:
-        folds = grouped_folds(tids, args.folds, args.seed)
+        folds = data.grouped_folds(tids, args.folds, args.seed)
     print(f"  {len(tids)} conversations -> {len(folds)} folds")
 
-    retriever = MiniLMRetriever()
     all_oof = []
+    example_counts = []
     started = time.time()
     for fold_index, held_out in enumerate(folds):
         print(f"\nfold {fold_index + 1}/{len(folds)}: val={held_out}")
         held = set(held_out)
-        train_examples = [e for e in examples if e["transcript_id"] not in held]
+        train_rows = [row for row in rows if row["transcript_id"] not in held]
+        train_examples = build_training_examples(train_rows)
+        example_counts.append(len(train_examples))
         model = train_fold(train_examples, tokenizer, args, device)
         checkpoint = output_dir / f"fold_{fold_index}.pt"
         model.save(str(checkpoint))
@@ -265,7 +276,7 @@ def main() -> int:
         "accuracy": round(accuracy, 4),
         "mean_tiou": round(mean_tiou, 4),
         "conversations": len(tids),
-        "examples": len(examples),
+        "training_examples_per_fold": example_counts,
         "elapsed_s": round(time.time() - started, 1),
     }
     (output_dir / "summary.json").write_text(json.dumps(summary, indent=2))
