@@ -93,5 +93,12 @@
    121
   ],
   "why": "small launcher behind the large tower; only frames 114 and 121 box the launcher alone"
+ },
+ "f099_1858_0412": {
+  "late": {
+   "from": 110,
+   "track": "f120_1847_1846"
+  },
+  "why": "Juan: frame 123 box covers the tower seen from above and the launcher behind it"
  }
 }

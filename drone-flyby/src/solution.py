@@ -64,9 +64,9 @@ RECORD_TOP_FROM = int(os.environ.get('RECORD_TOP_FROM', 226))
 
 # Tracking
 MATCH_DISTANCE_PX = 150       # max centre distance (source px) to match a detection to a track
-MAX_UNSEEN_FRAMES = 40        # forget a track not re-detected for this long
-MAX_MISSES_IN_VIEW = 2        # forget a track the camera looked at and did not find this many times
-CONF_DECAY_PER_FRAME = 0.97   # remembered detections lose confidence as they age
+MAX_UNSEEN_FRAMES = int(os.environ.get('DRONE_MAX_UNSEEN', 40))        # forget a track not re-detected for this long
+MAX_MISSES_IN_VIEW = int(os.environ.get('DRONE_MAX_MISSES', 2))        # forget a track the camera looked at and did not find this many times
+CONF_DECAY_PER_FRAME = float(os.environ.get('DRONE_CONF_DECAY', 0.97))   # remembered detections lose confidence as they age
 LEVEL_CONF_WEIGHT = {0: 0.8, 1: 1.0, 2: 1.0}
 
 # Hybrid planner weights (see choose_hybrid_view).
