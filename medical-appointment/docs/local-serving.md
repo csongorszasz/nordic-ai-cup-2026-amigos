@@ -200,6 +200,20 @@ editing annotations. An exact repetition is not a semantic enumeration of all
 supporting passages. No medical GPU allocation, model download, or human
 annotation is needed, and the current endpoint remains unchanged.
 
+After the audit, `probe_source_localization.py --baseline <frozen-baseline>
+--audit <audit-run>/results/localization_audit` measures the experimental
+global source-unit hierarchy on CPU. It retains short atoms, adds bounded
+contiguous episodes, and attaches interpretation context separately from each
+citation. The fixed lexical shortlist is 32 units plus the unchanged incumbent.
+All limits and grouped partitions are recorded before coverage is evaluated.
+
+`runtime_candidates.json` contains only question/runtime candidate inputs;
+`diagnostics.json` holds reference-assisted unit oracles separately. Report
+both full-pool and shortlist coverage, including missed positives. The probe
+does not select a new answer/span, train a model, or change the endpoint.
+See ADR-0005 for the experimental scope and the distinction from legacy
+minimal-word-range localization.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

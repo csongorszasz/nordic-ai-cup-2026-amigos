@@ -14,6 +14,7 @@ The caller is responsible for choosing the window/stride: the recall gate in
 annotated evidence span.
 """
 
+import math
 import os
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -43,6 +44,36 @@ class Passage:
 
     def word_range(self) -> Tuple[int, int]:
         return (self.first_word, self.last_word)
+
+
+def validate_word_clock(words: List[Dict], duration: float) -> None:
+    if (
+        not words or isinstance(duration, bool) or not isinstance(duration, (int, float))
+        or not math.isfinite(duration) or duration <= 0
+    ):
+        raise ValueError("Evidence requires words and a finite positive duration.")
+    previous_start = 0.0
+    for word in words:
+        start, end = word["start"], word["end"]
+        if (
+            not isinstance(word["word"], str) or not word["word"].strip()
+            or any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
+                   for value in (start, end))
+            or not previous_start <= start <= end <= duration
+        ):
+            raise ValueError("Evidence requires finite ordered word times within the audio.")
+        previous_start = start
+
+
+def passages_from_ranges(words, ranges) -> List[Passage]:
+    return [
+        Passage(
+            index=index, first_word=first, last_word=last,
+            start=float(words[first]["start"]), end=float(words[last]["end"]),
+            text=join_words(words, first, last),
+        )
+        for index, (first, last) in enumerate(ranges)
+    ]
 
 
 def build_passages(
@@ -79,17 +110,7 @@ def build_passages(
             seen.add(pair)
             unique.append(pair)
 
-    return [
-        Passage(
-            index=index,
-            first_word=first,
-            last_word=last,
-            start=float(words[first]["start"]),
-            end=float(words[last]["end"]),
-            text=join_words(words, first, last),
-        )
-        for index, (first, last) in enumerate(unique)
-    ]
+    return passages_from_ranges(words, unique)
 
 
 def overlap_word_range(
@@ -121,7 +142,9 @@ SENTENCE_MIN_WORDS = 4
 SENTENCE_MAX_WORDS = 40
 
 
-def _sentence_atoms(words: List[Dict]) -> List[List[int]]:
+def _sentence_atoms(
+    words: List[Dict], *, minimum_words: int = 3, punctuation=SENTENCE_END,
+) -> List[List[int]]:
     atoms: List[List[int]] = []
     current: List[int] = []
     for i, word in enumerate(words):
@@ -131,8 +154,8 @@ def _sentence_atoms(words: List[Dict]) -> List[List[int]]:
         nxt = words[i + 1]
         pause = nxt["start"] - word["end"]
         boundary = nxt.get("seg_idx", 0) != word.get("seg_idx", 0)
-        ends = word["word"].strip().endswith(SENTENCE_END)
-        if (ends and len(current) >= 3) or pause > SENTENCE_PAUSE or boundary:
+        ends = word["word"].strip().endswith(punctuation)
+        if (ends and len(current) >= minimum_words) or pause > SENTENCE_PAUSE or boundary:
             atoms.append(current)
             current = []
     if current:
@@ -170,12 +193,7 @@ def _split_long_sentence(words, atom: List[int]) -> List[List[int]]:
     return [atom[: best_k + 1], atom[best_k + 1:]]
 
 
-def build_sentences(words: List[Dict]) -> List[Passage]:
-    """Sentence-ish units: split on punctuation/pauses, merge short, split long."""
-    if not words:
-        return []
-
-    atoms = _merge_short_sentences(words, _sentence_atoms(words))
+def _split_sentence_ranges(words, atoms):
     queue = list(atoms)
     ranges: List[Tuple[int, int]] = []
     while queue:
@@ -187,17 +205,22 @@ def build_sentences(words: List[Dict]) -> List[Passage]:
         else:
             ranges.append((atom[0], atom[-1]))
 
-    return [
-        Passage(
-            index=index,
-            first_word=first,
-            last_word=last,
-            start=float(words[first]["start"]),
-            end=float(words[last]["end"]),
-            text=join_words(words, first, last),
-        )
-        for index, (first, last) in enumerate(ranges)
-    ]
+    return ranges
+
+
+def build_sentences(words: List[Dict]) -> List[Passage]:
+    """Sentence-ish units: split on punctuation/pauses, merge short, split long."""
+    if not words:
+        return []
+    atoms = _merge_short_sentences(words, _sentence_atoms(words))
+    return passages_from_ranges(words, _split_sentence_ranges(words, atoms))
+
+
+def build_sentence_atoms(words: List[Dict], *, clauses: bool = False) -> List[Passage]:
+    """Keep short replies separate; context is attached by the evidence hierarchy."""
+    punctuation = SENTENCE_END + ((",", ";", ":") if clauses else ())
+    atoms = _sentence_atoms(words, minimum_words=1, punctuation=punctuation)
+    return passages_from_ranges(words, _split_sentence_ranges(words, atoms))
 
 
 def build_sentence_windows(words: List[Dict], context: int = 1) -> List[Passage]:
@@ -219,14 +242,4 @@ def build_sentence_windows(words: List[Dict], context: int = 1) -> List[Passage]
             seen.add(pair)
             unique.append(pair)
 
-    return [
-        Passage(
-            index=index,
-            first_word=first,
-            last_word=last,
-            start=float(words[first]["start"]),
-            end=float(words[last]["end"]),
-            text=join_words(words, first, last),
-        )
-        for index, (first, last) in enumerate(unique)
-    ]
+    return passages_from_ranges(words, unique)

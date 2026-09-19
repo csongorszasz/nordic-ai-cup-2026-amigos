@@ -1375,3 +1375,35 @@ the initial 32-source-unit shortlist, and eight acoustic positions per
 endpoint. These budgets precede a new held-out model result. The automated-only
 audit does not establish a generator, semantic identifiability, or near-perfect
 attainability merely because endpoints lie on a regular grid.
+
+- **Audit outcome:** `source-event-audit-31e34870`, CPU job `25407220`,
+  reproduced every qualified response and **0.8007415037739252** exactly.
+  All 195 positives / 390 endpoints remain present; all endpoints fit the
+  20 ms grid, and no exact-question reference conflict was found.
+- **Error counts:** 21 disjoint citations (17 with a gap of at least two
+  seconds), 14 at least twice the reference duration, 22 at most half,
+  and one missed positive. These categories overlap.
+- **Timing representation:** unrestricted raw word spans reach an oracle
+  mean tIoU of **0.927250** with perfect decisions, **0.922549** with frozen
+  decisions. Applying the qualified correction to candidates gives
+  **0.930362 / 0.925339**, respectively. These are ceilings, not predictions.
+- The new audit labels offset semantics explicitly: corrected within-quote
+  and quote +/-24-word oracles are **0.731962 / 0.865035**. Do not confuse
+  these with the earlier raw-timing diagnostics. Subsequent audit versions
+  report both raw and corrected local oracles rather than comparing unlike
+  boundary policies.
+
+### Global source-unit geometry
+
+`answerers/evidence_units.py` preserves unmerged short replies, clauses and
+sentences, plus contiguous episode candidates capped at eight sentence atoms,
+64 words and 30 seconds. Interpretation context includes one neighboring
+sentence each side but does not enlarge the scored citation. No speaker role
+is inferred from an unreliable diarization sidecar.
+
+`probe_source_localization.py` freezes a 32-unit, family-balanced lexical
+shortlist plus the calibrated incumbent before computing its reference-assisted
+coverage. It searches globally and keeps separate identical-text occurrences;
+the lexical score is only an initial retrieval seed. Runtime inputs and
+reference diagnostics are separate files. The probe preserves every decision,
+does not train a selector, and cannot claim a score improvement from an oracle.

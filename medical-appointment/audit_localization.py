@@ -11,7 +11,7 @@ from pathlib import Path
 
 from answerers.align import align_quote_matches
 from answerers.modernbert_data import grouped_folds
-from answerers.passages import build_sentences, overlap_word_range
+from answerers.passages import build_sentences, overlap_word_range, validate_word_clock
 from answerers.span_targets import optimal_quote_target, word_text
 from benchmark import write_json
 from benchmark_alignment import baseline_prediction, load_inputs
@@ -87,22 +87,6 @@ def validate_qualified(predictions, qualified, summary):
     return score
 
 
-def validate_word_clock(words, duration):
-    if not words or isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
-        raise ValueError("The audit requires words and a finite positive duration.")
-    previous_start = 0.0
-    for word in words:
-        start, end = word["start"], word["end"]
-        if (
-            not isinstance(word["word"], str) or not word["word"].strip()
-            or any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
-                   for value in (start, end))
-            or not previous_start <= start <= end <= duration
-        ):
-            raise ValueError("The audit requires finite ordered word times within the audio.")
-        previous_start = start
-
-
 def _distribution(values):
     if not values:
         return {"count": 0, "minimum": None, "median": None, "mean": None, "maximum": None}
@@ -156,13 +140,16 @@ def audit_question(row, transcript, units):
         "corrected_global_words": _word_oracle(words, gold, row["duration"], offsets=(0.2, 0.0)),
         **{name: _unit_oracle(candidates, gold) for name, candidates in units.items()},
     }
-    for name, margin in (("corrected_inside_quote", 0), ("corrected_quote_plus_24", 24)):
+    for name, margin, offsets in (
+        ("raw_inside_quote", 0, (0.0, 0.0)), ("raw_quote_plus_24", 24, (0.0, 0.0)),
+        ("corrected_inside_quote", 0, (0.2, 0.0)), ("corrected_quote_plus_24", 24, (0.2, 0.0)),
+    ):
         anchor = row.get("word_range") if row["answer"] else None
         oracles[name] = (
             _word_oracle(
                 words, gold, row["duration"],
                 (max(0, anchor[0] - margin), min(len(words) - 1, anchor[1] + margin)),
-                offsets=(0.2, 0.0),
+                offsets=offsets,
             ) if anchor is not None else
             {"tiou": 0.0, "span": None, "word_range": None, "quote": None}
         )
@@ -245,7 +232,10 @@ def audit_records(rows, requests, transcripts):
                     0.0 if entry["missed_positive"] else entry["oracles"][name]["tiou"] for entry in entries
                 ),
                 "positive_denominator": len(entries),
-                "requires_incumbent_anchor": name in {"corrected_inside_quote", "corrected_quote_plus_24"},
+                "requires_incumbent_anchor": name in {
+                    "raw_inside_quote", "raw_quote_plus_24",
+                    "corrected_inside_quote", "corrected_quote_plus_24",
+                },
             }
             for name in entries[0]["oracles"]
         },

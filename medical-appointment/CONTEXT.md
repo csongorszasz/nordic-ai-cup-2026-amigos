@@ -38,9 +38,20 @@ is the unit the verifier scores and the decision context for localization.
 (`Should the daily dose be 100 mg?` → `The daily dose is 100 mg.`). The
 hypothesis an NLI verifier tests against a window.
 
-**Sub-range localization** — the step that chooses the returned evidence span:
+**Sub-range localization** — the legacy step that chooses the returned evidence span:
 the tightest contiguous word range inside the winning window ± one neighbouring
 window. The span is *not* the window itself (ADR-0001).
+
+**Source unit** — an experimental citation candidate identifying one occurrence
+of a clause, sentence, or contiguous multi-sentence episode. Short confirmations
+remain separate units. A source unit is not yet a verified supporting passage;
+the question determines whether that occurrence and extent are appropriate
+(ADR-0005).
+
+**Interpretation context** — surrounding transcript text attached to a source
+unit so a short reply or result can be understood. Its words are not automatically
+included in the returned evidence span. The current source-unit probe does not
+replace the qualified quote-citing service.
 
 **Evidence span** — the `[start, end]` interval (seconds from the start of the
 audio) that supports a *yes* answer. A *no* answer has no span: both timestamps
