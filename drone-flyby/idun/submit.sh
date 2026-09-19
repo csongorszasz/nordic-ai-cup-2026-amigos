@@ -24,6 +24,7 @@
 #   bash idun/submit.sh train-synth 400 padded yolo11m
 #   SYNTH_ARGS="--balance --boost ta-ta=2" bash idun/submit.sh train-synth 400 balanced   # extra synth_dataset.py options
 #   EPOCHS=25 bash idun/submit.sh train-synth 400 quick   # default 60; yolo11s reached 0.825 of its 0.875 by epoch 14
+#   SAVE_PERIOD=5 bash idun/submit.sh train-synth 400 x   # also keep epoch5.pt, epoch10.pt, ... to pick on Copenhagen
 #
 # Overrides:
 #   REMOTE=idun                        SSH alias from ~/.ssh/config
@@ -135,7 +136,7 @@ case "$ACTION" in
         # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
         # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
         # The generated images are deleted after a successful run (the seed rebuilds them).
-        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val ${SYNTH_ARGS:-} && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs ${EPOCHS:-60} --batch ${BATCH} --name ${NAME} && rm -rf ${DATA}"
+        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val ${SYNTH_ARGS:-} && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs ${EPOCHS:-60} --batch ${BATCH} --name ${NAME} --save-period ${SAVE_PERIOD:--1} && rm -rf ${DATA}"
         ;;
 
     resume)

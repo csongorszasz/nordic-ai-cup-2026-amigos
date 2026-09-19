@@ -34,6 +34,9 @@ def main():
     parser.add_argument('--imgsz', type=int, default=960)
     parser.add_argument('--batch', type=int, default=8)
     parser.add_argument('--name', default='yolo11s_baseline')
+    parser.add_argument('--save-period', type=int, default=-1, metavar='N',
+                        help='also keep weights every N epochs (epochN.pt): Helsinki val picks best.pt, '
+                             'but Copenhagen preferred an earlier epoch, so keep the candidates')
     parser.add_argument('--resume', metavar='LAST_PT', help="continue a cut-off run from its last.pt (with that run's settings)")
     args = parser.parse_args()
 
@@ -54,6 +57,7 @@ def main():
         batch=args.batch,
         project=str(ROOT / 'runs'),
         name=args.name,
+        save_period=args.save_period,
         exist_ok=False,  # a rerun gets a new folder instead of overwriting weights we may want back
         workers=6,
         patience=15,

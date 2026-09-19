@@ -16,7 +16,7 @@
    71.8,
    63.7
   ],
-  "paint": "projected",
+  "paint": "edited",
   "per_sprite": [
    {
     "colour_error": 32.6,
@@ -101,6 +101,7 @@
    32.0,
    40.0
   ],
-  "up": "y"
+  "up": "y",
+  "edits": "cabin walls light orange-brown wooden planks; roof, legs and stairs darker"
  }
 }
