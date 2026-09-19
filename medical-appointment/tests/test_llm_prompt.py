@@ -112,6 +112,16 @@ def test_final_statement_rule_preserves_the_actual_question_and_schema():
     assert "temporal status" in changed[0]["content"]
 
 
+def test_audit_rule_preserves_the_actual_question_and_schema():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="audit")
+    assert changed[-1] == base[-1]
+    assert "clinical record reviewed for an audit" in system_prompt("audit")
+    assert "clinician's final statement" in changed[0]["content"]
+
+
 def test_build_few_shot_balanced_and_loco_safe():
     rows_by_tid = {
         "s1": [{

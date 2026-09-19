@@ -27,7 +27,7 @@ SYSTEM_PROMPT = (
 VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
-    "final_statement",
+    "final_statement", "audit",
 )
 
 SCHEMA_HINT = (
@@ -62,6 +62,16 @@ def system_prompt(variant: str) -> str:
         "v3": (
             "- If the same fact is stated more than once, quote the occurrence whose "
             "wording most closely matches the question.\n"
+        ),
+        "audit": (
+            "- This conversation is a clinical record reviewed for an audit. For the "
+            "queried fact, the authoritative evidence is the clinician's documented "
+            "conclusion, prescription, plan or confirmation, not the patient's "
+            "request, report, or an earlier preliminary mention.\n"
+            "- If the patient asks for or mentions something the clinician later "
+            "confirms, enacts or documents, quote the clinician's final statement "
+            "that establishes it. Preserve the question's subject, dose, timing and "
+            "qualifiers.\n"
         ),
         "scoped": (
             "- For each yes, include segment_start and segment_end: the exact sXX "
