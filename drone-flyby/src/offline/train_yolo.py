@@ -55,6 +55,64 @@ def save_ap50_checkpoint(trainer) -> None:
     }, indent=2), encoding="utf-8")
 
 
+def _optimizer_step_range(optimizer):
+    steps = []
+    for state in optimizer.state.values():
+        if "step" not in state:
+            continue
+        value = state["step"]
+        step = float(value.item() if hasattr(value, "item") else value)
+        if not math.isfinite(step) or step < 0 or not step.is_integer():
+            raise ValueError("Optimizer step counters must be finite nonnegative integers")
+        steps.append(int(step))
+    return {"min": min(steps), "max": max(steps), "parameters": len(steps)} if steps else None
+
+
+def start_training_budget(trainer) -> None:
+    trainer._drone_minibatches = 0
+    trainer._drone_initial_steps = _optimizer_step_range(trainer.optimizer)
+    trainer._drone_data_budget = {
+        "training_samples": len(trainer.train_loader.dataset),
+        "batches_per_epoch": len(trainer.train_loader),
+    }
+
+
+def count_training_batch(trainer) -> None:
+    trainer._drone_minibatches += 1
+
+
+def save_training_budget(trainer) -> None:
+    report = {
+        **trainer._drone_data_budget,
+        "minibatches_processed_this_run": trainer._drone_minibatches,
+        "optimizer_step_counters_before": trainer._drone_initial_steps,
+        "optimizer_step_counters_after": _optimizer_step_range(trainer.optimizer),
+        "batch_size": int(trainer.batch_size),
+        "nominal_batch_size": int(trainer.args.nbs),
+        "final_gradient_accumulation": int(trainer.accumulate),
+        "start_epoch_index": int(trainer.start_epoch),
+        "last_epoch_index": int(trainer.epoch),
+        "epochs_requested": int(trainer.epochs),
+        "optimizer": type(trainer.optimizer).__name__,
+        "counter_scope": (
+            "Per-process minibatches are observed separately from cumulative per-parameter optimizer "
+            "step counters. Optimizer counters can include resumed history; null means unavailable."
+        ),
+    }
+    destination = Path(trainer.save_dir) / "training_budget.json"
+    temporary = destination.with_suffix(".tmp")
+    temporary.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(destination)
+    print(f"Observed training budget: {json.dumps(report)}", flush=True)
+
+
+def register_training_callbacks(model) -> None:
+    model.add_callback("on_fit_epoch_end", save_ap50_checkpoint)
+    model.add_callback("on_train_start", start_training_budget)
+    model.add_callback("on_train_batch_end", count_training_batch)
+    model.add_callback("on_train_end", save_training_budget)
+
+
 def _iter_images(images_dir: Path) -> Iterable[Path]:
     for path in sorted(images_dir.iterdir()):
         if path.suffix.lower() in IMAGE_SUFFIXES:
@@ -243,7 +301,7 @@ def train(
         checkpoint_data = resumed.ckpt.get("train_args", {}).get("data")
         if checkpoint_data:
             assert_training_yaml(Path(checkpoint_data))
-        resumed.add_callback("on_fit_epoch_end", save_ap50_checkpoint)
+        register_training_callbacks(resumed)
         # ``cache`` is forwarded explicitly so a run started with --cache can be
         # resumed without it; the saved dataloader cache is a suspected cause of
         # the mid-run stall.
@@ -259,7 +317,7 @@ def train(
             "Ultralytics copy_paste requires segmentation masks and is inactive for box-only "
             "detection. Use build_augmented_dataset.py for labeled box copy-paste."
         )
-    model.add_callback("on_fit_epoch_end", save_ap50_checkpoint)
+    register_training_callbacks(model)
     train_kwargs = dict(
         data=str(data_yaml),
         epochs=epochs,

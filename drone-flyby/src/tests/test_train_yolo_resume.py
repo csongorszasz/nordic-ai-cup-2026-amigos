@@ -79,6 +79,7 @@ def test_build_augment_kwargs_maps_cli_flags():
 
 def test_train_forwards_augmentation_kwargs(monkeypatch, tmp_path):
     captured = {}
+    callbacks = {}
 
     class FakeModel:
         task = "detect"
@@ -90,7 +91,7 @@ def test_train_forwards_augmentation_kwargs(monkeypatch, tmp_path):
             captured.update(kwargs)
 
         def add_callback(self, event, callback):
-            assert event == "on_fit_epoch_end"
+            callbacks[event] = callback
 
     monkeypatch.setattr(train_yolo, "_ULTRALYTICS_AVAILABLE", True)
     monkeypatch.setattr(train_yolo, "YOLO", FakeModel)
@@ -114,6 +115,7 @@ def test_train_forwards_augmentation_kwargs(monkeypatch, tmp_path):
     assert captured["seed"] == 0
     assert captured["save_period"] == 10
     assert captured["warmup_epochs"] == 3.0
+    assert set(callbacks) == {"on_fit_epoch_end", "on_train_start", "on_train_batch_end", "on_train_end"}
 
 
 def test_ap50_checkpoint_selection_is_independent_of_library_fitness(tmp_path):
@@ -149,3 +151,31 @@ def test_training_rejects_silent_segmentation_only_copy_paste(monkeypatch, tmp_p
     yaml.write_text("train: images/train\nval: images/val\n")
     with pytest.raises(ValueError, match="segmentation masks"):
         train(yaml, "fake.pt", 1, 960, 1, "cpu", augment_kwargs={"copy_paste": 0.5})
+
+
+def test_training_budget_distinguishes_minibatches_from_optimizer_steps(tmp_path):
+    class Loader:
+        dataset = range(192)
+        def __len__(self):
+            return 6
+    trainer = SimpleNamespace(
+        optimizer=SimpleNamespace(state={}), train_loader=Loader(), save_dir=tmp_path,
+        batch_size=32, args=SimpleNamespace(nbs=64), accumulate=2,
+        start_epoch=0, epoch=0, epochs=1,
+    )
+    train_yolo.start_training_budget(trainer)
+    for _ in range(6):
+        train_yolo.count_training_batch(trainer)
+    trainer.optimizer.state = {0: {"step": 3}, 1: {"step": 3}}
+    train_yolo.save_training_budget(trainer)
+    report = json.loads((tmp_path / "training_budget.json").read_text())
+    assert report["minibatches_processed_this_run"] == 6
+    assert report["optimizer_step_counters_before"] is None
+    assert report["optimizer_step_counters_after"] == {"min": 3, "max": 3, "parameters": 2}
+    assert report["final_gradient_accumulation"] == 2
+
+
+def test_unknown_optimizer_counters_are_not_fabricated():
+    assert train_yolo._optimizer_step_range(SimpleNamespace(state={0: {"momentum_buffer": 1}})) is None
+    with pytest.raises(ValueError, match="finite"):
+        train_yolo._optimizer_step_range(SimpleNamespace(state={0: {"step": float("nan")}}))

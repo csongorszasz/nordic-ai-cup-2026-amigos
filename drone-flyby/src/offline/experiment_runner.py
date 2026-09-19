@@ -20,9 +20,13 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from config import DroneFlybyConfig
+from core import build_pipeline
 from core.detector import create_detector
 from local_evaluator import fetch_server_stats, frame_numbers, replay, score, wait_for_endpoint
 from offline.camera_simulator import run_simulation
+from offline.record_dataset import load_recorded_request
+from offline.summarize_recording import frame_coverage
+from utils import validate_response
 
 
 def write_json(path: Path, value) -> None:
@@ -104,6 +108,78 @@ def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latenc
                 process.wait()
 
 
+def run_recorded_views(config: DroneFlybyConfig, recording: Path,
+                       expected_frames: int | None = None) -> dict:
+    """Compare inference on exact fixed observations, not a counterfactual flight."""
+    recording = recording.resolve()
+    role = json.loads((recording / "data_role.json").read_text())
+    if role.get("data_role") != "evaluation-only":
+        raise ValueError("Recorded-view replay requires an evaluation-only capture")
+    status = json.loads((recording / "capture_status.json").read_text())
+    if any(status.get(key, 0) for key in ("dropped", "write_errors", "capture_errors", "pending_jobs")):
+        raise ValueError("Recording has incomplete producer writes; inspect capture_status.json")
+    rows = []
+    for path in sorted((recording / "metadata").glob("frame_*.json")):
+        metadata = json.loads(path.read_text())
+        request = load_recorded_request(path)
+        diagnostic = json.loads((recording / "diagnostics" / path.name).read_text())
+        original_pipeline = diagnostic.get("pipeline")
+        if not isinstance(original_pipeline, dict):
+            raise ValueError("Recording lacks original pipeline diagnostics")
+        order = original_pipeline.get("processing_order")
+        if type(order) is not int or order < 1:
+            raise ValueError("Recording lacks a verified processing order; cannot reproduce pipeline state")
+        identity = (request.request_id, request.frame, request.frame_index)
+        if any((entry.get("request_id"), entry.get("frame"), entry.get("frame_index")) != identity
+               for entry in (diagnostic, original_pipeline)):
+            raise ValueError("Recorded diagnostic identity does not match the input")
+        response_path = recording / "responses" / path.name
+        original = json.loads(response_path.read_text()) if response_path.exists() else None
+        if original is not None and (original.get("request_id"), original.get("frame")) != identity[:2]:
+            raise ValueError("Recorded response identity does not match the input")
+        nonce = metadata.get("provenance", {}).get("run_nonce")
+        if not isinstance(nonce, str) or not nonce:
+            raise ValueError("Recorded replay requires serving run provenance")
+        rows.append((order, nonce, path.stem, request, original))
+    if not rows or len(rows) != status.get("frames_received"):
+        raise ValueError("Capture metadata does not account for all recorded receipts")
+    if len({row[0] for row in rows}) != len(rows) or len({row[1] for row in rows}) != 1:
+        raise ValueError("Recording mixes processing orders or serving instances")
+    if len({row[3].sequence_id for row in rows}) != 1:
+        raise ValueError("Select one recorded sequence at a time")
+    rows.sort(key=lambda row: row[0])
+    coverage = frame_coverage([row[3].frame_index for row in rows], expected_frames)
+    pipeline = build_pipeline(config)
+    pipeline.warmup()
+    replayed, comparisons = [], []
+    for order, _, stem, request, original in rows:
+        diagnostics = {}
+        response = pipeline.handle_request(request, diagnostics=diagnostics)
+        validate_response(response)
+        if any(event in diagnostics["events"] for event in
+               ("detector_error", "pipeline_error", "memory_error", "hard_deadline_exceeded")):
+            raise RuntimeError(f"Recorded-view inference failed on {request.request_id}: {diagnostics['events']}")
+        payload = response.model_dump(mode="json")
+        matches = payload == original if original is not None else None
+        if matches is not None:
+            comparisons.append(matches)
+        replayed.append({
+            "capture_stem": stem, "original_processing_order": order,
+            "frame": request.frame, "frame_index": request.frame_index,
+            "request_id": request.request_id, "response": payload,
+            "matches_recorded_response": matches, "diagnostics": diagnostics,
+        })
+    return {
+        "scope": "recorded-fixed-views; not closed-loop camera or full-source evaluation",
+        "recording": str(recording), "score_available": False,
+        "request_count": len(rows), "coverage": coverage,
+        "compared_recorded_responses": len(comparisons),
+        "matching_recorded_responses": sum(comparisons),
+        "all_recorded_responses_match": all(comparisons) if comparisons else None,
+        "replayed_requests": replayed,
+    }
+
+
 def run_matrix(arguments: argparse.Namespace) -> list[dict]:
     if arguments.mode != "oracle" and arguments.weights is None:
         raise ValueError("--weights is required for real-detector experiments")
@@ -113,8 +189,15 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
     capture_inputs = getattr(arguments, "capture_inputs", False)
     if capture_inputs and arguments.mode != "http":
         raise ValueError("Request capture requires HTTP mode")
+    recording = getattr(arguments, "recording", None)
+    if arguments.mode == "recording":
+        if recording is None or getattr(arguments, "scene", None) is not None or arguments.policies != ["hold"]:
+            raise ValueError("Recorded fixed-view replay requires --recording, no --scene, and --policies hold")
+    elif recording is not None:
+        raise ValueError("--recording requires --mode recording")
     arguments.output.mkdir(parents=True, exist_ok=False)
-    arguments.scene = arguments.scene or "helsinki"
+    if arguments.mode != "recording":
+        arguments.scene = arguments.scene or "helsinki"
     records = []
     config = DroneFlybyConfig.from_env()
     if arguments.weights is not None:
@@ -151,6 +234,8 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
             try:
                 if arguments.mode == "http":
                     result = run_http(config, arguments.scene, output, delay, capture_inputs=capture_inputs)
+                elif arguments.mode == "recording":
+                    result = run_recorded_views(config, recording, getattr(arguments, "expected_frames", None))
                 else:
                     result = asdict(run_simulation(
                         config, arguments.scene, detector=detector,
@@ -161,11 +246,17 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
                     "mode": arguments.mode, "elapsed_seconds": time.monotonic() - started,
                 })
                 write_json(output / "result.json", result)
-                records.append({key: result[key] for key in (
-                    "policy", "tracker", "mode", "map50", "per_class", "elapsed_seconds"
-                )})
+                summary_keys = ("policy", "tracker", "mode", "elapsed_seconds")
+                summary_keys += (
+                    ("scope", "score_available", "request_count", "compared_recorded_responses",
+                     "matching_recorded_responses") if arguments.mode == "recording" else ("map50", "per_class")
+                )
+                records.append({key: result[key] for key in summary_keys})
                 write_json(arguments.output / "summary.json", records)
-                print(f"{tracker}/{policy}: AP50={result['map50']:.6f}", flush=True)
+                if arguments.mode == "recording":
+                    print(f"{tracker}/{policy}: {result['request_count']} fixed requests replayed; AP unavailable", flush=True)
+                else:
+                    print(f"{tracker}/{policy}: AP50={result['map50']:.6f}", flush=True)
             except Exception as error:
                 write_json(output / "failure.json", {
                     "status": "failed", "error": repr(error),
@@ -178,6 +269,8 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
 
 def rescore_result(path: Path, scene: str | None = None) -> float:
     result = json.loads(path.read_text(encoding="utf-8"))
+    if result.get("score_available") is False:
+        raise ValueError("Recorded fixed-view replay has no ground truth or AP to rescore")
     scene = scene or result.get("scene")
     if not scene:
         raise ValueError("Supply --scene for legacy results without a scene identifier")
@@ -191,9 +284,11 @@ def rescore_result(path: Path, scene: str | None = None) -> float:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("--mode", choices=["oracle", "detector", "http"])
+    action.add_argument("--mode", choices=["oracle", "detector", "http", "recording"])
     action.add_argument("--rescore", type=Path, help="Verify stored predictions against the common scorer.")
     parser.add_argument("--scene")
+    parser.add_argument("--recording", type=Path, help="Exact evaluation-only capture; requires --mode recording.")
+    parser.add_argument("--expected-frames", type=int, help="Explicit source denominator for recorded input coverage.")
     parser.add_argument("--weights", type=Path)
     parser.add_argument("--aux-weights", type=Path, help="Opt into the two-checkpoint fusion backend.")
     parser.add_argument("--imgsz", type=int, help="Explicit longest-side inference size.")

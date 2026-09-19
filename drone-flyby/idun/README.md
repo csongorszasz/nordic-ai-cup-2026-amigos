@@ -190,9 +190,37 @@ All captures are marked **evaluation-only** and excluded from training,
 pseudo-labeling, augmentation, and calibration. Keep images, logs and temporary
 URLs out of Git. Only the user triggers official competition attempts.
 
+For fixed-observation detector/tracker comparisons on an owned experimental GPU:
+
+```bash
+export DRONE_FLYBY_CONF_L0=0.001
+export DRONE_FLYBY_INFERENCE_HALF=true
+python src/offline/experiment_runner.py --mode recording \
+  --recording /path/to/evaluation-only/sequence --expected-frames 249 \
+  --weights /path/to/task-checkpoint.pt --imgsz 3200 \
+  --policies hold --trackers passthrough world_map --output runs/recorded-comparison
+```
+
+Set model overrides explicitly to match the captured provenance when reproducing
+a baseline; different overrides represent a new candidate, not a reproduction.
+This validates image hashes, identities, producer status, serving provenance,
+and original processing order before loading the model. Every received crop and
+frame-index gap is preserved. It reports response differences and coverage, not
+AP without ground truth; a fixed crop stream cannot evaluate a different camera
+trajectory or supply frames that never arrived.
+
 For an owned development HTTP replay, `experiment_runner.py --mode http
 --capture-inputs ...` verifies the same capture path and its overhead without
 contacting the competition.
+
+### Observed training budgets
+
+Training writes `training_budget.json` with the observed minibatch count and
+the optimizer's per-parameter step-counter range before and after the run.
+Gradient accumulation means these are not interchangeable: nominal batch 64
+with physical batch 32 uses accumulation, so 972 minibatches must not be
+reported as 972 optimizer updates. Null counters are explicitly unavailable,
+not assumed zero; resumed counters can include prior training history.
 
 ### Matched non-right-angle audit
 
