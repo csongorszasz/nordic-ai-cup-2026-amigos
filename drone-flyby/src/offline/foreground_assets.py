@@ -66,9 +66,17 @@ def resize_sprite(image: np.ndarray, width: int, height: int, interpolation=cv2.
         return cv2.resize(image, (width, height), interpolation=interpolation)
     if image.shape[2] != 4:
         raise ValueError("Sprites must be BGR or reviewed BGRA")
+    if image.dtype != np.uint8 or interpolation not in (cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_NEAREST):
+        raise ValueError("RGBA resampling requires uint8 pixels and a non-overshooting interpolation kernel")
     alpha = image[:, :, 3:4].astype(np.float32) / 255
     premultiplied = np.concatenate((image[:, :, :3].astype(np.float32) * alpha, alpha), axis=2)
-    return cv2.resize(premultiplied, (width, height), interpolation=interpolation)
+    resized = cv2.resize(premultiplied, (width, height), interpolation=interpolation)
+    opacity = resized[:, :, 3]
+    if not np.isfinite(opacity).all() or np.any((opacity < -1e-5) | (opacity > 1 + 1e-5)):
+        raise ValueError("Unexpected alpha range after convex resampling")
+    # OpenCV INTER_AREA can overshoot opaque alpha by a float32 rounding step.
+    np.clip(opacity, 0.0, 1.0, out=opacity)
+    return resized
 
 
 def composite_sprite(target: np.ndarray, sprite: np.ndarray) -> None:

@@ -70,3 +70,27 @@ def test_review_pins_manifest_pixels_and_annotation_canvas(tmp_path, monkeypatch
     manifest.write_text("{}")
     with pytest.raises(ValueError, match="manifest changed"):
         load_reviewed_assets(review, tmp_path)
+
+
+def test_area_resampling_clamps_only_floating_point_alpha_roundoff(monkeypatch):
+    original_resize = cv2.resize
+    def rounded_resize(*args, **kwargs):
+        result = original_resize(*args, **kwargs)
+        result[:, :, 3] = np.nextafter(np.float32(1), np.float32(np.inf))
+        return result
+    monkeypatch.setattr(assets_module.cv2, "resize", rounded_resize)
+    sprite = resize_sprite(np.full((13, 19, 4), 255, np.uint8), 7, 5, cv2.INTER_AREA)
+    assert (sprite[:, :, 3] == 1).all()
+    target = np.zeros((5, 7, 3), np.uint8)
+    composite_sprite(target, sprite)
+    assert target.max() == 255
+
+
+def test_large_alpha_errors_are_not_hidden_by_clamping(monkeypatch):
+    def invalid_resize(*args, **kwargs):
+        result = np.zeros((2, 2, 4), np.float32)
+        result[:, :, 3] = 1.1
+        return result
+    monkeypatch.setattr(assets_module.cv2, "resize", invalid_resize)
+    with pytest.raises(ValueError, match="Unexpected alpha"):
+        resize_sprite(np.ones((2, 2, 4), np.uint8), 2, 2, cv2.INTER_AREA)
