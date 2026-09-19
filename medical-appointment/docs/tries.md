@@ -647,6 +647,26 @@ evaluate held-out conversations, excluding all demonstration sources, for
 seeds 13 and 37. Require positive paired evidence in both seeds; estimated
 two-call latency is not an HTTP acceptance gate.
 
+- **Outcome:** `evidence-fusion-f7f3eeff` rejected. Non-demo scores
+  **0.7976 / 0.7974** versus retained 0.7978; mean deltas negative for both
+  seeds, no positive confidence bound. Only 7/4 questions changed. No
+  evidence justifies the second model call.
+
+## Bounded capacity smoke preparation
+
+After several controlled prompt/refinement failures, test a different capacity
+axis rather than repeating them. Candidate: `google/gemma-4-31B-it`, pinned
+revision `842da3794eaa0b77d5f08bae87a17459d91ff475`. The official card describes
+a dense model, unlike the incumbent MoE, so latency is a material risk.
+Start with only three conversations on one 80 GB GPU; a full run needs the
+memory, latency, and quality smoke gates first.
+
+The weight manifest is 62,546,338,248 bytes. Own-user quota was checked before
+preparation: approximately 203,736,996 KiB used against a 1,000,000,000 KiB hard
+limit. Model caching is development-only, revision- and size-bounded, and does
+not upgrade the shared serving environment or enable inference network calls.
+Primary model card: `https://huggingface.co/google/gemma-4-31B-it`.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
