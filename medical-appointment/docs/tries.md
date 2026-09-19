@@ -992,6 +992,12 @@ full-OOF result or deployment is claimed by this implementation alone.
   fallback. Maximum estimated combined time 34.89 s is not an HTTP gate.
   Retain the published incumbent; these 350-question scores must not be
   compared directly to its 390-question 0.8007 result.
+- Inspection of the frozen GRPO rollout logs found 712 groups, 238 with
+  identical proposed spans and 49 with zero tIoU throughout. Only five
+  groups had diverse, grounded, disjoint spans but a distance-reward range
+  at most 1e-8; 31 individual distance rewards underflow when cast to float32.
+  This exposes a weak-signal edge case but does not justify treating reward
+  underflow as the main cause of the modest held-out result.
 - **Timing-axis preparation:** the pinned native Qwen processor drops
   punctuation when constructing alignment units and decodes timestamp
   classes in 80 ms increments by default. A timing-only comparison must
@@ -1037,6 +1043,20 @@ full-OOF result or deployment is claimed by this implementation alone.
   false regardless of CPU speed. CPU float32 and later GPU BF16 predictions
   may differ; numerical parity and co-resident HTTP acceptance are still
   required before any serving claim. No serving environment is upgraded.
+- **CPU smoke outcome:** `alignment-cpu-smoke-88799922`, all 30 questions
+  from the three longest clips, 17 positives. Actual CPU float32 / 8
+  threads, no GPU allocation, peak process RSS **10.53 GB**. No
+  conversation or span failures; decisions, quotes, word-index anchors
+  and references are pointwise unchanged.
+  Raw aligned composite **0.6870**, mIoU **0.4783**, versus matched
+  incumbent **0.6978**, mIoU **0.4964**. Delta **-0.010826**, interval
+  **[-0.024222, +0.003243]**. This is not an improvement.
+- Added CPU time was 17.89-18.79 s; maximum separate-run combined estimate
+  41.89 s. The GPU feasibility flag correctly remains false.
+  Complete one unchanged full-corpus CPU quality comparison: the
+  longest-three selection was a stress smoke, not a representative quality
+  sample. Preserve this negative subset result; no offset fitting or
+  longest-clip exclusion based on its labels.
 
 ## ASR stream lifecycle check
 
