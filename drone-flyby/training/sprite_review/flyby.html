@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Playback</title>
+<style>
+  :root { --bg:#10141a; --panel:#1a2029; --line:#2c3440; --text:#e6e9ee; --muted:#8b95a3; --accent:#5aa9ff; --cursor:#ffd23f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif;
+         display:flex; height:100vh; overflow:hidden; }
+  aside { width:270px; flex:none; background:var(--panel); border-right:1px solid var(--line);
+          padding:12px; overflow-y:auto; }
+  aside a { color:var(--accent); text-decoration:none; }
+  h1 { font-size:16px; margin:10px 0 8px; }
+  select, button { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+                   border-radius:6px; padding:6px; font:inherit; margin-bottom:6px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  input[type=range] { width:100%; }
+  .row { display:flex; gap:6px; } .row button { flex:1; }
+  .stat { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; padding:2px 0; }
+  .stat b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+  .help { color:var(--muted); font-size:12px; line-height:1.8; margin-top:12px; }
+  kbd { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; }
+  #mini { width:100%; border-radius:6px; margin-top:8px; display:block; background:#000; }
+  main { flex:1; position:relative; min-width:0; display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; }
+  #stage canvas { position:absolute; inset:0; width:100%; height:100%; }
+  #hud { position:absolute; left:12px; top:10px; background:rgba(16,20,26,.8); padding:6px 10px;
+         border-radius:6px; font-size:13px; pointer-events:none; font-variant-numeric:tabular-nums; }
+  #hud .lv { color:var(--cursor); font-weight:700; }
+  #warn { color:#ff9f6b; }
+</style>
+</head>
+<body>
+<aside>
+  <a href="/">&larr; sprite review</a> · <a href="/scene3d">3D scene</a>
+  <h1>Flight playback</h1>
+  <select id="source"></select>
+  <input type="range" id="scrub" min="0" max="0" value="0">
+  <div class="row"><button id="play">Play</button><button id="slower">&minus;</button><button id="faster">+</button></div>
+  <div class="stat">Frame <b id="sFrame">-</b></div>
+  <div class="stat">Speed <b id="sSpeed">-</b></div>
+  <div class="stat">Level <b id="sLevel">0</b></div>
+  <div class="stat">View centre <b id="sCentre">-</b></div>
+  <div class="stat">Labels <b id="sLabels">-</b></div>
+  <canvas id="mini" width="384" height="216"></canvas>
+  <div class="help">
+    The big view is what the drone receives: always 960&times;540.<br>
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move the yellow frame (at level 2: pan)<br>
+    <kbd>Shift</kbd> zoom into the yellow frame<br>
+    <kbd>Space</kbd> back to level 0 &nbsp;·&nbsp; <kbd>Q</kbd> up one level<br>
+    <kbd>P</kbd> play / pause &nbsp;·&nbsp; <kbd>[</kbd> <kbd>]</kbd> speed<br>
+    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame &nbsp;·&nbsp; <kbd>B</kbd> labels on/off
+  </div>
+</aside>
+<main>
+  <div id="stage">
+    <canvas id="view" width="960" height="540"></canvas>
+    <canvas id="over"></canvas>
+    <div id="hud"></div>
+  </div>
+</main>
+<script>
+const W = 3840, H = 2160;
+const SIZE = { 0: [3840, 2160], 1: [1920, 1080], 2: [960, 540] };  // source region per level
+const FPS = 2;                     // playback at 1x: two frames a second
+const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
+const PAN_PER_SECOND = 0.6;        // of the region being moved, per second a key is held
+
+const $ = id => document.getElementById(id);
+const view = $('view'), vctx = view.getContext('2d');
+const over = $('over'), octx = over.getContext('2d');
+const mini = $('mini'), mctx = mini.getContext('2d');
+vctx.imageSmoothingQuality = 'high';
+
+let sources = [], source = null, frames = [], index = 0;
+let playing = false, speed = 2, showLabels = true;
+let level = 0;
+const centre = { 1: [1920, 1080], 2: [1920, 1080] };   // centre of the level-1 and level-2 regions
+let cursor = [1920, 1080];                                // yellow frame, one level down
+const images = new Map(), labels = new Map(), held = new Set();
+let dirty = true, lastTick = performance.now(), frameClock = 0;
+
+const colour = name => `hsl(${[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)} 85% 60%)`;
+const clampCentre = (c, [w, h], box = [0, 0, W, H]) => [
+  Math.min(Math.max(c[0], box[0] + w / 2), box[2] - w / 2),
+  Math.min(Math.max(c[1], box[1] + h / 2), box[3] - h / 2)];
+const regionOf = (c, [w, h]) => [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2];
+const current = () => level === 0 ? regionOf([1920, 1080], SIZE[0]) : regionOf(centre[level], SIZE[level]);
+
+function image(i) {
+  const n = frames[i];
+  if (n === undefined) return null;
+  const key = `${source.name}/${n}`;
+  if (!images.has(key)) {
+    const img = new Image();
+    img.onload = () => { dirty = true; };
+    img.src = `/flyby/img/${source.name}/${n}.jpg`;
+    images.set(key, img);
+    if (images.size > 14) images.delete(images.keys().next().value);  // 4K frames: keep a window
+  }
+  return images.get(key);
+}
+const ready = img => img && img.complete && img.naturalWidth > 0;
+
+async function frameLabels(n) {
+  if (!source.labelled) return null;
+  if (!labels.has(n)) {
+    labels.set(n, []);
+    labels.set(n, await (await fetch(`/api/flyby/labels/${n}`)).json());
+    dirty = true;
+  }
+  return labels.get(n);
+}
+
+function setIndex(i) {
+  index = (i + frames.length) % frames.length;
+  $('scrub').value = index;
+  for (let k = 1; k <= 4; k++) image((index + k) % frames.length);  // preload ahead
+  frameLabels(frames[index]);
+  dirty = true;
+}
+
+function zoomIn() {
+  if (level === 2) return;
+  level += 1;
+  centre[level] = cursor.slice();
+  if (level === 1) cursor = clampCentre(centre[1], SIZE[2], current());
+  dirty = true;
+}
+function zoomOut(toZero) {
+  if (level === 0) return;
+  cursor = centre[level].slice();
+  level = toZero ? 0 : level - 1;
+  if (level === 0) cursor = clampCentre(centre[1], SIZE[1]);
+  dirty = true;
+}
+
+function move(dt) {
+  let dx = (held.has('d') ? 1 : 0) - (held.has('a') ? 1 : 0);
+  let dy = (held.has('s') ? 1 : 0) - (held.has('w') ? 1 : 0);
+  if (!dx && !dy) return;
+  if (level === 2) {  // nothing below: pan the view itself
+    const step = SIZE[2][0] * PAN_PER_SECOND * dt;
+    centre[2] = clampCentre([centre[2][0] + dx * step, centre[2][1] + dy * step], SIZE[2]);
+  } else {
+    const size = SIZE[level + 1], step = SIZE[level][0] * PAN_PER_SECOND * dt;
+    cursor = clampCentre([cursor[0] + dx * step, cursor[1] + dy * step], size, current());
+  }
+  dirty = true;
+}
+
+function fit() {
+  const main = document.querySelector('main').getBoundingClientRect();
+  const scale = Math.min((main.width - 24) / 960, (main.height - 24) / 540);
+  const w = Math.floor(960 * scale), h = Math.floor(540 * scale);
+  const stage = $('stage');
+  stage.style.width = w + 'px'; stage.style.height = h + 'px';
+  over.width = w * devicePixelRatio; over.height = h * devicePixelRatio;
+  dirty = true;
+}
+
+function draw() {
+  const img = image(index);
+  const region = current();
+  const [x1, y1, x2, y2] = region;
+  const scale = 960 / (x2 - x1);                       // source px -> transmitted px
+  if (ready(img)) vctx.drawImage(img, x1, y1, x2 - x1, y2 - y1, 0, 0, 960, 540);
+  else { vctx.fillStyle = '#000'; vctx.fillRect(0, 0, 960, 540); }
+
+  // Overlay at screen resolution: labels and the yellow frame.
+  const k = over.width / 960;
+  const toScreen = ([a, b, c, d]) => [(a - x1) * scale * k, (b - y1) * scale * k, (c - a) * scale * k, (d - b) * scale * k];
+  octx.clearRect(0, 0, over.width, over.height);
+  const boxes = labels.get(frames[index]) || [];
+  if (showLabels) {
+    octx.font = `${Math.round(11 * devicePixelRatio)}px system-ui`;
+    octx.lineWidth = Math.max(1, devicePixelRatio);
+    for (const b of boxes) {
+      const [sx, sy, sw, sh] = toScreen(b.bbox);
+      if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) continue;
+      octx.strokeStyle = octx.fillStyle = colour(b.class);
+      octx.strokeRect(sx, sy, sw, sh);
+      octx.fillText(b.class, sx, sy - 3 * devicePixelRatio);
+    }
+  }
+  if (level < 2) {
+    const [sx, sy, sw, sh] = toScreen(regionOf(cursor, SIZE[level + 1]));
+    octx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--cursor');
+    octx.lineWidth = 2 * devicePixelRatio;
+    octx.setLineDash([8 * devicePixelRatio, 5 * devicePixelRatio]);
+    octx.strokeRect(sx, sy, sw, sh);
+    octx.setLineDash([]);
+  }
+
+  // Minimap: the whole frame, the current region and the yellow frame.
+  if (ready(img)) mctx.drawImage(img, 0, 0, W, H, 0, 0, mini.width, mini.height);
+  const m = mini.width / W;
+  mctx.lineWidth = 1.5;
+  mctx.strokeStyle = '#fff';
+  if (level > 0) mctx.strokeRect(x1 * m, y1 * m, (x2 - x1) * m, (y2 - y1) * m);
+  if (level < 2) {
+    const [a, b, c, d] = regionOf(cursor, SIZE[level + 1]);
+    mctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--cursor');
+    mctx.strokeRect(a * m, b * m, (c - a) * m, (d - b) * m);
+  }
+
+  const visible = boxes.filter(b => b.bbox[2] > x1 && b.bbox[0] < x2 && b.bbox[3] > y1 && b.bbox[1] < y2).length;
+  const c = level === 0 ? [1920, 1080] : centre[level];
+  $('sFrame').textContent = `${frames[index]} (${index + 1}/${frames.length})`;
+  $('sSpeed').textContent = `${speed}x · ${playing ? 'playing' : 'paused'}`;
+  $('sLevel').textContent = `${level} · ${SIZE[level].join('×')} source`;
+  $('sCentre').textContent = `${Math.round(c[0])}, ${Math.round(c[1])}`;
+  $('sLabels').textContent = source.labelled ? `${visible} in view / ${boxes.length}` : 'none (unlabelled)';
+  $('play').textContent = playing ? 'Pause' : 'Play';
+  $('hud').innerHTML = `<span class="lv">L${level}</span> · frame ${frames[index]} · ${speed}x ${playing ? '▶' : '❚❚'}` +
+    (level === 0 ? '' : ` · shrunk ${SIZE[level][0] / 960}×`) + (ready(img) ? '' : ' · <span id="warn">loading…</span>');
+}
+
+function tick(now) {
+  const dt = Math.min((now - lastTick) / 1000, 0.1);
+  lastTick = now;
+  move(dt);
+  if (playing) {
+    frameClock += dt * FPS * speed;
+    // Only advance onto a frame that has arrived, so playback never flashes black.
+    while (frameClock >= 1 && ready(image((index + 1) % frames.length))) { frameClock -= 1; setIndex(index + 1); }
+    frameClock = Math.min(frameClock, 1);
+  }
+  if (dirty) { dirty = false; draw(); }
+  requestAnimationFrame(tick);
+}
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if ('wasd'.includes(key) && key.length === 1) { held.add(key); e.preventDefault(); return; }
+  if (e.repeat && key !== 'ArrowLeft' && key !== 'ArrowRight') return;
+  if (key === 'Shift') zoomIn();
+  else if (key === ' ') { zoomOut(true); e.preventDefault(); }
+  else if (key === 'q') zoomOut(false);
+  else if (key === 'p') { playing = !playing; dirty = true; }
+  else if (key === '[') { speed = SPEEDS[Math.max(SPEEDS.indexOf(speed) - 1, 0)]; dirty = true; }
+  else if (key === ']') { speed = SPEEDS[Math.min(SPEEDS.indexOf(speed) + 1, SPEEDS.length - 1)]; dirty = true; }
+  else if (key === 'ArrowRight') setIndex(index + 1);
+  else if (key === 'ArrowLeft') setIndex(index - 1);
+  else if (key === 'b') { showLabels = !showLabels; dirty = true; }
+});
+addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
+addEventListener('blur', () => held.clear());
+addEventListener('resize', fit);
+
+$('play').onclick = () => { playing = !playing; dirty = true; };
+$('slower').onclick = () => { speed = SPEEDS[Math.max(SPEEDS.indexOf(speed) - 1, 0)]; dirty = true; };
+$('faster').onclick = () => { speed = SPEEDS[Math.min(SPEEDS.indexOf(speed) + 1, SPEEDS.length - 1)]; dirty = true; };
+$('scrub').oninput = e => setIndex(+e.target.value);
+$('source').onchange = e => pick(e.target.value);
+for (const el of document.querySelectorAll('button, input')) el.addEventListener('keydown', e => e.key === ' ' && e.preventDefault());
+
+function pick(name) {
+  source = sources.find(s => s.name === name);
+  frames = source.frames;
+  images.clear(); labels.clear();
+  $('scrub').max = frames.length - 1;
+  level = 0; cursor = [1920, 1080];
+  setIndex(0);
+}
+
+(async () => {
+  sources = await (await fetch('/api/flyby/sources')).json();
+  $('source').innerHTML = sources.map(s => `<option value="${s.name}">${s.label} · ${s.frames.length}</option>`).join('');
+  fit();
+  pick(sources[0].name);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

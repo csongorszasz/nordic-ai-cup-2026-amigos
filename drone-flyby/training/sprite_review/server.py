@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
 
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH  # noqa: E402
-from utils import load_frame  # noqa: E402
+from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
 
 SPRITES = ROOT / 'sprites'
 MANUAL = SPRITES / 'manual.json'
@@ -78,6 +78,56 @@ def scenes_3d():
     """Scene folders, newest first."""
     found = sorted(SCENES.glob('*/scene.json'), key=lambda p: -p.stat().st_mtime)
     return [p.parent.name for p in found]
+
+
+# Flight playback (flyby.html): the supplied scene and the recorded validation flight as a
+# video, zoomed through the three levels by hand. Frames go out as JPEG, cached on disk.
+RECORDED = ROOT / 'recordings' / 'validation_4k'
+FLYBY_CACHE = ROOT / 'datasets' / 'flyby_cache'
+
+
+def flyby_frames(source: str) -> dict:
+    """{frame number: image path} of a playback source."""
+    if source == 'helsinki':
+        return {n: ROOT / 'data' / 'helsinki' / 'images' / f'frame_{n:06d}.png' for n in frame_numbers()}
+    if source == 'validation_4k':
+        return {int(p.stem.split('_')[-1]): p for p in sorted(RECORDED.glob('frame_*.jpg'))}
+    raise HTTPException(404, 'unknown source')
+
+
+@app.get('/flyby', response_class=HTMLResponse)
+def flyby():
+    return (Path(__file__).parent / 'flyby.html').read_text()
+
+
+@app.get('/api/flyby/sources')
+def flyby_sources():
+    out = [{'name': 'helsinki', 'label': 'Helsinki (training scene, labelled)', 'frames': sorted(flyby_frames('helsinki')),
+            'labelled': True}]
+    if RECORDED.is_dir():
+        out.append({'name': 'validation_4k', 'label': 'Copenhagen (recorded validation, no labels)',
+                    'frames': sorted(flyby_frames('validation_4k')), 'labelled': False})
+    return out
+
+
+@app.get('/flyby/img/{source}/{frame}.jpg')
+def flyby_image(source: str, frame: int):
+    path = flyby_frames(source).get(frame)
+    if path is None:
+        raise HTTPException(404, 'unknown frame')
+    if path.suffix == '.png':  # the supplied frames are ~10 MB PNGs: convert once
+        cached = FLYBY_CACHE / source / f'{frame:06d}.jpg'
+        if not cached.exists():
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(cached), cv2.imread(str(path)), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        path = cached
+    return FileResponse(path, headers={'Cache-Control': 'max-age=86400'})
+
+
+@app.get('/api/flyby/labels/{frame}')
+def flyby_labels(frame: int):
+    """Ground-truth boxes of a supplied frame, in 4K source pixels."""
+    return [{'class': a['object_id'], 'bbox': a['bbox']} for a in load_annotations(frame)]
 
 
 @app.get('/api/models')
