@@ -667,6 +667,17 @@ limit. Model caching is development-only, revision- and size-bounded, and does
 not upgrade the shared serving environment or enable inference network calls.
 Primary model card: `https://huggingface.co/google/gemma-4-31B-it`.
 
+- **Cache verified:** `cache-dense31-ae5f11b8`, all nine selected files,
+  62,578,656,403 bytes including tokenizer/configuration artifacts.
+- **Smoke:** `dense31-smoke-b824cc20`, job `25405103`, native BF16 as specified
+  by the pinned checkpoint. A100 80 GB, 62.57 GB torch-resident model memory.
+  Thirty questions: accuracy 1.000, no parse/alignment failures, raw score
+  0.8022, cached latency 19.80 s mean / 20.86 s maximum. The incumbent's
+  three-conversation raw score was 0.8262; this is a capacity/format gate, not
+  a demonstrated quality gain.
+- Memory and latency permit one complete matched-input comparison. No
+  deployment claim is justified by the three-conversation smoke.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
