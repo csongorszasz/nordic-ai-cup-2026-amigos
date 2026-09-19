@@ -69,8 +69,19 @@ GROUPS = [
 # Look of the supplied frames (grey mean ~96, saturation ~110 on 0-255, over their L0
 # views); the mesh renders are ~144 and ~28, NAIP ~159 and ~31.
 GRADE_MEAN = (80, 115)
-PLANE_AT_HANGAR = 0.5  # share of hangars that get a plane parked over them (park_plane)
+PLANE_AT_HANGAR = 0.5  # share of hangars that get a plane parked over them (place_partner)
 PARKED_PLANES = ('jet_plane', 'small_plane', 'medium_plane')
+# Share of other objects that get a partner from their group pasted close by, allowed to overlap
+# them: in Copenhagen a watchtower hides a small launcher behind it, and a model trained on
+# objects that never touch reads such a pair as one thing.
+NEIGHBOUR = 0.3
+NEIGHBOUR_GROUPS = [
+    ('large_tower', 'small_launcher', 'medium_launcher', 'small_tower', 'jammer'),
+    ('tank', 'mine_roller', 'ta-ta'),
+    ('large_launcher', 'medium_launcher', 'small_launcher'),
+    ('helicopter', 'condor'),
+    ('small_plane', 'medium_plane', 'jet_plane', 'spacecraft'),
+]
 GRADE_SATURATION = (80, 135)
 # Gamma on the pasted objects, per scene. The Copenhagen objects are darker than the Helsinki
 # ones against a ground about as bright (median L 60 -> 37 for tanks, darkest fifth 32 -> 14):
@@ -322,18 +333,29 @@ def overlaps(box, placed, margin: int = 6) -> bool:
     return False
 
 
-def park_plane(canvas, hangar, placed, annotations, sprites, model_sprites, rng, shade, shadow, box_scales, model_share):
-    """A plane parked in or in front of a hangar, pasted over it and labelled as well: in
-    Copenhagen a jet stands in a hangar's mouth, and a model that never saw two objects overlap
-    reported only the jet there (the hangar: never found). The hangar keeps its own label."""
-    names = [n for n in PARKED_PLANES if n in model_sprites or n in sprites]
+def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, model_sprites, rng, shade, shadow,
+                  box_scales, model_share, ground=None):
+    """Paste a second object on or next to one just pasted (`anchor`, the last in `placed`),
+    labelled as well, overlapping only it. A hangar gets a plane in its mouth (in Copenhagen a
+    jet stands in one, and a model that never saw two objects overlap reported only the jet);
+    other objects a partner from their group, from well apart to half over them. Both keep
+    their whole box, as the supplied labels do for objects cut by the frame edge."""
+    if anchor_class == 'hangar':
+        names = [n for n in PARKED_PLANES if n in model_sprites or n in sprites]
+    else:
+        group = next((g for g in NEIGHBOUR_GROUPS if anchor_class in g), ())
+        names = [n for n in group if n != anchor_class and (n in model_sprites or n in sprites)]
     if not names:
         return
     name = rng.choice(names)
     use_model = name in model_sprites and (name not in sprites or rng.random() < model_share)
-    x1, y1, x2, y2 = hangar
+    x1, y1, x2, y2 = anchor
     for _ in range(10):
-        cx, cy = rng.uniform(x1 + 0.2 * (x2 - x1), x2 - 0.2 * (x2 - x1)), rng.uniform(y1 + 0.2 * (y2 - y1), y2 - 0.2 * (y2 - y1))
+        if anchor_class == 'hangar':  # within its middle
+            cx, cy = rng.uniform(x1 + 0.2 * (x2 - x1), x2 - 0.2 * (x2 - x1)), rng.uniform(y1 + 0.2 * (y2 - y1), y2 - 0.2 * (y2 - y1))
+        else:  # centre 0.3-0.8 of the anchor's size away from its centre, any direction
+            angle, reach = rng.uniform(0, 2 * math.pi), rng.uniform(0.3, 0.8) * max(x2 - x1, y2 - y1)
+            cx, cy = (x1 + x2) / 2 + math.cos(angle) * reach, (y1 + y2) / 2 + math.sin(angle) * reach
         if use_model:
             sprite, _, _, yaw = pick_model_sprite(model_sprites[name], cx, cy, rng)
         else:
@@ -344,7 +366,9 @@ def park_plane(canvas, hangar, placed, annotations, sprites, model_sprites, rng,
         x, y = int(cx - w / 2), int(cy - h / 2)
         box = [x, y, x + w, y + h]
         if x < 0 or y < 0 or x + w >= SOURCE_W or y + h >= SOURCE_H or overlaps(box, placed[:-1]):
-            continue  # it may overlap its hangar (the last placed), nothing else
+            continue  # it may overlap its anchor (the last placed), nothing else
+        if anchor_class != 'hangar' and not on_ground(ground, box):
+            continue
         pasted = paste(canvas, match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng, shade), x, y, shadow, rng)
         if pasted is None:
             continue
@@ -418,8 +442,9 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
             annotations.append({'object_id': class_name, 'bbox': scale_box(pasted, box_scales.get('model' if use_model else 'cutout', {}).get(class_name, 1.0))})
             if use_model:  # the render's yaw: scene3d.py turns the 3D model to match
                 annotations[-1]['yaw'] = yaw
-            if class_name == 'hangar' and rng.random() < PLANE_AT_HANGAR:
-                park_plane(canvas, box, placed, annotations, sprites, model_sprites, rng, shade, shadow, box_scales, model_share)
+            if rng.random() < (PLANE_AT_HANGAR if class_name == 'hangar' else NEIGHBOUR):
+                place_partner(canvas, pasted, class_name, placed, annotations, sprites, model_sprites, rng, shade, shadow,
+                              box_scales, model_share, ground)
             break
 
     if rng.random() < 0.7:  # sensor noise, so the pasted edges are not the only grain
