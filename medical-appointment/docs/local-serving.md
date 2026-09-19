@@ -174,6 +174,32 @@ encoder gradients, and writes encoder weights under the isolated run's
 features are recomputed after training; they are not reused from the
 initial frozen-feature pass.
 
+### Source-event annotation audit
+
+`audit_localization.py` is a model-free CPU diagnostic, not a serving change.
+Submit through `idun\run.py --cpu` with the frozen transcript parent:
+
+```powershell
+python idun\run.py submit --tag source-event-audit --cpu `
+  --reference-run full-grounding-f8bf809f --script audit_localization.py -- `
+  --baseline /cluster/home/dominiba/nordic-medical-runs/full-grounding-f8bf809f/results/benchmark `
+  --qualified /cluster/home/dominiba/nordic-medical-runs/offset-release-dns-2732ab44/results/http_benchmark
+```
+
+The script first reproduces every qualified decision/span and the unrounded
+full score, rejecting a missing question or a double-applied offset. It writes
+`results/localization_audit/frozen_recipe.json` before computing reference-
+assisted diagnostics, binding inputs, grouped partitions, and the initial
+source/acoustic candidate budgets. `questions.json` retains all questions;
+`summary.json` separates perfect-decision representation oracles from those
+with the incumbent's missed positives. Neither is an achieved improvement.
+
+The audit reports timing grids, word-boundary distances, overlapping error
+categories, exact-quote repetitions, and duplicate-question conflicts without
+editing annotations. An exact repetition is not a semantic enumeration of all
+supporting passages. No medical GPU allocation, model download, or human
+annotation is needed, and the current endpoint remains unchanged.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

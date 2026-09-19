@@ -1353,3 +1353,25 @@ Reject the added correction; keep the simpler qualified constant offset.
   diagnostic term in ASR text. It suggests a clinical-language/certainty
   interpretation issue rather than justification for a broad ASR replacement.
   No question-specific answer rule was added.
+
+## Source-event localization: annotation-policy audit
+
+The approved next hypothesis separates source occurrence, question-dependent
+evidence extent, and acoustic boundary placement. A result question may cite
+a short statement while an action question cites a multi-turn procedure.
+Another universal quote-trimming or timestamp-offset sweep is not the test.
+
+`audit_localization.py` first checks the raw frozen baseline plus the qualified
+correction against every decision/span and the exact full HTTP score. It then
+records all 390 questions, quantization and boundary distances, disjoint and
+duration-ratio errors, exact quote repetitions, and duplicate-question
+reference conflicts. Reference-assisted word/window oracles are explicitly
+diagnostic; both perfect-decision and frozen-decision denominators are kept,
+including the missed positive. Reference labels and the live service do not
+change.
+
+The saved recipe binds source data, demo exclusions, grouped seeds 13/37,
+the initial 32-source-unit shortlist, and eight acoustic positions per
+endpoint. These budgets precede a new held-out model result. The automated-only
+audit does not establish a generator, semantic identifiability, or near-perfect
+attainability merely because endpoints lie on a regular grid.
