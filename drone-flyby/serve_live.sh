@@ -60,13 +60,16 @@ for _ in $(seq 60); do
 done
 [ -n "$URL" ] || { echo "no tunnel URL after 60 s:"; tail -20 "$LOGS/tunnel.log"; stop; exit 1; }
 
-# A new quick tunnel takes a few seconds to be reachable.
-for _ in $(seq 30); do
-    [ "$(curl -s -o /dev/null -m 10 -w '%{http_code}' "$URL/docs")" = 200 ] && break
-    sleep 2
-done
 echo
 echo "Submit this URL in the drone form (Verify first):"
 echo "    $URL/predict"
+echo
+# A new quick tunnel takes a little while to be reachable: wait before pressing Verify.
+printf "waiting until it answers"
+for _ in $(seq 40); do
+    if [ "$(curl -s -o /dev/null -m 5 -w '%{http_code}' "$URL/docs")" = 200 ]; then echo " - reachable, go ahead"; break; fi
+    printf "."
+    sleep 3
+done
 echo
 echo "Logs: $LOGS/api.log, $LOGS/tunnel.log.  Stop: bash serve_live.sh stop"
