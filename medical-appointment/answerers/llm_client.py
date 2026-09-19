@@ -38,6 +38,25 @@ def chat_template_kwargs() -> Dict:
     return kwargs
 
 
+def token_logprobs(logits, token_ids) -> List[float]:
+    """Per-step log-probability of ``token_ids`` under ``logits`` (numpy, pure)."""
+    import numpy as np
+
+    logits = np.asarray(logits, dtype=np.float64)
+    ids = np.asarray(token_ids, dtype=int)
+    if logits.ndim != 2 or ids.ndim != 1 or logits.shape[0] != ids.shape[0]:
+        raise ValueError("logits must be [T, V] and token_ids must be [T].")
+    maximum = logits.max(axis=1, keepdims=True)
+    log_sum_exp = maximum[:, 0] + np.log(np.exp(logits - maximum).sum(axis=1))
+    return (logits[np.arange(ids.shape[0]), ids] - log_sum_exp).tolist()
+
+
+def mean_token_logprob(logits, token_ids) -> float:
+    """Mean per-token log-probability of a completion (higher = more confident)."""
+    values = token_logprobs(logits, token_ids)
+    return float(sum(values) / len(values)) if values else 0.0
+
+
 class StubClient:
     """Deterministic client for tests and dry prompt rendering."""
 
@@ -208,3 +227,63 @@ class HFClient:
             )
         new_tokens = output[0][encoded["input_ids"].shape[1]:]
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True)
+
+    def generate_scored(
+        self, messages: List[Dict], max_new_tokens: Optional[int] = None,
+        *, deadline: Optional[float] = None,
+    ):
+        """Greedy generation plus per-token log-probabilities of the completion.
+
+        Returns ``(text, logprobs, token_ids)`` with ``logprobs`` aligned to the
+        generated tokens. Requires greedy decoding (``num_beams=1``); used only
+        by the confidence diagnostic, never by ``/predict``.
+        """
+        if self.num_beams != 1:
+            raise ValueError("generate_scored requires greedy decoding (num_beams=1).")
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("No generation budget remains.")
+        token_limit = self.max_new_tokens if max_new_tokens is None else max_new_tokens
+        if isinstance(token_limit, bool) or not isinstance(token_limit, int) or token_limit < 1:
+            raise ValueError("max_new_tokens must be a positive integer.")
+        import torch
+        from transformers import StoppingCriteria, StoppingCriteriaList
+
+        self._load()
+        prompt = self._tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+            **chat_template_kwargs(),
+        )
+        encoded = self._tokenizer(
+            prompt, return_tensors="pt", add_special_tokens=self.legacy_special_tokens
+        ).to(self._device)
+        logger.info("prompt tokens=%d", encoded["input_ids"].shape[1])
+        criteria = StoppingCriteriaList()
+        if deadline is not None:
+            class Deadline(StoppingCriteria):
+                def __call__(self, input_ids, scores, **kwargs):
+                    return time.monotonic() >= deadline
+
+            if time.monotonic() >= deadline:
+                raise TimeoutError("No generation budget remains after tokenization.")
+            criteria.append(Deadline())
+        with torch.no_grad():
+            output = self._model.generate(
+                **encoded,
+                max_new_tokens=token_limit,
+                do_sample=False,
+                num_beams=1,
+                temperature=None,
+                top_p=None,
+                pad_token_id=self._tokenizer.eos_token_id,
+                stopping_criteria=criteria,
+                output_scores=True,
+                return_dict_in_generate=True,
+            )
+        new_tokens = output.sequences[0][encoded["input_ids"].shape[1]:]
+        if not output.scores or new_tokens.numel() == 0:
+            return "", [], []
+        logits = torch.stack([step[0] for step in output.scores]).float().cpu().numpy()
+        ids = new_tokens.cpu().numpy()
+        logprobs = token_logprobs(logits, ids)
+        text = self._tokenizer.decode(new_tokens, skip_special_tokens=True)
+        return text, logprobs, [int(token) for token in ids]
