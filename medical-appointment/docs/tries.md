@@ -1194,6 +1194,19 @@ Primary model candidates reviewed September 19, 2026:
   preservation, and requires real word timestamps on a 12-second supplied
   training-audio prefix. This is a format/feasibility gate, not a medical
   accuracy or competition-score result.
+- **Conversion feasibility passed:** `medical-whisper-convert-426f761c`
+  produced a run-local 1,558,949,857-byte CT2 model plus hashed tokenizer/
+  configuration files. All ten alignment heads survived exactly.
+  CPU `int8_float32` returned 41 timestamped words within the 12-second
+  training prefix; peak preparation RSS 9.11 GB. Shared serving packages
+  and models were not modified.
+- The next recognition diagnostic uses `probe_medical_asr.py`: unprompted
+  generic full-v3 versus unprompted medical full-v3 on exactly the prior
+  three clips, with the same CPU compute type, thread count and seed.
+  Reuse the frozen turbo control, verify converted file hashes and audio
+  provenance before inference, and flag numeric/negation/word-time changes.
+  This compares checkpoint candidates; it is not a human-reference WER
+  measurement, a competition score, or a GPU latency qualification.
 
 ## ASR stream lifecycle check
 

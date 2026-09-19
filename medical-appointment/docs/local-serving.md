@@ -147,6 +147,15 @@ fast tokenizer for offline loading, preserves alignment heads, and checks
 word timestamps on a short training-audio prefix. Never overwrite the
 shared serving model or treat conversion success as an ASR quality win.
 
+After conversion, `probe_medical_asr.py` takes `--baseline`,
+`--turbo-diagnostic <prior-asr-hints-results>` and
+`--medical-preparation <conversion-report.json>`. Submit on CPU with the
+same eight reserved cores as the turbo diagnostic. It checks model/audio
+hashes and runtime compatibility, disables all hints/caching, and compares
+medical and generic full-v3 while retaining the prior turbo control.
+Review differences against audio; none of these transcripts is treated as
+human ground truth.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
