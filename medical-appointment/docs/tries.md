@@ -1332,6 +1332,12 @@ question. Fit only on training conversations, exclude all four demo
 sources, and evaluate five folds under seeds 13 and 37. Exact ties favor
 the existing baseline. Do not write a serving artifact or claim a gain
 from a full-data fit or a single seed.
+- **Outcome:** `duration-offset-cv-852753de` did not improve the matched
+350-question incumbent. Both seeds scored **0.7977** versus **0.7978**.
+Deltas were **-0.000164** (interval **[-0.001905, +0.001604]**) and
+**-0.000093** (interval **[-0.001858, +0.001617]**). Four folds per seed
+chose an additional 2.5% start trim; the others retained the baseline.
+Reject the added correction; keep the simpler qualified constant offset.
 
 ## ASR stream lifecycle check
 
