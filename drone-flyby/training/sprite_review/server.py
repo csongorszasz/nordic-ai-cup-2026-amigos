@@ -324,6 +324,29 @@ def flyby_remove(r: RemoveLabel):
     return {'ok': True, 'labels': rebuild_labels()}
 
 
+@app.get('/api/flyby/candidates/{frame}')
+def flyby_candidates(frame: int):
+    """The detector's tracks still waiting for a decision, with their box in this frame, so they can
+    be reviewed in the playback page as well as in /review."""
+    path = REVIEW / 'candidates.json'
+    if not path.exists():
+        return []
+    decisions = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
+    out = []
+    for c in json.loads(path.read_text())['candidates']:
+        if decisions.get(c['id'], {}).get('status') not in (None, 'unsure') or frame not in c['frames']:
+            continue
+        box = c['boxes'][c['frames'].index(frame)]
+        out.append({'id': c['id'], 'class': c['class'], 'score': c['score'], 'bbox': box,
+                    'best_frame': c['best_frame'], 'best_box': c['best_box']})
+    return out
+
+
+@app.post('/api/flyby/rebuild')
+def flyby_rebuild():
+    return {'ok': True, 'labels': rebuild_labels()}
+
+
 class ReviewDecision(BaseModel):
     id: str
     status: str                  # accepted | rejected | unsure | note | undecided

@@ -75,7 +75,9 @@
     detector saw in this view. <kbd>N</kbd> detections on/off. Any move key takes over the camera.<br>
     <b>Labelling (Copenhagen):</b> drag on the view to draw a box, pick its class next to the
     Helsinki examples, <kbd>Enter</kbd> saves. Click a label to select it, <kbd>X</kbd> removes it.
-    Every save rebuilds the labels for the whole flight.<br>
+    Every save rebuilds the labels for the whole flight.
+    Grey dashed boxes are detector tracks nobody has reviewed yet (<kbd>C</kbd> shows/hides them):
+    click one to accept it (<kbd>Enter</kbd>, fix the class first if needed) or reject it (<kbd>R</kbd>).<br>
     New runs: <code>python training/run_policy.py --scene helsinki --camera hybrid --model runs/&lt;run&gt;/weights/best.pt</code>
   </div>
 </aside>
@@ -91,7 +93,7 @@
     <div class="classes" id="pClasses"></div>
     <h2 id="pRefTitle">Helsinki labels of this class, framed the same way</h2>
     <div class="imgs" id="pRefs"></div>
-    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pCancel">Cancel (Esc)</button></div>
+    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pReject">Not an object (R)</button><button id="pCancel">Cancel (Esc)</button></div>
     <div class="msg" id="pMsg"></div>
   </div>
 </main>
@@ -148,6 +150,19 @@ function takeOver() {
 
 // Hand labelling: boxes drawn here go to /api/flyby/manual (Copenhagen only, test labels).
 let drag = null, drawn = null, drawnClass = null, selected = null, refs = null;
+const candidates = new Map();   // frame -> undecided detector tracks with their box there
+let showCands = true;
+async function frameCandidates(n) {
+  if (!canLabel() || !showCands) return [];
+  if (!candidates.has(n)) {
+    candidates.set(n, []);
+    candidates.set(n, await (await fetch(`/api/flyby/candidates/${n}`)).json());
+    dirty = true;
+  }
+  return candidates.get(n);
+}
+const area = b => (b[2] - b[0]) * (b[3] - b[1]);
+const inside = ([x, y], b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];
 const canLabel = () => source && source.name === 'validation_4k';
 function toSource(e) {
   const r = over.getBoundingClientRect(), [x1, y1, x2, y2] = current();
@@ -171,22 +186,27 @@ addEventListener('mouseup', e => {
   openPanel(box);
 });
 function selectAt([x, y]) {
+  // A candidate under the click opens it for review; otherwise a label gets selected.
+  const cands = (showCands && candidates.get(frames[index]) || []).filter(c => inside([x, y], c.bbox));
+  if (cands.length) { cands.sort((a, b) => area(a.bbox) - area(b.bbox)); openPanel(cands[0].bbox, cands[0]); return; }
   const hits = (labels.get(frames[index]) || []).filter(b => x >= b.bbox[0] && x <= b.bbox[2] && y >= b.bbox[1] && y <= b.bbox[3]);
   hits.sort((a, b) => (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1]) - (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1]));
   selected = hits.length ? hits[0].track : null;
   $('sNote').textContent = selected ? `selected ${hits[0].class} (${selected}): X removes it from the labels` : '';
   dirty = true;
 }
-async function openPanel(box) {
+async function openPanel(box, candidate = null) {
   playing = false;
-  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10) };
+  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10), candidate };
+  $('pReject').style.display = candidate ? '' : 'none';
   if (!refs) refs = await (await fetch('/api/flyby/references')).json();
   $('pDrawn').src = `/review/crop/${drawn.frame}.jpg?box=${drawn.box.join(',')}&side=300`;
   $('pClasses').innerHTML = refs.classes.map(c => `<button data-c="${c}" style="color:${colour(c)}">${c}</button>`).join('');
   for (const b of $('pClasses').children) b.onclick = () => pickClass(b.dataset.c);
-  $('pMsg').textContent = `${Math.round(box[2] - box[0])}×${Math.round(box[3] - box[1])} px in the 4K frame · frame ${drawn.frame}`;
+  $('pMsg').textContent = `${Math.round(box[2] - box[0])}×${Math.round(box[3] - box[1])} px in the 4K frame · frame ${drawn.frame}` +
+    (candidate ? ` · detector track ${candidate.id}, score ${candidate.score.toFixed(2)}: Enter accepts the whole track` : '');
   $('panel').style.display = 'block';
-  pickClass(drawnClass || refs.classes[0]);
+  pickClass(candidate ? candidate.class : drawnClass || refs.classes[0]);
   dirty = true;
 }
 function pickClass(c) {
@@ -213,11 +233,24 @@ async function post(url, body) {
   if (!r.ok) throw new Error(out.detail || r.status);
   return out;
 }
+async function decide(status) {
+  const c = drawn.candidate;
+  await post('/api/review/decide', { id: c.id, status, cls: status === 'accepted' && drawnClass !== c.class ? drawnClass : null,
+                                     best_frame: c.best_frame, best_box: c.best_box });
+  for (const list of candidates.values()) { const i = list.findIndex(x => x.id === c.id); if (i >= 0) list.splice(i, 1); }
+}
+async function rejectDrawn() {
+  if (!drawn || !drawn.candidate) return;
+  try { await decide('rejected'); closePanel(); $("sNote").textContent = "rejected"; }
+  catch (err) { $('pMsg').textContent = 'failed: ' + err.message; }
+}
 async function saveDrawn() {
   if (!drawn || !drawnClass) return;
   $('pMsg').textContent = 'saving and rebuilding the labels…';
   try {
-    const reply = await post('/api/flyby/manual', { frame: drawn.frame, box: drawn.box, cls: drawnClass });
+    let reply;
+    if (drawn.candidate) { await decide('accepted'); reply = await post('/api/flyby/rebuild', {}); }
+    else reply = await post('/api/flyby/manual', { frame: drawn.frame, box: drawn.box, cls: drawnClass });
     closePanel();
     await refreshLabels(reply);
   } catch (err) { $('pMsg').textContent = 'failed: ' + err.message; }
@@ -231,6 +264,7 @@ async function removeSelected() {
   } catch (err) { $('sNote').textContent = 'remove failed: ' + err.message; }
 }
 $('pSave').onclick = saveDrawn;
+$('pReject').onclick = rejectDrawn;
 $('pCancel').onclick = closePanel;
 
 function image(i) {
@@ -263,6 +297,7 @@ function setIndex(i) {
   $('scrub').value = index;
   for (let k = 1; k <= 4; k++) image((index + k) % frames.length);  // preload ahead
   frameLabels(frames[index]);
+  frameCandidates(frames[index]);
   dirty = true;
 }
 
@@ -335,6 +370,8 @@ function draw() {
   };
   if (showLabels) for (const b of boxes) drawBox(b.bbox, b.track === selected ? '#fff' : colour(b.class),
                                                  trace && showPred ? '' : b.class, b.track === selected ? 3 : 1, false);
+  if (canLabel() && showCands && !trace) for (const c of candidates.get(frames[index]) || [])
+    if (!drawn || drawn.candidate !== c) drawBox(c.bbox, '#b8c0cc', `? ${c.class}`, 1.5, true);
   if (drag) drawBox(norm(drag.from, drag.to), '#ffd23f', '', 2, true);
   if (drawn && drawn.frame === frames[index]) drawBox(drawn.box, '#ffd23f', drawnClass || '', 2, false);
   const s = step();
@@ -398,6 +435,7 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT') return;
   if (drawn) {  // the class panel is open: only its keys
     if (e.key === 'Enter') saveDrawn();
+    else if (e.key.toLowerCase() === 'r') rejectDrawn();
     else if (e.key === 'Escape') closePanel();
     e.preventDefault();
     return;
@@ -416,6 +454,7 @@ addEventListener('keydown', e => {
   else if (key === 'ArrowLeft') setIndex(index - 1);
   else if (key === 'b') { showLabels = !showLabels; dirty = true; }
   else if (key === 'n') { showPred = !showPred; dirty = true; }
+  else if (key === 'c') { showCands = !showCands; frameCandidates(frames[index]); dirty = true; }
 });
 addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
 addEventListener('blur', () => held.clear());
@@ -433,7 +472,7 @@ for (const el of document.querySelectorAll('button, input')) el.addEventListener
 function pick(name) {
   source = sources.find(s => s.name === name);
   frames = source.frames;
-  images.clear(); labels.clear();
+  images.clear(); labels.clear(); candidates.clear();
   $('scrub').max = frames.length - 1;
   level = 0; cursor = [1920, 1080]; trace = null;
   const mine = traces.filter(t => t.scene === name);
