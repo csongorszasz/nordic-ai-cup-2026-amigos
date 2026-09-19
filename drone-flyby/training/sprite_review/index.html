@@ -30,7 +30,7 @@
   .info { color:var(--muted); }
   .btns { display:flex; flex-wrap:wrap; gap:6px; }
   button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
-  button:hover { border-color:#666; } kbd { font-size:11px; color:var(--muted); margin-left:4px; }
+  button:hover { border-color:#666; } .mode { color:#ffd33d; font-size:12px; margin-left:6px; } kbd { font-size:11px; color:var(--muted); margin-left:4px; }
   .help { color:var(--muted); font-size:12px; line-height:1.6; }
   .status { font-weight:600; }
 </style>
@@ -69,7 +69,7 @@
     <button id="bReject">Reject<kbd>R</kbd></button>
     <button id="bDraw">Draw outline<kbd>D</kbd></button>
     <button id="bSavePoly">Save outline<kbd>Enter</kbd></button>
-    <button id="bAddPoly">Add to mask<kbd>+</kbd></button>
+    <button id="bAddPoly">Add to mask<kbd>+</kbd></button><span id="mode" class="mode"></span>
     <button id="bCutPoly">Cut from mask<kbd>-</kbd></button>
     <button id="bUndo">Undo point<kbd>⌫</kbd></button>
     <button id="bReset">Reset to auto<kbd>U</kbd></button>
@@ -84,7 +84,7 @@
   </div>
 </section>
 <script>
-let items = [], cls = null, current = null, showMask = true, drawing = false, points = [];
+let items = [], cls = null, current = null, showMask = true, drawing = false, points = [], drawMode = 'replace';
 const $ = id => document.getElementById(id);
 const canvas = $('canvas'), ctx = canvas.getContext('2d');
 let cropImg = null, maskCanvas = null, scale = 1;
@@ -153,7 +153,7 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
   const [x1, y1, x2, y2] = current.bbox;
-  if (showMask && !drawing) {
+  if (showMask && (!drawing || drawMode !== 'replace')) {
     const [px, py] = toCanvas(x1, y1);
     ctx.drawImage(maskCanvas, px, py, (x2 - x1) * scale, (y2 - y1) * scale);
   }
@@ -161,7 +161,8 @@ function draw() {
   const [bx, by] = toCanvas(x1, y1); ctx.strokeRect(bx, by, (x2 - x1) * scale, (y2 - y1) * scale);
   ctx.setLineDash([]);
   if (points.length) {
-    ctx.strokeStyle = '#00ff88'; ctx.fillStyle = '#00ff88'; ctx.lineWidth = 2; ctx.beginPath();
+    const colour = { replace: '#00ff88', add: '#00ff88', subtract: '#ff4d4d' }[drawMode];   // green adds, red cuts
+    ctx.strokeStyle = colour; ctx.fillStyle = colour; ctx.lineWidth = 2; ctx.beginPath();
     points.forEach(([x, y], i) => { const [cx, cy] = toCanvas(x, y); i ? ctx.lineTo(cx, cy) : ctx.moveTo(cx, cy); });
     ctx.stroke();
     points.forEach(([x, y]) => { const [cx, cy] = toCanvas(x, y); ctx.fillRect(cx - 3, cy - 3, 6, 6); });
@@ -185,11 +186,18 @@ async function save(status, polygon = null, mode = 'replace') {
   const res = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ file: current.file, status, polygon, mode }) });
   if (!res.ok) { alert(await res.text()); return; }
+  $('mode').textContent = '';
   const file = current.file; await load();
   const it = items.find(i => i.file === file);
   if (status === 'accepted' || status === 'rejected') step(1, it); else open(it);
 }
-function savePolygon(mode = 'replace') { if (points.length < 3) return; drawing = false; save('manual', points, mode); }
+function savePolygon(mode = drawMode) { if (points.length < 3) return; drawing = false; save('manual', points, mode); }
+function startDraw(mode) {   // each button draws in its own mode: replace the mask, add to it or cut from it
+  if (!current) return;
+  drawMode = mode; drawing = true; points = [];
+  $('mode').textContent = { replace: 'drawing a new outline', add: 'drawing a region to ADD', subtract: 'drawing a region to CUT' }[mode];
+  draw();
+}
 function step(dir, from = current) {
   const list = items.filter(i => i.class === cls);
   const idx = list.findIndex(i => i.file === (from && from.file));
@@ -198,10 +206,10 @@ function step(dir, from = current) {
 
 $('bAccept').onclick = () => save('accepted');
 $('bReject').onclick = () => save('rejected');
-$('bDraw').onclick = () => { if (!current) return; drawing = true; points = []; draw(); };
-$('bSavePoly').onclick = () => savePolygon('replace');
-$('bAddPoly').onclick = () => savePolygon('add');
-$('bCutPoly').onclick = () => savePolygon('subtract');
+$('bDraw').onclick = () => startDraw('replace');
+$('bSavePoly').onclick = () => (drawing ? savePolygon() : startDraw('replace'));
+$('bAddPoly').onclick = () => (drawing && drawMode === 'add' ? savePolygon() : startDraw('add'));
+$('bCutPoly').onclick = () => (drawing && drawMode === 'subtract' ? savePolygon() : startDraw('subtract'));
 $('bUndo').onclick = () => { points.pop(); draw(); };
 $('bReset').onclick = () => save('auto');
 $('bMask').onclick = () => { showMask = !showMask; draw(); };
@@ -214,11 +222,11 @@ document.addEventListener('keydown', ev => {
   if (k === 'a' || k === 'A') save('accepted');
   else if (k === 'r' || k === 'R') save('rejected');
   else if (k === 'd' || k === 'D') $('bDraw').onclick();
-  else if (k === 'Enter') savePolygon('replace');
-  else if (k === '+') savePolygon('add');
-  else if (k === '-') savePolygon('subtract');
+  else if (k === 'Enter') savePolygon();
+  else if (k === '+') (drawing && drawMode === 'add' ? savePolygon() : startDraw('add'));
+  else if (k === '-') (drawing && drawMode === 'subtract' ? savePolygon() : startDraw('subtract'));
   else if (k === 'Backspace') { ev.preventDefault(); $('bUndo').onclick(); }
-  else if (k === 'Escape') { drawing = false; points = []; draw(); }
+  else if (k === 'Escape') { drawing = false; points = []; $('mode').textContent = ''; draw(); }
   else if (k === 'u' || k === 'U') save('auto');
   else if (k === 'm' || k === 'M') $('bMask').onclick();
   else if (k === 'ArrowRight') step(1);
