@@ -70,6 +70,10 @@ GROUPS = [
 # views); the mesh renders are ~144 and ~28, NAIP ~159 and ~31.
 GRADE_MEAN = (80, 115)
 GRADE_SATURATION = (80, 135)
+# Gamma on the pasted objects, per scene. The Copenhagen objects are darker than the Helsinki
+# ones against a ground about as bright (median L 60 -> 37 for tanks, darkest fifth 32 -> 14):
+# gamma 1.4-2.0 per class. 1 keeps the Helsinki look.
+OBJECT_SHADE = (1.0, 2.0)
 MAX_GAIN = 1.4  # lighting match: more than this turned the near-black hangars neon yellow
 MAX_SATURATION_BOOST = 2.5  # beyond this, colour noise and casts dominate
 # Objects on a ground mask keep this far from anything that is not open ground (walls, trees),
@@ -204,8 +208,8 @@ def transform_sprite(sprite: np.ndarray, rng: random.Random):
     return rotated[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 
 
-def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random.Random):
-    """Nudge the sprite towards the local exposure, then jitter it a little."""
+def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random.Random, shade: float = 1.0):
+    """Nudge the sprite towards the local exposure, darken it by the scene's shade, jitter it a little."""
     rgb = sprite[:, :, :3].astype(np.float32)
     alpha = sprite[:, :, 3:4].astype(np.float32) / 255.0
     visible = alpha > 0.5
@@ -214,11 +218,14 @@ def match_lighting(sprite: np.ndarray, background_patch: np.ndarray, rng: random
 
     sprite_mean = float((rgb * alpha).sum() / max(alpha.sum() * 3, 1))
     background_mean = float(background_patch.mean())
-    blend = rng.uniform(0.35, 0.75)  # partly match the scene, keep some of the model's own tone
+    blend = rng.uniform(0.0, 0.4)  # partly match the scene, keep most of the model's own tone
     gain = (background_mean * blend + sprite_mean * (1 - blend)) / max(sprite_mean, 1e-3)
     gain = min(max(gain, 1 / MAX_GAIN), MAX_GAIN)
     rgb *= gain * rng.uniform(0.92, 1.08)
     rgb += rng.uniform(-10, 10)
+    # Darker objects with deeper shadows, as in the Copenhagen recording: a gamma on each
+    # channel, so the darks drop more than the highlights and the shape stays readable.
+    rgb = 255 * (np.clip(rgb, 0, 255) / 255) ** (shade * rng.uniform(0.9, 1.1))
 
     if rng.random() < 0.5:  # mild colour cast, the models are re-lit per scene
         rgb *= np.array([rng.uniform(0.94, 1.06) for _ in range(3)], np.float32)
@@ -334,6 +341,7 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
     angle = rng.uniform(0, 2 * math.pi)  # one sun direction per frame
     distance = rng.uniform(2, 6)
     shadow = (int(round(math.cos(angle) * distance)), int(round(math.sin(angle) * distance)))
+    shade = rng.uniform(*OBJECT_SHADE)  # one for all the objects in the scene, as one light falls on them
 
     annotations, placed = [], []
     wanted = list(classes or [])
@@ -367,7 +375,7 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
             box = [x, y, x + w, y + h]
             if overlaps(box, placed) or not on_ground(ground, box):
                 continue
-            lit = match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng)
+            lit = match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng, shade)
             pasted = paste(canvas, lit, x, y, shadow, rng)
             if pasted is None:
                 continue
