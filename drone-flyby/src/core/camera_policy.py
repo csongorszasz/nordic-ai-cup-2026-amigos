@@ -2,10 +2,10 @@
 
 import logging
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Deque, Dict, List, Optional, Set, Tuple
 from config import DroneFlybyConfig
-from core.belief import BeliefField
+from core.belief import BeliefField, CandidateView
 from core.interfaces import BaseCameraPolicy, TrackerSummary
 from dtos import (
     IMAGE_HEIGHT,
@@ -75,11 +75,12 @@ class CameraConstraintGuard:
         #    exempt; the old check also skipped it whenever
         #    full_view_reset_exempt_from_delta was true, which is always, so a
         #    3304 px L2 move passed a 551 px limit.
-        is_l0_reset = target_level == 0 and clamped_x == 1920 and clamped_y == 1080
+        is_l0_reset = (target_level == 0 and clamped_x == 1920 and clamped_y == 1080
+                       and constraints.full_view_reset_exempt_from_delta)
         if not is_l0_reset:
-            max_delta = constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
-                current.resolution_level, 551.0
-            )
+            max_delta = constraints.maximum_center_delta
+            if max_delta is None:
+                max_delta = MAXIMUM_CENTER_DELTA_PIXELS.get(current.resolution_level, 551.0)
             current_center = (float(current.center_x), float(current.center_y))
 
             def distance(point: Tuple[float, float]) -> float:
@@ -440,7 +441,10 @@ class ActiveCoveragePolicy(BaseCameraPolicy):
     ) -> Optional[RequestedViewDto]:
         state = self._state_for(request.sequence_id)
         current = request.view
-        candidate = tuple(tracker_summary.unscanned_clusters[0]) if tracker_summary.unscanned_clusters else None
+        candidate = (
+            tuple(tracker_summary.unscanned_clusters[0])
+            if self.allow_l2 and tracker_summary.unscanned_clusters else None
+        )
 
         # Leaving L2 always steps down to L1 first.
         if current.resolution_level == 2:
@@ -471,6 +475,7 @@ class _BeliefPolicyState:
 
     field: BeliefField
     last_l2_frame: int = -1000
+    last_frame_index: Optional[int] = None
 
 
 class BeliefVoIPolicy(BaseCameraPolicy):
@@ -493,6 +498,7 @@ class BeliefVoIPolicy(BaseCameraPolicy):
         l2_min_interval: int = 4,
         min_track_existence: float = 0.20,
         zoom_bias: float = 1.0,
+        coverage_max_age_frames: int = 12,
     ):
         self.cell_size = cell_size
         self.explore_weight = explore_weight
@@ -501,6 +507,7 @@ class BeliefVoIPolicy(BaseCameraPolicy):
         self.l2_min_interval = max(1, int(l2_min_interval))
         self.min_track_existence = min_track_existence
         self.zoom_bias = zoom_bias
+        self.coverage_max_age_frames = coverage_max_age_frames
         self._states: Dict[str, _BeliefPolicyState] = {}
 
     # -- state ---------------------------------------------------------- #
@@ -512,6 +519,7 @@ class BeliefVoIPolicy(BaseCameraPolicy):
             verify_weight=self.verify_weight,
             travel_weight=self.travel_weight,
             min_track_existence=self.min_track_existence,
+            max_age_frames=self.coverage_max_age_frames,
         )
 
     def reset(self, sequence_id: str) -> None:
@@ -519,9 +527,9 @@ class BeliefVoIPolicy(BaseCameraPolicy):
         logger.info("BeliefVoIPolicy reset for sequence '%s'", sequence_id)
 
     def _state_for(self, sequence_id: str) -> _BeliefPolicyState:
-        return self._states.setdefault(
-            sequence_id, _BeliefPolicyState(field=self._make_field())
-        )
+        if sequence_id not in self._states:
+            self._states[sequence_id] = _BeliefPolicyState(field=self._make_field())
+        return self._states[sequence_id]
 
     def coverage_fraction(self, sequence_id: str, level: int) -> float:
         """Exposed for tests and offline analysis."""
@@ -576,6 +584,31 @@ class BeliefVoIPolicy(BaseCameraPolicy):
 
     # -- decision ------------------------------------------------------- #
 
+    def _best_reachable(
+        self, request, field, tracks, level, current_center, max_delta,
+        include_exploration=True,
+    ) -> Optional[CandidateView]:
+        candidates = field.build_candidates(
+            level, current_center, tracks, max_delta, self._bounds(request, level),
+            include_exploration=include_exploration, top_k=128,
+        )
+        reachable = []
+        seen = set()
+        for candidate in candidates:
+            command = self._build(request, level, (candidate.center_x, candidate.center_y))
+            if command is None:
+                continue
+            center = (command.center_x, command.center_y)
+            if center in seen:
+                continue
+            region = field._region_for(level, center)
+            if candidate.kind == "verify" and field.track_value_in_region(region, level, tracks) <= 0:
+                continue
+            seen.add(center)
+            value = field.value_of_information(level, center, current_center, max_delta, tracks, region)
+            reachable.append(CandidateView(level, *center, value, candidate.kind))
+        return max(reachable, key=lambda candidate: candidate.value) if reachable else None
+
     def decide_next_view(
         self,
         request: DroneFlybyPredictRequestDto,
@@ -587,12 +620,20 @@ class BeliefVoIPolicy(BaseCameraPolicy):
         constraints = request.camera_constraints
         current_level = int(current.resolution_level)
         current_center = (int(current.center_x), int(current.center_y))
-        tracks = list(tracker_summary.track_beliefs)
+        gap = max(1, request.frame_index - state.last_frame_index) if state.last_frame_index is not None else 1
+        state.last_frame_index = request.frame_index
+        shift = tracker_summary.current_shift_estimate
+        tracks = [
+            replace(track, center_x=track.center_x + shift[0] * gap,
+                    center_y=track.center_y + shift[1] * gap)
+            for track in tracker_summary.track_beliefs
+        ]
         max_delta = constraints.maximum_center_delta or MAXIMUM_CENTER_DELTA_PIXELS.get(
             current_level, 551.0
         )
 
         # The current view is now knowledge, whatever we decide next.
+        belief_field.advance_to(request.frame_index, shift)
         belief_field.mark_observed(
             current.source_region_xyxy, current_level, request.frame_index
         )
@@ -608,8 +649,8 @@ class BeliefVoIPolicy(BaseCameraPolicy):
             l1_bounds = self._bounds(request, 1)
             if l1_bounds is None:
                 return None
-            candidate = belief_field.best_candidate(
-                1, current_center, tracks, max_delta, l1_bounds
+            candidate = self._best_reachable(
+                request, belief_field, tracks, 1, current_center, max_delta
             )
             if candidate is None:
                 return None
@@ -630,18 +671,14 @@ class BeliefVoIPolicy(BaseCameraPolicy):
                 )
             ]
             l2_bounds = self._bounds(request, 2)
-            verify = belief_field.best_candidate(
-                2,
-                current_center,
-                in_view_tracks,
-                max_delta,
-                l2_bounds,
+            verify = self._best_reachable(
+                request, belief_field, in_view_tracks, 2, current_center, max_delta,
                 include_exploration=False,
             )
             if verify is not None:
                 l1_bounds = self._bounds(request, 1)
-                l1_move = belief_field.best_candidate(
-                    1, current_center, tracks, max_delta, l1_bounds
+                l1_move = self._best_reachable(
+                    request, belief_field, tracks, 1, current_center, max_delta
                 )
                 l1_value = l1_move.value if l1_move is not None else 0.0
                 if verify.value >= self.zoom_bias * l1_value:
@@ -663,12 +700,66 @@ class BeliefVoIPolicy(BaseCameraPolicy):
         l1_bounds = self._bounds(request, 1)
         if l1_bounds is None:
             return None
-        candidate = belief_field.best_candidate(
-            1, current_center, tracks, max_delta, l1_bounds
+        candidate = self._best_reachable(
+            request, belief_field, tracks, 1, current_center, max_delta
         )
         if candidate is None:
             return None
         return self._build(request, 1, (candidate.center_x, candidate.center_y))
+
+
+@dataclass
+class _AdaptiveState:
+    last_wide_frame: int = 0
+    weak_wide_frames: int = 0
+    exploring: bool = False
+
+
+class AdaptiveCameraPolicy(BaseCameraPolicy):
+    """Keep useful full views; explore when current detector evidence is weak."""
+
+    def __init__(
+        self, explorer: Optional[BaseCameraPolicy] = None,
+        min_confident_classes: int = 4, confidence: float = 0.3, survey_interval: int = 12,
+    ):
+        if min_confident_classes < 1 or survey_interval < 1 or not 0 <= confidence <= 1:
+            raise ValueError("Adaptive policy requires positive counts/intervals and confidence in [0, 1]")
+        self.explorer = explorer if explorer is not None else BeliefVoIPolicy()
+        self.min_confident_classes = min_confident_classes
+        self.confidence = confidence
+        self.survey_interval = survey_interval
+        self._states: Dict[str, _AdaptiveState] = {}
+
+    def reset(self, sequence_id: str) -> None:
+        self._states[sequence_id] = _AdaptiveState()
+        self.explorer.reset(sequence_id)
+
+    def decide_next_view(
+        self, request: DroneFlybyPredictRequestDto, tracker_summary: TrackerSummary,
+    ) -> Optional[RequestedViewDto]:
+        state = self._states.setdefault(request.sequence_id, _AdaptiveState())
+        current = request.view
+        if current.resolution_level == 0:
+            state.last_wide_frame = request.frame_index
+            confident_classes = sum(
+                confidence >= self.confidence
+                for confidence in tracker_summary.fresh_class_confidences.values()
+            )
+            if confident_classes >= self.min_confident_classes:
+                state.weak_wide_frames = 0
+                state.exploring = False
+                return None
+            state.weak_wide_frames += 1
+            if not state.exploring and state.weak_wide_frames < 2:
+                return None
+            state.exploring = True
+        elif request.frame_index - state.last_wide_frame >= self.survey_interval:
+            level = 1 if current.resolution_level == 2 else 0
+            center = (current.center_x, current.center_y) if level else (IMAGE_WIDTH // 2, IMAGE_HEIGHT // 2)
+            return CameraConstraintGuard.clamp_and_validate(
+                request, RequestedViewDto(resolution_level=level, center_x=center[0], center_y=center[1]),
+            )
+        return self.explorer.decide_next_view(request, tracker_summary)
 
 
 def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
@@ -682,18 +773,24 @@ def create_camera_policy(config: DroneFlybyConfig) -> BaseCameraPolicy:
     elif config.POLICY_TYPE == "deterministic_l1":
         # Coverage-only baseline: legal overlapping L1 sweep, never zooms.
         return ActiveCoveragePolicy(l2_interval_frames=1, allow_l2=False)
-    elif config.POLICY_TYPE == "belief_voi":
-        return BeliefVoIPolicy(
+    elif config.POLICY_TYPE in ("belief_voi", "adaptive"):
+        explorer = BeliefVoIPolicy(
             cell_size=config.BELIEF_CELL_SIZE,
             explore_weight=config.BELIEF_EXPLORE_WEIGHT,
             verify_weight=config.BELIEF_VERIFY_WEIGHT,
             travel_weight=config.BELIEF_TRAVEL_WEIGHT,
             l2_min_interval=config.BELIEF_L2_MIN_INTERVAL,
             min_track_existence=config.MIN_EXISTENCE,
+            coverage_max_age_frames=config.BELIEF_MAX_AGE_FRAMES,
         )
+        if config.POLICY_TYPE == "adaptive":
+            return AdaptiveCameraPolicy(
+                explorer, min_confident_classes=config.ADAPTIVE_MIN_CONFIDENT_CLASSES,
+                confidence=config.SINGLE_HIT_CONFIRM_CONFIDENCE,
+                survey_interval=config.ADAPTIVE_SURVEY_INTERVAL,
+            )
+        return explorer
     elif config.POLICY_TYPE in ("active_coverage", "belief_map"):
         return ActiveCoveragePolicy(l2_interval_frames=max(1, config.SURVEY_INTERVAL_FRAMES))
     else:
-        logger.warning("Unknown policy type '%s', falling back to HoldCameraPolicy", config.POLICY_TYPE)
-        return HoldCameraPolicy()
-
+        raise ValueError(f"Unknown camera policy: {config.POLICY_TYPE!r}")

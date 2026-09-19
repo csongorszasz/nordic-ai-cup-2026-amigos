@@ -45,7 +45,9 @@ from utils import (  # noqa: E402
     load_annotations,
     load_frame,
     source_bbox_to_view,
+    scene_directory,
 )
+from offline.dataset_provenance import assert_training_source, mark_training_dataset, split_source_frames
 
 # A label is kept only if at least this fraction of the object's area survives
 # the crop. Slivers produce noisy boxes that hurt more than they help.
@@ -151,7 +153,10 @@ def build_exact_view_dataset(
     step_fraction: float = 0.5,
 ) -> Path:
     """Render exact views and write a YOLO dataset. Returns the data.yaml path."""
+    assert_training_source(scene_directory(scene))
+    source_splits = split_source_frames(frame_numbers(scene), val_fraction)
     dataset_dir = output_dir / "drone_flyby_exact"
+    mark_training_dataset(dataset_dir)
     dirs = {
         split: {
             "images": dataset_dir / "images" / split,
@@ -165,9 +170,6 @@ def build_exact_view_dataset(
 
     grids = {level: grid_centers(level, step_fraction) for level in levels}
 
-    # Deterministic spatial split: interleave samples rather than splitting
-    # adjacent frames, so train and val see different camera positions.
-    val_every = max(1, int(round(1.0 / val_fraction))) if val_fraction > 0 else 0
     manifest: List[Dict] = []
     counts = {"train": 0, "val": 0, "empty": 0}
     sample_index = 0
@@ -180,7 +182,7 @@ def build_exact_view_dataset(
                 sample_index += 1
                 continue
 
-        split = "val" if val_every and sample_index % val_every == 0 else "train"
+        split = source_splits[frame]
         stem = f"L{level}_f{frame:06d}_x{center_x}_y{center_y}"
         image_path = dirs[split]["images"] / f"{stem}.png"
         label_path = dirs[split]["labels"] / f"{stem}.txt"
@@ -194,13 +196,15 @@ def build_exact_view_dataset(
                 "frame": frame,
                 "center": [center_x, center_y],
                 "objects": len(labels),
+                "scene": scene,
+                "source_group": f"{scene}:{frame}",
             }
         )
         sample_index += 1
 
     data_yaml = dataset_dir / "drone_flyby_exact.yaml"
     data_yaml.write_text(
-        "path: {}\n".format(dataset_dir.as_posix())
+        "path: {}\n".format(dataset_dir.resolve().as_posix())
         + "train: images/train\n"
         + "val: images/val\n"
         + "names:\n"

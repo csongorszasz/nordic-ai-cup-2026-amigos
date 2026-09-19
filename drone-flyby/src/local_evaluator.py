@@ -32,7 +32,8 @@ import json
 import math
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import cv2
@@ -310,9 +311,10 @@ def replay(
     realtime: bool,
     simulate_latency_ms: float,
     verbose: bool,
+    evaluation_frames: Optional[Sequence[int]] = None,
 ) -> Tuple[Dict[int, List[dict]], Statistics]:
     """Send frames to the endpoint and collect its detections per frame."""
-    frames = frame_numbers(scene)
+    frames = list(evaluation_frames) if evaluation_frames is not None else frame_numbers(scene)
     statistics = Statistics(frames_total=len(frames))
     predictions: Dict[int, List[dict]] = {}
     camera = Camera()
@@ -321,12 +323,23 @@ def replay(
 
     interval = FRAME_INTERVAL_SECONDS
     timeout = RESPONSE_TIMEOUT_SECONDS
+    # Disk decoding is replay setup, not endpoint latency.
+    images = {frame: load_frame(frame, scene) for frame in frames} if realtime else {}
     started = time.monotonic()
     frame_index = 0
 
     while frame_index < len(frames):
+        if realtime:
+            remaining = started + frame_index * interval - time.monotonic()
+            if remaining > 0:
+                time.sleep(remaining)
+            latest_index = max(frame_index, int((time.monotonic() - started) / interval))
+            statistics.frames_skipped += min(latest_index, len(frames)) - frame_index
+            frame_index = latest_index
+            if frame_index >= len(frames):
+                break
         frame = frames[frame_index]
-        image = load_frame(frame, scene)
+        image = images[frame] if realtime else load_frame(frame, scene)
         encoded_image = render_view(image, camera)
         payload = build_request(frame, frame_index, camera, encoded_image, feedback)
 
@@ -433,18 +446,7 @@ def replay(
                         }
                         print(f'frame {frame}: camera command refused: {exc}')
 
-        if not realtime:
-            frame_index += 1
-            continue
-
-        # The clock owns the sequence: frame i exists at start + i * interval,
-        # and only the newest emitted frame is ever sent.
-        elapsed = time.monotonic() - started
-        next_index = max(frame_index + 1, int(elapsed / interval))
-        # Only count frames that actually exist; the last jump can overshoot.
-        counted = min(next_index, len(frames))
-        statistics.frames_skipped += max(0, counted - (frame_index + 1))
-        frame_index = next_index
+        frame_index += 1
 
     return predictions, statistics
 
@@ -456,12 +458,24 @@ def replay(
 def score(
     scene: str,
     predictions: Dict[int, List[dict]],
+    evaluation_frames: Optional[Sequence[int]] = None,
 ) -> Tuple[float, Dict[str, float]]:
     """Calculate COCO mAP at IoU 0.50, the way the evaluation service does."""
+    frames = list(evaluation_frames) if evaluation_frames is not None else frame_numbers(scene)
+    if not frames or len(set(frames)) != len(frames):
+        raise ValueError('Scored frames must be a nonempty, unique sequence')
+    ground_truth = {frame: load_annotations(frame, scene) for frame in frames}
+    return score_ground_truth(ground_truth, predictions)
+
+
+def score_ground_truth(
+    ground_truth: Dict[int, List[dict]],
+    predictions: Dict[int, List[dict]],
+) -> Tuple[float, Dict[str, float]]:
+    """Score a fixed labeled frame set, including frames with no predictions."""
     from faster_coco_eval import COCO, COCOeval_faster
 
-    frames = frame_numbers(scene)
-    ground_truth = {frame: load_annotations(frame, scene) for frame in frames}
+    frames = list(ground_truth)
 
     present_classes = {
         annotation['object_id']
@@ -495,7 +509,7 @@ def score(
             annotation_id += 1
 
     coco_ground_truth = {
-        'info': {'description': f'Drone flyby - {scene}'},
+        'info': {'description': 'Drone flyby'},
         'licenses': [],
         'images': [
             {
@@ -649,6 +663,7 @@ def main() -> int:
         'Should print 1.000 and proves the scorer agrees with the data.',
     )
     parser.add_argument('--verbose', action='store_true', help='Log every frame.')
+    parser.add_argument('--output-json', type=Path, help='Persist score, predictions and timing counters.')
     parser.add_argument(
         '--trajectory',
         action='store_true',
@@ -719,6 +734,16 @@ def main() -> int:
             )
         print()
     print(f'COCO mAP@0.50: {coco_map_50:.3f}')
+    if arguments.output_json is not None:
+        arguments.output_json.parent.mkdir(parents=True, exist_ok=True)
+        arguments.output_json.write_text(json.dumps({
+            'scene': arguments.scene,
+            'realtime': arguments.realtime,
+            'map50': coco_map_50,
+            'per_class': ap_by_class,
+            'predictions': predictions,
+            'statistics': asdict(statistics) if statistics is not None else None,
+        }, indent=2), encoding='utf-8')
     if statistics is not None and not arguments.realtime:
         print(
             'This is the offline number. Run with --realtime to see what the '

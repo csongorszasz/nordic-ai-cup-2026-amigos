@@ -1,0 +1,38 @@
+{
+  "status": "reviewed-for-composite-audit",
+  "review_type": "Assistant visual inspection of original crops and checkerboard-mask previews",
+  "review_date": "2026-09-19",
+  "default_source": "initial",
+  "sources": {
+    "initial": {
+      "experiment": "foreground-mask-001",
+      "manifest": "runs/foreground_bank/manifest.json",
+      "sha256": "07dfa7628eee8563e3fc3dba4d0106dd4745addacac2f1b48014e23440cbbcaa"
+    },
+    "refined": {
+      "experiment": "foreground-mask-002",
+      "manifest": "runs/foreground_bank/manifest.json",
+      "sha256": "58c124657d470a899eb7c8cc1b22f05a3b4ee6bd63042b488b3120b541659190"
+    }
+  },
+  "class_sources": {
+    "small_launcher": "refined",
+    "small_tower": "refined"
+  },
+  "accepted_classes": [
+    "hangar", "helicopter", "jet_plane", "large_launcher", "large_tower",
+    "medium_launcher", "medium_plane", "mine_roller", "small_launcher",
+    "small_plane", "small_tower", "ta-ta", "tank", "condor", "jammer", "spacecraft"
+  ],
+  "annotation_convention": "Preserve the source annotation canvas, including transparent margins; do not replace it with the tight mask envelope.",
+  "review_notes": {
+    "small_launcher": "Refined center/corner prompts remove the disconnected peach background fragments.",
+    "small_tower": "Refined mask retains the green upper surface and light structural base; thin-edge/base ambiguity remains.",
+    "remaining_classes": "Proposed silhouettes remove the external source-background rectangle while preserving visible primary structure."
+  },
+  "limitations": [
+    "SAM proposals plus visual review are not independently annotated pixel ground truth.",
+    "Thin structures and boundary pixels remain uncertain.",
+    "Assets still share the supplied training instances; this audit tests context and compositing robustness, not unseen object appearances."
+  ]
+}

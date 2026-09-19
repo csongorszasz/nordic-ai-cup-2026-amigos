@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import shutil
 import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
@@ -21,6 +23,7 @@ if str(SRC_ROOT) not in sys.path:
 REPO_ROOT = SRC_ROOT.parent
 
 from dtos import OBJECT_CLASSES
+from offline.dataset_provenance import assert_training_source, assert_training_yaml, mark_training_dataset, split_source_frames
 
 
 try:
@@ -33,6 +36,81 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp"}
+
+
+def save_ap50_checkpoint(trainer) -> None:
+    """Keep AP50's winner separately from the library's AP50:95 winner."""
+    metric = float(trainer.metrics["metrics/mAP50(B)"])
+    if not math.isfinite(metric):
+        raise ValueError(f"Non-finite validation AP50 at epoch {trainer.epoch}")
+    destination = Path(trainer.save_dir) / "weights" / "best_ap50.pt"
+    metadata = destination.with_suffix(".json")
+    previous = json.loads(metadata.read_text())["map50"] if metadata.is_file() else -1.0
+    if metric <= previous:
+        return
+    shutil.copy2(trainer.last, destination)
+    metadata.write_text(json.dumps({
+        "epoch": trainer.epoch + 1, "map50": metric,
+        "selection_scope": "source-frame development split, not competition AP",
+    }, indent=2), encoding="utf-8")
+
+
+def _optimizer_step_range(optimizer):
+    steps = []
+    for state in optimizer.state.values():
+        if "step" not in state:
+            continue
+        value = state["step"]
+        step = float(value.item() if hasattr(value, "item") else value)
+        if not math.isfinite(step) or step < 0 or not step.is_integer():
+            raise ValueError("Optimizer step counters must be finite nonnegative integers")
+        steps.append(int(step))
+    return {"min": min(steps), "max": max(steps), "parameters": len(steps)} if steps else None
+
+
+def start_training_budget(trainer) -> None:
+    trainer._drone_minibatches = 0
+    trainer._drone_initial_steps = _optimizer_step_range(trainer.optimizer)
+    trainer._drone_data_budget = {
+        "training_samples": len(trainer.train_loader.dataset),
+        "batches_per_epoch": len(trainer.train_loader),
+    }
+
+
+def count_training_batch(trainer) -> None:
+    trainer._drone_minibatches += 1
+
+
+def save_training_budget(trainer) -> None:
+    report = {
+        **trainer._drone_data_budget,
+        "minibatches_processed_this_run": trainer._drone_minibatches,
+        "optimizer_step_counters_before": trainer._drone_initial_steps,
+        "optimizer_step_counters_after": _optimizer_step_range(trainer.optimizer),
+        "batch_size": int(trainer.batch_size),
+        "nominal_batch_size": int(trainer.args.nbs),
+        "final_gradient_accumulation": int(trainer.accumulate),
+        "start_epoch_index": int(trainer.start_epoch),
+        "last_epoch_index": int(trainer.epoch),
+        "epochs_requested": int(trainer.epochs),
+        "optimizer": type(trainer.optimizer).__name__,
+        "counter_scope": (
+            "Per-process minibatches are observed separately from cumulative per-parameter optimizer "
+            "step counters. Optimizer counters can include resumed history; null means unavailable."
+        ),
+    }
+    destination = Path(trainer.save_dir) / "training_budget.json"
+    temporary = destination.with_suffix(".tmp")
+    temporary.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(destination)
+    print(f"Observed training budget: {json.dumps(report)}", flush=True)
+
+
+def register_training_callbacks(model) -> None:
+    model.add_callback("on_fit_epoch_end", save_ap50_checkpoint)
+    model.add_callback("on_train_start", start_training_budget)
+    model.add_callback("on_train_batch_end", count_training_batch)
+    model.add_callback("on_train_end", save_training_budget)
 
 
 def _iter_images(images_dir: Path) -> Iterable[Path]:
@@ -64,7 +142,13 @@ def build_dataset_layout(
     validation_split: float = 0.2,
 ) -> Path:
     """Build a YOLO-style dataset tree from the supplied resources."""
+    assert_training_source(helsinki_scene_dir)
+    if pseudo_labeled_dir is not None:
+        assert_training_source(pseudo_labeled_dir)
+        if not pseudo_labeled_dir.is_dir():
+            raise FileNotFoundError(f"Pseudo-label training directory does not exist: {pseudo_labeled_dir}")
     dataset_dir = output_dir / "drone_flyby_dataset"
+    mark_training_dataset(dataset_dir)
     images_train = dataset_dir / "images" / "train"
     labels_train = dataset_dir / "labels" / "train"
     images_val = dataset_dir / "images" / "val"
@@ -75,15 +159,15 @@ def build_dataset_layout(
 
     # Supplied Helsinki labels.
     images = list(_iter_images(helsinki_scene_dir / "images"))
-    split_index = max(1, int(round(len(images) * (1.0 - validation_split))))
-    train_images = images[:split_index]
-    val_images = images[split_index:]
+    splits = split_source_frames([int(image.stem.split("_")[-1]) for image in images], validation_split)
+    train_images = [image for image in images if splits[int(image.stem.split("_")[-1])] == "train"]
+    val_images = [image for image in images if splits[int(image.stem.split("_")[-1])] == "val"]
 
     for image_path in train_images:
         frame_index = int(image_path.stem.split("_")[-1])
         label_path = helsinki_scene_dir / "annotations" / f"frame_{frame_index:06d}.json"
         if not label_path.exists():
-            continue
+            raise FileNotFoundError(f"Missing source annotations: {label_path}")
 
         destination_image = images_train / image_path.name
         destination_image.write_bytes(image_path.read_bytes())
@@ -104,7 +188,7 @@ def build_dataset_layout(
         frame_index = int(image_path.stem.split("_")[-1])
         label_path = helsinki_scene_dir / "annotations" / f"frame_{frame_index:06d}.json"
         if not label_path.exists():
-            continue
+            raise FileNotFoundError(f"Missing source annotations: {label_path}")
 
         destination_image = images_val / image_path.name
         destination_image.write_bytes(image_path.read_bytes())
@@ -138,7 +222,7 @@ def build_dataset_layout(
     data_yaml = dataset_dir / "drone_flyby.yaml"
     with open(data_yaml, "w", encoding="utf-8") as handle:
         handle.write(
-            "path: {}\n".format(dataset_dir.as_posix())
+            "path: {}\n".format(dataset_dir.resolve().as_posix())
             + "train: images/train\n"
             + "val: images/val\n"
             + "names:\n"
@@ -192,14 +276,16 @@ def train(
     resume: bool = False,
     resume_from: Path | None = None,
     augment_kwargs: dict | None = None,
+    seed: int = 0,
+    save_period: int = 10,
+    warmup_epochs: float = 3.0,
 ) -> None:
     if not _ULTRALYTICS_AVAILABLE:
         raise RuntimeError(
             "ultralytics is not installed. Install it to run YOLO training or use the dataset builder only."
         )
-
-    yolo_cls = YOLO
-    assert yolo_cls is not None
+    if not math.isfinite(warmup_epochs) or warmup_epochs < 0:
+        raise ValueError("warmup_epochs must be finite and nonnegative")
 
     if resume:
         if resume_from is None or not Path(resume_from).is_file():
@@ -207,15 +293,31 @@ def train(
                 f"Cannot resume: no checkpoint found at {resume_from}. Run without "
                 f"--resume to start a fresh training run."
             )
+        assert_training_yaml(data_yaml)
+        yolo_cls = YOLO
+        assert yolo_cls is not None
         print(f"Resuming training from {resume_from}")
         resumed = yolo_cls(str(resume_from))
+        checkpoint_data = resumed.ckpt.get("train_args", {}).get("data")
+        if checkpoint_data:
+            assert_training_yaml(Path(checkpoint_data))
+        register_training_callbacks(resumed)
         # ``cache`` is forwarded explicitly so a run started with --cache can be
         # resumed without it; the saved dataloader cache is a suspected cause of
         # the mid-run stall.
         resumed.train(resume=True, device=device, cache=cache)
         return
 
+    assert_training_yaml(data_yaml)
+    yolo_cls = YOLO
+    assert yolo_cls is not None
     model = yolo_cls(weights)
+    if augment_kwargs and augment_kwargs.get("copy_paste", 0) > 0 and model.task == "detect":
+        raise ValueError(
+            "Ultralytics copy_paste requires segmentation masks and is inactive for box-only "
+            "detection. Use build_augmented_dataset.py for labeled box copy-paste."
+        )
+    register_training_callbacks(model)
     train_kwargs = dict(
         data=str(data_yaml),
         epochs=epochs,
@@ -231,6 +333,10 @@ def train(
         cache=cache,
         project=project,
         name=name,
+        seed=seed,
+        deterministic=True,
+        save_period=save_period,
+        warmup_epochs=warmup_epochs,
     )
     # Dataset augmentation knobs (mosaic, mixup, copy-paste, geometry, colour)
     # are forwarded verbatim so the caller controls them without this script
@@ -283,10 +389,12 @@ def main() -> int:
     parser.add_argument("--patience", type=int, default=0)
     parser.add_argument("--project", default=None)
     parser.add_argument("--name", default="train")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--save-period", type=int, default=10)
+    parser.add_argument("--warmup-epochs", type=float, default=3.0)
     parser.add_argument("--build-only", action="store_true")
     parser.add_argument("--cache", action="store_true", help="Cache images in RAM during training.")
-    # Dataset augmentation. Defaults match Ultralytics, except copy-paste which
-    # is off by default and worth enabling for the rare classes.
+    # Box copy-paste is performed by the dataset builder, not this segmentation-only flag.
     parser.add_argument("--mosaic", type=float, default=1.0)
     parser.add_argument("--mixup", type=float, default=0.0)
     parser.add_argument("--copy-paste", dest="copy_paste", type=float, default=0.0)
@@ -319,13 +427,14 @@ def main() -> int:
     if arguments.resume:
         checkpoint = arguments.resume_from or find_last_checkpoint(arguments.project, arguments.name)
         if checkpoint is None:
-            print(
-                f"No last.pt found for project={arguments.project!r} name={arguments.name!r}; "
-                f"starting a fresh run."
+            raise FileNotFoundError(
+                f"No last.pt found for project={arguments.project!r} name={arguments.name!r}"
             )
         else:
+            if arguments.data_yaml is None:
+                raise ValueError("--resume requires --data-yaml for provenance validation")
             train(
-                data_yaml=arguments.data_yaml or Path("."),
+                data_yaml=arguments.data_yaml,
                 weights=arguments.weights,
                 epochs=arguments.epochs,
                 imgsz=arguments.imgsz,
@@ -362,6 +471,9 @@ def main() -> int:
         name=arguments.name,
         cache=arguments.cache,
         augment_kwargs=build_augment_kwargs(arguments),
+        seed=arguments.seed,
+        save_period=arguments.save_period,
+        warmup_epochs=arguments.warmup_epochs,
     )
     return 0
 

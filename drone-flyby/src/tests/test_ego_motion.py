@@ -121,3 +121,25 @@ def test_implausibly_large_shift_is_rejected(grayscale_frame):
 def test_default_pixel_scale_for_full_frame_and_l0():
     assert default_pixel_scale(3840) == pytest.approx(1.0)
     assert default_pixel_scale(960) == pytest.approx(4.0)
+
+
+def test_source_overlap_registers_zoom_pan_and_reverse_motion():
+    rng = np.random.default_rng(7)
+    base = cv2.GaussianBlur(rng.normal(128, 40, (1080, 1920)).astype(np.float32), (7, 7), 0)
+    current = _shift(base, -12, -20)
+    first = cv2.resize(base, (960, 540), interpolation=cv2.INTER_AREA)
+    second = current[230:770, 460:1420]
+    result = EgoMotionEstimator().estimate_views(
+        first, second, (0, 0, 1920, 1080), (460, 230, 1420, 770), 1, (0, 0),
+    )
+    assert result.accepted
+    assert result.dx == pytest.approx(-12, abs=2)
+    assert result.dy == pytest.approx(-20, abs=2)
+
+
+def test_disjoint_source_views_keep_the_prior():
+    image = np.zeros((540, 960), dtype=np.float32)
+    result = EgoMotionEstimator().estimate_views(
+        image, image, (0, 0, 960, 540), (2000, 1500, 2960, 2040), 1, (0, 58),
+    )
+    assert not result.accepted

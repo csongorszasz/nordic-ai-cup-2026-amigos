@@ -25,7 +25,7 @@ from config import DroneFlybyConfig
 from core.ego_motion import EgoMotionEstimator, EgoMotionResult
 from core.interfaces import BaseTracker, DetectionResult, TrackerSummary, TrackBelief
 from dtos import DroneFlybyPredictionDto, IMAGE_HEIGHT, IMAGE_WIDTH
-from utils import clip_bbox_to_frame, source_bbox_to_global
+from utils import clip_bbox_to_frame, source_bbox_to_global, pairwise_iou
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,13 @@ def _box_diagonal(box: Tuple[float, float, float, float]) -> float:
     return (width * width + height * height) ** 0.5
 
 
+def class_confidences(detections: List[DetectionResult]) -> Dict[str, float]:
+    result: Dict[str, float] = {}
+    for detection in detections:
+        result[detection.class_name] = max(result.get(detection.class_name, 0.0), detection.confidence)
+    return result
+
+
 def apply_class_aware_nms(
     predictions: List[DroneFlybyPredictionDto],
     iou_threshold: float = 0.45,
@@ -69,12 +76,14 @@ def apply_class_aware_nms(
     for object_id, class_preds in by_class.items():
         # Sort descending by confidence
         class_preds.sort(key=lambda p: p.confidence, reverse=True)
-        kept_boxes: List[Tuple[float, float, float, float]] = []
-
-        for p in class_preds:
-            if not any(compute_iou(p.bbox, kb) > iou_threshold for kb in kept_boxes):
-                selected.append(p)
-                kept_boxes.append(p.bbox)
+        boxes = np.asarray([prediction.bbox for prediction in class_preds], dtype=np.float64)
+        remaining = np.arange(len(class_preds))
+        while len(remaining):
+            index = remaining[0]
+            selected.append(class_preds[index])
+            candidates = remaining[1:]
+            overlaps = pairwise_iou(boxes[index:index + 1], boxes[candidates])[0]
+            remaining = candidates[overlaps <= iou_threshold]
 
     # Sort final predictions by confidence descending and cap at max_total
     selected.sort(key=lambda p: p.confidence, reverse=True)
@@ -126,6 +135,7 @@ class WorldMapTracker(BaseTracker):
         out_of_view_miss_decay: float = 0.97,
         ego_motion_method: str = "phase_correlation",
         ego_motion_min_response: float = 0.15,
+        min_detectable_pixels: float = 16.0,
     ):
         self.iou_match_threshold = iou_match_threshold
         self.min_hits_to_confirm = min_hits_to_confirm
@@ -137,6 +147,7 @@ class WorldMapTracker(BaseTracker):
         self.min_existence = min_existence
         self.in_view_miss_decay = in_view_miss_decay
         self.out_of_view_miss_decay = out_of_view_miss_decay
+        self.min_detectable_pixels = min_detectable_pixels
         self.ego_motion = EgoMotionEstimator(
             method=ego_motion_method, min_response=ego_motion_min_response
         )
@@ -151,6 +162,7 @@ class WorldMapTracker(BaseTracker):
         self.prev_region: Optional[Tuple[int, int, int, int]] = None
         self.prev_pixel_scale: Optional[float] = None
         self.current_shift: Tuple[float, float] = default_shift
+        self.fresh_class_confidences: Dict[str, float] = {}
 
     def reset(self, sequence_id: str) -> None:
         """Reset the world map when transitioning to a new sequence."""
@@ -164,6 +176,7 @@ class WorldMapTracker(BaseTracker):
         self.prev_region = None
         self.prev_pixel_scale = None
         self.current_shift = self.default_shift
+        self.fresh_class_confidences.clear()
         logger.info("WorldMapTracker session reset for sequence '%s'", sequence_id)
 
     # ------------------------------------------------------------------ #
@@ -178,11 +191,9 @@ class WorldMapTracker(BaseTracker):
     ) -> Tuple[float, float]:
         """Estimate a per-frame source-pixel shift from consecutive views.
 
-        The estimator works on any view whose scale matches the previous one.
-        When the camera centre moved between the two views, that known movement
-        is added back, because phase correlation measures ``ego - camera_delta``.
-        Skipped frames divide the measured displacement by the frame gap so a
-        multi-frame gap does not look like a single huge jump.
+        Both views are resampled over common source-space terrain, compensating
+        for pan and zoom. The residual corrects the motion prior. Frame gaps
+        convert displacement into a rate rather than a single huge jump.
         """
         if l0_image_gray is None:
             return self.current_shift
@@ -191,27 +202,16 @@ class WorldMapTracker(BaseTracker):
         source_width = max(1, int(source_region_xyxy[2]) - int(source_region_xyxy[0]))
         pixel_scale = source_width / float(gray.shape[1])
 
-        camera_delta: Tuple[float, float] = (0.0, 0.0)
-        if self.prev_region is not None:
-            prev_width = self.prev_region[2] - self.prev_region[0]
-            if prev_width == source_width:
-                camera_delta = (
-                    (source_region_xyxy[0] + source_region_xyxy[2]) / 2.0
-                    - (self.prev_region[0] + self.prev_region[2]) / 2.0,
-                    (source_region_xyxy[1] + source_region_xyxy[3]) / 2.0
-                    - (self.prev_region[1] + self.prev_region[3]) / 2.0,
-                )
-
         gap = max(1, frame_index - self.prev_l0_frame_index) if self.prev_l0_frame_index >= 0 else 1
 
-        if self.prev_l0_gray is not None and self.prev_l0_frame_index >= 0:
-            result: EgoMotionResult = self.ego_motion.estimate(
+        if self.prev_l0_gray is not None and self.prev_l0_frame_index >= 0 and self.prev_region is not None:
+            result: EgoMotionResult = self.ego_motion.estimate_views(
                 previous_gray=self.prev_l0_gray,
                 current_gray=gray,
+                previous_region=self.prev_region,
+                current_region=source_region_xyxy,
                 gap=gap,
-                pixel_scale=pixel_scale,
-                camera_delta=camera_delta,
-                previous_pixel_scale=self.prev_pixel_scale,
+                prior=self.current_shift,
             )
             if result.accepted:
                 self.current_shift = (
@@ -221,7 +221,7 @@ class WorldMapTracker(BaseTracker):
 
         self.prev_l0_gray = gray
         self.prev_l0_frame_index = frame_index
-        self.prev_region = tuple(int(v) for v in source_region_xyxy)  # type: ignore[assignment]
+        self.prev_region = source_region_xyxy
         self.prev_pixel_scale = pixel_scale
         return self.current_shift
 
@@ -234,8 +234,9 @@ class WorldMapTracker(BaseTracker):
             x1, y1, x2, y2 = track.bbox_4k
             track.bbox_4k = (x1 + dx, y1 + dy, x2 + dx, y2 + dy)
             track.age += frame_gap
-            # Uncertainty grows while the object is not observed.
-            track.position_std += 0.5 * frame_gap * (dx * dx + dy * dy) ** 0.5
+            track.frames_since_seen += frame_gap
+            process_std = 2.0 + 0.1 * np.hypot(*self.current_shift)
+            track.position_std = float(np.sqrt(track.position_std ** 2 + process_std ** 2 * frame_gap))
 
     @staticmethod
     def _is_in_view(
@@ -245,6 +246,13 @@ class WorldMapTracker(BaseTracker):
         cx, cy = _box_center(bbox_4k)
         sx1, sy1, sx2, sy2 = source_region_xyxy
         return sx1 <= cx <= sx2 and sy1 <= cy <= sy2
+
+    def _is_observable(self, bbox, source_region) -> bool:
+        x1, y1, x2, y2 = bbox
+        sx1, sy1, sx2, sy2 = source_region
+        fully_inside = sx1 <= x1 < x2 <= sx2 and sy1 <= y1 < y2 <= sy2
+        apparent_size = max(x2 - x1, y2 - y1) * 960.0 / (sx2 - sx1)
+        return fully_inside and apparent_size >= self.min_detectable_pixels
 
     # ------------------------------------------------------------------ #
     # Association
@@ -263,44 +271,53 @@ class WorldMapTracker(BaseTracker):
         """
         num_dets = len(detections)
         num_tracks = len(track_ids)
-        cost = np.ones((num_dets, num_tracks), dtype=np.float32)
-        gate = np.zeros((num_dets, num_tracks), dtype=bool)
+        if not num_dets or not num_tracks:
+            return [], set(), set()
 
-        for i, det in enumerate(detections):
-            det_box = det.source_pixel_bbox
-            for j, tid in enumerate(track_ids):
-                track = self.tracks[tid]
-                iou = compute_iou(det_box, track.bbox_4k)
-                det_cx, det_cy = _box_center(det_box)
-                tr_cx, tr_cy = _box_center(track.bbox_4k)
-                distance = ((det_cx - tr_cx) ** 2 + (det_cy - tr_cy) ** 2) ** 0.5
-                diagonal = max(_box_diagonal(track.bbox_4k), 1.0)
-                class_match = det.class_name == track.class_name
+        det_boxes = np.asarray([det.source_pixel_bbox for det in detections], dtype=np.float64)
+        track_boxes = np.asarray([self.tracks[tid].bbox_4k for tid in track_ids], dtype=np.float64)
+        iou = pairwise_iou(det_boxes, track_boxes)
+        track_sizes = track_boxes[:, 2:] - track_boxes[:, :2]
 
-                accepted = iou >= self.iou_match_threshold or (
-                    class_match and distance <= max(diagonal, 150.0)
-                )
-                if not accepted:
-                    continue
-
-                gate[i, j] = True
-                # Prefer overlap, then proximity.
-                centre_bonus = 0.25 * max(0.0, 1.0 - distance / max(diagonal, 1.0))
-                cost[i, j] = 1.0 - iou - centre_bonus
+        det_centers = (det_boxes[:, :2] + det_boxes[:, 2:]) / 2.0
+        track_centers = (track_boxes[:, :2] + track_boxes[:, 2:]) / 2.0
+        delta = det_centers[:, None, :] - track_centers[None, :, :]
+        distance = np.sqrt((delta * delta).sum(axis=2))
+        diagonal = np.maximum(np.sqrt((track_sizes * track_sizes).sum(axis=1)), 1.0)
+        class_match = (
+            np.asarray([det.class_name for det in detections], dtype=object)[:, None]
+            == np.asarray([self.tracks[tid].class_name for tid in track_ids], dtype=object)[None, :]
+        )
+        gate = (iou >= self.iou_match_threshold) | (class_match & (distance <= np.maximum(diagonal, 150.0)))
+        centre_bonus = 0.25 * np.maximum(0.0, 1.0 - distance / diagonal)
+        cost = np.full((num_dets, num_tracks + num_dets), 1e6, dtype=np.float32)
+        cost[:, num_tracks:] = 1.5
+        cost[:, :num_tracks] = np.where(
+            gate, 1.0 - iou - centre_bonus + np.where(class_match, 0.0, 0.2), 1e6,
+        )
 
         matches: List[Tuple[int, int]] = []
         matched_dets: set = set()
         matched_tracks: set = set()
-        if num_dets and num_tracks:
-            rows, cols = linear_sum_assignment(cost)
-            for r, c in zip(rows, cols):
-                if gate[r, c]:
-                    matches.append((int(r), track_ids[c]))
-                    matched_dets.add(int(r))
-                    matched_tracks.add(track_ids[c])
+        rows, cols = linear_sum_assignment(cost)
+        for r, c in zip(rows, cols):
+            if c < num_tracks and gate[r, c]:
+                matches.append((int(r), track_ids[c]))
+                matched_dets.add(int(r))
+                matched_tracks.add(track_ids[c])
         return matches, matched_dets, matched_tracks
 
-    def _apply_detection(self, track: TrackedObject, det: DetectionResult, zoom_level: int) -> None:
+    @staticmethod
+    def _truncated_edges(box, region):
+        margin = (region[2] - region[0]) / 960.0
+        return (
+            region[0] > 0 and box[0] <= region[0] + margin,
+            region[1] > 0 and box[1] <= region[1] + margin,
+            region[2] < IMAGE_WIDTH and box[2] >= region[2] - margin,
+            region[3] < IMAGE_HEIGHT and box[3] >= region[3] - margin,
+        )
+
+    def _apply_detection(self, track: TrackedObject, det: DetectionResult, zoom_level: int, region) -> None:
         """Fuse one detection into a track."""
         track.hits += 1
         track.frames_since_seen = 0
@@ -314,17 +331,39 @@ class WorldMapTracker(BaseTracker):
 
         track.existence = min(1.0, track.existence + 0.5 + 0.5 * det.confidence)
 
-        if zoom_level >= track.best_zoom:
-            previous_center = _box_center(track.bbox_4k)
+        previous_center = _box_center(track.bbox_4k)
+        left, top, right, bottom = self._truncated_edges(det.source_pixel_bbox, region)
+        truncated = left or top or right or bottom
+        improved_zoom = zoom_level > track.best_zoom and not truncated
+        if zoom_level >= track.best_zoom and not truncated:
             track.bbox_4k = det.source_pixel_bbox
-            track.confidence = max(track.confidence, det.confidence)
             track.best_zoom = zoom_level
-            track.last_zoom = zoom_level
-            new_center = _box_center(track.bbox_4k)
-            track.velocity = (new_center[0] - previous_center[0], new_center[1] - previous_center[1])
-            track.position_std = max(0.0, track.position_std * 0.5)
         else:
-            track.confidence = max(track.confidence, det.confidence * 0.95)
+            cx, cy = _box_center(det.source_pixel_bbox)
+            width = track.bbox_4k[2] - track.bbox_4k[0]
+            height = track.bbox_4k[3] - track.bbox_4k[1]
+            if left:
+                cx = previous_center[0] if right else det.source_pixel_bbox[2] - width / 2
+            elif right:
+                cx = det.source_pixel_bbox[0] + width / 2
+            if top:
+                cy = previous_center[1] if bottom else det.source_pixel_bbox[3] - height / 2
+            elif bottom:
+                cy = det.source_pixel_bbox[1] + height / 2
+            track.bbox_4k = (cx - width / 2, cy - height / 2, cx + width / 2, cy + height / 2)
+        track.confidence = det.confidence if improved_zoom else 0.6 * track.confidence + 0.4 * det.confidence
+        track.last_zoom = zoom_level
+        new_center = _box_center(track.bbox_4k)
+        track.velocity = (new_center[0] - previous_center[0], new_center[1] - previous_center[1])
+        track.position_std = (4.0 if truncated else 2.0) * 2 ** (2 - zoom_level)
+
+    def _advance_to(self, frame_index: int) -> int:
+        if frame_index < self.last_frame_index:
+            raise ValueError("Cannot advance spatial memory backwards")
+        gap = frame_index - self.last_frame_index if self.last_frame_index >= 0 else 0
+        self._predict_tracks(gap)
+        self.last_frame_index = frame_index
+        return gap
 
     def update(
         self,
@@ -335,18 +374,19 @@ class WorldMapTracker(BaseTracker):
         l0_image_gray: Optional[np.ndarray] = None,
     ) -> List[DroneFlybyPredictionDto]:
         """Update tracks, correlate with new detections, and return full-frame annotations."""
+        if frame_index < self.last_frame_index:
+            raise ValueError("Cannot advance spatial memory backwards")
         self._estimate_ego_motion(l0_image_gray, frame_index, source_region_xyxy)
 
-        frame_gap = max(1, frame_index - self.last_frame_index) if self.last_frame_index >= 0 else 1
-        self.last_frame_index = frame_index
+        frame_gap = self._advance_to(frame_index)
+        self.fresh_class_confidences = class_confidences(detections)
         self.last_zoom = zoom_level
-        self._predict_tracks(frame_gap)
 
         track_ids = list(self.tracks.keys())
         matches, matched_dets, matched_tracks = self._associate(detections, track_ids)
 
         for det_index, track_id in matches:
-            self._apply_detection(self.tracks[track_id], detections[det_index], zoom_level)
+            self._apply_detection(self.tracks[track_id], detections[det_index], zoom_level, source_region_xyxy)
 
         # Negative evidence: an in-view miss is informative, an out-of-view one
         # is not. Collapsing them is why the old map kept ghost tracks alive.
@@ -354,12 +394,10 @@ class WorldMapTracker(BaseTracker):
             if track_id in matched_tracks:
                 continue
             track = self.tracks[track_id]
-            track.frames_since_seen += frame_gap
-            if self._is_in_view(track.bbox_4k, source_region_xyxy):
+            if self._is_observable(track.bbox_4k, source_region_xyxy):
                 track.existence *= self.in_view_miss_decay
-                track.confidence *= self.confidence_decay_rate ** frame_gap
             else:
-                track.existence *= self.out_of_view_miss_decay
+                track.existence *= self.out_of_view_miss_decay ** frame_gap
 
         # New tracks for unmatched detections.
         for det_index, det in enumerate(detections):
@@ -367,27 +405,35 @@ class WorldMapTracker(BaseTracker):
                 continue
             track_id = self.next_track_id
             self.next_track_id += 1
+            truncated = any(self._truncated_edges(det.source_pixel_bbox, source_region_xyxy))
             self.tracks[track_id] = TrackedObject(
                 track_id=track_id,
                 class_name=det.class_name,
                 bbox_4k=det.source_pixel_bbox,
                 confidence=det.confidence,
-                best_zoom=zoom_level,
+                best_zoom=max(0, zoom_level - 1) if truncated else zoom_level,
                 hits=1,
                 frames_since_seen=0,
                 age=1,
                 class_scores={det.class_name: det.confidence},
                 existence=min(0.9, 0.4 + 0.5 * det.confidence),
-                position_std=0.0,
+                position_std=16.0 if truncated else 0.0,
                 last_seen_frame=frame_index,
                 last_zoom=zoom_level,
             )
 
         self._prune()
-        return self._emit()
+        return self._emit(detections)
 
-    def predict_only(self) -> List[DroneFlybyPredictionDto]:
-        """Return the current full-frame belief without new observations."""
+    def predict_only(self, frame_index: Optional[int] = None) -> List[DroneFlybyPredictionDto]:
+        """Advance memory without negative evidence from an unavailable detector."""
+        if frame_index is not None:
+            gap = self._advance_to(frame_index)
+            if gap:
+                self.fresh_class_confidences.clear()
+            for track in self.tracks.values():
+                track.existence *= self.out_of_view_miss_decay ** gap
+            self._prune()
         return self._emit()
 
     def _prune(self) -> None:
@@ -404,7 +450,7 @@ class WorldMapTracker(BaseTracker):
                 # elsewhere, otherwise every L0-only object is lost the moment
                 # the loop starts zooming.
                 dead_tids.append(tid)
-            elif (track.age - track.hits) > self.out_of_view_max_age:
+            elif track.frames_since_seen > self.out_of_view_max_age:
                 dead_tids.append(tid)
 
         for tid in dead_tids:
@@ -416,8 +462,19 @@ class WorldMapTracker(BaseTracker):
             or track.confidence >= self.single_hit_confirm_confidence
         )
 
-    def _emit(self) -> List[DroneFlybyPredictionDto]:
+    def _emit(self, current_detections: Optional[List[DetectionResult]] = None) -> List[DroneFlybyPredictionDto]:
         output_predictions: List[DroneFlybyPredictionDto] = []
+        # Confidence is a ranking score in this protocol. Reserve the upper
+        # interval for fresh detections so speculative memory cannot outrank or
+        # suppress the detector's current-frame evidence.
+        for detection in current_detections or []:
+            bbox = clip_bbox_to_frame(source_bbox_to_global(detection.source_pixel_bbox))
+            if bbox is not None:
+                output_predictions.append(DroneFlybyPredictionDto(
+                    object_id=detection.class_name, bbox=bbox,
+                    confidence=0.5 + 0.5 * detection.confidence,
+                ))
+        fresh_count = len(output_predictions)
         for track in self.tracks.values():
             if not self._is_confirmed(track):
                 continue
@@ -425,7 +482,7 @@ class WorldMapTracker(BaseTracker):
                 continue
 
             effective_conf = track.confidence * (self.confidence_decay_rate ** track.frames_since_seen)
-            if effective_conf < 0.05:
+            if effective_conf <= 0:
                 continue
 
             global_bbox = source_bbox_to_global(track.bbox_4k, IMAGE_WIDTH, IMAGE_HEIGHT)
@@ -437,11 +494,18 @@ class WorldMapTracker(BaseTracker):
                 DroneFlybyPredictionDto(
                     object_id=track.class_name,
                     bbox=clipped_bbox,
-                    confidence=float(min(1.0, effective_conf)),
+                    confidence=float(0.49 * min(1.0, effective_conf)),
                 )
             )
 
-        return apply_class_aware_nms(output_predictions, iou_threshold=self.nms_threshold)
+        selected = apply_class_aware_nms(output_predictions, iou_threshold=self.nms_threshold)
+        self.last_emission_counts = {
+            "fresh_before_nms": fresh_count,
+            "memory_before_nms": len(output_predictions) - fresh_count,
+            "after_nms": len(selected),
+            "output_at_cap": len(selected) == 500,
+        }
+        return selected
 
     def get_summary(self) -> TrackerSummary:
         """Provide world state summary for camera steering decisions.
@@ -486,6 +550,7 @@ class WorldMapTracker(BaseTracker):
             unscanned_clusters=[(x, y) for _, x, y in candidates],
             current_shift_estimate=self.current_shift,
             track_beliefs=beliefs,
+            fresh_class_confidences=dict(self.fresh_class_confidences),
         )
 
 
@@ -498,12 +563,14 @@ class PassthroughTracker(BaseTracker):
         self.last_frame_index: int = -1
         self.total_detections_seen: int = 0
         self._last_predictions: List[DroneFlybyPredictionDto] = []
+        self.fresh_class_confidences: Dict[str, float] = {}
 
     def reset(self, sequence_id: str) -> None:
         self.current_sequence_id = sequence_id
         self.last_frame_index = -1
         self.total_detections_seen = 0
         self._last_predictions = []
+        self.fresh_class_confidences.clear()
 
     def update(
         self,
@@ -516,6 +583,7 @@ class PassthroughTracker(BaseTracker):
         _ = (zoom_level, source_region_xyxy, l0_image_gray)
         self.last_frame_index = frame_index
         self.total_detections_seen += len(detections)
+        self.fresh_class_confidences = class_confidences(detections)
 
         raw_predictions = [
             DroneFlybyPredictionDto(
@@ -528,14 +596,22 @@ class PassthroughTracker(BaseTracker):
         self._last_predictions = apply_class_aware_nms(raw_predictions, iou_threshold=self.nms_threshold)
         return self._last_predictions
 
-    def predict_only(self) -> List[DroneFlybyPredictionDto]:
+    def predict_only(self, frame_index: Optional[int] = None) -> List[DroneFlybyPredictionDto]:
+        if frame_index is not None and frame_index < self.last_frame_index:
+            raise ValueError("Cannot advance passthrough state backwards")
+        if frame_index is not None and frame_index != self.last_frame_index:
+            self.last_frame_index = frame_index
+            self._last_predictions = []
+            self.fresh_class_confidences.clear()
+            return []
         return list(self._last_predictions)
 
     def get_summary(self) -> TrackerSummary:
         return TrackerSummary(
-            num_active_tracks=self.total_detections_seen,
+            num_active_tracks=len(self._last_predictions),
             unscanned_clusters=[],
             current_shift_estimate=(0.0, 58.0),
+            fresh_class_confidences=dict(self.fresh_class_confidences),
         )
 
 
@@ -552,9 +628,9 @@ def create_tracker(config: DroneFlybyConfig) -> BaseTracker:
             nms_threshold=config.GLOBAL_NMS_IOU_THRESHOLD,
             ego_motion_method=config.EGO_MOTION_METHOD,
             ego_motion_min_response=config.EGO_MOTION_MIN_RESPONSE,
+            min_detectable_pixels=config.TRACK_MIN_DETECTABLE_PIXELS,
         )
     elif config.TRACKER_TYPE == "passthrough":
         return PassthroughTracker(nms_threshold=config.GLOBAL_NMS_IOU_THRESHOLD)
     else:
-        logger.warning("Unknown tracker type '%s', defaulting to WorldMapTracker", config.TRACKER_TYPE)
-        return WorldMapTracker()
+        raise ValueError(f"Unknown tracker type: {config.TRACKER_TYPE!r}")

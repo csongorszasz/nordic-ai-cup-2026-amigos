@@ -1,0 +1,26 @@
+{
+  "purpose": "development-evaluation only; do not use this audit source for training",
+  "sources": [
+    {
+      "id": "nls_m4444a_2023",
+      "provider": "National Land Survey of Finland",
+      "dataset": "NLS Orthophotos",
+      "imagery_year": 2023,
+      "source_url": "https://www.nic.funet.fi/index/geodata/mml/orto/normal_color_3067/mara_v_25000_50/2023/M44/02m/1/M4444A.jp2",
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "license_reference": "https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/orthophotos",
+      "attribution": "Contains National Land Survey of Finland NLS Orthophotos (2023), obtained via CSC/FUNET on 2026-09-19. CC BY 4.0. Resampling and inserted-object compositing are modifications.",
+      "sha256": "a0a7d1a4fefb2c7ec91f3099d8b8f565295bbd27616a3eb85e4900a5f6b8374a",
+      "bytes": 107977624,
+      "width_px": 12000,
+      "height_px": 12000,
+      "gsd_m": 0.5,
+      "gsd_source": "embedded-gml-after-codestream",
+      "crs": "EPSG:3067",
+      "origin_pixel_center": [476000.25, 6851999.75],
+      "offset_vectors": [[0.5, 0.0], [0.0, -0.5]],
+      "label_scope": "Only inserted challenge sprites are annotated; review natural background objects separately."
+    }
+  ]
+}

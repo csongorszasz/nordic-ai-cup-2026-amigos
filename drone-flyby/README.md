@@ -22,7 +22,11 @@ cd Nordic-AI-Cup-2026/drone-flyby
 pip install -r requirements.txt
 ```
 
-Serve the baseline:
+The current implementation requires a task-trained 16-class checkpoint. Set
+`DRONE_FLYBY_YOLO_WEIGHTS_PATH` to that checkpoint before serving; startup fails
+explicitly when weights are absent. See `idun\README.md` for the training workflow.
+
+Serve the configured model:
 
 ```cmd
 python src/api.py
@@ -34,9 +38,9 @@ Then, in a second terminal, score it against the supplied scene:
 python src/local_evaluator.py
 ```
 
-You now have a working endpoint and a number to improve. The baseline scores
-about zero — it is edge detection with a fixed label, there to prove the
-plumbing works, not to compete.
+The original edge-detector template scores about zero. The current production
+backend is YOLO, with explicit detector, tracker, and camera settings. Measure it
+with the realtime evaluator rather than inferring performance from the template.
 
 Check that the harness and the data agree with each other at any time:
 
@@ -44,24 +48,124 @@ Check that the harness and the data agree with each other at any time:
 python src/local_evaluator.py --oracle
 ```
 
-That feeds the ground truth in as predictions and should print `1.000`. If it
-does, a low score is your model, not your setup.
+That feeds the ground truth in as predictions and should print `1.000`.
+It verifies the scorer and supplied annotation geometry, not the detector,
+memory, camera policy, transport, or realtime behavior.
 
 ### What is in this folder
 
 | File | What it is |
 |---|---|
 | `src/api.py` | The FastAPI server the evaluator calls. You probably will not change it. |
-| `src/example.py` | The baseline detector and camera policy. **This is the file to replace.** |
+| `src/config.py` | Runtime settings and environment overrides. |
+| `src/core/` | Production detector, spatial memory, camera policy, and pipeline. |
 | `src/dtos.py` | The request and response models, plus the protocol constants. |
 | `src/utils.py` | Decoding, coordinate conversion, response validation, box drawing. |
 | `src/local_evaluator.py` | Replays a scene through your endpoint and scores it. |
 | `src/visualize.py` | Draws the ground truth onto the supplied frames. |
-| `src/core/` | Detector, tracker, camera policy and pipeline. |
 | `src/offline/` | Training, pseudo-labeling and recording scripts. |
 | `requirements.txt` | Dependencies. Loose pins, so they will not fight your detection stack. |
 | `Dockerfile` | If you would rather containerise the server. |
 | `data/helsinki/` | 25 reference frames with annotations. |
+
+## Reproducible improvement workflow
+
+Run experiments on an allocated IDUN A100/H100 80 GB GPU using the snapshot
+launcher in `idun\README.md`. `src\offline\experiment_runner.py` saves complete
+predictions, per-class AP, timings, tensor shapes, and failure artifacts for
+oracle, detector-only, and actual HTTP/realtime comparisons.
+
+Source frames are split before rendering crops, and validation crops cannot
+enter the copy-paste bank. Whole-frame validation samples are distributed over
+the flight to avoid withholding nearly all appearances of late-entering classes.
+Pasted labels retain the object's tight box, not its context margin. Negative
+views remain in the training data.
+
+The supplied scene still contains only one instance per class. Its score is a
+development diagnostic, not an independent generalization estimate. Synthetic
+episodes from `src\offline\build_synthetic_sequence.py` provide new backgrounds,
+multiple instances and longer trajectories, but share training object appearances.
+Recorded validation sequences are marked **evaluation-only** and are rejected by
+training, augmentation, pseudo-label generation, and calibration fitting.
+
+Important runtime controls include `DRONE_FLYBY_INFERENCE_IMAGE_SIZE`,
+`DRONE_FLYBY_INFERENCE_RECT`, `DRONE_FLYBY_INFERENCE_HALF`, and
+`DRONE_FLYBY_CONF_L0`/`CONF_L1`/`CONF_L2` (each with the `DRONE_FLYBY_` prefix).
+The `/stats` endpoint reports the actual inference tensor shape. Benchmark the
+low-cost `hold` + `passthrough` combination alongside active vision: L0 does not
+necessarily score zero, and coverage alone does not establish an improvement.
+
+The world map retains current detections even before a track is confirmed.
+Its response confidence is a **ranking score**: fresh evidence occupies
+`[0.5, 1]`, while propagated memory stays below it. Planner confidence remains
+the original detector evidence. The opt-in `adaptive` camera policy holds
+confident full views and explores weak ones; its quality gate uses only fresh
+observations, never accumulated tracks or ground truth.
+
+An experimental PyTorch-only `DRONE_FLYBY_INFERENCE_IMAGE_SIZES=L0,L1,L2`
+override can use different neural input sizes for each optical zoom. All distinct
+shapes are warmed up. A large L0 input should not be assumed optimal at L2:
+oversized objects can hurt classification. Multi-shape TensorRT is rejected
+until a matching dynamic engine profile has been verified.
+
+The experimental `yolo_pair` backend uses an explicitly supplied auxiliary
+checkpoint, same-class one-to-one box matching, and confidence-weighted box
+fusion. Use `--aux-weights` with the experiment runner to measure it; do not
+assume an ensemble improves realtime score. Both checkpoint hashes and
+component input shapes are recorded, and single-model calibration files are
+rejected for this backend.
+
+Training retains `best_ap50.pt` separately from the library's default
+`best.pt`. The calibrator accepts an explicit checkpoint/configuration and
+replays each threshold candidate through the tracker and camera using the common
+COCO scorer. Both checkpoint selection and calibration still need a separate
+realtime comparison before deployment.
+
+Official validation and the one-shot evaluation remain human-triggered and
+approval-gated. Never promote a camera policy merely because it covers more cells.
+
+`profiles\champion.json` is the versioned development-candidate pointer. It
+records the runtime commit, both checkpoint locations and SHA-256 hashes,
+configuration overrides, and measured accuracy/latency limitations. Model
+binaries and raw experiment outputs remain excluded from Git. Resolve each
+checkpoint relative to its named IDUN experiment (or fetched `runs\idun`
+directory), verify its hash, and use the recorded runtime before serving.
+The profile is not evidence of public endpoint readiness or an official score.
+
+Natural-background audits can use a licensed NLS GeoJP2 through
+`build_synthetic_sequence.py --background ... --background-provenance ...`.
+The file hash, attribution, embedded pixel scale, crop, and resampling are
+preserved in the scene metadata. `research\background_sources.json` records the
+public audit source; its pixels remain outside Git and outside training.
+Only inserted challenge sprites are annotated, so review natural background
+objects before interpreting the score.
+Current rectangular sprite cutouts also carry source-background context.
+The natural-background preview exposed this shortcut clearly; their scores
+are limited compositing diagnostics, not evidence of foreground-only recognition.
+Do not promote a model from these composites without a reviewed mask-based audit.
+
+`extract_foreground_bank.py` proposes box-prompted SAM alpha masks from permitted
+training frames and exports an explicitly unreviewed contact sheet. The
+hash-pinned decisions in `research\foreground_review.json` select reviewed
+proposals; predicted mask confidence alone is not approval. The renderer's
+`--sprite-review` and `--sprite-artifact-root` options enforce that gate, retain
+the original annotation canvas, and use premultiplied-alpha resampling to avoid
+source-context color bleeding. Use a reviewed `--background-origin X Y` to
+choose a terrestrial crop. Rectangular controls on natural backgrounds require
+the explicit `--allow-context-patches` flag.
+
+For a controlled training intervention, the augmented-dataset builder accepts
+the same reviewed assets with `--sprite-mode context` or `--sprite-mode alpha`.
+Both modes preserve sampled classes, source annotation canvases, placements and
+labels; only the carried context differs. Native assets are scaled to the actual
+L0/L1/L2 view geometry, and validation-source assets are rejected. Audit imagery
+remains evaluation-only and must not become an augmentation background.
+
+The NLS converter reads GML boxes even after the image codestream, including
+null-terminated XML. It no longer guesses 0.25 metres per pixel from filenames:
+the inspected `02m`-directory image actually declares 0.5 metres per pixel.
+Missing georeferencing requires an explicit `--gsd-m` override, and an override
+contradicting embedded metadata is rejected.
 
 ## About the challenge
 

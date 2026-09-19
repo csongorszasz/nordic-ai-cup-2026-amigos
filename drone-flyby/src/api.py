@@ -62,34 +62,40 @@ app = FastAPI(lifespan=lifespan)
 def predict_endpoint(request: DroneFlybyPredictRequestDto):
     """Answer one frame."""
     t_start = time.perf_counter()
-
+    capture = None
+    diagnostics = {} if recorder is not None else None
     if recorder is not None:
         # Recording must never break a frame: a dropped artifact is cheap, a
         # failed response is not.
         try:
-            if (
-                not recorder.enabled
-                or recorder.session_dir is None
-                or recorder.session_dir.name != request.sequence_id
-            ):
-                recorder.start(request.sequence_id)
-            recorder.record_frame(request)
-        except Exception:
+            recorder.start(request.sequence_id)
+            capture = recorder.record_frame(request)
+        except (OSError, ValueError, RuntimeError) as error:
+            recorder.report_error(str(error))
             logger.exception("Failed to record the incoming validation frame")
 
-    response = pipeline.handle_request(request)
-
-    # Fail here, loudly, rather than having the evaluator silently discard the
-    # frame. Every rule this checks is a rule the evaluator also enforces.
-    validate_response(response)
-
-    if recorder is not None:
+    response = None
+    try:
+        generated = pipeline.handle_request(request, diagnostics=diagnostics)
         try:
-            recorder.record_response(request, response, (time.perf_counter() - t_start) * 1000)
-        except Exception:
-            logger.exception("Failed to record the validation response")
-
-    return response
+            validate_response(generated)
+        except (ValueError, TypeError) as error:
+            if diagnostics is not None:
+                diagnostics["events"].append("response_validation_error")
+                diagnostics["response_error"] = str(error)
+            raise
+        response = generated
+        return response
+    finally:
+        if recorder is not None and capture is not None:
+            try:
+                recorder.record_response(
+                    request, response, (time.perf_counter() - t_start) * 1000,
+                    capture=capture, diagnostics=diagnostics,
+                )
+            except (OSError, ValueError, RuntimeError) as error:
+                recorder.report_error(str(error), capture.sequence_id)
+                logger.exception("Failed to record the validation response")
 
 
 @app.get('/api')
@@ -119,6 +125,17 @@ def stats():
         'tracker_type': DEFAULT_CONFIG.TRACKER_TYPE,
         'policy_type': DEFAULT_CONFIG.POLICY_TYPE,
         'peak_vram_mb': peak_vram_mb,
+        'inference_shape': getattr(pipeline.detector, 'last_input_shape', None),
+        'inference_dtype': getattr(pipeline.detector, 'last_input_dtype', None),
+        'component_inference_shapes': getattr(pipeline.detector, 'component_inference_shapes', None),
+        'component_inference_dtypes': getattr(pipeline.detector, 'component_inference_dtypes', None),
+        'inference_image_size': DEFAULT_CONFIG.INFERENCE_IMAGE_SIZE,
+        'inference_image_sizes': getattr(pipeline.detector, 'image_sizes', None),
+        'inference_rect': DEFAULT_CONFIG.INFERENCE_RECT,
+        'inference_half': DEFAULT_CONFIG.INFERENCE_HALF,
+        'last_timings': pipeline.last_timings,
+        'run_nonce': os.getenv('DRONE_FLYBY_RUN_NONCE'),
+        'recorder': recorder.stats() if recorder is not None else None,
     }
 
 
@@ -128,4 +145,4 @@ def index():
 
 
 if __name__ == '__main__':
-    uvicorn.run('api:app', host=HOST, port=PORT)
+    uvicorn.run(app, host=HOST, port=PORT)

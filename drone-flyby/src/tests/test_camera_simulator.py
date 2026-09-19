@@ -67,7 +67,7 @@ def test_simulation_runs_and_stays_legal():
     assert report.frames == 6
     assert report.illegal_moves == 0
     assert report.map50 == pytest.approx(0.42)
-    assert report.total_instances == 4
+    assert report.total_object_frames == 24
     assert report.coverage_l1 > 0.0
 
 
@@ -82,7 +82,8 @@ def test_belief_policy_observes_ground_at_l1():
         score_fn=_stub_score,
     )
 
-    assert report.instances_seen_l1 >= 1
+    assert report.observed_object_frames_l1 >= 1
+    assert report.observed_object_frames_l1 < 7 * len(_annotations())
 
 
 def test_hold_policy_never_reaches_l1():
@@ -96,7 +97,7 @@ def test_hold_policy_never_reaches_l1():
         score_fn=_stub_score,
     )
 
-    assert report.instances_seen_l1 == 0
+    assert report.observed_object_frames_l1 == 0
     assert report.coverage_l1 == 0.0
     assert report.illegal_moves == 0
 
@@ -109,11 +110,39 @@ def test_summary_mentions_the_key_numbers():
         illegal_moves=0,
         coverage_l1=0.5,
         coverage_l2=0.1,
-        instances_seen_l1=3,
-        instances_seen_l2=1,
-        total_instances=4,
+        observed_object_frames_l1=3,
+        observed_object_frames_l2=1,
+        total_object_frames=4,
         map50=0.75,
     )
     text = report.summary()
     assert "belief_voi" in text
     assert "0.7500" in text
+
+
+def test_simulation_preserves_source_frame_gaps():
+    report = run_simulation(
+        DroneFlybyConfig(POLICY_TYPE="hold", TRACKER_TYPE="passthrough"),
+        scene="synthetic",
+        frames=[10, 12, 17],
+        frame_provider=_frame_provider,
+        annotation_provider=_annotation_provider,
+        score_fn=_stub_score,
+    )
+    assert [entry["frame_index"] for entry in report.trajectory] == [0, 2, 7]
+
+
+def test_simulation_scores_only_the_explicit_frame_set(monkeypatch):
+    import offline.camera_simulator as simulator
+
+    scored = []
+    def capture_score(scene, predictions, evaluation_frames):
+        scored.extend(evaluation_frames)
+        return 1.0, {"tank": 1.0}
+    monkeypatch.setattr(simulator, "score", capture_score)
+    run_simulation(
+        DroneFlybyConfig(POLICY_TYPE="hold", TRACKER_TYPE="passthrough"),
+        scene="synthetic", frames=[0, 1],
+        frame_provider=_frame_provider, annotation_provider=_annotation_provider,
+    )
+    assert scored == [0, 1]

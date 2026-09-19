@@ -57,12 +57,17 @@ class BeliefField:
         verify_weight: float = 1.2,
         travel_weight: float = 0.35,
         min_track_existence: float = 0.20,
+        max_age_frames: int = 12,
     ):
         self.cell_size = max(16, int(cell_size))
         self.columns = int(math.ceil(IMAGE_WIDTH / self.cell_size))
         self.rows = int(math.ceil(IMAGE_HEIGHT / self.cell_size))
         self.observed_level = np.full((self.rows, self.columns), -1, dtype=np.int8)
         self.last_seen_frame = np.full((self.rows, self.columns), -1, dtype=np.int32)
+        self._observations = np.full((3, self.rows, self.columns), -1, dtype=np.int32)
+        self._last_frame: Optional[int] = None
+        self._motion_remainder = np.zeros(2, dtype=np.float64)
+        self.max_age_frames = max(1, int(max_age_frames))
 
         self.explore_weight = float(explore_weight)
         self.verify_weight = float(verify_weight)
@@ -105,13 +110,56 @@ class BeliefField:
     ) -> None:
         """Record that ``source_region`` was observed at ``level`` this frame."""
         rows, columns = self._region_slices(source_region)
-        window = self.observed_level[rows, columns]
-        np.maximum(window, level, out=window)
-        self.last_seen_frame[rows, columns] = frame_index
+        self._observations[:level + 1, rows, columns] = frame_index
+        self._refresh_coverage()
+
+    def _refresh_coverage(self) -> None:
+        self.observed_level.fill(-1)
+        for level in range(3):
+            self.observed_level[self._observations[level] >= 0] = level
+        self.last_seen_frame[:] = self._observations.max(axis=0)
+
+    def advance_to(self, frame_index: int, shift: Tuple[float, float]) -> None:
+        """Move coverage with terrain and forget stale observations."""
+        gap = 0 if self._last_frame is None else frame_index - self._last_frame
+        if gap < 0:
+            raise ValueError("Coverage cannot advance backwards")
+        self._last_frame = frame_index
+        displacement = np.asarray(shift, dtype=np.float64) * gap
+        self._motion_remainder += displacement
+        cell_shift = np.trunc(self._motion_remainder / self.cell_size).astype(int)
+        self._motion_remainder -= cell_shift * self.cell_size
+        dx, dy = int(cell_shift[0]), int(cell_shift[1])
+        if abs(dx) >= self.columns or abs(dy) >= self.rows:
+            self._observations.fill(-1)
+        else:
+            self._observations = np.roll(self._observations, (dy, dx), axis=(1, 2))
+            if dx > 0:
+                self._observations[:, :, :dx] = -1
+            elif dx < 0:
+                self._observations[:, :, dx:] = -1
+            if dy > 0:
+                self._observations[:, :dy, :] = -1
+            elif dy < 0:
+                self._observations[:, dy:, :] = -1
+            # A partly new edge cell is not fully observed terrain.
+            if displacement[0] > 0:
+                self._observations[:, :, 0] = -1
+            elif displacement[0] < 0:
+                self._observations[:, :, -1] = -1
+            if displacement[1] > 0:
+                self._observations[:, 0, :] = -1
+            elif displacement[1] < 0:
+                self._observations[:, -1, :] = -1
+        self._observations[self._observations < frame_index - self.max_age_frames] = -1
+        self._refresh_coverage()
 
     def reset(self) -> None:
         self.observed_level.fill(-1)
         self.last_seen_frame.fill(-1)
+        self._observations.fill(-1)
+        self._last_frame = None
+        self._motion_remainder.fill(0)
 
     # ------------------------------------------------------------------ #
     # Coverage queries
@@ -153,11 +201,18 @@ class BeliefField:
                 continue
             if track.existence < self.min_track_existence:
                 continue
-            if track.best_zoom >= level:
+            if not self.needs_verification(track, level):
                 continue
-            need = (level - track.best_zoom) / 2.0
-            total += track.existence * (1.0 - track.confidence) * need
+            zoom_need = max(0, level - track.best_zoom) / 2.0
+            position_need = min(1.0, track.position_std / 40.0)
+            class_need = 0.5 * max(0.0, 0.7 - track.confidence) if track.best_zoom >= level else 0.0
+            total += track.existence * min(1.0, (1.0 - track.confidence) * zoom_need
+                                          + position_need + class_need)
         return float(min(1.0, total))
+
+    @staticmethod
+    def needs_verification(track: TrackBelief, level: int) -> bool:
+        return track.best_zoom < level or track.position_std >= 8.0 or track.confidence < 0.7
 
     def value_of_information(
         self,
@@ -172,7 +227,8 @@ class BeliefField:
         if source_region is None:
             source_region = self._region_for(level, center)
 
-        explore = self.unobserved_fraction(source_region, level)
+        area = (source_region[2] - source_region[0]) * (source_region[3] - source_region[1])
+        explore = self.unobserved_fraction(source_region, level) * area / (IMAGE_WIDTH * IMAGE_HEIGHT / 4)
         verify = self.track_value_in_region(source_region, level, tracks)
 
         distance = math.hypot(
@@ -251,7 +307,7 @@ class BeliefField:
         for track in tracks:
             if track.existence < self.min_track_existence:
                 continue
-            if track.best_zoom >= level:
+            if not self.needs_verification(track, level):
                 continue
             center = self._clamp_target(
                 (int(round(track.center_x)), int(round(track.center_y))),
@@ -266,7 +322,14 @@ class BeliefField:
 
         if include_exploration:
             target = self.next_exploration_target(level, current_center, center_bounds)
-            if target is not None:
+            targets = [target] if target is not None else []
+            if target is not None and center_bounds is not None:
+                min_x, max_x, min_y, max_y = center_bounds
+                targets.extend(
+                    (x, y) for x in (min_x, (min_x + max_x) // 2, max_x)
+                    for y in (min_y, (min_y + max_y) // 2, max_y)
+                )
+            for target in dict.fromkeys(targets):
                 value = self.value_of_information(
                     level, target, current_center, max_delta, tracks
                 )

@@ -193,8 +193,8 @@ class _FakeYOLO:
     def __init__(self, weights_path):
         self.weights_path = weights_path
 
-    def predict(self, image_bgr, conf, device, verbose):
-        _ = (image_bgr, conf, device, verbose)
+    def predict(self, image_bgr, conf, device, verbose, **kwargs):
+        self.predict_kwargs = dict(conf=conf, device=device, **kwargs)
         # Class 2 = jet_plane, class 1 = helicopter.
         return [
             _FakeResult(
@@ -264,7 +264,7 @@ def test_normalize_class_name_does_not_alias_generic_names():
 class _FakeYOLOWithUnknown(_FakeYOLO):
     names = {0: "ta-ta", 1: "not_a_real_class"}
 
-    def predict(self, image_bgr, conf, device, verbose):
+    def predict(self, image_bgr, conf, device, verbose, **kwargs):
         _ = (image_bgr, conf, device, verbose)
         return [
             _FakeResult(
@@ -280,20 +280,114 @@ def test_yolo_detector_drops_unknown_class(monkeypatch, tmp_path):
     import core.detector as detector_module
 
     monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
-    # The fake exposes 2 classes but is only used to exercise name filtering,
-    # so allow the class-map check to be bypassed for this test.
-    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLOWithUnknown)
-
-    # Build the detector with the real 16-class map but a fake model whose names
-    # contain an unknown class; the mismatch check would reject it, so validate
-    # filtering by calling the parser through a partially constructed instance.
-    detector = object.__new__(YoloDetector)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
+    detector = YoloDetector(weights_path=str(_fake_weights(tmp_path)), device="cpu")
     detector.model = _FakeYOLOWithUnknown("fake.pt")
-    detector.device = "cpu"
-    detector.conf_thresholds = {0: 0.10, 1: 0.15, 2: 0.20}
-    detector.calibration = {}
     detections = detector.detect(_wire_sized_view(), zoom_level=0, source_region_xyxy=SOURCE_REGION)
 
     assert {det.class_name for det in detections} == {"ta-ta"}
     assert all(det.class_name in OBJECT_CLASSES for det in detections)
     _assert_valid_detections(detections)
+
+
+def test_predict_uses_explicit_geometry_and_calibration_proposal_floor(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
+    detector = YoloDetector(
+        weights_path=str(_fake_weights(tmp_path)), device="cpu", imgsz=1280,
+        rect=False, calibration={"jet_plane": 0.05}, confidence_threshold_l0=0.25,
+    )
+    detector.detect(_wire_sized_view(), 0, SOURCE_REGION)
+    assert detector.model.predict_kwargs["imgsz"] == 1280
+    assert detector.model.predict_kwargs["rect"] is False
+    assert detector.model.predict_kwargs["conf"] == 0.05
+
+
+def test_lowering_one_class_threshold_does_not_lower_other_classes(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
+    detector = YoloDetector(
+        weights_path=str(_fake_weights(tmp_path)), device="cpu",
+        calibration={"jet_plane": 0.05}, confidence_threshold_l0=0.85,
+    )
+    detections = detector.detect(_wire_sized_view(), 0, SOURCE_REGION)
+    assert {d.class_name for d in detections} == {"jet_plane"}
+
+
+@pytest.mark.parametrize("half, quantize", [(False, None), (True, 16)])
+def test_current_backend_precision_avoids_deprecated_half_flag(monkeypatch, tmp_path, half, quantize):
+    import core.detector as detector_module
+
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "_USES_QUANTIZE", True)
+    monkeypatch.setattr(detector_module, "YOLO", _FakeYOLO)
+    detector = YoloDetector(weights_path=str(_fake_weights(tmp_path)), device="cpu", half=half)
+    detector.detect(_wire_sized_view(), 0, SOURCE_REGION)
+    assert detector.model.predict_kwargs["quantize"] == quantize
+    assert "half" not in detector.model.predict_kwargs
+
+
+def test_per_zoom_shapes_are_used_and_all_warmed(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    sizes = []
+    class RecordingYOLO(_FakeYOLO):
+        def predict(self, *args, **kwargs):
+            sizes.append(kwargs["imgsz"])
+            return super().predict(*args, **kwargs)
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(detector_module, "YOLO", RecordingYOLO)
+    detector = YoloDetector(
+        weights_path=str(_fake_weights(tmp_path)), device="cpu",
+        image_sizes=(3200, 1600, 960),
+    )
+    detector.warmup()
+    assert sizes == [3200, 1600, 960]
+    detector.detect(_wire_sized_view(), 1, (0, 0, 1920, 1080))
+    assert sizes[-1] == 1600
+
+
+def test_multishape_engine_is_rejected_before_loading(monkeypatch, tmp_path):
+    import core.detector as detector_module
+
+    engine = tmp_path / "fake.engine"
+    engine.write_bytes(b"fake")
+    monkeypatch.setattr(detector_module, "_ULTRALYTICS_AVAILABLE", True)
+    with pytest.raises(ValueError, match="dynamic TensorRT"):
+        YoloDetector(weights_path=str(engine), image_sizes=(3200, 1600, 960))
+
+
+@pytest.mark.parametrize("tracked", [False, True])
+def test_bulk_box_parser_transfers_once_and_keeps_optional_track_id_separate(tracked):
+    rows = [
+        [40.0, 50.0, 120.0, 135.0, 0.91, 2.0],
+        [200.0, 180.0, 260.0, 245.0, 0.77, 1.0],
+    ]
+    if tracked:
+        rows = [row[:4] + [123.0] + row[4:] for row in rows]
+    class Tensor:
+        shape = (2, 7 if tracked else 6)
+        transfers = 0
+
+        def detach(self):
+            return self
+
+        def cpu(self):
+            self.transfers += 1
+            return self
+
+        def tolist(self):
+            return rows
+    class Boxes:
+        data = Tensor()
+
+        def __iter__(self):
+            raise AssertionError("Bulk boxes must not be transferred one at a time")
+    boxes = Boxes()
+    parsed = list(YoloDetector._box_rows(boxes))
+    assert parsed == [(2, 0.91, rows[0][:4]), (1, 0.77, rows[1][:4])]
+    assert boxes.data.transfers == 1
