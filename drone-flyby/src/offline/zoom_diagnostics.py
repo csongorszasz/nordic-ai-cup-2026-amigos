@@ -107,6 +107,8 @@ def diagnose(scene, weights, output, imgsz=1600, frame_count=8, confidence=0.001
         report["levels"][level] = {
             "views": views, "proposals": proposals, "proposals_per_view": proposals / views,
             "elapsed_seconds": time.monotonic() - started, "per_class": counts,
+            "actual_inference_shape": getattr(detector, "last_input_shape", None),
+            "actual_inference_dtype": getattr(detector, "last_input_dtype", None),
         }
         print(f"L{level}: {views} views, {proposals} proposals", flush=True)
     output.parent.mkdir(parents=True, exist_ok=True)

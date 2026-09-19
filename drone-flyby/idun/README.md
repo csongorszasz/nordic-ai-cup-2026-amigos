@@ -243,3 +243,9 @@ mask-support box. Rotation uses premultiplied alpha and accounts for pixel-cente
 versus annotation-edge coordinates. The audit shares source object appearances
 and tests a specific orientation/resampling shift; it is not independent
 competition validation or evidence of a training improvement by itself.
+
+`zoom_diagnostics.py` measures conditional recall on fully-contained objects at
+real optical L0/L1/L2 crops and records the measured tensor shape/precision.
+Different neural sizes must be compared explicitly; enlarging an L0 tensor is
+not equivalent to acquiring L1/L2 detail. These repeated crop observations do
+not measure a legal camera policy, full-frame AP, or new independent objects.
