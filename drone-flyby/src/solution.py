@@ -55,6 +55,12 @@ CAMERA_POLICY = os.environ.get('DRONE_CAMERA', 'hybrid')  # 'hybrid', 'sweep' (L
 RECORD_LEVEL = int(os.environ.get('RECORD_LEVEL', 2))   # 2: row scan at native resolution, 0: full view every frame
 RECORD_ROW_Y = int(os.environ.get('RECORD_ROW_Y', 1080))
 RECORD_XS = list(range(480, 3361, 480))   # 7 L2 centres, 480 px apart (< 551 px move limit)
+# RECORD_EDGES=1: the row scan follows the ground the other runs never saw zoomed in: the
+# bottom row (y 1890) until frame RECORD_BOTTOM_UNTIL (ground leaving the frame at the start),
+# the top row (y 270) from frame RECORD_TOP_FROM (ground entering at the end), RECORD_ROW_Y between.
+RECORD_EDGES = os.environ.get('RECORD_EDGES', '0') != '0'
+RECORD_BOTTOM_UNTIL = int(os.environ.get('RECORD_BOTTOM_UNTIL', 14))
+RECORD_TOP_FROM = int(os.environ.get('RECORD_TOP_FROM', 226))
 
 # Tracking
 MATCH_DISTANCE_PX = 150       # max centre distance (source px) to match a detection to a track
@@ -589,15 +595,23 @@ def choose_record_view(request: DroneFlybyPredictRequestDto, state: SequenceStat
     current = request.view
     if RECORD_LEVEL == 0:
         return None if current.resolution_level == 0 else RequestedViewDto(resolution_level=0, center_x=1920, center_y=1080)
+    row = RECORD_ROW_Y
+    if RECORD_EDGES:
+        row = 1890 if request.frame <= RECORD_BOTTOM_UNTIL else 270 if request.frame >= RECORD_TOP_FROM else RECORD_ROW_Y
     if current.resolution_level == 0:
-        return RequestedViewDto(resolution_level=1, center_x=960, center_y=RECORD_ROW_Y)
+        _, _, min_y, max_y = center_bounds_for_level(1)
+        return RequestedViewDto(resolution_level=1, center_x=960, center_y=int(min(max(row, min_y), max_y)))
     if current.resolution_level == 1:
-        return RequestedViewDto(resolution_level=2, center_x=RECORD_XS[0], center_y=RECORD_ROW_Y)
+        return RequestedViewDto(resolution_level=2, center_x=RECORD_XS[0], center_y=row)
+    base = state.pending or (current.resolution_level, current.center_x, current.center_y)
+    if base[2] != row:   # changing rows: move straight up or down, within the move limit
+        step = int(np.clip(row - base[2], -500, 500))
+        return RequestedViewDto(resolution_level=2, center_x=base[1], center_y=base[2] + step)
     # Ping-pong along the row; sweep_index walks 0..6..0.
     n = len(RECORD_XS)
     state.sweep_index = (state.sweep_index + 1) % (2 * (n - 1))
     i = state.sweep_index if state.sweep_index < n else 2 * (n - 1) - state.sweep_index
-    return RequestedViewDto(resolution_level=2, center_x=RECORD_XS[i], center_y=RECORD_ROW_Y)
+    return RequestedViewDto(resolution_level=2, center_x=RECORD_XS[i], center_y=row)
 
 
 def _candidate_views(state: SequenceState, next_frame: int):

@@ -164,6 +164,8 @@ def main():
     parser.add_argument('--out', default='recordings/validation_4k')
     parser.add_argument('--frames', type=int, nargs='*', help='only these frames')
     parser.add_argument('--max-age', type=int, default=6, help='only use views within this many frames of F')
+    parser.add_argument('--level-maps', action='store_true',
+                        help='also write level_XXXX.png: which level each pixel came from (grey L0 only, green L1, white L2, black none)')
     args = parser.parse_args()
 
     runs = [Path(r) for r in ([args.l0_run] if args.l0_run else []) + args.runs]
@@ -214,6 +216,9 @@ def main():
             paste_warped(canvas, level_map, image(v), between(steps, v['frame'], F) @ placement(v), v['level'])
 
         cv2.imwrite(str(out / f'frame_{F:04d}.jpg'), canvas, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        if args.level_maps:
+            colours = np.array([[0, 0, 0], [90, 90, 90], [0, 160, 0], [255, 255, 255]], np.uint8)  # none, L0, L1, L2
+            cv2.imwrite(str(out / f'level_{F:04d}.png'), cv2.resize(colours[level_map + 1], (W // 4, H // 4), interpolation=cv2.INTER_NEAREST))
         total = level_map.size
         coverage[str(F)] = {k: round(float((level_map == lvl).sum()) / total, 3)
                             for k, lvl in (('L2', 2), ('L1', 1), ('L0_only', 0), ('empty', -1))}
