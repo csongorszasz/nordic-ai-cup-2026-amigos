@@ -9,6 +9,7 @@
 #
 # The container restarts with the VM (--restart unless-stopped): after `az vm start` the
 # service is back on http://<ip>:9053/predict within a minute, no redeploy needed.
+# ~/drone/logs on the VM is mounted at /logs and survives redeploys: DRONE_LOG_RESPONSES=/logs/responses.jsonl.
 # This only serves. Starting a validation run happens in the competition website, by a person.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -35,7 +36,8 @@ echo "settings:${ENVS:- none}"
 echo "building the image on the VM (the first build downloads torch: a few minutes)"
 $SSH 'cd ~/drone && docker build -q -f Dockerfile.cpu -t drone-cpu . \
       && (docker rm -f drone >/dev/null 2>&1 || true) \
-      && docker run -d --name drone --restart unless-stopped -p 9053:9053'"$ENVS"' drone-cpu >/dev/null'
+      && mkdir -p ~/drone/logs \
+      && docker run -d --name drone --restart unless-stopped -p 9053:9053 -v ~/drone/logs:/logs'"$ENVS"' drone-cpu >/dev/null'
 
 printf "waiting for the model to load"
 for _ in $(seq 60); do
