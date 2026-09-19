@@ -3,7 +3,8 @@ import numpy as np
 import random
 from src.utils.sensing import compute_visibility
 from typing import List, Tuple, Optional, TYPE_CHECKING
-from shapely.geometry import Point, Polygon
+from shapely import contains_xy
+from shapely.geometry import Polygon
 
 
 
@@ -106,6 +107,7 @@ class Creature:
 
         # Compute vision polygon
         vision_poly, hit_edges = self.update_vision(edges)
+        vision_shape = None
 
         def process_objects(obj_list, tag, include_direction=False, include_id = False):
             """
@@ -117,8 +119,10 @@ class Creature:
             Iterates over a list of objects and adds visible observations to the observations list.
             
             """
+            nonlocal vision_shape
             if not obj_list:
                 return
+            obj_list = tuple(obj_list)
             
             # Vectorize x and y
             xs = np.fromiter((o.x for o in obj_list), float) 
@@ -146,8 +150,9 @@ class Creature:
             cand_idxs = np.where(visible_mask)[0]
             if len(cand_idxs) > 0:
                 pts = np.column_stack((xs[cand_idxs], ys[cand_idxs]))
-                vision_shape = Polygon([(self.x, self.y)] + vision_poly)
-                inside = [vision_shape.contains(Point(x, y)) for x, y in pts]
+                if vision_shape is None:
+                    vision_shape = Polygon([(self.x, self.y)] + vision_poly)
+                inside = contains_xy(vision_shape, pts[:, 0], pts[:, 1])
                 for idx, flag in zip(cand_idxs, inside):
                     if flag:
                         obs = {"type": tag, "distance": float(distances[idx]), "angle": float(angles[idx])}
@@ -207,4 +212,3 @@ class Creature:
         bar_y = self.y - self.size - 10
         pygame.draw.rect(screen, (20, 20, 20), (bar_x, bar_y, energy_bar_length, energy_bar_height))  # energy bar background
         pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, (self.energy / self.max_energy) * energy_bar_length, energy_bar_height))  # current energy
-

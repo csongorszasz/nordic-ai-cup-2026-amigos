@@ -88,6 +88,10 @@ def main():
         predictions[frame] = [{'object_id': r['class'], 'bbox': r['bbox'], 'confidence': r['conf']} for r in reported]
         step = {'frame': frame, 'level': view[0], 'center': view[1:3], 'region': view[3], 'ms': round(took),
                 'seen': list(seen), 'reported': reported, 'next': None, 'refused': None}
+        state = solution._states.get(payload['sequence_id'])
+        if state is not None:   # the ground motion the memory is using, px/frame
+            step['motion'] = [round(float(v), 1) for v in state.velocity]
+            step['motion_field'] = [[round(float(v), 2) for v in row] for row in state.field]
         feedback = None
         if response.requested_view is not None:
             r = response.requested_view

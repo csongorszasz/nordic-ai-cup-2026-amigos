@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "mode": "ppo",
+  "policy": "neural",
+  "seed": 12345,
+  "updates": 200,
+  "rollout_steps": 512,
+  "heuristic": {
+    "backend": "hierarchical"
+  },
+  "model": {
+    "encoder": "pool",
+    "memory": "gru",
+    "hidden_size": 128,
+    "team_context": true,
+    "critic": "team"
+  },
+  "ppo": {
+    "gamma": 1.0,
+    "gae_lambda": 0.995,
+    "epochs": 4,
+    "sequence_length": 128,
+    "normalize_value": true
+  },
+  "resources": {
+    "device": "auto",
+    "workers": 4,
+    "action_repeat": 5,
+    "max_vram_mb": 6144
+  }
+}

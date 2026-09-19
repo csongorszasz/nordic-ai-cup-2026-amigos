@@ -6,3 +6,4 @@ Requests==2.32.5
 scipy==1.16.3
 Shapely==2.1.2
 uvicorn==0.38.0
+httptools==0.8.0

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "mode": "imitation",
+  "policy": "neural",
+  "seed": 12345,
+  "updates": 80,
+  "rollout_steps": 512,
+  "heuristic": {
+    "backend": "hierarchical"
+  },
+  "model": {
+    "encoder": "pool",
+    "memory": "gru",
+    "hidden_size": 128,
+    "team_context": true
+  },
+  "imitation": {
+    "epochs": 4,
+    "teacher_probability": 1.0,
+    "dagger_rounds": 4,
+    "max_frames": 16384
+  },
+  "resources": {
+    "device": "auto",
+    "workers": 4,
+    "action_repeat": 5,
+    "max_vram_mb": 6144
+  }
+}

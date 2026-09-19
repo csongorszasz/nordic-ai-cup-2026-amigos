@@ -179,7 +179,28 @@ def review_candidates():
     data = json.loads(path.read_text())
     data['decisions'] = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
     data['classes'] = list(OBJECT_CLASSES)
+    data['references'] = reference_sprites()
+    data['sprites'] = {f: index[f]['bbox'] for fs in data['references'].values() for f in fs}
     return data
+
+
+def reference_sprites(per_class: int = 3) -> dict:
+    """Labelled Helsinki examples of each class to compare against: whole, clean, the biggest
+    ones, from different frames. Served by /img/crop/{file}."""
+    out = {}
+    for cls in OBJECT_CLASSES:
+        pool = [e for e in index.values() if e['class'] == cls and not e['truncated'] and not e['suspect']]
+        pool = pool or [e for e in index.values() if e['class'] == cls]
+        pool.sort(key=lambda e: -(e['bbox'][2] - e['bbox'][0]) * (e['bbox'][3] - e['bbox'][1]))
+        picked, frames = [], set()
+        for e in pool:
+            if e['frame'] not in frames:
+                picked.append(e['file'])
+                frames.add(e['frame'])
+            if len(picked) == per_class:
+                break
+        out[cls] = picked
+    return out
 
 
 @app.get('/review/crop/{frame}.jpg')
@@ -204,15 +225,16 @@ def review_crop(frame: int, box: str, side: int = 360):
 
 class ReviewDecision(BaseModel):
     id: str
-    status: str                  # accepted | rejected | unsure | undecided
+    status: str                  # accepted | rejected | unsure | note | undecided
     cls: Optional[str] = None    # corrected class, when the detector's was wrong
+    note: Optional[str] = None   # free text for Claude to look at (status 'note', or alongside any other)
     best_frame: int
     best_box: List[float]
 
 
 @app.post('/api/review/decide')
 def review_decide(d: ReviewDecision):
-    if d.status not in ('accepted', 'rejected', 'unsure', 'undecided'):
+    if d.status not in ('accepted', 'rejected', 'unsure', 'note', 'undecided'):
         raise HTTPException(400, 'bad status')
     if d.cls is not None and d.cls not in OBJECT_CLASSES:
         raise HTTPException(400, 'bad class')
@@ -222,7 +244,7 @@ def review_decide(d: ReviewDecision):
     else:
         # The box goes in too, so a decision can be matched to a track of a regenerated candidate set.
         decisions[d.id] = {'status': d.status, 'class': d.cls, 'best_frame': d.best_frame, 'best_box': d.best_box,
-                           'at': datetime.now().isoformat(timespec='seconds')}
+                           'note': d.note or None, 'at': datetime.now().isoformat(timespec='seconds')}
     tmp = DECISIONS.with_suffix('.tmp')
     tmp.write_text(json.dumps(decisions, indent=1))
     tmp.replace(DECISIONS)  # never a half-written file

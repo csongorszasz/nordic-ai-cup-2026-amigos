@@ -30,6 +30,11 @@
   .pill.accepted { color:var(--ok); border-color:var(--ok); }
   .pill.rejected { color:var(--bad); border-color:var(--bad); }
   .pill.unsure { color:var(--maybe); border-color:var(--maybe); }
+  .pill.note { color:var(--accent); border-color:var(--accent); }
+  #noteBox { display:none; margin-top:8px; }
+  #noteBox textarea { width:100%; max-width:420px; height:64px; background:var(--bg); color:var(--text);
+                      border:1px solid var(--accent); border-radius:6px; padding:6px; font:inherit; }
+  .noteText { color:var(--accent); margin-top:8px; white-space:pre-wrap; }
   .row { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
   #big { width:420px; height:420px; border-radius:8px; background:#000; display:block; image-rendering:auto; }
   .info { min-width:240px; flex:1; }
@@ -44,6 +49,14 @@
   #strip img { width:150px; height:150px; border-radius:6px; background:#000; display:block; }
   #votes { color:var(--muted); font-size:12px; }
   #empty { color:var(--muted); margin-top:40px; }
+  h3 { font-size:13px; color:var(--muted); font-weight:normal; margin:22px 0 8px; }
+  .refs { display:flex; gap:8px; flex-wrap:wrap; }
+  .refs figure { margin:0; text-align:center; color:var(--muted); font-size:11px; cursor:pointer;
+                 border:1px solid transparent; border-radius:8px; padding:4px; }
+  .refs figure:hover { border-color:var(--accent); }
+  .refs figure.here { border-color:var(--maybe); }
+  .refs img { width:110px; height:110px; object-fit:contain; background:#000; border-radius:6px; display:block; }
+  #mine img { width:150px; height:150px; }
 </style>
 </head>
 <body>
@@ -57,6 +70,7 @@
     <option value="accepted">Accepted</option>
     <option value="rejected">Rejected</option>
     <option value="unsure">Unsure</option>
+    <option value="note">Notes</option>
   </select>
   <select id="cls"><option value="">Every class</option></select>
   <div class="stat">Reviewed <b id="sDone">-</b></div>
@@ -64,11 +78,13 @@
   <div class="stat">Accepted <b id="sOk">0</b></div>
   <div class="stat">Rejected <b id="sBad">0</b></div>
   <div class="stat">Unsure <b id="sMaybe">0</b></div>
+  <div class="stat">Notes <b id="sNote">0</b></div>
   <div class="stat">In this list <b id="sList">-</b></div>
   <div class="help">
     Each card is one object the detector followed across frames. Is the thing in the
     yellow box really that class?<br>
     <kbd>A</kbd> accept &nbsp;·&nbsp; <kbd>R</kbd> reject &nbsp;·&nbsp; <kbd>U</kbd> unsure<br>
+    <kbd>N</kbd> leave a note instead (<kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels)<br>
     <kbd>1</kbd>–<kbd>0</kbd> <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>I</kbd>: it is this class instead (accepts it; keys listed in the class menu)<br>
     <kbd>&larr;</kbd> <kbd>&rarr;</kbd> previous / next &nbsp;·&nbsp; <kbd>Z</kbd> undo the last decision<br>
     Ordered with the likeliest real objects first: once it is all noise, you can stop.
@@ -77,6 +93,8 @@
 </aside>
 <main>
   <div id="card"></div>
+  <h3>Every class, from the labelled Helsinki frames (click one to accept the card as that class; size is the true box in 4K px)</h3>
+  <div class="refs" id="gallery"></div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
@@ -87,6 +105,8 @@ let data, list = [], pos = 0, history = [];
 const priority = c => c.score * Math.log2(1 + c.frames.length);
 const decision = c => data.decisions[c.id];
 const statusOf = c => decision(c) ? decision(c).status : 'undecided';
+const refSize = f => { const b = data.sprites[f]; return b ? `${b[2] - b[0]} × ${b[3] - b[1]}` : ''; };
+const refFig = (f, label, extra = '') => `<figure ${extra}><img loading="lazy" src="/img/crop/${f}" alt="">${label}</figure>`;
 const cropUrl = (frame, box, side) => `/review/crop/${frame}.jpg?box=${box.map(Math.round).join(',')}&side=${side}`;
 
 function rebuild(keepId) {
@@ -101,11 +121,11 @@ function rebuild(keepId) {
 function counts() {
   const all = data.candidates, n = all.length;
   const by = s => all.filter(c => statusOf(c) === s).length;
-  const ok = by('accepted'), bad = by('rejected'), maybe = by('unsure');
-  $('sDone').textContent = `${ok + bad + maybe} / ${n}`;
-  $('sOk').textContent = ok; $('sBad').textContent = bad; $('sMaybe').textContent = maybe;
+  const ok = by('accepted'), bad = by('rejected'), maybe = by('unsure'), note = by('note');
+  $('sDone').textContent = `${ok + bad + maybe + note} / ${n}`;
+  $('sOk').textContent = ok; $('sBad').textContent = bad; $('sMaybe').textContent = maybe; $('sNote').textContent = note;
   $('sList').textContent = list.length ? `${pos + 1} / ${list.length}` : '0';
-  $('bar').innerHTML = [[ok, '--ok'], [bad, '--bad'], [maybe, '--maybe']]
+  $('bar').innerHTML = [[ok, '--ok'], [bad, '--bad'], [maybe, '--maybe'], [note, '--accent']]
     .map(([v, c]) => `<i style="width:${100 * v / n}%;background:var(${c})"></i>`).join('');
 }
 
@@ -132,14 +152,26 @@ function show() {
           <button class="ok" data-s="accepted">Accept <kbd>A</kbd></button>
           <button class="bad" data-s="rejected">Reject <kbd>R</kbd></button>
           <button class="maybe" data-s="unsure">Unsure <kbd>U</kbd></button>
+          <button id="noteBtn">Note <kbd>N</kbd></button>
         </div>
+        ${d && d.note ? `<div class="noteText">Note: ${d.note.replace(/</g, '&lt;')}</div>` : ''}
+        <div id="noteBox"><textarea id="note" placeholder="What is it / why unsure? Enter saves, Shift+Enter new line"></textarea></div>
         <select id="fix"><option value="">It is another class… (accepts it)</option>
           ${data.classes.map((k, i) => `<option value="${k}">${CLASS_KEYS[i]} · ${k}</option>`).join('')}</select>
       </div>
     </div>
     <div id="strip">${picks.map(i => `<figure><img loading="lazy" src="${cropUrl(c.frames[i], c.boxes[i], 150)}" alt="">
-      frame ${c.frames[i]} · ${c.classes[i]} ${c.confs[i].toFixed(2)}</figure>`).join('')}</div>`;
-  for (const b of document.querySelectorAll('.actions button')) b.onclick = () => decide(b.dataset.s);
+      frame ${c.frames[i]} · ${c.classes[i]} ${c.confs[i].toFixed(2)}</figure>`).join('')}</div>
+    <h3>What a real ${shownClass} looks like (Helsinki, labelled)</h3>
+    <div class="refs" id="mine">${(data.references[shownClass] || []).map(f => refFig(f, refSize(f))).join('')}</div>`;
+  for (const fig of document.querySelectorAll('#gallery figure')) fig.classList.toggle('here', fig.dataset.cls === shownClass);
+  for (const b of document.querySelectorAll('.actions button[data-s]')) b.onclick = () => decide(b.dataset.s);
+  $('noteBtn').onclick = openNote;
+  $('note').onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const t = e.target.value.trim(); if (t) decide('note', null, t); }
+    else if (e.key === 'Escape') { $('noteBox').style.display = 'none'; e.target.blur(); }
+    e.stopPropagation();
+  };
   $('fix').onchange = e => e.target.value && decide('accepted', e.target.value);
   counts();
   // Warm the next card's big crop.
@@ -147,41 +179,49 @@ function show() {
   if (next) new Image().src = cropUrl(next.best_frame, next.best_box, 420);
 }
 
-async function decide(status, cls = null) {
+function openNote() {
+  const c = list[pos], d = c && decision(c);
+  $('noteBox').style.display = 'block';
+  $('note').value = (d && d.note) || '';
+  $('note').focus();
+}
+
+async function decide(status, cls = null, note = null) {
   const c = list[pos];
   if (!c) return;
   history.push({ c, before: data.decisions[c.id] });
-  await save(c, status, cls);
+  await save(c, status, cls, note);
   // In a filtered list the card leaves it; otherwise step on.
   if ($('filter').value === 'all' || $('filter').value === status) pos = Math.min(pos + 1, list.length - 1);
   else list.splice(pos, 1), pos = Math.min(pos, list.length - 1);
   show();
 }
 
-async function save(c, status, cls) {
+async function save(c, status, cls, note = null) {
   const r = await fetch('/api/review/decide', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: c.id, status, cls, best_frame: c.best_frame, best_box: c.best_box }) });
+    body: JSON.stringify({ id: c.id, status, cls, note, best_frame: c.best_frame, best_box: c.best_box }) });
   if (!r.ok) { alert('Could not save: ' + await r.text()); throw new Error('save failed'); }
   if (status === 'undecided') delete data.decisions[c.id];
-  else data.decisions[c.id] = { status, class: cls, best_frame: c.best_frame, best_box: c.best_box };
+  else data.decisions[c.id] = { status, class: cls, note, best_frame: c.best_frame, best_box: c.best_box };
 }
 
 async function undo() {
   const last = history.pop();
   if (!last) return;
   const b = last.before;
-  await save(last.c, b ? b.status : 'undecided', b ? b.class : null);
+  await save(last.c, b ? b.status : 'undecided', b ? b.class : null, b ? b.note : null);
   rebuild(last.c.id);
   if (list.findIndex(c => c.id === last.c.id) < 0) { $('filter').value = 'all'; rebuild(last.c.id); }
 }
 
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (['SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (k === 'a') decide('accepted');
   else if (k === 'r') decide('rejected');
   else if (k === 'u') decide('unsure');
   else if (k === 'z') undo();
+  else if (k === 'n') openNote();
   else if (e.key === 'ArrowRight') { pos = Math.min(pos + 1, list.length - 1); show(); }
   else if (e.key === 'ArrowLeft') { pos = Math.max(pos - 1, 0); show(); }
   else if (CLASS_KEYS.includes(k) && k.length === 1) decide('accepted', data.classes[CLASS_KEYS.indexOf(k)]);
@@ -195,6 +235,11 @@ $('cls').onchange = () => rebuild();
   const r = await fetch('/api/review/candidates');
   if (!r.ok) { $('card').innerHTML = `<div id="empty">${await r.text()}</div>`; return; }
   data = await r.json();
+  $('gallery').innerHTML = data.classes.map((k, i) => {
+    const f = (data.references[k] || [])[0];
+    return f ? refFig(f, `<kbd>${CLASS_KEYS[i]}</kbd> ${k}<br>${refSize(f)}`, `data-cls="${k}"`) : '';
+  }).join('');
+  for (const fig of document.querySelectorAll('#gallery figure')) fig.onclick = () => decide('accepted', fig.dataset.cls);
   $('cls').innerHTML += data.classes.map(k => `<option value="${k}">${k}</option>`).join('');
   rebuild();
 })();
