@@ -770,6 +770,18 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   result. Verify source hashes, identical hyperparameters, split isolation,
   complete unique OOF coverage, and unchanged base decisions.
 
+- **Complete OOF outcome:** `lora-oof-e9bb2586`, 350 non-demo questions
+  covered exactly once. Baseline **0.7978**, unadapted **0.7709**, adapted
+  **0.7976**. Adaptation improves its own model by **+0.02673**
+  (interval **[+0.00845, +0.04609]**) but does not beat the incumbent
+  (delta **-0.000226**, interval **[-0.02542, +0.02483]**).
+  No standalone deployment or full-data training is justified.
+- **Fixed agreement diagnosis:** evaluate exactly two predeclared rules using
+  these OOF proposals: use the adapter only when span tIoU with the incumbent
+  is at least 0.5, or average endpoints under the same gate. Otherwise keep
+  the incumbent. No policy/threshold fitting on OOF features is performed,
+  avoiding cross-fold meta-training leakage. Report both rules honestly.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
