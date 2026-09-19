@@ -196,7 +196,9 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
         ) if original is not None else None
         if comparison is not None and comparison["identity_classes_order_camera_aligned"]:
             numeric_comparisons.append(comparison)
-        raw_equal = diagnostics["raw_detections"] == original_pipeline["raw_detections"]
+        # Persisted diagnostics use JSON arrays for tuple-valued boxes.
+        raw_json = json.loads(json.dumps(diagnostics["raw_detections"], allow_nan=False))
+        raw_equal = raw_json == original_pipeline["raw_detections"]
         raw_matches += raw_equal
         replayed.append({
             "capture_stem": stem, "original_processing_order": order,

@@ -98,6 +98,7 @@ def test_recorded_views_reproduce_state_without_inventing_ap(tmp_path):
     assert result["request_count"] == 3
     assert result["coverage"]["missing_count"] == 1
     assert result["all_recorded_responses_match"] is True
+    assert result["exact_raw_detection_matches"] == 3
     assert result["score_available"] is False
     assert "map50" not in result
     assert [entry["frame_index"] for entry in result["replayed_requests"]] == [0, 2, 3]
