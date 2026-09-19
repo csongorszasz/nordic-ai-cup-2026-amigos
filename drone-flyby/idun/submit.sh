@@ -11,6 +11,7 @@
 #                                             # synthetic dataset + YOLO training, one job; weights in
 #                                             # runs/synth<frames>_<size>_<label>_<date>/. Jobs can run
 #                                             # side by side (each builds its own dataset).
+#   bash idun/submit.sh resume <run>          # continue a run cut off by the time limit
 #   bash idun/submit.sh queue                 # your jobs
 #   bash idun/submit.sh logs [job_id]         # tail the latest (or one) job log
 #   bash idun/submit.sh scores [run]          # validation per epoch of the latest (or one) run
@@ -133,6 +134,14 @@ case "$ACTION" in
         # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
         # The generated images are deleted after a successful run (the seed rebuilds them).
         submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs 60 --batch ${BATCH} --name ${NAME} && rm -rf ${DATA}"
+        ;;
+
+    resume)
+        RUN="${2:?resume needs a run name, e.g. synth400_m_padded_0919-0930}"
+        check_ssh
+        sync_code
+        # Continues from last.pt with the run's own settings and dataset (kept, since it did not finish).
+        submit job.slurm "python training/train_yolo.py --resume runs/${RUN}/weights/last.pt && rm -rf datasets/runs/${RUN}"
         ;;
 
     queue)

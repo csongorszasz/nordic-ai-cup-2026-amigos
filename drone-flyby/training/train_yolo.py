@@ -7,6 +7,10 @@ Best weights land in runs/<name>/weights/best.pt, next to provenance.json: the g
 (passed in by idun/submit.sh as GIT_COMMIT, since IDUN gets the code without .git), the
 command and the settings, so any run can be traced back and retrained. A name that is
 already taken is never overwritten: Ultralytics appends a number instead.
+
+last.pt is saved after every epoch, so a run cut off by the job's time limit continues with
+
+    python training/train_yolo.py --resume runs/<name>/weights/last.pt   # or: idun/submit.sh resume <name>
 """
 
 import argparse
@@ -30,9 +34,19 @@ def main():
     parser.add_argument('--imgsz', type=int, default=960)
     parser.add_argument('--batch', type=int, default=8)
     parser.add_argument('--name', default='yolo11s_baseline')
+    parser.add_argument('--resume', metavar='LAST_PT', help="continue a cut-off run from its last.pt (with that run's settings)")
     args = parser.parse_args()
 
+    if args.resume:
+        model = YOLO(args.resume)
+        model.add_callback('on_pretrain_routine_end', lambda trainer: write_provenance(trainer.save_dir, args, None))
+        model.train(resume=True)
+        write_provenance(model.trainer.save_dir, args, datetime.now().isoformat(timespec='seconds'))
+        return
+
     model = YOLO(args.model)
+    # Written when training starts too, so a run cut off by the time limit still says where it came from.
+    model.add_callback('on_pretrain_routine_end', lambda trainer: write_provenance(trainer.save_dir, args, None))
     model.train(
         data=args.data,
         epochs=args.epochs,
@@ -52,16 +66,25 @@ def main():
         close_mosaic=5,
         plots=False,
     )
-    save_dir = Path(model.trainer.save_dir)
-    (save_dir / 'provenance.json').write_text(json.dumps({
+    write_provenance(model.trainer.save_dir, args, datetime.now().isoformat(timespec='seconds'))
+
+
+def write_provenance(save_dir, args, finished):
+    """runs/<name>/provenance.json; a resumed run keeps the original's under "first"."""
+    path = Path(save_dir) / 'provenance.json'
+    record = {
         'git_commit': os.environ.get('GIT_COMMIT') or git_commit(),
         'command': ' '.join(sys.argv),
         'job_command': os.environ.get('RUN_CMD'),
         'slurm_job': os.environ.get('SLURM_JOB_ID'),
-        'finished': datetime.now().isoformat(timespec='seconds'),
+        'finished': finished,
         'args': vars(args),
-    }, indent=1))
-    print(f'provenance -> {save_dir / "provenance.json"}')
+    }
+    if args.resume and path.exists():
+        old = json.loads(path.read_text())
+        record['first'] = old.get('first', old) if old.get('args', {}).get('resume') else old
+    path.write_text(json.dumps(record, indent=1))
+    print(f'provenance -> {path}')
 
 
 def git_commit() -> str:
