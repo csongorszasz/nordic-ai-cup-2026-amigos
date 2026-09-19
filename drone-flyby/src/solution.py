@@ -105,6 +105,7 @@ if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540":
 # --------------------------------------------------------------------------- model
 
 _model = None
+HALF = False
 _lock = threading.Lock()
 
 
@@ -113,13 +114,16 @@ def _load_model():
     if not MODEL_PATH.exists():
         logger.error('No model at %s: serving empty detections', MODEL_PATH)
         return
+    import torch
     from ultralytics import YOLO
 
+    global HALF
+    HALF = torch.cuda.is_available()   # fp16 is a GPU speed-up; on CPU it is ~100x slower
     _model = YOLO(str(MODEL_PATH))
     # Warm up so the first real frame is not the slow one.
     dummy = np.zeros((540, 960, 3), dtype=np.uint8)
     for _ in range(3):
-        _model.predict(dummy, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=True)
+        _model.predict(dummy, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
     logger.info('Loaded %s', MODEL_PATH)
 
 
@@ -130,7 +134,7 @@ def run_detector(image: np.ndarray, region: Tuple[int, int, int, int]) -> List[T
     """Detections on one view, as (class, confidence, box in source pixels)."""
     if _model is None:
         return []
-    result = _model.predict(image, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=True)[0]
+    result = _model.predict(image, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)[0]
     if result.boxes is None or len(result.boxes) == 0:
         return []
     h, w = image.shape[:2]
