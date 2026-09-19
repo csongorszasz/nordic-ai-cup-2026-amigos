@@ -47,6 +47,9 @@ export NGROK_DOMAIN="${NGROK_DOMAIN:-}"
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
+echo "effective config: model=${MEDAPP_LLM_MODEL} revision=${MEDAPP_LLM_REVISION:-none} prompt=${MEDAPP_LLM_PROMPT:-base} thinking=${MEDAPP_LLM_ENABLE_THINKING:-unset} effort=${MEDAPP_LLM_REASONING_EFFORT:-unset} tokens=${MEDAPP_LLM_MAX_NEW_TOKENS} legacy=${MEDAPP_LLM_LEGACY_SPECIAL_TOKENS:-0} calibration=${MEDAPP_SPAN_CALIBRATION:-none} tunnel=${MEDAPP_TUNNEL}"
+# Speaker tagging is an offline/development step; forwarding MEDAPP_LLM_SPEAKERS
+# alone does not implement online diarization.
 
 python api.py > "logs/api_serve_${SLURM_JOB_ID}.log" 2>&1 &
 API_PID=$!

@@ -15,6 +15,7 @@
 #
 # `serve` forwards these when set: MEDAPP_LLM_MODEL, MEDAPP_LLM_REVISION,
 # MEDAPP_LLM_MAX_NEW_TOKENS, MEDAPP_LLM_LEGACY_SPECIAL_TOKENS,
+# MEDAPP_LLM_ENABLE_THINKING, MEDAPP_LLM_REASONING_EFFORT, MEDAPP_LLM_PROMPT,
 # MEDAPP_SPAN_CALIBRATION, MEDAPP_TUNNEL (cloudflared|ngrok), NGROK_DOMAIN.
 # Example (26B + calibration behind the stable ngrok domain):
 #   REMOTE_DIR=~/nordic-medical-ngrok CONSTRAINT=gpu80g MEM=128G TIME=2-00:00:00 \
@@ -115,8 +116,9 @@ case "$ACTION" in
         check_ssh; sync_code; sync_transcripts
         FORWARD=""
         for var in MEDAPP_LLM_MODEL MEDAPP_LLM_REVISION MEDAPP_LLM_MAX_NEW_TOKENS \
-                   MEDAPP_LLM_LEGACY_SPECIAL_TOKENS MEDAPP_SPAN_CALIBRATION \
-                   MEDAPP_TUNNEL NGROK_DOMAIN; do
+                   MEDAPP_LLM_LEGACY_SPECIAL_TOKENS MEDAPP_LLM_ENABLE_THINKING \
+                   MEDAPP_LLM_REASONING_EFFORT MEDAPP_LLM_PROMPT \
+                   MEDAPP_SPAN_CALIBRATION MEDAPP_TUNNEL NGROK_DOMAIN; do
             value="${!var:-}"
             [ -n "$value" ] && FORWARD="${FORWARD} ${var}=$(printf '%q' "$value")"
         done
@@ -124,6 +126,7 @@ case "$ACTION" in
         RESOURCES="${RESOURCES} --mem=$(printf '%q' "${MEM:-32G}")"
         RESOURCES="${RESOURCES} --time=$(printf '%q' "${TIME:-0-04:00:00}")"
         [ "${EXCLUSIVE:-0}" = "1" ] && RESOURCES="${RESOURCES} --exclusive"
+        echo "Forwarded serving configuration:${FORWARD:- (defaults)}"
         JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs &&${FORWARD} sbatch --account=${SLURM_ACCOUNT} ${RESOURCES} idun/job_serve_llm.slurm")
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
