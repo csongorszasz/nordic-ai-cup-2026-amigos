@@ -678,6 +678,21 @@ Primary model card: `https://huggingface.co/google/gemma-4-31B-it`.
 - Memory and latency permit one complete matched-input comparison. No
   deployment claim is justified by the three-conversation smoke.
 
+- **Full outcome:** `dense31-full-296207d2`, job `25405104`, rejected.
+  Raw score **0.7864**, fixed-offset score **0.7978** versus incumbent 0.8007;
+  192/195 positives correct, one alignment failure. Non-demo fixed-offset
+  delta **-0.001458**, interval **[-0.032379, +0.025163]**. Memory and speed
+  were viable, but capacity alone did not improve annotation occurrence choice.
+
+## Conditional final-statement occurrence rule
+
+The next isolated prompt change tests a concrete residual error mechanism:
+when several passages consistently establish the same queried fact, prefer its
+final specific statement or confirmation. Preserve subject, temporal status,
+dose, and qualifiers; later contradictory statements or generic acknowledgements
+are not substitutes. Model, demonstrations, ASR and output schema stay fixed.
+No question-specific or timestamp-specific rules are introduced.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

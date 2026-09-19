@@ -9,6 +9,7 @@ from answerers.llm_prompt import (
     qid_for,
     serialize_transcript,
     render_example,
+    system_prompt,
 )
 
 
@@ -87,6 +88,16 @@ def test_timestamp_ablation_preserves_segment_ids_text_and_targets():
     user, answer = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "no_timestamps")
     assert "[s01]" in user and "1.50-2.90" not in user
     assert base_answer == answer
+
+
+def test_final_statement_rule_preserves_the_actual_question_and_schema():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="final_statement")
+    assert changed[-1] == base[-1]
+    assert "SAME queried fact" in system_prompt("final_statement")
+    assert "temporal status" in changed[0]["content"]
 
 
 def test_build_few_shot_balanced_and_loco_safe():

@@ -27,6 +27,7 @@ SYSTEM_PROMPT = (
 VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
+    "final_statement",
 )
 
 SCHEMA_HINT = (
@@ -42,6 +43,13 @@ def system_prompt(variant: str) -> str:
         "full_context": "",
         "two_positive": "",
         "no_timestamps": "",
+        "final_statement": (
+            "- If several passages consistently establish the SAME queried fact, "
+            "prefer its final specific statement or confirmation over an earlier "
+            "preliminary mention. Preserve the question's subject, temporal status, "
+            "dose and qualifiers; do not substitute a later statement with a "
+            "different meaning or an unspecific acknowledgement.\n"
+        ),
         "v1": (
             "Work evidence-first: for each question, find the exact supporting span in "
             "the transcript first, and only then decide the answer.\n"
