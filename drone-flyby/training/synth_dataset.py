@@ -76,6 +76,61 @@ MAX_SATURATION_BOOST = 2.5  # beyond this, colour noise and casts dominate
 # and all of their box must be on it: 70% let hangars run half into buildings.
 GROUND_CLEARANCE_M = 3.0
 GROUND_SHARE = 0.98
+ALPHA_EDGE = 8  # alpha above this is the object; transform_sprite trims to it
+
+
+def label_scales(sprite_dir: Path, model_dir: Path) -> dict:
+    """{'cutout' | 'model': {class: factor}} from a pasted sprite's tight box to a supplied-style label.
+
+    The supplied boxes are not tight: each class's is its object's box scaled by a steady
+    factor (1.1 for the spacecraft, 1.7 for the jet, 2.5 for the launchers; the spread
+    between sprites of a class is a few percent). A detector trained on tight synthetic
+    boxes finds those objects at IoU ~0.4, under the 0.5 the score needs, so the synthetic
+    labels are scaled the same way.
+
+    Cut-outs: the median over the real cut-outs of sqrt(label area / object area).
+    Model renders: the same factor, unless the renders are bigger than the cut-outs; then
+    they show what GrabCut left out (the helicopter's rotor: 95 px against 63), and the
+    factor is the label size over the render size, never below 1.
+    """
+    ratios, labels, cutouts = {}, {}, {}
+    for entry in json.loads((sprite_dir / 'index.json').read_text()):
+        if entry.get('truncated') or entry.get('suspect'):
+            continue
+        image = cv2.imread(str(sprite_dir / entry['file']), cv2.IMREAD_UNCHANGED)
+        if image is None or image.shape[2] != 4:
+            continue
+        ys, xs = np.nonzero(image[:, :, 3] > ALPHA_EDGE)
+        if len(xs) < 4:
+            continue
+        x1, y1, x2, y2 = entry['bbox']
+        tight = math.sqrt((xs.max() - xs.min() + 1) * (ys.max() - ys.min() + 1))
+        label = math.sqrt((x2 - x1) * (y2 - y1))
+        ratios.setdefault(entry['class'], []).append(label / tight)
+        labels.setdefault(entry['class'], []).append(label)
+        cutouts.setdefault(entry['class'], []).append(tight)
+    cutout = {name: float(np.median(values)) for name, values in ratios.items()}
+
+    renders = {}
+    index_path = model_dir / 'index.json'
+    for entry in json.loads(index_path.read_text()) if index_path.exists() else []:
+        image = cv2.imread(str(model_dir / entry['file']), cv2.IMREAD_UNCHANGED)
+        if image is not None and image.shape[2] == 4:
+            renders.setdefault(entry['class'], []).append(math.sqrt(image.shape[0] * image.shape[1]))
+    model = {}
+    for name, factor in cutout.items():
+        if name in renders and np.median(renders[name]) > np.median(cutouts[name]):
+            factor = min(factor, max(float(np.median(labels[name]) / np.median(renders[name])), 1.0))
+        model[name] = factor
+    return {'cutout': cutout, 'model': model}
+
+
+def scale_box(box, factor: float):
+    """The box scaled about its centre, kept inside the 4K frame."""
+    x1, y1, x2, y2 = box
+    cx, cy, half_w, half_h = (x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1) * factor / 2, (y2 - y1) * factor / 2
+    return [max(int(round(cx - half_w)), 0), max(int(round(cy - half_h)), 0),
+            min(int(round(cx + half_w)), SOURCE_W), min(int(round(cy + half_h)), SOURCE_H)]
 
 
 def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: bool):
@@ -143,7 +198,7 @@ def transform_sprite(sprite: np.ndarray, rng: random.Random):
                              borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0))
 
     # Trim back to the alpha, so the label is the object and not the rotation padding.
-    ys, xs = np.nonzero(rotated[:, :, 3] > 8)
+    ys, xs = np.nonzero(rotated[:, :, 3] > ALPHA_EDGE)
     if len(xs) == 0:
         return None
     return rotated[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
@@ -259,13 +314,16 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 
 
 def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int,
-                  model_sprites: dict = None, model_share: float = 0.0, ground=None, classes: list = None):
+                  model_sprites: dict = None, model_share: float = 0.0, ground=None, classes: list = None,
+                  box_scales: dict = None):
     """Paste objects onto a graded copy of the background. Returns (frame, annotations).
 
     `classes` fixes which objects to paste (scene3d.py asks for one of each); by default
-    n_objects are drawn at random, partly in themed groups.
+    n_objects are drawn at random, partly in themed groups. `box_scales` (label_scales, per bank)
+    turns each tight pasted box into a box like the supplied labels; without it they stay tight.
     """
     model_sprites = model_sprites or {}
+    box_scales = box_scales or {}
     if ground is not None and not ground.any():
         ground = None
     canvas = grade(background, rng)
@@ -311,7 +369,7 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
             if pasted is None:
                 continue
             placed.append(pasted)
-            annotations.append({'object_id': class_name, 'bbox': pasted})
+            annotations.append({'object_id': class_name, 'bbox': scale_box(pasted, box_scales.get('model' if use_model else 'cutout', {}).get(class_name, 1.0))})
             if use_model:  # the render's yaw: scene3d.py turns the 3D model to match
                 annotations[-1]['yaw'] = yaw
             break
@@ -357,6 +415,9 @@ def main():
         raise SystemExit(f'no backgrounds in {args.backgrounds}; run training/fetch_backgrounds.py first')
     sprites = load_sprites(Path(args.sprites), args.include_suspect, args.include_truncated)
     model_sprites = load_model_sprites(Path(args.model_sprites))
+    box_scales = label_scales(Path(args.sprites), Path(args.model_sprites))
+    for bank, factors in box_scales.items():
+        print(f'label / {bank} box: ' + ', '.join(f'{name} {factor:.2f}' for name, factor in sorted(factors.items())))
     missing = [name for name in OBJECT_CLASSES if name not in sprites and name not in model_sprites]
     per_dir = ', '.join(f'{Path(d).name} {len(list(Path(d).glob("*.jpg")))}' for d in args.backgrounds)
     print(f'{len(background_paths)} backgrounds ({per_dir}); real cut-outs for {len(sprites)} classes, '
@@ -371,7 +432,7 @@ def main():
             background, ground = load_background(rng.choice(background_paths))
             frame, annotations = compose_frame(background, sprites, rng,
                                                rng.randint(args.min_objects, args.max_objects),
-                                               model_sprites, args.model_share, ground)
+                                               model_sprites, args.model_share, ground, box_scales=box_scales)
             marked = frame.copy()
             for ann in annotations:
                 x1, y1, x2, y2 = ann['bbox']
@@ -413,7 +474,7 @@ def main():
         background, ground = load_background(rng.choice(background_paths))
         frame, annotations = compose_frame(background, sprites, rng,
                                            rng.randint(args.min_objects, args.max_objects),
-                                           model_sprites, args.model_share, ground)
+                                           model_sprites, args.model_share, ground, box_scales=box_scales)
         for ann in annotations:
             per_class[ann['object_id']] += 1
         cut(frame, annotations, f's{n:04d}', split)
