@@ -423,7 +423,7 @@
   "at": "2026-09-19T10:16:38"
  },
  "f121_1896_1957": {
-  "status": "accepted",
+  "status": "rejected",
   "class": null,
   "best_frame": 121,
   "best_box": [
@@ -432,8 +432,8 @@
    1912.0,
    1977.0
   ],
-  "note": null,
-  "at": "2026-09-19T10:16:41"
+  "note": "removed in the playback page",
+  "at": "2026-09-19T15:00:33"
  },
  "f056_3415_0842": {
   "status": "rejected",
@@ -632,7 +632,7 @@
  },
  "f107_1854_0928": {
   "status": "note",
-  "class": null,
+  "class": "medium_launcher",
   "best_frame": 107,
   "best_box": [
    1821.0,
@@ -722,17 +722,17 @@
   "at": "2026-09-19T10:20:06"
  },
  "f197_1075_0765": {
-  "status": "unsure",
+  "status": "rejected",
   "class": null,
-  "best_frame": 197,
+  "best_frame": 212,
   "best_box": [
-   1068.0,
-   755.0,
-   1084.0,
-   777.0
+   964.0,
+   1812.0,
+   984.0,
+   1840.0
   ],
   "note": null,
-  "at": "2026-09-19T10:20:14"
+  "at": "2026-09-19T15:09:52"
  },
  "f034_2148_2000": {
   "status": "rejected",
@@ -982,7 +982,7 @@
   "at": "2026-09-19T10:21:08"
  },
  "f072_1098_1021": {
-  "status": "note",
+  "status": "rejected",
   "class": null,
   "best_frame": 72,
   "best_box": [
@@ -991,8 +991,8 @@
    1183.0,
    1080.0
   ],
-  "note": "it is the hangar but most of the labels are covering it partially instead  of fully",
-  "at": "2026-09-19T10:21:28"
+  "note": "removed in the playback page",
+  "at": "2026-09-19T14:54:52"
  },
  "f092_2324_1797": {
   "status": "rejected",
@@ -1981,5 +1981,2748 @@
   ],
   "note": null,
   "at": "2026-09-19T10:25:16"
+ },
+ "f028_1850_0992": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 28,
+  "best_box": [
+   1844.0,
+   982.0,
+   1857.0,
+   1003.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:05"
+ },
+ "f240_3450_1213": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 240,
+  "best_box": [
+   3431.0,
+   1196.0,
+   3469.0,
+   1232.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:08"
+ },
+ "f096_2313_1945": {
+  "status": "accepted",
+  "class": null,
+  "best_frame": 96,
+  "best_box": [
+   2278.0,
+   1919.0,
+   2348.0,
+   1972.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:12"
+ },
+ "f146_1808_1754": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 146,
+  "best_box": [
+   1792.0,
+   1738.0,
+   1824.0,
+   1770.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:13"
+ },
+ "f005_1911_0939": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 5,
+  "best_box": [
+   1896.0,
+   922.0,
+   1928.0,
+   956.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:16"
+ },
+ "f147_1704_1885": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 147,
+  "best_box": [
+   1668.0,
+   1853.0,
+   1740.0,
+   1917.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:18"
+ },
+ "f236_2566_0148": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 236,
+  "best_box": [
+   2550.0,
+   139.0,
+   2582.0,
+   159.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:18"
+ },
+ "f074_2212_0176": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 74,
+  "best_box": [
+   2200.0,
+   164.0,
+   2225.0,
+   189.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:19"
+ },
+ "f073_3069_1864": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 73,
+  "best_box": [
+   3033.0,
+   1827.0,
+   3105.0,
+   1901.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:21"
+ },
+ "f071_1308_0118": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 71,
+  "best_box": [
+   1298.0,
+   109.0,
+   1318.0,
+   127.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:22"
+ },
+ "f160_2715_1858": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 160,
+  "best_box": [
+   2703.0,
+   1839.0,
+   2727.0,
+   1877.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:22"
+ },
+ "f248_0538_0468": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 248,
+  "best_box": [
+   522.0,
+   458.0,
+   556.0,
+   478.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:33"
+ },
+ "f079_1836_0222": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 79,
+  "best_box": [
+   1828.0,
+   210.0,
+   1844.0,
+   234.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:33"
+ },
+ "f156_3236_1531": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 156,
+  "best_box": [
+   3224.0,
+   1514.0,
+   3248.0,
+   1548.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:34"
+ },
+ "f211_2222_1007": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 211,
+  "best_box": [
+   2207.0,
+   993.0,
+   2237.0,
+   1021.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:35"
+ },
+ "f226_3392_0093": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 226,
+  "best_box": [
+   3378.0,
+   76.0,
+   3406.0,
+   111.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:36"
+ },
+ "f020_0597_0225": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 20,
+  "best_box": [
+   570.0,
+   202.0,
+   624.0,
+   249.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:37"
+ },
+ "f181_0700_0262": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 181,
+  "best_box": [
+   683.0,
+   245.0,
+   717.0,
+   280.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:38"
+ },
+ "f211_3347_1162": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 211,
+  "best_box": [
+   3336.0,
+   1152.0,
+   3358.0,
+   1173.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:39"
+ },
+ "f235_3460_0825": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   3442.0,
+   806.0,
+   3478.0,
+   844.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:40"
+ },
+ "f172_2617_2002": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 172,
+  "best_box": [
+   2611.0,
+   1992.0,
+   2623.0,
+   2013.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:41"
+ },
+ "f243_2191_0726": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 243,
+  "best_box": [
+   2183.0,
+   714.0,
+   2200.0,
+   738.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:41"
+ },
+ "f165_1898_1030": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 165,
+  "best_box": [
+   1880.0,
+   1012.0,
+   1916.0,
+   1048.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:42"
+ },
+ "f185_2351_0531": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 185,
+  "best_box": [
+   2339.0,
+   519.0,
+   2363.0,
+   543.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:43"
+ },
+ "f133_0776_0959": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 133,
+  "best_box": [
+   764.0,
+   944.0,
+   788.0,
+   974.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:44"
+ },
+ "f065_0944_1618": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 65,
+  "best_box": [
+   930.0,
+   1603.0,
+   960.0,
+   1633.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:45"
+ },
+ "f021_3146_1782": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 21,
+  "best_box": [
+   3132.0,
+   1769.0,
+   3160.0,
+   1795.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:46"
+ },
+ "f179_1941_1959": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 179,
+  "best_box": [
+   1926.0,
+   1943.0,
+   1957.0,
+   1975.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:47"
+ },
+ "f120_1741_0973": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 120,
+  "best_box": [
+   1723.0,
+   910.0,
+   1760.0,
+   1036.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:48"
+ },
+ "f084_3413_1637": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 84,
+  "best_box": [
+   3386.0,
+   1620.0,
+   3440.0,
+   1654.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:49"
+ },
+ "f031_3383_0599": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 31,
+  "best_box": [
+   3371.0,
+   586.0,
+   3395.0,
+   613.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:50"
+ },
+ "f229_3132_0849": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 229,
+  "best_box": [
+   3127.0,
+   840.0,
+   3138.0,
+   859.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:51"
+ },
+ "f112_2604_0104": {
+  "status": "accepted",
+  "class": null,
+  "best_frame": 112,
+  "best_box": [
+   2544.0,
+   15.0,
+   2664.0,
+   195.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:52:55"
+ },
+ "f224_0548_0798": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 224,
+  "best_box": [
+   536.0,
+   786.0,
+   560.0,
+   810.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:00"
+ },
+ "f239_1887_1713": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 239,
+  "best_box": [
+   1876.0,
+   1702.0,
+   1898.0,
+   1724.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:01"
+ },
+ "f183_0032_0378": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 183,
+  "best_box": [
+   13.0,
+   358.0,
+   52.0,
+   398.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:02"
+ },
+ "f240_2836_0991": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 240,
+  "best_box": [
+   2832.0,
+   985.0,
+   2842.0,
+   998.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:05"
+ },
+ "f115_3710_1588": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 115,
+  "best_box": [
+   3692.0,
+   1567.0,
+   3728.0,
+   1610.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:08"
+ },
+ "f146_1663_2007": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 146,
+  "best_box": [
+   1644.0,
+   1976.0,
+   1682.0,
+   2039.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:24"
+ },
+ "f185_1924_1444": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 185,
+  "best_box": [
+   1904.0,
+   1424.0,
+   1944.0,
+   1465.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:25"
+ },
+ "f246_2765_0997": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 246,
+  "best_box": [
+   2757.0,
+   990.0,
+   2773.0,
+   1004.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:27"
+ },
+ "f242_1947_0813": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 242,
+  "best_box": [
+   1934.0,
+   800.0,
+   1961.0,
+   828.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:28"
+ },
+ "f203_0409_1115": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 203,
+  "best_box": [
+   395.0,
+   1099.0,
+   424.0,
+   1132.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:28"
+ },
+ "f149_2127_0279": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 149,
+  "best_box": [
+   2113.0,
+   264.0,
+   2142.0,
+   296.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:29"
+ },
+ "f249_2400_2045": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 249,
+  "best_box": [
+   2390.0,
+   2034.0,
+   2410.0,
+   2056.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:31"
+ },
+ "f032_2121_0544": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 32,
+  "best_box": [
+   2096.0,
+   522.0,
+   2148.0,
+   568.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:34"
+ },
+ "f121_2649_0908": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 121,
+  "best_box": [
+   2636.0,
+   900.0,
+   2662.0,
+   916.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:35"
+ },
+ "f048_1673_1413": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 48,
+  "best_box": [
+   1661.0,
+   1402.0,
+   1685.0,
+   1426.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:35"
+ },
+ "f234_3726_1137": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 234,
+  "best_box": [
+   3710.0,
+   1121.0,
+   3742.0,
+   1155.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:36"
+ },
+ "f159_0901_1346": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 159,
+  "best_box": [
+   885.0,
+   1337.0,
+   918.0,
+   1356.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:38"
+ },
+ "f225_1607_1782": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 225,
+  "best_box": [
+   1600.0,
+   1758.0,
+   1616.0,
+   1806.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:39"
+ },
+ "f248_2531_1442": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 248,
+  "best_box": [
+   2519.0,
+   1430.0,
+   2543.0,
+   1454.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:43"
+ },
+ "f026_1216_0430": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 26,
+  "best_box": [
+   1204.0,
+   417.0,
+   1228.0,
+   443.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:44"
+ },
+ "f224_1501_0719": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 224,
+  "best_box": [
+   1494.0,
+   709.0,
+   1508.0,
+   729.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:49"
+ },
+ "f124_0090_0772": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 124,
+  "best_box": [
+   57.0,
+   749.0,
+   124.0,
+   795.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:52"
+ },
+ "f095_2630_1100": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 95,
+  "best_box": [
+   2609.0,
+   1080.0,
+   2651.0,
+   1120.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:53"
+ },
+ "f213_0082_0777": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 213,
+  "best_box": [
+   76.0,
+   768.0,
+   89.0,
+   786.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:54"
+ },
+ "f010_1139_1927": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 10,
+  "best_box": [
+   1128.0,
+   1916.0,
+   1150.0,
+   1938.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:54"
+ },
+ "f123_0359_0616": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 123,
+  "best_box": [
+   348.0,
+   606.0,
+   370.0,
+   626.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:55"
+ },
+ "f140_2016_1451": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 140,
+  "best_box": [
+   1977.0,
+   1409.0,
+   2057.0,
+   1493.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:57"
+ },
+ "f111_2896_1601": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 111,
+  "best_box": [
+   2882.0,
+   1586.0,
+   2910.0,
+   1616.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:53:58"
+ },
+ "f105_3581_0889": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 105,
+  "best_box": [
+   3565.0,
+   870.0,
+   3597.0,
+   908.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:54:00"
+ },
+ "f146_1289_1411": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 150,
+  "best_box": [
+   1173.0,
+   1605.0,
+   1332.0,
+   1802.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:08:00"
+ },
+ "f165_2485_1826": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 165,
+  "best_box": [
+   2474.0,
+   1814.0,
+   2496.0,
+   1838.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:54:18"
+ },
+ "f066_2156_0397": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 66,
+  "best_box": [
+   2144.0,
+   385.0,
+   2169.0,
+   410.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:54:21"
+ },
+ "f246_2602_0963": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 246,
+  "best_box": [
+   2594.0,
+   956.0,
+   2611.0,
+   972.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:54:22"
+ },
+ "f072_1112_1137": {
+  "status": "note",
+  "class": null,
+  "best_frame": 72,
+  "best_box": [
+   1026.0,
+   1080.0,
+   1198.0,
+   1194.0
+  ],
+  "note": "the label occupies half of the hangar instead of the full one",
+  "at": "2026-09-19T10:54:49"
+ },
+ "f164_1646_2146": {
+  "status": "unsure",
+  "class": null,
+  "best_frame": 164,
+  "best_box": [
+   1626.0,
+   2132.0,
+   1666.0,
+   2160.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:55:15"
+ },
+ "f013_2020_0230": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 13,
+  "best_box": [
+   2008.0,
+   218.0,
+   2033.0,
+   242.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:55:17"
+ },
+ "f184_2697_2117": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 184,
+  "best_box": [
+   2690.0,
+   2106.0,
+   2704.0,
+   2128.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:55:18"
+ },
+ "f134_2893_1590": {
+  "status": "note",
+  "class": null,
+  "best_frame": 134,
+  "best_box": [
+   2880.0,
+   1569.0,
+   2908.0,
+   1613.0
+  ],
+  "note": "the label box occupies ony half of the plane and in 132 only the tail",
+  "at": "2026-09-19T10:55:49"
+ },
+ "f007_1882_1421": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 7,
+  "best_box": [
+   1866.0,
+   1408.0,
+   1898.0,
+   1434.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:55:57"
+ },
+ "f239_1032_1904": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 239,
+  "best_box": [
+   1017.0,
+   1892.0,
+   1047.0,
+   1916.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:03"
+ },
+ "f222_2114_0143": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 222,
+  "best_box": [
+   2082.0,
+   114.0,
+   2147.0,
+   173.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:04"
+ },
+ "f091_1718_0487": {
+  "status": "note",
+  "class": null,
+  "best_frame": 91,
+  "best_box": [
+   1676.0,
+   450.0,
+   1760.0,
+   525.0
+  ],
+  "note": "it is helicopter but the box is not covering it fully",
+  "at": "2026-09-19T10:56:18"
+ },
+ "f071_1090_1095": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 71,
+  "best_box": [
+   1076.0,
+   1080.0,
+   1104.0,
+   1110.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:28"
+ },
+ "f028_1603_0859": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 28,
+  "best_box": [
+   1592.0,
+   847.0,
+   1614.0,
+   871.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:29"
+ },
+ "f014_2685_1603": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 14,
+  "best_box": [
+   2672.0,
+   1591.0,
+   2698.0,
+   1617.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:34"
+ },
+ "f139_1866_2017": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 139,
+  "best_box": [
+   1852.0,
+   2003.0,
+   1880.0,
+   2032.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:35"
+ },
+ "f227_1946_1829": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 227,
+  "best_box": [
+   1932.0,
+   1812.0,
+   1961.0,
+   1847.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:35"
+ },
+ "f122_1595_1117": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 122,
+  "best_box": [
+   1513.0,
+   1080.0,
+   1677.0,
+   1154.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:36"
+ },
+ "f208_0952_1628": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 208,
+  "best_box": [
+   944.0,
+   1614.0,
+   960.0,
+   1642.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:37"
+ },
+ "f242_1669_0124": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 242,
+  "best_box": [
+   1653.0,
+   107.0,
+   1685.0,
+   142.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:38"
+ },
+ "f012_3756_0784": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 12,
+  "best_box": [
+   3739.0,
+   762.0,
+   3773.0,
+   806.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:39"
+ },
+ "f227_3398_0916": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 227,
+  "best_box": [
+   3382.0,
+   902.0,
+   3415.0,
+   931.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:39"
+ },
+ "f033_1184_2043": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 33,
+  "best_box": [
+   1170.0,
+   2031.0,
+   1198.0,
+   2056.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:40"
+ },
+ "f026_1876_0302": {
+  "status": "accepted",
+  "class": null,
+  "best_frame": 26,
+  "best_box": [
+   1870.0,
+   288.0,
+   1882.0,
+   316.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:42"
+ },
+ "f115_0495_0166": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 115,
+  "best_box": [
+   466.0,
+   140.0,
+   524.0,
+   193.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:47"
+ },
+ "f067_0929_1805": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 67,
+  "best_box": [
+   918.0,
+   1792.0,
+   940.0,
+   1818.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:49"
+ },
+ "f235_3502_0870": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   3487.0,
+   856.0,
+   3517.0,
+   884.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:50"
+ },
+ "f136_0022_1573": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 136,
+  "best_box": [
+   0.0,
+   1548.0,
+   46.0,
+   1598.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:51"
+ },
+ "f128_2780_0194": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 128,
+  "best_box": [
+   2771.0,
+   180.0,
+   2789.0,
+   210.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:52"
+ },
+ "f224_2534_0237": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 224,
+  "best_box": [
+   2527.0,
+   226.0,
+   2542.0,
+   250.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:54"
+ },
+ "f133_3101_1364": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 133,
+  "best_box": [
+   3084.0,
+   1353.0,
+   3119.0,
+   1376.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:55"
+ },
+ "f203_3111_0322": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 203,
+  "best_box": [
+   3078.0,
+   298.0,
+   3146.0,
+   346.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:56"
+ },
+ "f244_2739_1473": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 244,
+  "best_box": [
+   2733.0,
+   1465.0,
+   2746.0,
+   1482.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:57"
+ },
+ "f235_2564_1428": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   2553.0,
+   1417.0,
+   2575.0,
+   1440.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:57"
+ },
+ "f156_1537_1188": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 156,
+  "best_box": [
+   1524.0,
+   1172.0,
+   1550.0,
+   1206.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:56:59"
+ },
+ "f061_2887_0154": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 61,
+  "best_box": [
+   2880.0,
+   142.0,
+   2895.0,
+   166.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:04"
+ },
+ "f235_3070_1410": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   3065.0,
+   1404.0,
+   3076.0,
+   1418.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:05"
+ },
+ "f222_2867_1235": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 222,
+  "best_box": [
+   2851.0,
+   1218.0,
+   2885.0,
+   1252.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:05"
+ },
+ "f106_3067_0040": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 106,
+  "best_box": [
+   3054.0,
+   27.0,
+   3080.0,
+   54.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:06"
+ },
+ "f115_1547_0176": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 115,
+  "best_box": [
+   1535.0,
+   156.0,
+   1559.0,
+   196.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:07"
+ },
+ "f231_2711_0510": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 231,
+  "best_box": [
+   2706.0,
+   504.0,
+   2716.0,
+   518.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:07"
+ },
+ "f074_2246_1132": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 74,
+  "best_box": [
+   2232.0,
+   1121.0,
+   2261.0,
+   1145.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:08"
+ },
+ "f044_1029_1994": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 44,
+  "best_box": [
+   1014.0,
+   1979.0,
+   1044.0,
+   2009.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:09"
+ },
+ "f108_1909_1096": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 108,
+  "best_box": [
+   1899.0,
+   1087.0,
+   1919.0,
+   1106.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:10"
+ },
+ "f249_0683_0488": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 249,
+  "best_box": [
+   673.0,
+   477.0,
+   693.0,
+   500.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:12"
+ },
+ "f162_1438_1961": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 162,
+  "best_box": [
+   1433.0,
+   1954.0,
+   1443.0,
+   1968.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:13"
+ },
+ "f019_1035_0776": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 19,
+  "best_box": [
+   1024.0,
+   765.0,
+   1046.0,
+   787.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:13"
+ },
+ "f213_2878_0031": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 213,
+  "best_box": [
+   2867.0,
+   18.0,
+   2890.0,
+   45.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:14"
+ },
+ "f230_2928_1832": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 230,
+  "best_box": [
+   2911.0,
+   1814.0,
+   2947.0,
+   1850.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:15"
+ },
+ "f014_2980_0755": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 14,
+  "best_box": [
+   2962.0,
+   736.0,
+   2999.0,
+   774.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:16"
+ },
+ "f146_0656_1909": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 146,
+  "best_box": [
+   642.0,
+   1892.0,
+   670.0,
+   1926.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:16"
+ },
+ "f238_2618_1548": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 238,
+  "best_box": [
+   2613.0,
+   1540.0,
+   2624.0,
+   1558.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:17"
+ },
+ "f034_1184_1982": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 34,
+  "best_box": [
+   1170.0,
+   1968.0,
+   1198.0,
+   1996.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:17"
+ },
+ "f162_2737_1862": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 162,
+  "best_box": [
+   2720.0,
+   1845.0,
+   2754.0,
+   1879.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:18"
+ },
+ "f191_2083_0990": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 191,
+  "best_box": [
+   2074.0,
+   980.0,
+   2093.0,
+   1000.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:19"
+ },
+ "f017_1883_1622": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 17,
+  "best_box": [
+   1870.0,
+   1610.0,
+   1896.0,
+   1634.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:20"
+ },
+ "f199_2547_1348": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 199,
+  "best_box": [
+   2535.0,
+   1313.0,
+   2560.0,
+   1384.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:22"
+ },
+ "f119_1460_0091": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 119,
+  "best_box": [
+   1450.0,
+   76.0,
+   1470.0,
+   107.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:22"
+ },
+ "f108_3468_1369": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 108,
+  "best_box": [
+   3460.0,
+   1359.0,
+   3476.0,
+   1379.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:24"
+ },
+ "f143_2904_1859": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 143,
+  "best_box": [
+   2880.0,
+   1830.0,
+   2929.0,
+   1889.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:25"
+ },
+ "f145_0911_1663": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 145,
+  "best_box": [
+   902.0,
+   1653.0,
+   920.0,
+   1673.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:29"
+ },
+ "f196_0812_0180": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 196,
+  "best_box": [
+   800.0,
+   155.0,
+   824.0,
+   206.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:30"
+ },
+ "f020_2655_1144": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 20,
+  "best_box": [
+   2640.0,
+   1127.0,
+   2670.0,
+   1161.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:31"
+ },
+ "f236_2574_0198": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 236,
+  "best_box": [
+   2561.0,
+   191.0,
+   2587.0,
+   206.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:32"
+ },
+ "f237_2164_1784": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 237,
+  "best_box": [
+   2154.0,
+   1770.0,
+   2174.0,
+   1799.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:33"
+ },
+ "f057_3214_0576": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 57,
+  "best_box": [
+   3202.0,
+   565.0,
+   3226.0,
+   588.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:57:35"
+ },
+ "f123_2763_0257": {
+  "status": "note",
+  "class": null,
+  "best_frame": 123,
+  "best_box": [
+   2758.0,
+   248.0,
+   2768.0,
+   267.0
+  ],
+  "note": "it is a small launcher, there are actually 3 clouse to each other there, but the labels here seems to pint to the center one, but one boxes are tighet than otehrs",
+  "at": "2026-09-19T10:58:16"
+ },
+ "f172_2778_2002": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 172,
+  "best_box": [
+   2768.0,
+   1990.0,
+   2788.0,
+   2014.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:58:22"
+ },
+ "f041_1052_2025": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 41,
+  "best_box": [
+   1048.0,
+   2016.0,
+   1056.0,
+   2034.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:58:24"
+ },
+ "f086_0937_2087": {
+  "status": "note",
+  "class": null,
+  "best_frame": 86,
+  "best_box": [
+   914.0,
+   2014.0,
+   960.0,
+   2160.0
+  ],
+  "note": "there is a hangaar there but i think this one was already labeled? not sure, and the boxes of this one are wrapping one of the corners of it instead of the full one",
+  "at": "2026-09-19T10:59:00"
+ },
+ "f221_1138_0704": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 221,
+  "best_box": [
+   1126.0,
+   694.0,
+   1150.0,
+   714.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:03"
+ },
+ "f020_1233_1791": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 20,
+  "best_box": [
+   1221.0,
+   1776.0,
+   1245.0,
+   1806.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:04"
+ },
+ "f033_0821_0446": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 33,
+  "best_box": [
+   814.0,
+   439.0,
+   828.0,
+   453.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:05"
+ },
+ "f245_0431_1847": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 245,
+  "best_box": [
+   413.0,
+   1831.0,
+   450.0,
+   1864.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:06"
+ },
+ "f237_2889_1045": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 237,
+  "best_box": [
+   2882.0,
+   1039.0,
+   2896.0,
+   1052.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:07"
+ },
+ "f205_3676_0822": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 205,
+  "best_box": [
+   3668.0,
+   812.0,
+   3684.0,
+   834.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:07"
+ },
+ "f247_2888_1496": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 247,
+  "best_box": [
+   2883.0,
+   1489.0,
+   2893.0,
+   1504.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:08"
+ },
+ "f092_3328_1772": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 92,
+  "best_box": [
+   3314.0,
+   1760.0,
+   3342.0,
+   1786.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:08"
+ },
+ "f041_1139_0344": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 41,
+  "best_box": [
+   1120.0,
+   326.0,
+   1158.0,
+   363.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:09"
+ },
+ "f045_1706_1845": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 45,
+  "best_box": [
+   1689.0,
+   1827.0,
+   1724.0,
+   1864.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:10"
+ },
+ "f115_1650_1436": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 115,
+  "best_box": [
+   1643.0,
+   1426.0,
+   1657.0,
+   1447.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:10"
+ },
+ "f122_0592_0932": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 122,
+  "best_box": [
+   578.0,
+   913.0,
+   606.0,
+   951.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:11"
+ },
+ "f159_1615_0466": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 159,
+  "best_box": [
+   1600.0,
+   450.0,
+   1630.0,
+   484.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:13"
+ },
+ "f141_1721_0525": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 141,
+  "best_box": [
+   1715.0,
+   517.0,
+   1727.0,
+   534.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:22"
+ },
+ "f025_3318_1782": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 25,
+  "best_box": [
+   3302.0,
+   1766.0,
+   3334.0,
+   1798.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:23"
+ },
+ "f198_0538_1337": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 198,
+  "best_box": [
+   520.0,
+   1318.0,
+   556.0,
+   1356.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:24"
+ },
+ "f203_0608_1812": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 203,
+  "best_box": [
+   584.0,
+   1787.0,
+   632.0,
+   1838.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:25"
+ },
+ "f231_1929_1571": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 231,
+  "best_box": [
+   1920.0,
+   1550.0,
+   1938.0,
+   1592.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:26"
+ },
+ "f028_1132_0843": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 28,
+  "best_box": [
+   1112.0,
+   822.0,
+   1152.0,
+   864.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:26"
+ },
+ "f015_2189_2004": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 15,
+  "best_box": [
+   2167.0,
+   1990.0,
+   2211.0,
+   2018.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:28"
+ },
+ "f212_3131_0068": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 212,
+  "best_box": [
+   3122.0,
+   61.0,
+   3140.0,
+   76.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:28"
+ },
+ "f218_2436_0218": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 218,
+  "best_box": [
+   2426.0,
+   208.0,
+   2446.0,
+   228.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:31"
+ },
+ "f232_2934_0195": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 232,
+  "best_box": [
+   2926.0,
+   187.0,
+   2942.0,
+   204.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:32"
+ },
+ "f244_0010_0700": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 244,
+  "best_box": [
+   0.0,
+   691.0,
+   22.0,
+   709.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:34"
+ },
+ "f223_1627_1635": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 223,
+  "best_box": [
+   1600.0,
+   1569.0,
+   1655.0,
+   1701.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:39"
+ },
+ "f134_2552_1581": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 134,
+  "best_box": [
+   2538.0,
+   1568.0,
+   2566.0,
+   1594.0
+  ],
+  "note": null,
+  "at": "2026-09-19T10:59:40"
+ },
+ "f060_1126_0474": {
+  "status": "note",
+  "class": null,
+  "best_frame": 60,
+  "best_box": [
+   1070.0,
+   450.0,
+   1184.0,
+   500.0
+  ],
+  "note": "the jet is there but the box covers it partially only",
+  "at": "2026-09-19T10:59:55"
+ },
+ "f098_1730_0928": {
+  "status": "note",
+  "class": null,
+  "best_frame": 98,
+  "best_box": [
+   1684.0,
+   900.0,
+   1777.0,
+   957.0
+  ],
+  "note": "partially covered heli",
+  "at": "2026-09-19T11:00:04"
+ },
+ "f152_1324_1129": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 152,
+  "best_box": [
+   1309.0,
+   1113.0,
+   1339.0,
+   1145.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:00:07"
+ },
+ "f042_1072_0075": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 42,
+  "best_box": [
+   1058.0,
+   62.0,
+   1086.0,
+   90.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:00:07"
+ },
+ "f238_3796_0035": {
+  "status": "note",
+  "class": null,
+  "best_frame": 238,
+  "best_box": [
+   3752.0,
+   0.0,
+   3840.0,
+   71.0
+  ],
+  "note": "i think this is a frame missing, got detected as hangar coause hangar is mostly black xd, this is a problem with our copenhagen set i guess",
+  "at": "2026-09-19T11:00:44"
+ },
+ "f216_0141_1504": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 216,
+  "best_box": [
+   129.0,
+   1492.0,
+   154.0,
+   1516.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:00:47"
+ },
+ "f191_0045_0033": {
+  "status": "note",
+  "class": null,
+  "best_frame": 191,
+  "best_box": [
+   0.0,
+   0.0,
+   92.0,
+   67.0
+  ],
+  "note": "another black corner of the picture, missing frame, not hangar",
+  "at": "2026-09-19T11:01:04"
+ },
+ "f170_0025_0033": {
+  "status": "note",
+  "class": null,
+  "best_frame": 170,
+  "best_box": [
+   0.0,
+   0.0,
+   50.0,
+   68.0
+  ],
+  "note": "missing frame",
+  "at": "2026-09-19T11:01:12"
+ },
+ "f249_1430_0279": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 249,
+  "best_box": [
+   1414.0,
+   262.0,
+   1446.0,
+   297.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:01:15"
+ },
+ "f001_1078_1308": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 1,
+  "best_box": [
+   1066.0,
+   1294.0,
+   1090.0,
+   1322.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:44:35"
+ },
+ "f011_1914_1281": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 11,
+  "best_box": [
+   1908.0,
+   1266.0,
+   1920.0,
+   1298.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:44:40"
+ },
+ "f006_3545_1261": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 6,
+  "best_box": [
+   3530.0,
+   1246.0,
+   3560.0,
+   1277.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:44:54"
+ },
+ "f029_1340_1764": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 29,
+  "best_box": [
+   1326.0,
+   1752.0,
+   1354.0,
+   1776.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:45:09"
+ },
+ "f019_1495_1010": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 19,
+  "best_box": [
+   1484.0,
+   998.0,
+   1506.0,
+   1022.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:45:13"
+ },
+ "f027_3089_1656": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 27,
+  "best_box": [
+   3069.0,
+   1634.0,
+   3111.0,
+   1678.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:45:22"
+ },
+ "f021_3677_0964": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 21,
+  "best_box": [
+   3663.0,
+   949.0,
+   3691.0,
+   979.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:45:29"
+ },
+ "f037_1206_0851": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 37,
+  "best_box": [
+   1192.0,
+   836.0,
+   1220.0,
+   866.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:45:55"
+ },
+ "f050_2892_0321": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 50,
+  "best_box": [
+   2862.0,
+   290.0,
+   2922.0,
+   353.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:46:12"
+ },
+ "f048_0341_0499": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 48,
+  "best_box": [
+   334.0,
+   492.0,
+   350.0,
+   507.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:46:22"
+ },
+ "f067_1091_0916": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 67,
+  "best_box": [
+   1044.0,
+   900.0,
+   1139.0,
+   933.0
+  ],
+  "note": null,
+  "at": "2026-09-19T11:46:47"
+ },
+ "f011_2344_1678": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 11,
+  "best_box": [
+   2326.0,
+   1664.0,
+   2364.0,
+   1692.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:39:56"
+ },
+ "f007_1425_0302": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 7,
+  "best_box": [
+   1412.0,
+   290.0,
+   1438.0,
+   314.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:43:27"
+ },
+ "f013_1070_0411": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 13,
+  "best_box": [
+   1062.0,
+   402.0,
+   1079.0,
+   421.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:43:36"
+ },
+ "f018_1188_0434": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 18,
+  "best_box": [
+   1184.0,
+   426.0,
+   1192.0,
+   443.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:43:39"
+ },
+ "f011_3164_1555": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 11,
+  "best_box": [
+   3136.0,
+   1528.0,
+   3192.0,
+   1583.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:43:42"
+ },
+ "f015_1914_1643": {
+  "status": "accepted",
+  "class": null,
+  "best_frame": 15,
+  "best_box": [
+   1902.0,
+   1631.0,
+   1928.0,
+   1655.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:50:23"
+ },
+ "f048_1647_2118": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 48,
+  "best_box": [
+   1635.0,
+   2104.0,
+   1659.0,
+   2132.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:52:10"
+ },
+ "f036_2223_1995": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 36,
+  "best_box": [
+   2212.0,
+   1983.0,
+   2234.0,
+   2007.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:52:29"
+ },
+ "f058_3194_1325": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 58,
+  "best_box": [
+   3174.0,
+   1309.0,
+   3214.0,
+   1342.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:52:54"
+ },
+ "f049_2530_0395": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 49,
+  "best_box": [
+   2500.0,
+   353.0,
+   2560.0,
+   438.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:53:07"
+ },
+ "f061_2437_0466": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 61,
+  "best_box": [
+   2416.0,
+   450.0,
+   2458.0,
+   482.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:53:18"
+ },
+ "f064_2628_1379": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 64,
+  "best_box": [
+   2570.0,
+   1350.0,
+   2687.0,
+   1408.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:53:27"
+ },
+ "f063_1154_0472": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 63,
+  "best_box": [
+   1068.0,
+   404.0,
+   1241.0,
+   540.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:55:13"
+ },
+ "f072_1113_1135": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 72,
+  "best_box": [
+   1030.0,
+   1080.0,
+   1196.0,
+   1191.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:55:26"
+ },
+ "f080_2088_0974": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 80,
+  "best_box": [
+   2066.0,
+   956.0,
+   2110.0,
+   993.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:55:56"
+ },
+ "f087_2259_1954": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 87,
+  "best_box": [
+   2200.0,
+   1914.0,
+   2318.0,
+   1995.0
+  ],
+  "note": null,
+  "at": "2026-09-19T14:56:35"
+ },
+ "f098_1727_0923": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 98,
+  "best_box": [
+   1694.0,
+   900.0,
+   1760.0,
+   947.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:06:06"
+ },
+ "f115_0559_0509": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 115,
+  "best_box": [
+   518.0,
+   479.0,
+   600.0,
+   540.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:06:53"
+ },
+ "f153_0262_1868": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 153,
+  "best_box": [
+   253.0,
+   1857.0,
+   272.0,
+   1879.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:07:21"
+ },
+ "f139_1002_1046": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 139,
+  "best_box": [
+   984.0,
+   1026.0,
+   1022.0,
+   1066.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:07:36"
+ },
+ "f143_3329_0029": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 143,
+  "best_box": [
+   3298.0,
+   0.0,
+   3360.0,
+   58.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:07:51"
+ },
+ "f157_3796_0030": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 157,
+  "best_box": [
+   3752.0,
+   0.0,
+   3840.0,
+   62.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:08:22"
+ },
+ "f174_2908_1834": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 174,
+  "best_box": [
+   2881.0,
+   1796.0,
+   2936.0,
+   1872.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:08:41"
+ },
+ "f174_2907_1832": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 174,
+  "best_box": [
+   2862.0,
+   1780.0,
+   2954.0,
+   1884.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:08:43"
+ },
+ "f198_3804_0029": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 198,
+  "best_box": [
+   3768.0,
+   0.0,
+   3840.0,
+   60.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:09:29"
+ },
+ "f210_1060_1845": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 210,
+  "best_box": [
+   1048.0,
+   1832.0,
+   1072.0,
+   1858.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:10:11"
+ },
+ "f225_1611_0438": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 225,
+  "best_box": [
+   1594.0,
+   420.0,
+   1629.0,
+   458.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:10:27"
+ },
+ "f235_2564_1432": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   2547.0,
+   1414.0,
+   2582.0,
+   1452.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:10:39"
+ },
+ "f240_1714_0705": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 240,
+  "best_box": [
+   1708.0,
+   694.0,
+   1720.0,
+   716.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:10:48"
+ },
+ "f232_0475_0914": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 232,
+  "best_box": [
+   450.0,
+   900.0,
+   500.0,
+   929.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:11:16"
+ },
+ "f240_3708_1691": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 240,
+  "best_box": [
+   3682.0,
+   1662.0,
+   3736.0,
+   1722.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:11:31"
+ },
+ "f249_2562_0518": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 249,
+  "best_box": [
+   2546.0,
+   503.0,
+   2579.0,
+   533.0
+  ],
+  "note": null,
+  "at": "2026-09-19T15:11:53"
  }
 }

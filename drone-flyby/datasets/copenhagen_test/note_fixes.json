@@ -1,14 +1,101 @@
 {
- "f117_2768_0463": {"status": "accepted", "why": "small plane; frame 117 box misses the tail (the spread over all frames covers it)"},
- "f061_2181_0218": {"status": "accepted", "why": "medium plane; frame 89 jumps onto the tower beside it (outside the spread)"},
- "f170_1205_0860": {"status": "accepted", "why": "small or large tower? same size in Helsinki (57 vs 62 px); kept the detector's small_tower"},
- "f074_2244_0996": {"status": "accepted", "why": "small tower; frame 58 legs only, 73-89 include the plane (outside the spread)"},
- "f107_1854_0928": {"status": "accepted", "class": "small_launcher", "frames": [114, 121], "why": "small launcher behind the large tower; only frames 114 and 121 box the launcher alone"},
- "f217_0615_0021": {"status": "accepted", "why": "large (sniper) tower; some frames partial"},
- "f072_1098_1021": {"status": "accepted", "why": "hangar; most boxes partial (the best one is cut at y=1080, a tile edge)"},
- "f227_2108_2127": {"status": "accepted", "why": "large launcher; boxes on half of it (best one cut by the frame bottom)"},
- "f248_2164_0563": {"status": "accepted", "why": "small tower; 247 and 249 partial"},
- "f215_2110_1239": {"status": "accepted", "why": "large launcher; frame 210 partial"},
- "f120_1847_1846": {"status": "accepted", "class": "large_tower", "why": "not a medium plane: the sniper (large) tower with the launcher behind it"},
- "f138_2861_1190": {"status": "accepted", "class": "small_launcher", "why": "small launcher, not a tank (18x23 px, Helsinki small launchers 22x30); 142 too big"}
+ "f117_2768_0463": {
+  "status": "accepted",
+  "why": "small plane; frame 117 box misses the tail (the spread over all frames covers it)"
+ },
+ "f061_2181_0218": {
+  "status": "accepted",
+  "why": "medium plane; frame 89 jumps onto the tower beside it (outside the spread)"
+ },
+ "f170_1205_0860": {
+  "status": "accepted",
+  "why": "small or large tower? same size in Helsinki (57 vs 62 px); kept the detector's small_tower"
+ },
+ "f074_2244_0996": {
+  "status": "accepted",
+  "boxes_from": "candidates_r2.json",
+  "why": "small tower; round 1's boxes reach onto the plane on its left and below (Juan, frame 87); round 2 tracked it tightly (52-66 px)"
+ },
+ "f217_0615_0021": {
+  "status": "accepted",
+  "why": "large (sniper) tower; some frames partial"
+ },
+ "f227_2108_2127": {
+  "status": "accepted",
+  "why": "large launcher; boxes on half of it (best one cut by the frame bottom)"
+ },
+ "f248_2164_0563": {
+  "status": "accepted",
+  "why": "small tower; 247 and 249 partial"
+ },
+ "f215_2110_1239": {
+  "status": "accepted",
+  "why": "large launcher; frame 210 partial"
+ },
+ "f120_1847_1846": {
+  "status": "accepted",
+  "class": "large_tower",
+  "why": "not a medium plane: the sniper (large) tower with the launcher behind it"
+ },
+ "f138_2861_1190": {
+  "status": "accepted",
+  "class": "small_launcher",
+  "why": "small launcher, not a tank (18x23 px, Helsinki small launchers 22x30); 142 too big"
+ },
+ "f072_1112_1137": {
+  "status": "accepted",
+  "partial": true,
+  "why": "hangar, box on half of it (cut at y=1080, a tile edge): the same hangar as f072_1098_1021 if it overlaps it"
+ },
+ "f134_2893_1590": {
+  "status": "accepted",
+  "partial": true,
+  "why": "small plane, box on half of it"
+ },
+ "f091_1718_0487": {
+  "status": "accepted",
+  "partial": true,
+  "why": "helicopter, box on part of it (cut at y=450, a tile edge)"
+ },
+ "f123_2763_0257": {
+  "status": "accepted",
+  "class": "small_launcher",
+  "why": "three small launchers side by side; this track is the middle one"
+ },
+ "f086_0937_2087": {
+  "status": "accepted",
+  "partial": true,
+  "why": "hangar, box on a corner of it; maybe already labelled"
+ },
+ "f060_1126_0474": {
+  "status": "accepted",
+  "partial": true,
+  "why": "jet, box on part of it (cut at y=450/500, tile edges)"
+ },
+ "f098_1730_0928": {
+  "status": "accepted",
+  "partial": true,
+  "why": "helicopter, box on part of it (cut at y=900, a tile edge)"
+ },
+ "f238_3796_0035": {
+  "status": "rejected",
+  "why": "black corner: no recorded view covered it in that frame"
+ },
+ "f191_0045_0033": {
+  "status": "rejected",
+  "why": "black corner: no recorded view covered it in that frame"
+ },
+ "f170_0025_0033": {
+  "status": "rejected",
+  "why": "black corner: no recorded view covered it in that frame"
+ },
+ "f107_1854_0928": {
+  "status": "accepted",
+  "class": "medium_launcher",
+  "frames": [
+   114,
+   121
+  ],
+  "why": "small launcher behind the large tower; only frames 114 and 121 box the launcher alone"
+ }
 }
