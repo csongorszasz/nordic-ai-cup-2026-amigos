@@ -36,8 +36,12 @@ def main():
                         help="Fine-tune the public encoder for a fixed three-epoch pilot.")
     parser.add_argument("--mark-anchor", action="store_true",
                         help="Show the encoder the existing quote boundaries without exposing labels.")
+    parser.add_argument("--supervised-warmup", action="store_true",
+                        help="Use training-only best-span supervision for two epochs before metric risk.")
     parser.add_argument("--output", type=Path, default=Path("results/local_span_risk"))
     args = parser.parse_args()
+    if args.supervised_warmup and not args.train_encoder:
+        parser.error("--supervised-warmup requires --train-encoder.")
     rows, requests, transcripts, _ = load_inputs(args.baseline)
     excluded = {tid for request in requests for tid in request["demonstration_tids"]}
     training, validation, folds = split_rows(rows, excluded, args.fold, SEED)
@@ -170,6 +174,7 @@ def main():
         "validation_tids": folds[args.fold],
         "context_words": 24, "prior_scale_words": 8.0,
         "anchor_marked": args.mark_anchor,
+        "supervised_warmup_epochs": 2 if args.supervised_warmup else 0,
         "epochs": epochs, "learning_rate": head_lr, "weight_decay": decay,
         "encoder_learning_rate": 3e-5 if args.train_encoder else None,
         "baseline_sha256": hashlib.sha256((args.baseline / "base_legacy_questions.json").read_bytes()).hexdigest(),
@@ -186,7 +191,7 @@ def main():
         initial_encoder_probe = probe_parameter.detach().clone()
     optimizer = torch.optim.AdamW(groups, weight_decay=decay)
     rng = random.Random(SEED)
-    losses, norms, encoder_norms = [], [], []
+    losses, risks, norms, encoder_norms = [], [], [], []
     started = time.monotonic()
     for epoch in range(epochs):
         order = list(eligible_training)
@@ -194,13 +199,19 @@ def main():
         optimizer.zero_grad()
         for index, row in enumerate(order):
             qid = row["question_id"]
-            probability = logits(qid).softmax(dim=0)
-            loss = 1.0 - torch.dot(probability, targets[qid])
+            scores = logits(qid)
+            probability = scores.softmax(dim=0)
+            risk = 1.0 - torch.dot(probability, targets[qid])
+            loss = (
+                torch.nn.functional.cross_entropy(scores.unsqueeze(0), targets[qid].argmax().view(1))
+                if args.supervised_warmup and epoch < 2 else risk
+            )
             if not torch.isfinite(loss):
                 raise RuntimeError("Local span risk is non-finite.")
             divisor = min(4, len(order) - (index // 4) * 4)
             (loss / divisor).backward()
             losses.append(float(loss.detach()))
+            risks.append(float(risk.detach()))
             if (index + 1) % 4 == 0 or index + 1 == len(order):
                 if args.train_encoder:
                     encoder_norms.append(
@@ -213,7 +224,10 @@ def main():
                 optimizer.step()
                 optimizer.zero_grad()
         if epoch == 0 or epoch + 1 == epochs or (epoch + 1) % 10 == 0:
-            print(f"epoch {epoch + 1}: risk={sum(losses[-len(order):])/len(order):.6f}", flush=True)
+            print(
+                f"epoch {epoch + 1}: loss={sum(losses[-len(order):])/len(order):.6f} "
+                f"risk={sum(risks[-len(order):])/len(order):.6f}", flush=True,
+            )
     movement = float(head.weight.detach().norm())
     training_report = {
         "training_s": time.monotonic() - started, "head_parameters": head.weight.numel(),
@@ -221,8 +235,10 @@ def main():
         "baseline_preserved_before_training": True, "encoded_cases": len(features),
         "max_encoding_s": max(encoding_times.values()), "cpu_threads": threads,
         "peak_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024 / 1e9,
-        "first_epoch_risk": sum(losses[:len(eligible_training)]) / len(eligible_training),
-        "last_epoch_risk": sum(losses[-len(eligible_training):]) / len(eligible_training),
+        "first_epoch_risk": sum(risks[:len(eligible_training)]) / len(eligible_training),
+        "last_epoch_risk": sum(risks[-len(eligible_training):]) / len(eligible_training),
+        "first_epoch_loss": sum(losses[:len(eligible_training)]) / len(eligible_training),
+        "last_epoch_loss": sum(losses[-len(eligible_training):]) / len(eligible_training),
         "variable_reward_cases": sum(float(values.max() - values.min()) > 0 for values in targets.values()),
         "encoder_trained": args.train_encoder,
     }

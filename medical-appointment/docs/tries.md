@@ -1298,6 +1298,18 @@ reproduced SOTA.
   every pooled word/token span. Keep candidate geometry, model, loss,
   three-epoch hyperparameters and fold unchanged. This is one fixed input
   ablation, not a held-out threshold/epoch search or a claim of improvement.
+- **Marked-anchor result:** `span-anchor-pilot-b226b592` retained all
+  35 positive spans and exactly tied the 70-question incumbent score
+  **0.8362**. Training updated both encoder and heads, but the decoded
+  policy was simply "keep"; no added inference is justified by an exact tie.
+- **Training-objective follow-up:** metric risk from a strong anchored
+  initialization can settle on copying the baseline. Test the standard
+  supervised-then-metric sequence: two epochs of cross-entropy on the
+  best valid lattice span in each **training** example, then one epoch of
+  exact expected tIoU risk. Keep the marked inputs, candidates, optimizer,
+  three total epochs and fixed fold unchanged. Tied zero-reward cases
+  prefer candidate zero. Validation labels never enter supervision or
+  applicability. Report cross-entropy loss and expected-IoU risk separately.
 
 ## ASR stream lifecycle check
 
