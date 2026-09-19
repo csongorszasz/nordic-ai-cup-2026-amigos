@@ -37,7 +37,13 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]  # drone-flyby/ (runs/, recordings/, sprites/ live there)
 MODEL_PATH = Path(os.environ.get('DRONE_MODEL', ROOT / 'runs' / 'yolo11s_baseline' / 'weights' / 'best.pt'))
 DETECT_CONF = float(os.environ.get('DRONE_CONF', 0.05))
-IMGSZ = 960
+IMGSZ = int(os.environ.get('DRONE_IMGSZ', 960))  # model input side; above 960 enlarges the 960x540 view (tiny objects in Level-1 views)
+# A second, enlarged pass for the small classes on shrunk (Level 0/1) views: at 960 a ta-ta or
+# small launcher is 8-15 px there and goes unseen (Copenhagen: 0.00-0.03 AP), at 1600 it is
+# found, but at 1600 the helicopter is lost (0.62 -> 0.01), so only these classes are kept
+# from it. 0 turns it off.
+SMALL_IMGSZ = int(os.environ.get('DRONE_SMALL_IMGSZ', 0))
+SMALL_CLASSES = os.environ.get('DRONE_SMALL_CLASSES', 'ta-ta,small_launcher,medium_launcher').split(',')
 USE_MEMORY = os.environ.get('DRONE_MEMORY', '1') != '0'
 CAMERA_POLICY = os.environ.get('DRONE_CAMERA', 'hybrid')  # 'hybrid', 'sweep' (L1 snake), 'l0' (always full view) or 'record'
 # 'record': data collection only. No detection (fastest answers, scores 0), and a Level-2
@@ -124,6 +130,8 @@ def _load_model():
     dummy = np.zeros((540, 960, 3), dtype=np.uint8)
     for _ in range(3):
         _model.predict(dummy, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
+        if SMALL_IMGSZ:
+            _model.predict(dummy, imgsz=SMALL_IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
     logger.info('Loaded %s', MODEL_PATH)
 
 
@@ -134,19 +142,24 @@ def run_detector(image: np.ndarray, region: Tuple[int, int, int, int]) -> List[T
     """Detections on one view, as (class, confidence, box in source pixels)."""
     if _model is None:
         return []
-    result = _model.predict(image, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)[0]
-    if result.boxes is None or len(result.boxes) == 0:
-        return []
+    results = [_model.predict(image, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)[0]]
+    small = [OBJECT_CLASSES.index(c) for c in SMALL_CLASSES if c in OBJECT_CLASSES]
+    if SMALL_IMGSZ and small and region[2] - region[0] > 960:  # a shrunk view
+        results.append(_model.predict(image, imgsz=SMALL_IMGSZ, conf=DETECT_CONF, classes=small, verbose=False, half=HALF)[0])
+        results[0] = results[0][[int(c) not in small for c in results[0].boxes.cls]] if len(results[0].boxes) else results[0]
     h, w = image.shape[:2]
     rx1, ry1, rx2, ry2 = region
     sx, sy = (rx2 - rx1) / w, (ry2 - ry1) / h
-    xyxy = result.boxes.xyxy.cpu().numpy()
-    confs = result.boxes.conf.cpu().numpy()
-    classes = result.boxes.cls.cpu().numpy().astype(int)
     out = []
-    for (x1, y1, x2, y2), conf, cls in zip(xyxy, confs, classes):
-        box = np.array([rx1 + x1 * sx, ry1 + y1 * sy, rx1 + x2 * sx, ry1 + y2 * sy])
-        out.append((OBJECT_CLASSES[cls], float(conf), box))
+    for result in results:
+        if result.boxes is None or len(result.boxes) == 0:
+            continue
+        xyxy = result.boxes.xyxy.cpu().numpy()
+        confs = result.boxes.conf.cpu().numpy()
+        classes = result.boxes.cls.cpu().numpy().astype(int)
+        for (x1, y1, x2, y2), conf, cls in zip(xyxy, confs, classes):
+            box = np.array([rx1 + x1 * sx, ry1 + y1 * sy, rx1 + x2 * sx, ry1 + y2 * sy])
+            out.append((OBJECT_CLASSES[cls], float(conf), box))
     return out
 
 
