@@ -507,6 +507,38 @@ before the deadline.
 `api.py` in this folder that means `http://<your-host>:9053/predict`, not just
 the host.
 
+### Compare offline and live responses without changing the metric
+
+`training/run_policy.py` keeps box coordinates and confidence scores at full
+precision in both scoring and saved traces. Rounding is presentation, not a
+valid preprocessing step for COCO AP: it can change score ordering and IoU
+matches. A missing detector is an error rather than a zero-scoring baseline;
+the intentional `record` camera mode remains available.
+
+For logs collected with `DRONE_LOG_RESPONSES`:
+
+```cmd
+python training/score_live_log.py logs/live/responses.jsonl --list-sequences
+python training/score_live_log.py logs/live/responses.jsonl --sequence <validation-sequence-id> --output-json logs/live/comparison.json
+```
+
+Choose the actual flight, not a later one-frame Verify call. Multiple sequences
+require explicit selection. Identical duplicate entries are counted; conflicting
+answers for one frame are rejected because the evaluator's accepted answer is
+unknown. Missing predictions retain all labelled frames in the denominator.
+
+The report identifies the evaluated classes, classes absent from the local
+labels, and predictions/frames that those labels cannot score. This is a
+same-label comparison, not proof of the private ground truth or evaluator
+acceptance. Recorded server timing is not network round-trip time. In particular,
+an offline/live difference can involve reconstruction, camera lag, backend
+configuration, annotation coverage, or serving—not just one assumed cause.
+
+New response logs are written only after protocol/identity validation and keep
+full precision. Optional log I/O failures are reported in server logs and the
+`/api` response-log counters without discarding a valid prediction. They do not
+trigger validation/evaluation requests; those remain human actions.
+
 ## OBS
 
 Things that quietly cost people points:

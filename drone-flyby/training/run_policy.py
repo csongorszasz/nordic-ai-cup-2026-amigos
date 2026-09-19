@@ -66,13 +66,17 @@ def main():
     import solution
     from dtos import DroneFlybyPredictRequestDto
     from local_evaluator import Camera, CameraRejection, build_request, render_view, score
+    from utils import annotations_to_predictions, validate_response
+
+    if solution.CAMERA_POLICY != 'record' and solution._model is None:
+        raise RuntimeError(f'No detector loaded from {solution.MODEL_PATH}; refusing to score an empty fallback')
 
     seen = []  # what the detector returned for the current view
     detect = solution.run_detector
 
     def recording_detector(image, region):
         found = detect(image, region)
-        seen[:] = [{'class': c, 'conf': round(float(s), 3), 'bbox': [round(float(v)) for v in box]} for c, s, box in found]
+        seen[:] = [{'class': c, 'conf': float(s), 'bbox': [float(v) for v in box]} for c, s, box in found]
         return found
     solution.run_detector = recording_detector
 
@@ -86,9 +90,14 @@ def main():
         took = time.monotonic()
         response = solution.predict(DroneFlybyPredictRequestDto.model_validate(payload))
         took = (time.monotonic() - took) * 1000
-        reported = [{'class': a.object_id, 'conf': round(float(a.confidence), 3),
-                     'bbox': [round(v * s) for v, s in zip(a.bbox, (3840, 2160, 3840, 2160))]} for a in response.annotations]
-        predictions[frame] = [{'object_id': r['class'], 'bbox': r['bbox'], 'confidence': r['conf']} for r in reported]
+        validate_response(response)
+        if response.frame != frame or response.request_id != payload['request_id']:
+            raise ValueError(f'Response identity does not match frame {frame}')
+        predictions[frame] = annotations_to_predictions(
+            response.annotations, payload['original_width'], payload['original_height'],
+        )
+        reported = [{'class': p['object_id'], 'conf': p['confidence'], 'bbox': p['bbox']}
+                    for p in predictions[frame]]
         step = {'frame': frame, 'level': view[0], 'center': view[1:3], 'region': view[3], 'ms': round(took),
                 'seen': list(seen), 'reported': reported, 'next': None, 'refused': None}
         state = solution._states.get(payload['sequence_id'])
@@ -120,22 +129,23 @@ def main():
             truth = {int(k): v for k, v in json.loads(path.read_text())['labels'].items()}
     if args.scene != 'validation_4k' or truth:
         mean, per_class = score(args.scene, predictions, truth)
-        result = {'map50': round(mean, 4), 'ap50': {k: round(v, 4) for k, v in per_class.items()}}
+        result = {'map50': mean, 'ap50': per_class}
         print(f'COCO mAP@0.50: {mean:.3f}' + ('  (Copenhagen, hand-checked labels)' if truth else ''))
         print('  ' + ', '.join(f'{k} {v:.2f}' for k, v in sorted(per_class.items(), key=lambda kv: kv[1])))
         if truth:   # tune on the first half, confirm on the second: the flight is our only test set
             for half, keep in (('tune', lambda f: f <= 125), ('check', lambda f: f > 125)):
                 part = {f: v for f, v in truth.items() if keep(f)}
-                result[f'map50_{half}'] = round(score(args.scene, predictions, part)[0], 4)
+                result[f'map50_{half}'] = score(args.scene, predictions, part)[0]
             print(f"  frames 1-125 (tune) {result['map50_tune']:.3f}, 126-249 (check) {result['map50_check']:.3f}")
 
     model_name = Path(solution.MODEL_PATH).parent.parent.name
-    name = args.name or f'{args.scene}_{args.camera}_{model_name}_{datetime.now():%m%d-%H%M}'
+    name = args.name or f'{args.scene}_{solution.CAMERA_POLICY}_{model_name}_{datetime.now():%m%d-%H%M}'
     OUT.mkdir(parents=True, exist_ok=True)
     levels = [s['level'] for s in steps]
     (OUT / f'{name}.json').write_text(json.dumps({
-        'name': name, 'scene': args.scene, 'camera': args.camera, 'model': str(solution.MODEL_PATH),
+        'name': name, 'scene': args.scene, 'camera': solution.CAMERA_POLICY, 'model': str(solution.MODEL_PATH),
         'settings': settings, 'created': datetime.now().isoformat(timespec='seconds'),
+        'prediction_precision': 'full; no box or confidence rounding before scoring',
         'seconds': round(time.monotonic() - started, 1), 'refused': sum(bool(s['refused']) for s in steps),
         'levels': {level: levels.count(level) for level in (0, 1, 2)}, **result, 'steps': steps,
     }))

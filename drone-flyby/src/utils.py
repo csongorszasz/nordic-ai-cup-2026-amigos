@@ -25,6 +25,7 @@ from dtos import (
     OBJECT_CLASSES,
     SOURCE_REGION_SIZES,
     TRANSMITTED_VIEW_SIZE,
+    DroneFlybyPredictionDto,
     DroneFlybyPredictResponseDto,
     DroneFlybyViewDto,
 )
@@ -165,6 +166,24 @@ def global_bbox_to_source(
         x2 * original_width,
         y2 * original_height,
     )
+
+
+def annotations_to_predictions(
+    annotations: Sequence[DroneFlybyPredictionDto],
+    original_width: int = IMAGE_WIDTH,
+    original_height: int = IMAGE_HEIGHT,
+) -> List[dict]:
+    """Convert wire annotations for scoring without quantizing boxes or scores."""
+    if original_width <= 0 or original_height <= 0:
+        raise ValueError('Source dimensions must be positive')
+    return [
+        {
+            'object_id': annotation.object_id,
+            'bbox': global_bbox_to_source(annotation.bbox, original_width, original_height),
+            'confidence': float(annotation.confidence),
+        }
+        for annotation in annotations
+    ]
 
 
 def view_bbox_to_global(
