@@ -154,6 +154,13 @@ source-context color bleeding. Use a reviewed `--background-origin X Y` to
 choose a terrestrial crop. Rectangular controls on natural backgrounds require
 the explicit `--allow-context-patches` flag.
 
+For a controlled training intervention, the augmented-dataset builder accepts
+the same reviewed assets with `--sprite-mode context` or `--sprite-mode alpha`.
+Both modes preserve sampled classes, source annotation canvases, placements and
+labels; only the carried context differs. Native assets are scaled to the actual
+L0/L1/L2 view geometry, and validation-source assets are rejected. Audit imagery
+remains evaluation-only and must not become an augmentation background.
+
 The NLS converter reads GML boxes even after the image codestream, including
 null-terminated XML. It no longer guesses 0.25 metres per pixel from filenames:
 the inspected `02m`-directory image actually declares 0.5 metres per pixel.

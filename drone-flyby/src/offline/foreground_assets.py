@@ -61,14 +61,14 @@ def load_reviewed_assets(review_path: Path, artifact_root: Path):
     return sprites, provenance
 
 
-def resize_sprite(image: np.ndarray, width: int, height: int) -> np.ndarray:
+def resize_sprite(image: np.ndarray, width: int, height: int, interpolation=cv2.INTER_LINEAR) -> np.ndarray:
     if image.shape[2] == 3:
-        return cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
+        return cv2.resize(image, (width, height), interpolation=interpolation)
     if image.shape[2] != 4:
         raise ValueError("Sprites must be BGR or reviewed BGRA")
     alpha = image[:, :, 3:4].astype(np.float32) / 255
     premultiplied = np.concatenate((image[:, :, :3].astype(np.float32) * alpha, alpha), axis=2)
-    return cv2.resize(premultiplied, (width, height), interpolation=cv2.INTER_LINEAR)
+    return cv2.resize(premultiplied, (width, height), interpolation=interpolation)
 
 
 def composite_sprite(target: np.ndarray, sprite: np.ndarray) -> None:

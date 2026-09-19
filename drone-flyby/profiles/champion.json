@@ -1,5 +1,5 @@
 {
-  "status": "measured-development-incumbent-not-officially-submitted",
+  "status": "research-candidate-failed-foreground-audit-not-deployment-validated",
   "experiment": "postprocess-latency-001",
   "job_id": "25405099",
   "runtime_commit": "7f38c9135e08d24c8a4fe23b5dc4242e5067facb",
@@ -35,6 +35,9 @@
     "synthetic_202_map50": 0.918255831553399,
     "synthetic_505_map50": 0.917106116619152,
     "maximum_synthetic_p95_ms": 180.095488205552,
+    "paired_land_rectangular_map50": 0.96726496926062,
+    "paired_land_foreground_alpha_map50": 0.124114996608826,
+    "foreground_audit_experiment": "foreground-transfer-001",
     "transport_headroom_stress": {
       "synthetic_505_added_80_ms_map50": 0.917106116619152,
       "synthetic_505_added_80_ms_skipped": 0,
@@ -42,7 +45,7 @@
       "synthetic_505_added_120_ms_skipped": 5,
       "scope": "Fixed artificial request-cycle delay, not measured public-ingress latency"
     },
-    "limitations": "Reference shares training instances. Synthetic scenes share training sprites, carry rectangular class-specific source-background context, and have been used for development selection. A visual orthophoto audit exposed this shortcut. These are limited compositing diagnostics, not foreground-only recognition or official competition estimates."
+    "limitations": "Reference shares training instances. Context-rich composites severely overstate foreground transfer: removing carried context on an identical land layout dropped this pair from0.967265 to0.124115 with all frames accepted. Tight-mask diagnostic boxes did not rescue recall. Retain artifacts for comparison, but do not treat this candidate as deployment-validated or as an official competition estimate."
   },
   "official_submission_requires_user_approval": true
 }

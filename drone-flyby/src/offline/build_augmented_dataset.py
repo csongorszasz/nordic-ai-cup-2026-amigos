@@ -47,6 +47,7 @@ from offline.build_exact_view_dataset import (  # noqa: E402
 )
 from utils import DEFAULT_SCENE, frame_numbers, load_annotations, load_frame, scene_directory  # noqa: E402
 from offline.dataset_provenance import assert_training_source, mark_training_dataset, split_source_frames
+from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite
 
 
 VIEW_WIDTH, VIEW_HEIGHT = TRANSMITTED_VIEW_SIZE
@@ -63,6 +64,7 @@ class ObjectCrop:
     object_box: Optional[Tuple[float, float, float, float]] = None
     zoom_level: int = -1
     source_frame: int = -1
+    view_scale: float = 1.0
 
 
 @dataclass
@@ -164,6 +166,7 @@ def rotate_object_crop(crop: ObjectCrop, quarter_turns: int) -> ObjectCrop:
     return ObjectCrop(
         class_index=crop.class_index, image=image, width=width, height=height,
         object_box=box, zoom_level=crop.zoom_level, source_frame=crop.source_frame,
+        view_scale=crop.view_scale,
     )
 
 
@@ -204,8 +207,8 @@ def paste_augment(
         if rotate_pastes:
             crop = rotate_object_crop(crop, int(rng.integers(4)))
         scale = float(rng.uniform(*scale_range))
-        target_w = max(3, int(round(crop.width * scale)))
-        target_h = max(3, int(round(crop.height * scale)))
+        target_w = max(1, int(round(crop.width * scale * crop.view_scale)))
+        target_h = max(1, int(round(crop.height * scale * crop.view_scale)))
         if target_w >= VIEW_WIDTH or target_h >= VIEW_HEIGHT:
             continue
 
@@ -223,13 +226,16 @@ def paste_augment(
             ):
                 continue
 
-            resized = cv2.resize(
-                crop.image, (target_w, target_h), interpolation=cv2.INTER_AREA
-            )
-            alpha = _feather_mask(target_h, target_w, max(1, target_w // 8))
-            region = canvas[y : y + target_h, x : x + target_w].astype(np.float32)
-            blended = region * (1.0 - alpha[..., None]) + resized.astype(np.float32) * alpha[..., None]
-            canvas[y : y + target_h, x : x + target_w] = np.clip(blended, 0, 255).astype(np.uint8)
+            target = canvas[y:y + target_h, x:x + target_w]
+            if crop.image.shape[2] == 4:
+                resized = resize_sprite(crop.image, target_w, target_h, interpolation=cv2.INTER_AREA)
+                composite_sprite(target, resized)
+            else:
+                resized = cv2.resize(crop.image, (target_w, target_h), interpolation=cv2.INTER_AREA)
+                alpha = _feather_mask(target_h, target_w, max(1, target_w // 8))
+                region = target.astype(np.float32)
+                blended = region * (1.0 - alpha[..., None]) + resized.astype(np.float32) * alpha[..., None]
+                target[:] = np.clip(blended, 0, 255).astype(np.uint8)
 
             tight = crop.object_box or (0.0, 0.0, float(crop.width), float(crop.height))
             target_box = (
@@ -278,6 +284,25 @@ def _write_sample(images_dir: Path, labels_dir: Path, stem: str, view: np.ndarra
     )
 
 
+def reviewed_crop_bank(scene, source_splits, levels, review, artifact_root, mode):
+    sprites, provenance = load_reviewed_assets(Path(review), Path(artifact_root))
+    bank = []
+    for index, name in enumerate(OBJECT_CLASSES):
+        source = provenance[name]
+        if source["scene"] == scene and source_splits.get(source["frame"]) == "val":
+            raise ValueError(f"Reviewed asset {name} comes from a validation source frame")
+        image = sprites[name].copy()
+        if mode == "context":
+            image[:, :, 3] = 255
+        height, width = image.shape[:2]
+        for level in levels:
+            bank.append(ObjectCrop(
+                index, image, width, height, object_box=(0.0, 0.0, float(width), float(height)),
+                zoom_level=level, source_frame=source["frame"], view_scale=2.0 ** (level - 2),
+            ))
+    return bank, provenance
+
+
 def build_augmented_dataset(
     scene: str,
     output_dir: Path,
@@ -291,12 +316,19 @@ def build_augmented_dataset(
     frames: Optional[Sequence[int]] = None,
     neg_stride: int = 5,
     rotate_pastes: bool = False,
+    sprite_review: Optional[Path] = None,
+    sprite_artifact_root: Optional[Path] = None,
+    sprite_mode: Optional[str] = None,
 ) -> Path:
     """Render exact views, apply copy-paste augmentation, and write a dataset.
 
     Returns the path to the generated ``data.yaml``.
     """
     rng = np.random.default_rng(seed)
+    if (sprite_review is None) != (sprite_artifact_root is None):
+        raise ValueError("A sprite review and artifact root must be supplied together")
+    if sprite_mode not in (None, "context", "alpha") or (sprite_review is None and sprite_mode is not None):
+        raise ValueError("Explicit context/alpha modes require reviewed source assets")
     assert_training_source(scene_directory(scene))
     frame_list = list(frames) if frames is not None else frame_numbers(scene)
     source_splits = split_source_frames(frame_list, val_fraction)
@@ -320,26 +352,33 @@ def build_augmented_dataset(
     bank_groups: Dict[Tuple[int, int], List[ObjectCrop]] = {}
     bank_counts: Dict[Tuple[int, int], int] = {}
 
-    for frame in frame_list:
-        if source_splits[frame] != "train":
-            continue
-        image = load_frame(frame, scene)
-        annotations = load_annotations(frame, scene)
-        for level in levels:
-            for center_x, center_y in grids[level]:
-                view, source_region = render_view(image, center_x, center_y, level)
-                rows = _annotation_rows(annotations, source_region)
-                for crop in crop_objects_from_view(view, rows, zoom_level=level, source_frame=frame):
-                    key = (crop.class_index, level)
-                    group = bank_groups.setdefault(key, [])
-                    bank_counts[key] = bank_counts.get(key, 0) + 1
-                    if len(group) < max_bank_per_class:
-                        group.append(crop)
-                    else:
-                        index = int(rng.integers(bank_counts[key]))
-                        if index < max_bank_per_class:
-                            group[index] = crop
-    bank = [crop for group in bank_groups.values() for crop in group]
+    reviewed_provenance = None
+    if sprite_review is not None:
+        sprite_mode = sprite_mode or "alpha"
+        bank, reviewed_provenance = reviewed_crop_bank(
+            scene, source_splits, levels, sprite_review, sprite_artifact_root, sprite_mode,
+        )
+    else:
+        for frame in frame_list:
+            if source_splits[frame] != "train":
+                continue
+            image = load_frame(frame, scene)
+            annotations = load_annotations(frame, scene)
+            for level in levels:
+                for center_x, center_y in grids[level]:
+                    view, source_region = render_view(image, center_x, center_y, level)
+                    rows = _annotation_rows(annotations, source_region)
+                    for crop in crop_objects_from_view(view, rows, zoom_level=level, source_frame=frame):
+                        key = (crop.class_index, level)
+                        group = bank_groups.setdefault(key, [])
+                        bank_counts[key] = bank_counts.get(key, 0) + 1
+                        if len(group) < max_bank_per_class:
+                            group.append(crop)
+                        else:
+                            index = int(rng.integers(bank_counts[key]))
+                            if index < max_bank_per_class:
+                                group[index] = crop
+        bank = [crop for group in bank_groups.values() for crop in group]
 
     if not bank:
         raise RuntimeError(
@@ -400,8 +439,10 @@ def build_augmented_dataset(
     (dataset_dir / "manifest.json").write_text(json.dumps({
         "samples": manifest,
         "bank": [{"source_frame": crop.source_frame, "level": crop.zoom_level,
-                  "class_index": crop.class_index} for crop in bank],
+                  "class_index": crop.class_index, "view_scale": crop.view_scale} for crop in bank],
         "rotate_pastes": rotate_pastes,
+        "sprite_mode": sprite_mode or "legacy-view-crops",
+        "reviewed_asset_sources": reviewed_provenance,
     }, indent=2), encoding="utf-8")
     print(
         "Augmented exact-view dataset written to {} (train={train}, val={val}, "
@@ -434,6 +475,10 @@ def main() -> int:
     parser.add_argument("--max-bank-per-class", type=int, default=40)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--rotate-pastes", action="store_true", help="Apply label-exact random quarter turns to pasted objects.")
+    parser.add_argument("--sprite-review", type=Path)
+    parser.add_argument("--sprite-artifact-root", type=Path)
+    parser.add_argument("--sprite-mode", choices=["context", "alpha"],
+                        help="Matched controls from identical reviewed source canvases; default alpha when reviewed.")
     arguments = parser.parse_args()
 
     data_yaml = build_augmented_dataset(
@@ -447,6 +492,9 @@ def main() -> int:
         max_bank_per_class=arguments.max_bank_per_class,
         seed=arguments.seed,
         rotate_pastes=arguments.rotate_pastes,
+        sprite_review=arguments.sprite_review,
+        sprite_artifact_root=arguments.sprite_artifact_root,
+        sprite_mode=arguments.sprite_mode,
     )
     print(f"Data YAML: {data_yaml}")
     return 0

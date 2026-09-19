@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 import json
 
-from dtos import TRANSMITTED_VIEW_SIZE
+from dtos import OBJECT_CLASSES, TRANSMITTED_VIEW_SIZE
+import offline.build_augmented_dataset as builder
 from offline.build_augmented_dataset import (
     ObjectCrop,
     build_augmented_dataset,
@@ -173,12 +174,13 @@ def test_unaugmented_control_has_identical_views_labels_and_negative_sampling(tm
 def test_quarter_turn_labels_match_the_rotated_foreground_pixels(turns):
     image = np.zeros((6, 10, 3), dtype=np.uint8)
     image[1:4, 2:7] = 255
-    crop = ObjectCrop(3, image, 10, 6, object_box=(2, 1, 7, 4), zoom_level=2, source_frame=12)
+    crop = ObjectCrop(3, image, 10, 6, object_box=(2, 1, 7, 4), zoom_level=2, source_frame=12, view_scale=0.25)
     rotated = rotate_object_crop(crop, turns)
     ys, xs = np.nonzero(rotated.image[:, :, 0])
     assert rotated.object_box == (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
     assert rotated.image.shape[:2] == (rotated.height, rotated.width)
     assert (rotated.class_index, rotated.zoom_level, rotated.source_frame) == (3, 2, 12)
+    assert rotated.view_scale == 0.25
 
 
 def test_fractional_tiny_box_is_fully_contained_in_its_crop():
@@ -187,3 +189,58 @@ def test_fractional_tiny_box_is_fully_contained_in_its_crop():
     x1, y1, x2, y2 = crop.object_box
     assert 0 <= x1 < x2 <= crop.width
     assert 0 <= y1 < y2 <= crop.height
+
+
+def test_reviewed_source_pixels_follow_optical_scale_without_context_leak():
+    rgba = np.full((20, 40, 4), (0, 255, 0, 0), np.uint8)
+    rgba[5:15, 10:30] = (0, 0, 200, 255)
+    alpha_crop = ObjectCrop(0, rgba, 40, 20, object_box=(0, 0, 40, 20),
+                            zoom_level=0, view_scale=0.25)
+    context = rgba.copy()
+    context[:, :, 3] = 255
+    context_crop = ObjectCrop(0, context, 40, 20, object_box=(0, 0, 40, 20),
+                              zoom_level=0, view_scale=0.25)
+    alpha_image, alpha_labels = paste_augment(
+        _blank_view(), [], [alpha_crop], np.random.default_rng(1), scale_range=(1, 1), zoom_level=0,
+    )
+    context_image, context_labels = paste_augment(
+        _blank_view(), [], [context_crop], np.random.default_rng(1), scale_range=(1, 1), zoom_level=0,
+    )
+    assert alpha_labels == context_labels
+    assert alpha_labels[0][3:] == pytest.approx((10 / VIEW_WIDTH, 5 / VIEW_HEIGHT))
+    assert not alpha_image[:, :, 1].any()
+    assert context_image[:, :, 1].any()
+
+
+def _reviewed_fixture():
+    image = np.full((20, 32, 4), (0, 255, 0, 0), np.uint8)
+    image[5:15, 8:24] = (0, 0, 200, 255)
+    return ({name: image.copy() for name in OBJECT_CLASSES},
+            {name: {"scene": "helsinki", "frame": 0} for name in OBJECT_CLASSES})
+
+
+def test_reviewed_bank_cannot_import_validation_frame(monkeypatch, tmp_path):
+    monkeypatch.setattr(builder, "load_reviewed_assets", lambda *args: _reviewed_fixture())
+    with pytest.raises(ValueError, match="validation source frame"):
+        builder.reviewed_crop_bank("helsinki", {0: "val"}, [0, 1, 2], tmp_path, tmp_path, "alpha")
+
+
+def test_context_and_alpha_training_controls_have_identical_labels_and_validation(tmp_path, monkeypatch):
+    monkeypatch.setattr(builder, "load_reviewed_assets", lambda *args: _reviewed_fixture())
+    roots = []
+    for mode in ("context", "alpha"):
+        roots.append(build_augmented_dataset(
+            "helsinki", tmp_path / mode, levels=[2], frames=[0, 1], val_fraction=0.5,
+            step_fraction=1.0, neg_stride=2, copy_paste_per_view=1, copies_per_source=1,
+            sprite_review=tmp_path / "review.json", sprite_artifact_root=tmp_path,
+            sprite_mode=mode, rotate_pastes=True,
+        ).parent)
+    labels = sorted(path.relative_to(roots[0]) for path in (roots[0] / "labels").rglob("*.txt"))
+    assert labels == sorted(path.relative_to(roots[1]) for path in (roots[1] / "labels").rglob("*.txt"))
+    for path in labels:
+        assert (roots[0] / path).read_bytes() == (roots[1] / path).read_bytes()
+    for image in (roots[0] / "images" / "val").glob("*.png"):
+        assert image.read_bytes() == (roots[1] / "images" / "val" / image.name).read_bytes()
+    augmented = list((roots[0] / "images" / "train").glob("*_cp*.png"))
+    assert augmented
+    assert any(path.read_bytes() != (roots[1] / "images" / "train" / path.name).read_bytes() for path in augmented)
