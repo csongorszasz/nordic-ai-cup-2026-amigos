@@ -869,6 +869,46 @@ defaults to 1 for every existing path.
   warm-up so invalid experiment inputs fail without costly weight loading.
   The cancelled run is not counted as a scientific result.
 
+- **Full outcome:** `beam2-full-fixed-d4159b42`, all 390 questions. Raw
+  score 0.7886 and fixed-offset **0.8007415** exactly tie greedy decoding;
+  the common non-demo paired delta and its interval are both zero.
+  Cached latency averages 24.58 s, maximum 29.39 s. Reject the slower
+  decoder; no serving change.
+
+## Metric-reward grounding: research comparison, September 19, 2026
+
+The target is composite score near 1.0, not mIoU 0.8007. The qualified local
+result remains accuracy 0.9974, mIoU 0.6696, composite 0.8007. At that accuracy,
+composite 0.95 requires mIoU about 0.9184. Neither an oracle nor a training-set
+reward is an achieved held-out score.
+
+| Primary source | Difference from our current method | Bounded adaptation |
+| --- | --- | --- |
+| [Time-R1](https://arxiv.org/abs/2503.13377), June 29, 2025 revision | Verifiable temporal rewards optimize localization rather than token likelihood. | Warm-start from the already trained, conversation-disjoint SFT adapter; optimize decoded intervals. |
+| [SelfCite](https://arxiv.org/abs/2502.09604), June 15, 2025 revision | Citation quality uses context removal/retention, not the quote's generation probability. | The rejected quote-NLL reranker did not implement this objective; do not label that result a SelfCite test. |
+| [EvoGround](https://arxiv.org/abs/2605.13803), May 13, 2026 | Coupled proposer/solver agents create grounding supervision from unlabeled video. | Possible later training-data axis, not permission to generate or alter held-out labels. |
+| [TimeLens2](https://arxiv.org/abs/2607.17423), July 19, 2026 | GRPO combines tIoU with exact temporal Wasserstein distance, distinguishing some zero-overlap near misses. | Implement its interval geometry for this task's single span, while retaining the official scorer unchanged. |
+| [Qwen3 forced aligner](https://huggingface.co/Qwen/Qwen3-ForcedAligner-0.6B-hf) | Dedicated audio/text alignment instead of relying only on ASR word times. | Separate timing experiment; an aligner cannot repair selection of the wrong supporting occurrence by itself. |
+
+These are verified primary sources available before the review date, not a
+claim that a video benchmark's SOTA score transfers to medical audio.
+TimeLens2's correct identifier is **2607.17423**; the earlier search result
+pointing at 2607.15424 was unrelated and was not used.
+
+The implemented pure reward is official single-span tIoU plus
+`exp(-W1 / (gold_duration + 1e-8))`, with -1 for invalid/ambiguous grounding.
+The one-dimensional W1 is exact for uniform distributions on single intervals.
+Decoding uses the same unique-quote match, +0.2-second start correction and
+short-span collapse behavior as the SFT localizer. In particular, invalid
+rollouts never collect the reward of an inference fallback.
+
+Use pinned TRL 1.13.0 and datasets 5.0.1 in a **new run-local overlay**;
+protect the installed torch, transformers and ASR stack. First verify API
+compatibility, real nonzero adapter updates, sampled reward variation and
+memory on one GPU. Then evaluate a fixed held-out fold with all questions
+retained and unchanged 26B decisions. No SOTA reproduction, score gain,
+full-OOF result or deployment is claimed by this implementation alone.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

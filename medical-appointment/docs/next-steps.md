@@ -20,6 +20,15 @@ Retain the failed remote refiner results and the negative tokenizer/duplicate
 quote diagnostics. The older ranked backlog below is historical, not a mandate
 to restart the legacy hybrid or repeat those experiments.
 
+**September 19 research pivot:** current qualified local composite is
+**0.8007415**, not mIoU. Prioritize metric-reward post-training: a
+conversation-disjoint SFT localizer followed by GRPO with official tIoU,
+single-interval temporal Wasserstein shaping and invalid-output penalties.
+Use a separate dependency overlay, an IDUN gradient/reward-signal smoke, then
+fixed held-out evaluation. Timing alignment is a separate subsequent axis.
+See the primary-source comparison and exact gates in `tries.md`; keep the
+live 26B greedy/int8/+0.2s release unchanged until a challenger qualifies.
+
 Standing plan for the medical-appointment case, updated 2026-09-18 after the
 served ModernBERT validation (**T034, 0.606**). Threads A/B/C below; execution
 order is a judgement call, not a dependency.
