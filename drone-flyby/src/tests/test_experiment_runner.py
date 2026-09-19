@@ -139,3 +139,21 @@ def test_fixed_view_replay_cannot_be_rescored_as_an_unrelated_scene(tmp_path):
     path.write_text(json.dumps({"score_available": False, "scope": "recorded-fixed-views"}))
     with pytest.raises(ValueError, match="no ground truth or AP"):
         runner.rescore_result(path, "helsinki")
+
+
+def test_response_comparison_retains_exact_verdict_and_reports_subpixel_drift():
+    original = {
+        "request_id": "r", "frame": 1, "requested_view": None,
+        "annotations": [{"object_id": "tank", "bbox": [0.1, 0.1, 0.2, 0.2], "confidence": 0.9}],
+    }
+    actual = json.loads(json.dumps(original))
+    actual["annotations"][0]["bbox"][0] += 1e-10
+    result = runner.compare_recorded_response(original, actual, 3840, 2160)
+    assert result["exact"] is False
+    assert result["identity_classes_order_camera_aligned"] is True
+    assert result["max_bbox_delta_source_pixels"] == pytest.approx(3.84e-7, abs=1e-10)
+    assert result["max_confidence_delta"] == 0
+    actual["annotations"][0]["object_id"] = "jammer"
+    mismatch = runner.compare_recorded_response(original, actual, 3840, 2160)
+    assert mismatch["identity_classes_order_camera_aligned"] is False
+    assert mismatch["max_bbox_delta_source_pixels"] is None

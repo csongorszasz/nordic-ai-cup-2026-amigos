@@ -208,6 +208,12 @@ and original processing order before loading the model. Every received crop and
 frame-index gap is preserved. It reports response differences and coverage, not
 AP without ground truth; a fixed crop stream cannot evaluate a different camera
 trajectory or supply frames that never arrived.
+Exact equality is reported without rounding. Numeric comparisons separately
+report aligned classes/order/camera, confidence differences, and bounding-box
+drift in source pixels: cross-node tracking arithmetic can differ below a
+pixel even when raw detections match. Do not hide the exact verdict or assume
+that any tolerance implies equal AP. Each result stores its effective runtime
+configuration rather than only the matrix's pre-override defaults.
 
 For an owned development HTTP replay, `experiment_runner.py --mode http
 --capture-inputs ...` verifies the same capture path and its overhead without

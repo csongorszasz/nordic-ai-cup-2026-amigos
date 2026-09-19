@@ -22,6 +22,7 @@ if str(SRC_ROOT) not in sys.path:
 from config import DroneFlybyConfig
 from core import build_pipeline
 from core.detector import create_detector
+from dtos import DroneFlybyPredictResponseDto
 from local_evaluator import fetch_server_stats, frame_numbers, replay, score, wait_for_endpoint
 from offline.camera_simulator import run_simulation
 from offline.record_dataset import load_recorded_request
@@ -108,6 +109,28 @@ def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latenc
                 process.wait()
 
 
+def compare_recorded_response(original: dict, actual: dict, width: int, height: int) -> dict:
+    if width <= 0 or height <= 0:
+        raise ValueError("Response comparison requires positive source dimensions")
+    old, new = original["annotations"], actual["annotations"]
+    aligned = (
+        original["request_id"] == actual["request_id"] and original["frame"] == actual["frame"]
+        and original["requested_view"] == actual["requested_view"] and len(old) == len(new)
+        and all(a["object_id"] == b["object_id"] for a, b in zip(old, new))
+    )
+    return {
+        "exact": original == actual,
+        "identity_classes_order_camera_aligned": aligned,
+        "max_bbox_delta_source_pixels": max((
+            abs(x - y) * scale for a, b in zip(old, new)
+            for x, y, scale in zip(a["bbox"], b["bbox"], (width, height, width, height))
+        ), default=0.0) if aligned else None,
+        "max_confidence_delta": max((
+            abs(a["confidence"] - b["confidence"]) for a, b in zip(old, new)
+        ), default=0.0) if aligned else None,
+    }
+
+
 def run_recorded_views(config: DroneFlybyConfig, recording: Path,
                        expected_frames: int | None = None) -> dict:
     """Compare inference on exact fixed observations, not a counterfactual flight."""
@@ -126,6 +149,8 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
         original_pipeline = diagnostic.get("pipeline")
         if not isinstance(original_pipeline, dict):
             raise ValueError("Recording lacks original pipeline diagnostics")
+        if "raw_detections" not in original_pipeline:
+            raise ValueError("Recording lacks raw detector diagnostics")
         order = original_pipeline.get("processing_order")
         if type(order) is not int or order < 1:
             raise ValueError("Recording lacks a verified processing order; cannot reproduce pipeline state")
@@ -137,10 +162,12 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
         original = json.loads(response_path.read_text()) if response_path.exists() else None
         if original is not None and (original.get("request_id"), original.get("frame")) != identity[:2]:
             raise ValueError("Recorded response identity does not match the input")
+        if original is not None:
+            DroneFlybyPredictResponseDto.model_validate(original)
         nonce = metadata.get("provenance", {}).get("run_nonce")
         if not isinstance(nonce, str) or not nonce:
             raise ValueError("Recorded replay requires serving run provenance")
-        rows.append((order, nonce, path.stem, request, original))
+        rows.append((order, nonce, path.stem, request, original, original_pipeline))
     if not rows or len(rows) != status.get("frames_received"):
         raise ValueError("Capture metadata does not account for all recorded receipts")
     if len({row[0] for row in rows}) != len(rows) or len({row[1] for row in rows}) != 1:
@@ -151,8 +178,9 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
     coverage = frame_coverage([row[3].frame_index for row in rows], expected_frames)
     pipeline = build_pipeline(config)
     pipeline.warmup()
-    replayed, comparisons = [], []
-    for order, _, stem, request, original in rows:
+    replayed, comparisons, numeric_comparisons = [], [], []
+    raw_matches = 0
+    for order, _, stem, request, original, original_pipeline in rows:
         diagnostics = {}
         response = pipeline.handle_request(request, diagnostics=diagnostics)
         validate_response(response)
@@ -163,11 +191,19 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
         matches = payload == original if original is not None else None
         if matches is not None:
             comparisons.append(matches)
+        comparison = compare_recorded_response(
+            original, payload, request.original_width, request.original_height,
+        ) if original is not None else None
+        if comparison is not None and comparison["identity_classes_order_camera_aligned"]:
+            numeric_comparisons.append(comparison)
+        raw_equal = diagnostics["raw_detections"] == original_pipeline["raw_detections"]
+        raw_matches += raw_equal
         replayed.append({
             "capture_stem": stem, "original_processing_order": order,
             "frame": request.frame, "frame_index": request.frame_index,
             "request_id": request.request_id, "response": payload,
             "matches_recorded_response": matches, "diagnostics": diagnostics,
+            "response_comparison": comparison, "raw_detections_equal": raw_equal,
         })
     return {
         "scope": "recorded-fixed-views; not closed-loop camera or full-source evaluation",
@@ -176,6 +212,14 @@ def run_recorded_views(config: DroneFlybyConfig, recording: Path,
         "compared_recorded_responses": len(comparisons),
         "matching_recorded_responses": sum(comparisons),
         "all_recorded_responses_match": all(comparisons) if comparisons else None,
+        "aligned_recorded_responses": len(numeric_comparisons),
+        "exact_raw_detection_matches": raw_matches,
+        "max_aligned_bbox_delta_source_pixels": max(
+            (row["max_bbox_delta_source_pixels"] for row in numeric_comparisons), default=None,
+        ),
+        "max_aligned_confidence_delta": max(
+            (row["max_confidence_delta"] for row in numeric_comparisons), default=None,
+        ),
         "replayed_requests": replayed,
     }
 
@@ -214,6 +258,7 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
         config.INFERENCE_IMAGE_SIZES = tuple(arguments.image_sizes)
     write_json(arguments.output / "manifest.json", {
         "arguments": vars(arguments), "config": asdict(config),
+        "config_scope": "Base configuration before tracker/policy overrides; each result stores its effective config.",
         "checkpoint_sha256": checkpoint_hash(arguments.weights),
         "aux_checkpoint_sha256": checkpoint_hash(config.YOLO_AUX_WEIGHTS_PATH)
         if config.DETECTOR_TYPE == "yolo_pair" else None,
@@ -244,12 +289,16 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
                 result.update({
                     "status": "completed", "policy": policy, "tracker": tracker,
                     "mode": arguments.mode, "elapsed_seconds": time.monotonic() - started,
+                    "config": asdict(config),
                 })
                 write_json(output / "result.json", result)
                 summary_keys = ("policy", "tracker", "mode", "elapsed_seconds")
                 summary_keys += (
                     ("scope", "score_available", "request_count", "compared_recorded_responses",
-                     "matching_recorded_responses") if arguments.mode == "recording" else ("map50", "per_class")
+                     "matching_recorded_responses", "aligned_recorded_responses",
+                     "exact_raw_detection_matches", "max_aligned_bbox_delta_source_pixels",
+                     "max_aligned_confidence_delta")
+                    if arguments.mode == "recording" else ("map50", "per_class")
                 )
                 records.append({key: result[key] for key in summary_keys})
                 write_json(arguments.output / "summary.json", records)
