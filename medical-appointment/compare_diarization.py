@@ -16,16 +16,16 @@ from collections import defaultdict
 from pathlib import Path
 
 from answerers.boundaries import adjusted_span
-from answerers import llm_prompt
-from answerers.llm_prompt import VARIANT, few_shot_counts
-from answerers.modernbert_data import load_evidence, load_rows, load_transcript
-from benchmark import paired_comparison
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
 def demonstration_tids(tids, modes=("first", "similar")):
     """Every conversation used as a few-shot source under the given selection modes."""
+    from answerers import llm_prompt
+    from answerers.llm_prompt import VARIANT, few_shot_counts
+    from answerers.modernbert_data import load_evidence, load_rows, load_transcript
+
     rows_by_tid = defaultdict(list)
     for row in load_rows():
         rows_by_tid[row["transcript_id"]].append(row)
@@ -60,7 +60,18 @@ def subset(records, keep):
     return [record for record in records if record["transcript_id"] in keep]
 
 
+def ensure_cohort(non_demo, minimum):
+    """Refuse a demonstration-disjoint comparison that is too small to read."""
+    if len(non_demo) < minimum:
+        raise ValueError(
+            f"Demonstration-disjoint cohort has only {len(non_demo)} conversations "
+            f"(< {minimum}); the comparison would be uninformative."
+        )
+
+
 def report(label, baseline, candidate):
+    from benchmark import paired_comparison
+
     result = paired_comparison(baseline, candidate)
     lo, hi = result["conversation_bootstrap_95pct"]
     print(
@@ -76,6 +87,10 @@ def main() -> int:
     parser.add_argument("--speaker", type=Path, required=True)
     parser.add_argument("--demo-modes", default="first,similar",
                         help="Few-shot selection modes whose sources form the demo set.")
+    parser.add_argument("--input-state", choices=("raw", "calibrated"), default="raw",
+                        help="Whether the records are raw (apply +0.2 once) or already calibrated.")
+    parser.add_argument("--min-non-demo", type=int, default=10,
+                        help="Refuse a demonstration-disjoint comparison below this size.")
     args = parser.parse_args()
 
     base = json.loads(args.base.read_text())
@@ -87,8 +102,14 @@ def main() -> int:
     demo = demonstration_tids(tids, tuple(m.strip() for m in args.demo_modes.split(",") if m.strip()))
     non_demo = set(tids) - demo
     print(f"conversations={len(tids)} demonstration={len(demo)} non-demo={len(non_demo)}")
+    ensure_cohort(non_demo, args.min_non_demo)
 
-    for name, transform in (("raw", lambda rows: rows), ("fixed+0.2", with_fixed_offset)):
+    transforms = [("raw", lambda rows: rows)]
+    if args.input_state == "raw":
+        transforms.append(("fixed+0.2", with_fixed_offset))
+    else:
+        print("input-state=calibrated: reporting records as-is (no second correction).")
+    for name, transform in transforms:
         baseline = transform(base)
         candidate = transform(speaker)
         print(f"{name}:")

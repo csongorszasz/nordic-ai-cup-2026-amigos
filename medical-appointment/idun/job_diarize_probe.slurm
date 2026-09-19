@@ -34,6 +34,9 @@ export PYTHONUNBUFFERED=1
 export HF_HUB_OFFLINE=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# Isolated A/B configuration: served transcript cache, raw predictions only.
+export MEDAPP_TRANSCRIPT_CONFIG_HASH=e75a7f6e
+unset MEDAPP_SPAN_CALIBRATION
 export MEDAPP_LLM_MODEL=google/gemma-4-26b-a4b-it
 export MEDAPP_LLM_REVISION=4d7ae4984b7db7de8f8457170b3f1a419ee76d52
 export MEDAPP_LLM_MAX_NEW_TOKENS=1024
@@ -41,19 +44,21 @@ export MEDAPP_LLM_LEGACY_SPECIAL_TOKENS=1
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
+echo "effective config: transcript=${MEDAPP_TRANSCRIPT_CONFIG_HASH} calibration=${MEDAPP_SPAN_CALIBRATION:-none} model=${MEDAPP_LLM_MODEL} revision=${MEDAPP_LLM_REVISION} tokens=${MEDAPP_LLM_MAX_NEW_TOKENS} legacy=${MEDAPP_LLM_LEGACY_SPECIAL_TOKENS}"
 
 echo ">>> diarize 39 conversations"
 python diarize_conversations.py --model models/wavlm-base-plus-sv --limit 39
 
-echo ">>> probe A: baseline (no speaker tags)"
-python llm_probe.py --rungs L1 --tag dia_base
+echo ">>> probe A: baseline (speaker tags explicitly off)"
+MEDAPP_LLM_SPEAKERS=0 python llm_probe.py --rungs L1 --tag dia_base
 
-echo ">>> probe B: speaker-tagged transcript"
+echo ">>> probe B: speaker-tagged transcript (strict sidecars)"
 MEDAPP_LLM_SPEAKERS=1 python llm_probe.py --rungs L1 --tag dia_speaker
 
 echo ">>> paired comparison"
 python compare_diarization.py \
     --base results/llm_dia_base_L1_questions.json \
-    --speaker results/llm_dia_speaker_L1_questions.json
+    --speaker results/llm_dia_speaker_L1_questions.json \
+    --demo-modes first --input-state raw
 
 echo "finished $(date)"
