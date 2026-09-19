@@ -708,6 +708,28 @@ Reference examples emit quotes rather than keep/edit labels. Invalid or
 ambiguous proposals still retain the baseline. No live integration without
 paired non-demo improvement and a real end-to-end latency gate.
 
+- **Outcome:** `blind-refine-eeda139d` rejected. It changed 107 citations
+  rather than three, but score fell to **0.7825**; non-demo delta
+  **-0.018305**, interval **[-0.054244, +0.012678]**. Decisions remained fixed
+  and no generation failed. Removing anchoring caused more edits, not better
+  annotation alignment.
+
+## Supervised reference-localizer feasibility
+
+Prompt-only refiners and unsupervised capacity changes have not learned the
+reference citation convention. Prepare a bounded supervised E4B quote-localizer
+pilot with frozen base weights and rank-4 attention q/v adapters. Preserve the
+26B decisions; evaluate every baseline-predicted positive, not a gold-selected
+applicability subset. Use an excluded demonstration pool and conversation-held-out
+fold 0 of five (seed 13), two fixed epochs, before considering full OOF work.
+
+PEFT and Accelerate were absent. Training prerequisites are installed only in a
+run-local system-site-packages virtual environment, constrained to the exact
+existing torch/transformers/ASR runtime versions. The live `nordic` environment
+is never upgraded. Require dependency, import, single-step gradient/memory,
+and unadapted-versus-adapted comparison gates before spending on full training.
+Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/package_reference/lora`.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

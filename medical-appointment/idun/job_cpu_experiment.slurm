@@ -31,5 +31,8 @@ import os
 from pathlib import Path
 request = json.loads(Path("run_request.json").read_text())
 os.environ.update(request["environment"])
-os.execv(os.sys.executable, [os.sys.executable, request["script"], *request["arguments"]])
+python = request["environment"].get("MEDAPP_PYTHON", os.sys.executable)
+if not Path(python).is_file():
+    raise FileNotFoundError(f"Configured experiment interpreter is missing: {python}")
+os.execv(python, [python, request["script"], *request["arguments"]])
 PY
