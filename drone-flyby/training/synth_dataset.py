@@ -477,6 +477,7 @@ def main():
     parser.add_argument('--l2-random', type=int, default=8)
     parser.add_argument('--l2-per-object', type=int, default=1)
     parser.add_argument('--preview', type=int, default=0, help='write N full composed frames and stop')
+    parser.add_argument('--preview-dir', help='default: datasets/synth_preview (the flyby page lists datasets/synth_flyby)')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--balance', action='store_true',
                         help='steer the single-object draws so every class ends up pasted about equally often '
@@ -505,10 +506,11 @@ def main():
 
     out = Path(args.out).resolve()  # data.yaml needs it absolute; YOLO reads relative paths from its own datasets dir
     if args.preview:
-        preview_dir = out.parent / 'synth_preview'
+        preview_dir = Path(args.preview_dir) if args.preview_dir else out.parent / 'synth_preview'
         preview_dir.mkdir(parents=True, exist_ok=True)
         for i in range(args.preview):
-            background, ground = load_background(rng.choice(background_paths))
+            background_path = rng.choice(background_paths)
+            background, ground = load_background(background_path)
             frame, annotations = compose_frame(background, sprites, rng,
                                                rng.randint(args.min_objects, args.max_objects),
                                                model_sprites, args.model_share, ground, box_scales=box_scales)
@@ -520,6 +522,9 @@ def main():
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
             cv2.imwrite(str(preview_dir / f'synth_{i:02d}.jpg'), frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
             cv2.imwrite(str(preview_dir / f'synth_{i:02d}_boxes.jpg'), marked, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            (preview_dir / f'synth_{i:02d}.json').write_text(json.dumps({
+                'background': f'{background_path.parent.name}/{background_path.name}',
+                'annotations': [{'object_id': a['object_id'], 'bbox': [int(v) for v in a['bbox']]} for a in annotations]}))
             print(f'preview {i}: {len(annotations)} objects')
         print(f'previews in {preview_dir}')
         return

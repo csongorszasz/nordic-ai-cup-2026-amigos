@@ -84,6 +84,7 @@ def scenes_3d():
 # Flight playback (flyby.html): the supplied scene and the recorded validation flight as a
 # video, zoomed through the three levels by hand. Frames go out as JPEG, cached on disk.
 RECORDED = ROOT / 'recordings' / 'validation_4k'
+SYNTH = ROOT / 'datasets' / 'synth_flyby'   # synth_dataset.py --preview N --preview-dir datasets/synth_flyby
 FLYBY_CACHE = ROOT / 'datasets' / 'flyby_cache'
 
 
@@ -93,6 +94,8 @@ def flyby_frames(source: str) -> dict:
         return {n: ROOT / 'data' / 'helsinki' / 'images' / f'frame_{n:06d}.png' for n in frame_numbers()}
     if source == 'validation_4k':
         return {int(p.stem.split('_')[-1]): p for p in sorted(RECORDED.glob('frame_*.jpg'))}
+    if source == 'synth':   # independent synthetic 4K frames (not a flight), numbered from 1
+        return {int(p.stem.split('_')[1]) + 1: p for p in sorted(SYNTH.glob('synth_[0-9][0-9].jpg'))}
     raise HTTPException(404, 'unknown source')
 
 
@@ -111,6 +114,11 @@ def flyby_sources():
         out.append({'name': 'validation_4k', 'frames': sorted(flyby_frames('validation_4k')), 'labelled': labelled,
                     'label': 'Copenhagen (recorded validation, ' + ('hand-checked labels, test only)' if labelled else 'no labels)'),
                     'version': int(coverage.stat().st_mtime) if coverage.exists() else 0})
+    synth = flyby_frames('synth')
+    if synth:
+        out.append({'name': 'synth', 'frames': sorted(synth), 'labelled': True,
+                    'label': 'Synthetic training frames (independent stills, generator labels)',
+                    'version': int(max(p.stat().st_mtime for p in synth.values()))})
     return out
 
 
@@ -138,6 +146,12 @@ def flyby_labels(frame: int, source: str = 'helsinki'):
             return []
         return [{'class': a['object_id'], 'bbox': a['bbox'], 'track': a['track']}
                 for a in json.loads(path.read_text())['labels'].get(str(frame), [])]
+    if source == 'synth':
+        path = SYNTH / f'synth_{frame - 1:02d}.json'
+        if not path.exists():
+            return []
+        meta = json.loads(path.read_text())
+        return [{'class': a['object_id'], 'bbox': a['bbox'], 'track': meta['background']} for a in meta['annotations']]
     return [{'class': a['object_id'], 'bbox': a['bbox']} for a in load_annotations(frame)]
 
 
