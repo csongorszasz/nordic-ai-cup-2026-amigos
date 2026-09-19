@@ -37,6 +37,7 @@
   #glrow .msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted);
                 font-size:13px; text-align:center; padding:12px; pointer-events:none; z-index:1; }
   h3 { font-size:13px; color:var(--muted); margin:14px 0 6px; font-weight:600; }
+  .s-fresh { color:#ffb347; }
   .strip { display:flex; gap:6px; flex-wrap:wrap; }
   .strip img { width:130px; height:130px; object-fit:contain; background:#000; border-radius:4px; }
   .strip.sprites img { background:#6b6f63; }
@@ -176,15 +177,16 @@ function strip(id, urls) {
   $(id).innerHTML = urls.length ? urls.map(u => `<img loading="lazy" src="${u}">`).join('') : '<span class="empty">none</span>';
 }
 
-const mark = r => !r ? '' : r.status === 'proposed' ? '<b class="s-proposed">proposed</b>' : r.status === 'current' ? '<b class="s-current">current</b>' : '<b class="s-note">note</b>';
+const mark0 = r => !r ? '' : r.status === 'proposed' ? '<b class="s-proposed">proposed</b>' : r.status === 'current' ? '<b class="s-current">current</b>' : '<b class="s-note">note</b>';
+const mark = (r, c) => c && c.fresh ? '<b class="s-fresh">NEW proposal</b>' : c && c.applied ? '<b class="s-current">applied</b>' : mark0(r);
 function drawList() {
-  $('list').innerHTML = classes.map((c, i) => `<div class="cls${i === index ? ' active' : ''}" data-i="${i}">${c.cls}${mark(c.review)}</div>`).join('');
+  $('list').innerHTML = classes.map((c, i) => `<div class="cls${i === index ? ' active' : ''}" data-i="${i}">${c.cls}${mark(c.review, c)}</div>`).join('');
   for (const el of $('list').children) el.onclick = () => open(+el.dataset.i);
 }
 function drawVerdict() {
   const r = classes[index].review;
   $('verdict').innerHTML = !r ? '<span class="empty">no verdict yet</span>' :
-    `${mark(r)}${r.note ? ' · ' + r.note.replace(/</g, '&lt;') : ''}`;
+    `${mark(r, classes[index])}${r.note ? ' · ' + r.note.replace(/</g, '&lt;') : ''}`;
 }
 
 function open(i) {
@@ -211,6 +213,7 @@ async function verdict(status, note = null) {
   await fetch('/api/paint/review', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cls: c.cls, status, note: note ?? (c.review && c.review.note) }) });
   c.review = { status, note: note ?? (c.review && c.review.note) };
+  c.fresh = false;
   drawList(); drawVerdict();
 }
 function openNote() { $('noteBox').style.display = 'block'; $('note').value = (classes[index].review || {}).note || ''; $('note').focus(); }

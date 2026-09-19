@@ -460,7 +460,8 @@ def paint_page():
 
 def baked_url(cls: str, name: str, suffix: str) -> Optional[str]:
     path = MODEL_MATCH / '_baked' / f'{cls}_{name}{suffix}.glb'
-    return '/compare/' + path.relative_to(MODEL_MATCH).as_posix() if path.exists() else None
+    # ?v=: the file changes under the same name when a proposal is promoted; the browser must not keep the old one.
+    return '/compare/' + path.relative_to(MODEL_MATCH).as_posix() + f'?v={int(path.stat().st_mtime)}' if path.exists() else None
 
 
 @app.get('/api/paint')
@@ -484,17 +485,24 @@ def paint_classes():
         if name:
             m = models.get(f'{cls}/{name}', {})
             used = {'recoloured': '_recoloured', 'edited': '_edited'}.get(fit.get('paint'), '')
-            proposed = '_proposed' if baked_url(cls, name, '_proposed') else ('' if used else '_recoloured')
+            proposed = '_proposed' if baked_url(cls, name, '_proposed') else None  # nothing proposed: no third model
             item.update(original=m.get('url'), current=baked_url(cls, name, used),
                         current_label={'_recoloured': 'recoloured', '_edited': 'edited: ' + fit.get('edits', '')}.get(used, 'projected from the Helsinki cut-outs'),
-                        proposed=baked_url(cls, name, proposed) if proposed != used else None,
+                        proposed=baked_url(cls, name, proposed) if proposed else None,
                         proposed_label={'_proposed': proposals.get(cls, 'proposed new paint'), '_recoloured':
                                         'recoloured (model texture shifted to the real colours)',
-                                        '': 'projected'}[proposed],
+                                        '': 'projected', None: 'nothing proposed'}[proposed],
                         dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'], up=fit.get('up', 'auto'))
         pool = [e['file'] for e in sprites if e['class'] == cls]
         item['sprites'] = random.Random(cls).sample(pool, min(8, len(pool)))
         item['proposed_sprites'] = [e['file'] for e in proposed_sprites if e['class'] == cls][:8]
+        # A proposal made after the verdict (edit_models.py acting on a note) is new to review;
+        # a "use proposed" verdict with no proposal left has been applied.
+        path = MODEL_MATCH / '_baked' / f'{cls}_{name}_proposed.glb'
+        verdict = review.get(cls) or {}
+        if path.exists():
+            item['fresh'] = not verdict or datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec='seconds') > verdict.get('at', '')
+        item['applied'] = verdict.get('status') == 'proposed' and not path.exists()
         item['helsinki'] = helsinki[cls]
         item['copenhagen'] = [{'frame': o['ref'], 'box': o['box']} for o in cph if o['class'] == cls][:8]
         out.append(item)
