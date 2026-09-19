@@ -284,6 +284,8 @@ def pick_spot(ground, rng: random.Random):
     if ground is None:
         return rng.uniform(0, SOURCE_W), rng.uniform(0, SOURCE_H)
     ys, xs = np.nonzero(ground)
+    if not len(xs):   # no open ground at all: somewhere off the frame, so on_ground() refuses it
+        return -1e6, -1e6
     i = rng.randrange(len(xs))
     sx, sy = SOURCE_W / ground.shape[1], SOURCE_H / ground.shape[0]
     return (xs[i] + rng.random()) * sx, (ys[i] + rng.random()) * sy
@@ -335,6 +337,7 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 
 PARTNER_MAX_HIDDEN = 1.0   # share of a neighbour's box its anchor may cover (--partner-max-hidden)
 CUTOUTS_ONLY = set()       # classes pasted only from the real cut-outs (--cutouts-only)
+MODELS_ONLY = set()        # classes pasted only from the 3D-model renders (--models-only)
 
 
 def hidden_share(box, other) -> float:
@@ -359,7 +362,8 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
     if not names:
         return
     name = rng.choice(names)
-    use_model = name in model_sprites and name not in CUTOUTS_ONLY and (name not in sprites or rng.random() < model_share)
+    use_model = name in model_sprites and name not in CUTOUTS_ONLY and (name not in sprites or name in MODELS_ONLY
+                                                                        or rng.random() < model_share)
     x1, y1, x2, y2 = anchor
     for _ in range(10):
         if anchor_class == 'hangar':  # across one of its edges (the mouth), mostly outside, not on the roof
@@ -435,7 +439,8 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
         wanted.sort(key=lambda name: -class_size(name, sprites, model_sprites))
 
     for class_name in wanted:
-        use_model = class_name in model_sprites and class_name not in CUTOUTS_ONLY and (class_name not in sprites or rng.random() < model_share)
+        use_model = class_name in model_sprites and class_name not in CUTOUTS_ONLY and (
+            class_name not in sprites or class_name in MODELS_ONLY or rng.random() < model_share)
         sprite = None if use_model else transform_sprite(rng.choice(sprites[class_name]), rng)
         if sprite is None and not use_model:
             continue
@@ -500,6 +505,9 @@ def main():
     parser.add_argument('--cutouts-only', nargs='*', default=[], metavar='CLASS',
                         help='paste these classes only from the real cut-outs (their 3D renders look wrong: '
                              'helicopter without rotor, launchers blurred, ta-ta a blob)')
+    parser.add_argument('--models-only', nargs='*', default=[], metavar='CLASS',
+                        help='paste these classes only from the 3D-model renders (the helicopter cut-outs lost '
+                             'their rotor to GrabCut)')
     parser.add_argument('--partner-max-hidden', type=float, default=1.0,
                         help='share of a neighbour its anchor may cover (a hangar\'s plane excepted)')
     parser.add_argument('--balance', action='store_true',
@@ -513,6 +521,7 @@ def main():
     global PARTNER_MAX_HIDDEN
     PARTNER_MAX_HIDDEN = args.partner_max_hidden
     CUTOUTS_ONLY.update(args.cutouts_only)
+    MODELS_ONLY.update(args.models_only)
     rng = random.Random(args.seed)
     np.random.seed(args.seed)
 
