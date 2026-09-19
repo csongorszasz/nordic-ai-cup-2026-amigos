@@ -36,6 +36,7 @@
 #   CONSTRAINT="gpu40g|gpu80g"     serve GPU constraint
 #   MEM="32G"                      serve memory request
 #   TIME="0-04:00:00"              serve walltime
+#   EXCLUSIVE="1"                  request the whole node for serve
 # ==============================================================================
 
 set -euo pipefail
@@ -122,6 +123,7 @@ case "$ACTION" in
         RESOURCES="--constraint=$(printf '%q' "${CONSTRAINT:-gpu40g|gpu80g}")"
         RESOURCES="${RESOURCES} --mem=$(printf '%q' "${MEM:-32G}")"
         RESOURCES="${RESOURCES} --time=$(printf '%q' "${TIME:-0-04:00:00}")"
+        [ "${EXCLUSIVE:-0}" = "1" ] && RESOURCES="${RESOURCES} --exclusive"
         JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs &&${FORWARD} sbatch --account=${SLURM_ACCOUNT} ${RESOURCES} idun/job_serve_llm.slurm")
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
