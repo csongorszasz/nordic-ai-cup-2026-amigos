@@ -54,6 +54,9 @@ def main():
                         help='camera commands as the live service applies them, replacing --lag: this share on the '
                              'next frame, this share a frame later, the rest never. Live 2026-09-19: 0.65,0.19 '
                              '(the 0.517 run) and 0.5,0.5 (the 0.357 run)')
+    parser.add_argument('--timing-from', metavar='RESPONSES.jsonl',
+                        help="a live run's response log (DRONE_LOG_RESPONSES): each frame's command lands as that "
+                             "frame's did live (next frame, a frame later, never), replacing --lag")
     args = parser.parse_args()
 
     # solution.py reads its settings when imported, so they go in first.
@@ -84,6 +87,19 @@ def main():
     camera, feedback, steps, predictions, queue = Camera(), None, [], {}, []
     import random
     timing_rng = random.Random(0)
+    timing_script = None
+    if args.timing_from:
+        live = [json.loads(line) for line in open(args.timing_from)]
+        live = {l['frame']: l for l in live if l['sequence_id'] == live[-1]['sequence_id']}
+        centre = lambda r: ((r[0] + r[2]) // 2, (r[1] + r[3]) // 2)
+        timing_script = {}
+        for f, l in live.items():
+            rv = l['requested_view']
+            if not rv or f + 1 not in live or f + 2 not in live:
+                continue
+            want = (rv['center_x'], rv['center_y'])
+            timing_script[f] = ('next' if centre(live[f + 1]['region']) == want else
+                                'later' if centre(live[f + 2]['region']) == want else 'never')
     started = time.monotonic()
     for index, (frame, load) in enumerate(frames.items()):
         seen.clear()
@@ -105,7 +121,14 @@ def main():
         if response.requested_view is not None:
             step['next'] = [response.requested_view.resolution_level, response.requested_view.center_x,
                             response.requested_view.center_y]
-        if args.live_timing:   # each command due on the next frame, the one after, or never; the newest due wins
+        if timing_script is not None:   # as that frame's command landed live
+            outcome = timing_script.get(frame, 'next')
+            if response.requested_view is not None and outcome != 'never':
+                queue.append((index + (1 if outcome == 'next' else 2), response.requested_view))
+            due = [c for d, c in queue if d == index + 1]
+            queue = [(d, c) for d, c in queue if d > index + 1]
+            r = due[-1] if due else None
+        elif args.live_timing:   # each command due on the next frame, the one after, or never; the newest due wins
             u = timing_rng.random()
             share_next, share_later = (float(v) for v in args.live_timing.split(','))
             if response.requested_view is not None and u < share_next + share_later:

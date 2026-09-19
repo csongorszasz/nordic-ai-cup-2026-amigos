@@ -130,6 +130,7 @@ SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1400), (1920, 1400), (960,
 # lands, one or two frames late). 'stuck': from the view received when the camera did not move
 # since the last frame (a dropped command). 'always' (or 1): always from the view received; live
 # 2026-09-19 that halved the sweep's speed when commands landed two frames late (0.357).
+SWEEP_HOLD = int(os.environ.get('DRONE_SWEEP_HOLD', 0))   # >0: time-based sweep, each position asked this many frames
 SWEEP_FROM_VIEW = {'1': 'always', '0': ''}.get(os.environ.get('DRONE_SWEEP_FROM_VIEW', '0'), os.environ.get('DRONE_SWEEP_FROM_VIEW'))
 if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540": Level-1 centres, in order
     SWEEP = [tuple(int(v) for v in p.split(',')) for p in os.environ['DRONE_SWEEP'].split(';')]
@@ -609,6 +610,17 @@ def choose_next_view(request: DroneFlybyPredictRequestDto, state: SequenceState)
     # one-frame delay: 0.198 mAP50, 165 moves in 248 frames).
     base = state.pending or (current.resolution_level, current.center_x, current.center_y)
     view = (current.resolution_level, current.center_x, current.center_y)
+    if SWEEP_HOLD and current.resolution_level == 1:
+        # Time-based: the target depends only on the frame number and is asked for SWEEP_HOLD frames
+        # in a row, so a command that lands late or not at all is covered by the repeat.
+        idx = (request.frame // SWEEP_HOLD + 1) % len(SWEEP)
+        cx, cy = SWEEP[idx]
+        if not _legal(view, (1, cx, cy)):   # the camera is behind: the next step from where it is
+            here = min(range(len(SWEEP)), key=lambda i: np.hypot(SWEEP[i][0] - view[1], SWEEP[i][1] - view[2]))
+            cx, cy = SWEEP[(here + 1) % len(SWEEP)]
+        cx = int(min(max(cx, bounds.minimum_center_x), bounds.maximum_center_x))
+        cy = int(min(max(cy, bounds.minimum_center_y), bounds.maximum_center_y))
+        return RequestedViewDto(resolution_level=1, center_x=cx, center_y=cy)
     stuck = view == state.last_view   # the camera did not move: a command was dropped (live: up to 16%)
     state.last_view = view
     if SWEEP_FROM_VIEW == 'always' or (SWEEP_FROM_VIEW == 'stuck' and stuck):

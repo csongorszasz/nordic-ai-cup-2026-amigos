@@ -333,6 +333,17 @@ def overlaps(box, placed, margin: int = 6) -> bool:
     return False
 
 
+PARTNER_MAX_HIDDEN = 1.0   # share of a neighbour's box its anchor may cover (--partner-max-hidden)
+CUTOUTS_ONLY = set()       # classes pasted only from the real cut-outs (--cutouts-only)
+
+
+def hidden_share(box, other) -> float:
+    """How much of box lies under other."""
+    ix = max(0, min(box[2], other[2]) - max(box[0], other[0]))
+    iy = max(0, min(box[3], other[3]) - max(box[1], other[1]))
+    return ix * iy / max((box[2] - box[0]) * (box[3] - box[1]), 1)
+
+
 def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, model_sprites, rng, shade, shadow,
                   box_scales, model_share, ground=None):
     """Paste a second object on or next to one just pasted (`anchor`, the last in `placed`),
@@ -348,7 +359,7 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
     if not names:
         return
     name = rng.choice(names)
-    use_model = name in model_sprites and (name not in sprites or rng.random() < model_share)
+    use_model = name in model_sprites and name not in CUTOUTS_ONLY and (name not in sprites or rng.random() < model_share)
     x1, y1, x2, y2 = anchor
     for _ in range(10):
         if anchor_class == 'hangar':  # within its middle
@@ -367,6 +378,8 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
         box = [x, y, x + w, y + h]
         if x < 0 or y < 0 or x + w >= SOURCE_W or y + h >= SOURCE_H or overlaps(box, placed[:-1]):
             continue  # it may overlap its anchor (the last placed), nothing else
+        if anchor_class != 'hangar' and hidden_share(box, placed[-1]) > PARTNER_MAX_HIDDEN:
+            continue  # mostly under its anchor: a label for an object nobody could see
         if anchor_class != 'hangar' and not on_ground(ground, box):
             continue
         pasted = paste(canvas, match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng, shade), x, y, shadow, rng)
@@ -417,7 +430,7 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
         wanted.sort(key=lambda name: -class_size(name, sprites, model_sprites))
 
     for class_name in wanted:
-        use_model = class_name in model_sprites and (class_name not in sprites or rng.random() < model_share)
+        use_model = class_name in model_sprites and class_name not in CUTOUTS_ONLY and (class_name not in sprites or rng.random() < model_share)
         sprite = None if use_model else transform_sprite(rng.choice(sprites[class_name]), rng)
         if sprite is None and not use_model:
             continue
@@ -479,6 +492,11 @@ def main():
     parser.add_argument('--preview', type=int, default=0, help='write N full composed frames and stop')
     parser.add_argument('--preview-dir', help='default: datasets/synth_preview (the flyby page lists datasets/synth_flyby)')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--cutouts-only', nargs='*', default=[], metavar='CLASS',
+                        help='paste these classes only from the real cut-outs (their 3D renders look wrong: '
+                             'helicopter without rotor, launchers blurred, ta-ta a blob)')
+    parser.add_argument('--partner-max-hidden', type=float, default=1.0,
+                        help='share of a neighbour its anchor may cover (a hangar\'s plane excepted)')
     parser.add_argument('--balance', action='store_true',
                         help='steer the single-object draws so every class ends up pasted about equally often '
                              '(the themed groups double tanks, helicopters, small planes and hangars)')
@@ -487,6 +505,9 @@ def main():
                              'share), e.g. the ones the last run scored worst on')
     args = parser.parse_args()
 
+    global PARTNER_MAX_HIDDEN
+    PARTNER_MAX_HIDDEN = args.partner_max_hidden
+    CUTOUTS_ONLY.update(args.cutouts_only)
     rng = random.Random(args.seed)
     np.random.seed(args.seed)
 
