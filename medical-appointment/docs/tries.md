@@ -857,6 +857,13 @@ format and latency headroom before a full comparison; no stochastic seed
 selection and no live change. Beam count is recorded in run metadata and
 defaults to 1 for every existing path.
 
+- **Smoke gate:** `beam2-smoke-c7d1b915`, actual width 2, all 30 decisions
+  correct and no parse/alignment failures. Raw score **0.8264**, identical
+  to the exact matched-transcript greedy subset; maximum cached latency
+  **27.67 s**. The earlier 0.8262 smoke used older cached transcripts and
+  is not this comparison's reference. Headroom permits one full paired
+  evaluation, but the smoke demonstrates no quality gain.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
