@@ -35,6 +35,18 @@ def test_qid_and_serialize():
     assert text.count("\n") == 2
 
 
+def test_speaker_tags_only_render_when_present():
+    transcript = make_transcript("a")
+    plain = serialize_transcript(transcript)
+    assert "doctor" not in plain and "patient" not in plain
+    transcript["segments"][0]["speaker"] = "doctor"
+    transcript["segments"][1]["speaker"] = "patient"
+    tagged = serialize_transcript(transcript)
+    assert "[s00 0.00-1.40] doctor a one" in tagged
+    assert "[s01 1.50-2.90] patient a dose is 100 mg" in tagged
+    assert "[s02 3.00-4.00] a three" in tagged
+
+
 def test_l0_messages_contain_transcript_and_questions():
     messages = build_l0_messages(make_transcript("x"), ["Q one?", "Q two?"])
     assert messages[0]["role"] == "system"

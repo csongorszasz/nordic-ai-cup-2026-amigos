@@ -58,19 +58,12 @@ def main() -> int:
     if args.tids:
         tids = list(args.tids)
     else:
-        rows = json.loads((PROJECT_ROOT / "results" / "llm_probe_L1_questions.json").read_text()) \
-            if (PROJECT_ROOT / "results" / "llm_probe_L1_questions.json").exists() else []
-        seen = []
-        for row in rows:
-            if row["transcript_id"] not in seen:
-                seen.append(row["transcript_id"])
-        tids = seen
-        if not tids:
-            from answerers.modernbert_data import load_rows
+        from answerers.modernbert_data import load_rows
 
-            for row in load_rows():
-                if row["transcript_id"] not in tids:
-                    tids.append(row["transcript_id"])
+        tids = []
+        for row in load_rows():
+            if row["transcript_id"] not in tids:
+                tids.append(row["transcript_id"])
     if args.limit:
         tids = tids[:args.limit]
 

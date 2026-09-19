@@ -106,6 +106,12 @@ def load_transcript(transcript_id: str) -> Dict:
     transcript = json.loads(path.read_text())
     transcript["_cache_path"] = str(path)
     transcript["_cache_config_hash"] = path.name.split(".")[1]
+    if os.environ.get("MEDAPP_LLM_SPEAKERS") == "1":
+        sidecar = ROOT / "results" / "diarization" / f"{transcript_id}.json"
+        if sidecar.exists():
+            from .diarize import attach
+
+            attach(transcript, json.loads(sidecar.read_text()))
     return transcript
 
 

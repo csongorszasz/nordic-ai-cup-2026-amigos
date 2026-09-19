@@ -105,6 +105,15 @@ def few_shot_counts(variant: str) -> Tuple[int, int, int]:
     return (2, 1, 1) if variant == "two_positive" else (1, 1, 1)
 
 
+def _segment_line(seg: Dict, timestamps: bool = True) -> str:
+    """One transcript line; the speaker tag appears only when labelled."""
+    speaker = seg.get("speaker")
+    prefix = f"{speaker} " if speaker else ""
+    if timestamps:
+        return f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {prefix}{seg['text']}"
+    return f"[s{seg['id']:02d}] {prefix}{seg['text']}"
+
+
 def serialize_transcript(
     transcript: Dict, max_segments: Optional[int] = None, *, timestamps: bool = True
 ) -> str:
@@ -112,13 +121,7 @@ def serialize_transcript(
     segments = transcript.get("segments", [])
     if max_segments is not None:
         segments = segments[:max_segments]
-    return "\n".join(
-        (
-            f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
-            if timestamps else f"[s{seg['id']:02d}] {seg['text']}"
-        )
-        for seg in segments
-    )
+    return "\n".join(_segment_line(seg, timestamps) for seg in segments)
 
 
 def serialize_excerpt(
@@ -141,13 +144,7 @@ def serialize_excerpt(
     if not chosen:
         chosen = segments[:max_segments]
     chosen = chosen[:max_segments]
-    return "\n".join(
-        (
-            f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
-            if timestamps else f"[s{seg['id']:02d}] {seg['text']}"
-        )
-        for seg in chosen
-    )
+    return "\n".join(_segment_line(seg, timestamps) for seg in chosen)
 
 
 def questions_block(questions: Sequence[str]) -> str:
