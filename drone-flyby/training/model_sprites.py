@@ -33,9 +33,10 @@ OUT = ROOT / 'datasets' / 'model_sprites'
 SIZE_JITTER = 0.08   # relative; the fitted lengths vary about this much between frames
 MAX_TILT = 45        # degrees off vertical at the far corners of the frame (drone_camera.lean_at)
 # Rotor radius in model units (longest side = 1). The rotor was dropped from the fit
-# because it spins; the real cut-outs show it as anything from invisible to a pale
-# translucent disc, but the label box always spans the whole rotor (the Mi-28's rotor
-# is about as wide as the fuselage is long), so it is drawn back here.
+# because it spins. In the Helsinki frames the parked helicopter's five blades are thin,
+# dark and plainly visible, and the label box spans them (the Mi-28's rotor is about as
+# wide as the fuselage is long), so they are drawn back here. (The cut-outs lost most of
+# the blades when they were cut out, which is where the pale-disc look came from.)
 ROTORS = {'helicopter': 0.5}
 
 
@@ -77,30 +78,22 @@ def project(renderer, point, yaw, tilt, lean):
 
 
 def add_rotor(rgba, renderer, hub, radius, yaw, tilt, lean, rng):
-    """Draw the spinning rotor as the real cut-outs show it.
-
-    Always a faint disc, so the box spans the rotor as the real labels do; on top of it,
-    30% of the time a pale translucent wedge (the blurred blades most real frames show)
-    and 20% of the time a few thin blades.
+    """Draw the parked rotor as the Helsinki frames show it: five thin dark blades, evenly
+    spaced at a random angle, reaching the full radius so the box spans the rotor as the
+    labels do. Sometimes fainter (haze, blur), never a disc.
     """
     cx, cy = project(renderer, hub, yaw, tilt, lean)
     r = radius * rm.RENDER_SIZE / (2 * renderer.view_half)
-    centre, axes = (int(round(cx)), int(round(cy))), (int(round(r)), int(round(r)))
-    colour = np.array([rng.uniform(160, 190), rng.uniform(185, 210), rng.uniform(150, 175)])  # pale green, RGB
+    centre = (int(round(cx)), int(round(cy)))
+    grey = rng.uniform(45, 85)   # dark olive grey, like the fuselage in shadow; RGB
+    colour = np.array([grey, grey * rng.uniform(1.0, 1.12), grey * rng.uniform(0.8, 0.95)])
     layer = np.zeros(rgba.shape[:2], np.float32)
-    cv2.ellipse(layer, centre, axes, 0, 0, 360, rng.uniform(0.05, 0.08), -1, cv2.LINE_AA)
-    mode = rng.random()
-    if mode < 0.3:
-        start = rng.uniform(0, 360)
-        wedge = np.zeros_like(layer)
-        cv2.ellipse(wedge, centre, axes, 0, start, start + rng.uniform(35, 70), rng.uniform(0.3, 0.55), -1, cv2.LINE_AA)
-        layer = np.maximum(layer, cv2.GaussianBlur(wedge, (0, 0), max(r * 0.02, 0.5)))
-    elif mode < 0.5:
-        start, blades = rng.uniform(0, 360), rng.choice([2, 3, 5])
-        for k in range(blades):
-            angle = np.radians(start + 360 * k / blades)
-            end = (int(cx + r * np.cos(angle)), int(cy + r * np.sin(angle)))
-            cv2.line(layer, centre, end, rng.uniform(0.5, 0.8), max(1, int(r * 0.04)), cv2.LINE_AA)
+    opacity = rng.uniform(0.75, 0.95) if rng.random() < 0.8 else rng.uniform(0.4, 0.6)
+    start, width = rng.uniform(0, 72), max(1, int(round(r * rng.uniform(0.03, 0.05))))
+    for k in range(5):
+        angle = np.radians(start + 72 * k)
+        end = (int(round(cx + r * np.cos(angle))), int(round(cy + r * np.sin(angle))))
+        cv2.line(layer, centre, end, opacity, width, cv2.LINE_AA)
     body = rgba[:, :, 3:4].astype(np.float32) / 255
     a = layer[:, :, None]
     out = rgba.astype(np.float32)

@@ -22,6 +22,7 @@
 #   bash idun/submit.sh run python training/train_yolo.py --epochs 60 --batch 32
 #   bash idun/submit.sh train-synth 400
 #   bash idun/submit.sh train-synth 400 padded yolo11m
+#   SYNTH_ARGS="--balance --boost ta-ta=2" bash idun/submit.sh train-synth 400 balanced   # extra synth_dataset.py options
 #
 # Overrides:
 #   REMOTE=idun                        SSH alias from ~/.ssh/config
@@ -125,7 +126,7 @@ case "$ACTION" in
         BATCH="${5:-$([ "$MODEL" = yolo11s ] || [ "$MODEL" = yolo11n ] && echo 32 || echo 16)}"
         NAME="synth${FRAMES}_${MODEL#yolo}_${LABEL}_$(date +%m%d-%H%M)"   # unique: never overwrites an earlier run
         DATA="datasets/runs/${NAME}"          # per run, so jobs can run side by side
-        echo "Run name: ${NAME} (commit ${GIT_COMMIT}, batch ${BATCH})"
+        echo "Run name: ${NAME} (commit ${GIT_COMMIT}, batch ${BATCH})${SYNTH_ARGS:+, synth options: ${SYNTH_ARGS}}"
         check_ssh
         sync_code
         # Pretrained weights come from the login node; compute nodes may have no internet.
@@ -133,7 +134,7 @@ case "$ACTION" in
         # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
         # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
         # The generated images are deleted after a successful run (the seed rebuilds them).
-        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs 60 --batch ${BATCH} --name ${NAME} && rm -rf ${DATA}"
+        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val ${SYNTH_ARGS:-} && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs 60 --batch ${BATCH} --name ${NAME} && rm -rf ${DATA}"
         ;;
 
     resume)

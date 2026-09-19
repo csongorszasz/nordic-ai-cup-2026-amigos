@@ -315,12 +315,13 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 
 def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_objects: int,
                   model_sprites: dict = None, model_share: float = 0.0, ground=None, classes: list = None,
-                  box_scales: dict = None):
+                  box_scales: dict = None, class_weights: dict = None):
     """Paste objects onto a graded copy of the background. Returns (frame, annotations).
 
     `classes` fixes which objects to paste (scene3d.py asks for one of each); by default
     n_objects are drawn at random, partly in themed groups. `box_scales` (label_scales, per bank)
     turns each tight pasted box into a box like the supplied labels; without it they stay tight.
+    `class_weights` biases the single-object draws (the themed groups stay as they are).
     """
     model_sprites = model_sprites or {}
     box_scales = box_scales or {}
@@ -340,7 +341,9 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
         if rng.random() < 0.45:  # a themed group, as the scenes have
             wanted.extend(name for name in rng.choice(GROUPS) if name in sprites or name in model_sprites)
         else:
-            wanted.append(rng.choice(sorted(set(sprites) | set(model_sprites))))
+            names = sorted(set(sprites) | set(model_sprites))
+            weights = [(class_weights or {}).get(name, 1.0) for name in names]
+            wanted.append(rng.choices(names, weights)[0])
     rng.shuffle(wanted)
     wanted = wanted[:n_objects]
     if ground is not None:  # big objects first, while there is still room for them on the open ground
@@ -405,6 +408,12 @@ def main():
     parser.add_argument('--l2-per-object', type=int, default=1)
     parser.add_argument('--preview', type=int, default=0, help='write N full composed frames and stop')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--balance', action='store_true',
+                        help='steer the single-object draws so every class ends up pasted about equally often '
+                             '(the themed groups double tanks, helicopters, small planes and hangars)')
+    parser.add_argument('--boost', nargs='*', default=[], metavar='CLASS=FACTOR',
+                        help='paste these classes FACTOR times as often as the rest (with --balance: their target '
+                             'share), e.g. the ones the last run scored worst on')
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -453,6 +462,22 @@ def main():
 
     counts = {'train': 0, 'val': 0}
     per_class = {name: 0 for name in OBJECT_CLASSES}
+    boost = {}
+    for item in args.boost:
+        name, _, factor = item.partition('=')
+        if name not in OBJECT_CLASSES:
+            raise SystemExit(f'--boost: unknown class {name}')
+        boost[name] = float(factor)
+
+    def class_weights():
+        """Draw weights for the next frame: the boost, and with --balance the shortfall of each
+        class against its target share of what has been pasted so far."""
+        if not args.balance:
+            return boost
+        total_boost = sum(boost.get(name, 1.0) for name in OBJECT_CLASSES)
+        pasted = sum(per_class.values()) + len(OBJECT_CLASSES)
+        return {name: max(boost.get(name, 1.0) / total_boost * pasted - per_class[name], 0.0) + 0.5
+                for name in OBJECT_CLASSES}
 
     def cut(frame, annotations, stem, split):
         plan = [
@@ -474,7 +499,8 @@ def main():
         background, ground = load_background(rng.choice(background_paths))
         frame, annotations = compose_frame(background, sprites, rng,
                                            rng.randint(args.min_objects, args.max_objects),
-                                           model_sprites, args.model_share, ground, box_scales=box_scales)
+                                           model_sprites, args.model_share, ground, box_scales=box_scales,
+                                           class_weights=class_weights())
         for ann in annotations:
             per_class[ann['object_id']] += 1
         cut(frame, annotations, f's{n:04d}', split)
@@ -489,9 +515,9 @@ def main():
     names = '\n'.join(f'  {i}: {name}' for i, name in enumerate(OBJECT_CLASSES))
     val = Path(args.val_dir).resolve() if args.val_dir else 'images/val'  # YOLO takes an absolute val path as is
     (out / 'data.yaml').write_text(f'path: {out}\ntrain: images/train\nval: {val}\nnames:\n{names}\n')
-    rare = ', '.join(f'{name} {count}' for name, count in sorted(per_class.items(), key=lambda kv: kv[1])[:5])
+    rare = ', '.join(f'{name} {count}' for name, count in sorted(per_class.items(), key=lambda kv: kv[1]))
     print(f"wrote {counts['train']} train / {counts['val']} val views to {out}")
-    print(f'objects pasted: {sum(per_class.values())} (rarest: {rare})')
+    print(f'objects pasted: {sum(per_class.values())} ({rare})')
     print(f'class index order matches {len(CLASS_INDEX)} challenge classes')
 
 
