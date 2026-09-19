@@ -98,6 +98,8 @@ GRID_COLS, GRID_ROWS = (16, 8) if V2_GROUND else (8, 4)       # 240x270 or 480x5
 
 # Six Level-1 centres that tile the frame, visited as a snake.
 SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1620), (1920, 1620), (960, 1620)]
+if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540": Level-1 centres, in order
+    SWEEP = [tuple(int(v) for v in p.split(',')) for p in os.environ['DRONE_SWEEP'].split(';')]
 
 
 # --------------------------------------------------------------------------- model
