@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import pytest
 
-from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite
+from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite, rotate_sprite_canvas
 import offline.foreground_assets as assets_module
 
 
@@ -94,3 +94,41 @@ def test_large_alpha_errors_are_not_hidden_by_clamping(monkeypatch):
     monkeypatch.setattr(assets_module.cv2, "resize", invalid_resize)
     with pytest.raises(ValueError, match="Unexpected alpha"):
         resize_sprite(np.ones((2, 2, 4), np.uint8), 2, 2, cv2.INTER_AREA)
+
+
+def test_zero_rotation_control_preserves_pixels_and_annotation_canvas():
+    image = np.full((9, 16, 4), (50, 100, 150, 255), np.uint8)
+    sprite = resize_sprite(image, 16, 9)
+    padded, box = rotate_sprite_canvas(sprite, 0)
+    x1, y1, x2, y2 = (int(value) for value in box)
+    np.testing.assert_array_equal(padded[y1:y2, x1:x2], sprite)
+    assert (x2 - x1, y2 - y1) == (16, 9)
+    assert padded[:, :, 3].sum() == sprite[:, :, 3].sum()
+
+
+def test_continuous_rotation_does_not_leak_context_and_transforms_label_edges():
+    image = np.full((8, 16, 4), (0, 255, 0, 0), np.uint8)
+    image[2:6, 4:12] = (0, 0, 200, 255)
+    sprite = resize_sprite(image, 16, 8)
+    control, _ = rotate_sprite_canvas(sprite, 0)
+    rotated, box = rotate_sprite_canvas(sprite, 45)
+    assert rotated.shape == control.shape
+    assert not rotated[:, :, 1].any()
+    assert box[2] - box[0] == pytest.approx(24 / np.sqrt(2))
+    assert box[3] - box[1] == pytest.approx(24 / np.sqrt(2))
+    assert (box[0] + box[2]) / 2 == pytest.approx(rotated.shape[1] / 2)
+    assert (box[1] + box[3]) / 2 == pytest.approx(rotated.shape[0] / 2)
+    assert 0 <= rotated[:, :, 3].min() <= rotated[:, :, 3].max() <= 1
+
+
+@pytest.mark.parametrize("angle", [float("nan"), float("inf")])
+def test_continuous_rotation_rejects_nonfinite_angles(angle):
+    with pytest.raises(ValueError, match="finite"):
+        rotate_sprite_canvas(resize_sprite(np.full((8, 16, 4), 255, np.uint8), 16, 8), angle)
+
+
+def test_continuous_rotation_rejects_nonpremultiplied_context_pixels():
+    invalid = np.zeros((8, 16, 4), np.float32)
+    invalid[:, :, 1] = 255
+    with pytest.raises(ValueError, match="premultiplied"):
+        rotate_sprite_canvas(invalid, 30)

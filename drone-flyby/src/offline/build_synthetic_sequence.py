@@ -23,7 +23,7 @@ if str(SRC_ROOT) not in sys.path:
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES
 from offline.dataset_provenance import assert_training_source, split_source_frames
 from offline.convert_nls_ortho import Image, read_georeference
-from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite
+from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite, rotate_sprite_canvas
 from utils import frame_numbers, load_annotations, load_frame, scene_directory
 
 
@@ -112,7 +112,8 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
                    shift_x=0, shift_y=58, objects_per_frame=16,
                    purpose="development-evaluation", rotate=True,
                    background=None, background_provenance=None, target_gsd=0.2395, background_origin=None,
-                   sprite_review=None, sprite_artifact_root=None, allow_context_patches=False):
+                   sprite_review=None, sprite_artifact_root=None, allow_context_patches=False,
+                   rotation_offset_degrees=None):
     if frames < 2 or frames > 300 or objects_per_frame < 1 or abs(shift_x) > 200 or abs(shift_y) > 200:
         raise ValueError("Use 2..300 frames, positive density, and shifts within 200 source pixels")
     if output.exists():
@@ -121,6 +122,9 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         raise ValueError(f"Unknown data role: {purpose}")
     if (sprite_review is None) != (sprite_artifact_root is None):
         raise ValueError("A sprite review and artifact root must be supplied together")
+    if rotation_offset_degrees is not None:
+        if not math.isfinite(rotation_offset_degrees) or sprite_review is None:
+            raise ValueError("A finite rotation offset requires reviewed alpha assets")
     if background is not None and sprite_review is None and not allow_context_patches:
         raise ValueError("Natural-background audits require reviewed alpha assets or explicit --allow-context-patches")
     sprites, provenance = (
@@ -163,13 +167,19 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         scale = float(rng.uniform(0.85, 1.15))
         sprite = resize_sprite(sprite, max(1, int(round(sprite.shape[1] * scale))),
                                max(1, int(round(sprite.shape[0] * scale))))
+        local_box = (0.0, 0.0, float(sprite.shape[1]), float(sprite.shape[0]))
+        if rotation_offset_degrees is not None:
+            sprite, local_box = rotate_sprite_canvas(sprite, rotation_offset_degrees)
         h, w = sprite.shape[:2]
         side = max(w, h)
         for _ in range(1000):
             square_x, square_y = int(rng.integers(width - side)), int(rng.integers(height - side))
             square = (square_x, square_y, square_x + side, square_y + side)
             x, y = square_x + (side - w) // 2, square_y + (side - h) // 2
-            box = (x, y, x + w, y + h)
+            box = (
+                (x, y, x + w, y + h) if rotation_offset_degrees is None else
+                (x + local_box[0], y + local_box[1], x + local_box[2], y + local_box[3])
+            )
             if all(square[2] + 8 < old[0] or old[2] + 8 < square[0]
                    or square[3] + 8 < old[1] or old[3] + 8 < square[1] for old in reserved):
                 break
@@ -180,6 +190,7 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         objects.append({
             "object_id": name, "instance_id": f"{seed}:{index}", "bbox": list(box),
             "rotation_quarters": rotation, "scale": scale, "placement": list(square),
+            "rotation_degrees": (90 * rotation + (rotation_offset_degrees or 0)) % 360,
         })
 
     (output / "images").mkdir(parents=True)
@@ -202,6 +213,7 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         "object_appearances": "shared training sprites; novel background and placement, not unseen object appearances",
         "sprites": provenance, "objects": objects,
         "rotate_objects": rotate,
+        "rotation_offset_degrees": rotation_offset_degrees,
         "background": background_info,
         "sprite_compositing": "reviewed-alpha" if sprite_review is not None else "rectangular-context-patch",
     }
@@ -220,6 +232,8 @@ def main():
     parser.add_argument("--shift-y", type=int, default=58)
     parser.add_argument("--objects-per-frame", type=int, default=16)
     parser.add_argument("--no-rotation", action="store_true", help="Paired orientation ablation with identical placements.")
+    parser.add_argument("--rotation-offset-degrees", type=float,
+                        help="Reviewed alpha only: angle-independent padded audit. Pair explicit 0 with nonzero offsets.")
     parser.add_argument("--background", type=Path, help="Optional NLS GeoJP2 background, never a validation capture.")
     parser.add_argument("--background-provenance", type=Path, help="Required source/license/hash manifest.")
     parser.add_argument("--target-gsd", type=float, default=0.2395, help="Explicit simulated source-frame metres per pixel.")
@@ -238,7 +252,8 @@ def main():
                    background_provenance=arguments.background_provenance, target_gsd=arguments.target_gsd,
                    background_origin=arguments.background_origin, sprite_review=arguments.sprite_review,
                    sprite_artifact_root=arguments.sprite_artifact_root,
-                   allow_context_patches=arguments.allow_context_patches)
+                   allow_context_patches=arguments.allow_context_patches,
+                   rotation_offset_degrees=arguments.rotation_offset_degrees)
 
 
 if __name__ == "__main__":

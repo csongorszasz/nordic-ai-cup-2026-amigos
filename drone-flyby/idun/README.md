@@ -193,3 +193,19 @@ URLs out of Git. Only the user triggers official competition attempts.
 For an owned development HTTP replay, `experiment_runner.py --mode http
 --capture-inputs ...` verifies the same capture path and its overhead without
 contacting the competition.
+
+### Matched non-right-angle audit
+
+`build_synthetic_sequence.py --rotation-offset-degrees <angle>` requires the
+reviewed alpha assets. Pair **explicit `0`** with offsets such as `22.5` or `45`,
+keeping the seed and other arguments identical. These controls use the same
+angle-independent padded canvases, centers, sampled quarter turns, scales,
+placements, and background crop. Zero offset preserves the source pixels.
+Do not compare a padded offset scene against an older scene without this option:
+the older placement reservations differ.
+
+Labels enclose the transformed **original annotation canvas**, not a tightened
+mask-support box. Rotation uses premultiplied alpha and accounts for pixel-center
+versus annotation-edge coordinates. The audit shares source object appearances
+and tests a specific orientation/resampling shift; it is not independent
+competition validation or evidence of a training improvement by itself.

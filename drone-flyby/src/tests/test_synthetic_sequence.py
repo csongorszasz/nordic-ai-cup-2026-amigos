@@ -42,6 +42,36 @@ def test_rotation_ablation_uses_identical_placement_and_scale(tmp_path, monkeypa
         assert first["rotation_quarters"] == 0
 
 
+def test_continuous_rotation_audit_preserves_centers_layout_scale_and_background(tmp_path, monkeypatch):
+    image = np.full((12, 25, 4), (0, 255, 0, 0), np.uint8)
+    image[2:10, 4:21] = (0, 0, 200, 255)
+    sprites = {name: image.copy() for name in OBJECT_CLASSES}
+    monkeypatch.setattr(generator, "load_reviewed_assets", lambda *args: (sprites, {}))
+    controls = []
+    for offset in (0, 22.5, 45):
+        output = tmp_path / str(offset)
+        build_sequence(
+            output, frames=2, objects_per_frame=2, seed=919,
+            sprite_review=tmp_path / "review.json", sprite_artifact_root=tmp_path,
+            rotation_offset_degrees=offset,
+        )
+        controls.append(json.loads((output / "run_metadata.json").read_text()))
+    for variant in controls[1:]:
+        assert variant["background"] == controls[0]["background"]
+        for reference, current in zip(controls[0]["objects"], variant["objects"]):
+            assert reference["placement"] == current["placement"]
+            assert reference["scale"] == current["scale"]
+            assert reference["rotation_quarters"] == current["rotation_quarters"]
+            assert reference["object_id"] == current["object_id"]
+            a, b = reference["bbox"], current["bbox"]
+            assert (a[0] + a[2], a[1] + a[3]) == pytest.approx((b[0] + b[2], b[1] + b[3]))
+
+
+def test_continuous_rotation_requires_reviewed_alpha_assets(tmp_path):
+    with pytest.raises(ValueError, match="reviewed alpha"):
+        build_sequence(tmp_path / "unreviewed", frames=2, rotation_offset_degrees=30)
+
+
 def test_orthophoto_uses_verified_scale_and_preserves_attribution(tmp_path, monkeypatch):
     image = tmp_path / "background.png"
     Image.fromarray(np.full((64, 64, 3), [20, 80, 120], dtype=np.uint8)).save(image)

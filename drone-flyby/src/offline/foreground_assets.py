@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import cv2
@@ -92,3 +93,42 @@ def composite_sprite(target: np.ndarray, sprite: np.ndarray) -> None:
         target[:] = np.clip(sprite[:, :, :3] + target.astype(np.float32) * (1 - alpha), 0, 255).astype(np.uint8)
     else:
         raise ValueError("Invalid sprite channel count")
+
+
+def rotate_sprite_canvas(sprite: np.ndarray, degrees: float):
+    """Rotate premultiplied pixels and the original annotation canvas together.
+
+    The output canvas and its center are angle-independent. At zero degrees,
+    parity-matched padding preserves pixels without an extra interpolation.
+    """
+    if (sprite.ndim != 3 or sprite.shape[2] != 4
+            or min(sprite.shape[:2]) <= 0 or not np.issubdtype(sprite.dtype, np.floating)):
+        raise ValueError("Rotation requires premultiplied floating-point BGRA")
+    if not math.isfinite(degrees) or not np.isfinite(sprite).all():
+        raise ValueError("Rotation angle and pixels must be finite")
+    opacity = sprite[:, :, 3]
+    if np.any((opacity < 0) | (opacity > 1)):
+        raise ValueError("Rotation requires normalized alpha")
+    if np.any(sprite[:, :, :3] < 0) or np.any(sprite[:, :, :3] > 255 * opacity[:, :, None] + 1e-3):
+        raise ValueError("RGB must already be premultiplied by alpha")
+    height, width = sprite.shape[:2]
+    side = math.ceil(math.hypot(width, height)) + 4
+    canvas_width = side + (side - width) % 2
+    canvas_height = side + (side - height) % 2
+    edge_transform = cv2.getRotationMatrix2D((width / 2, height / 2), degrees % 360, 1.0)
+    edge_transform[:, 2] += ((canvas_width - width) / 2, (canvas_height - height) / 2)
+    corners = np.array([[0, 0, 1], [width, 0, 1], [width, height, 1], [0, height, 1]])
+    projected = corners @ edge_transform.T
+    box = (*projected.min(axis=0), *projected.max(axis=0))
+    # OpenCV transforms pixel centers; annotation coordinates describe edges.
+    pixel_transform = edge_transform.copy()
+    pixel_transform[:, 2] += 0.5 * (pixel_transform[:, :2].sum(axis=1) - 1)
+    rotated = cv2.warpAffine(
+        sprite, pixel_transform, (canvas_width, canvas_height),
+        flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0, 0),
+    )
+    alpha = rotated[:, :, 3]
+    if np.any((alpha < -1e-5) | (alpha > 1 + 1e-5)):
+        raise ValueError("Unexpected alpha range after rotation")
+    np.clip(alpha, 0.0, 1.0, out=alpha)
+    return rotated, tuple(float(value) for value in box)
