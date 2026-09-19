@@ -76,8 +76,8 @@
     <b>Labelling (Copenhagen):</b> drag on the view to draw a box, pick its class next to the
     Helsinki examples, <kbd>Enter</kbd> saves. Click a label to select it, <kbd>X</kbd> removes it.
     Every save rebuilds the labels for the whole flight.
-    Grey dashed boxes are detector tracks nobody has reviewed yet (<kbd>C</kbd> shows/hides them):
-    click one to accept it (<kbd>Enter</kbd>, fix the class first if needed) or reject it (<kbd>R</kbd>).<br>
+    Pulsing magenta boxes (and dots on the minimap) are detector tracks nobody has reviewed yet
+    (<kbd>C</kbd> shows/hides them, <kbd>Tab</kbd> opens the next one): click one to accept it (<kbd>Enter</kbd>, fix the class first if needed) or reject it (<kbd>R</kbd>).<br>
     New runs: <code>python training/run_policy.py --scene helsinki --camera hybrid --model runs/&lt;run&gt;/weights/best.pt</code>
   </div>
 </aside>
@@ -384,8 +384,27 @@ function draw() {
   };
   if (showLabels) for (const b of boxes) drawBox(b.bbox, b.track === selected ? '#fff' : colour(b.class),
                                                  trace && showPred ? '' : b.class, b.track === selected ? 3 : 1, false);
-  if (canLabel() && showCands && !trace) for (const c of candidates.get(frames[index]) || [])
-    if (!drawn || drawn.candidate !== c) drawBox(c.bbox, '#b8c0cc', `? ${c.class}`, 1.5, true);
+  // Unreviewed detector tracks: magenta, pulsing, on a dark halo, with a ring around small ones,
+  // so they stand out from the labels at any zoom.
+  const pending = canLabel() && showCands && !trace ? (candidates.get(frames[index]) || []).filter(c => !drawn || drawn.candidate !== c) : [];
+  const pulse = 0.55 + 0.45 * Math.abs(Math.sin(performance.now() / 350));
+  for (const c of pending) {
+    const [sx, sy, sw, sh] = toScreen(c.bbox);
+    if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) continue;
+    octx.setLineDash([]);
+    octx.lineWidth = 6 * d; octx.strokeStyle = 'rgba(0,0,0,0.6)'; octx.strokeRect(sx, sy, sw, sh);
+    octx.lineWidth = 3 * d; octx.strokeStyle = `rgba(255,43,214,${pulse})`; octx.strokeRect(sx, sy, sw, sh);
+    const r = Math.max(Math.hypot(sw, sh) * 0.75, 28 * d);
+    octx.beginPath(); octx.arc(sx + sw / 2, sy + sh / 2, r, 0, 2 * Math.PI);
+    octx.lineWidth = 2 * d; octx.strokeStyle = `rgba(255,43,214,${pulse * 0.8})`; octx.stroke();
+    const text = `? ${c.class}`;
+    octx.font = `bold ${Math.round(12 * d)}px system-ui`;
+    const tw = octx.measureText(text).width;
+    octx.fillStyle = 'rgba(0,0,0,0.75)'; octx.fillRect(sx, sy - 17 * d, tw + 8 * d, 15 * d);
+    octx.fillStyle = '#ff2bd6'; octx.fillText(text, sx + 4 * d, sy - 5 * d);
+    octx.font = `${Math.round(11 * d)}px system-ui`;
+  }
+  if (pending.length) dirty = true;  // keep the pulse going
   if (drag) drawBox(norm(drag.from, drag.to), '#ffd23f', '', 2, true);
   if (drawn && drawn.frame === frames[index]) drawBox(drawn.box, '#ffd23f', drawnClass || '', 2, false);
   const s = step();
@@ -411,6 +430,11 @@ function draw() {
   mctx.strokeStyle = '#fff';
   const lv = trace ? s.level : level;
   if (lv > 0) mctx.strokeRect(x1 * m, y1 * m, (x2 - x1) * m, (y2 - y1) * m);
+  for (const c of pending) {  // where the unreviewed tracks are in the whole frame
+    const [a, b, cc, e] = c.bbox;
+    mctx.fillStyle = '#ff2bd6';
+    mctx.beginPath(); mctx.arc((a + cc) / 2 * m, (b + e) / 2 * m, 4, 0, 2 * Math.PI); mctx.fill();
+  }
   if (t) {
     const [a, b, c, e] = t.box;
     mctx.strokeStyle = t.refused ? '#ff4d4d' : getComputedStyle(document.body).getPropertyValue('--cursor');
@@ -428,7 +452,8 @@ function draw() {
   $('sLabels').textContent = source.labelled ? `${visible} in view / ${boxes.length}` : 'none (unlabelled)';
   $('play').textContent = playing ? 'Pause' : 'Play';
   $('hud').innerHTML = (trace ? `${trace.camera} · ` : '') + `<span class="lv">L${lv}</span> · frame ${frames[index]} · ${speed}x ${playing ? '▶' : '❚❚'}` +
-    (lv === 0 || lv === 2 ? '' : ` · shrunk ${SIZE[lv][0] / 960}×`) + (lv === 0 ? ' · shrunk 4×' : '') + (ready(img) ? '' : ' · <span id="warn">loading…</span>');
+    (lv === 0 || lv === 2 ? '' : ` · shrunk ${SIZE[lv][0] / 960}×`) + (lv === 0 ? ' · shrunk 4×' : '') + (ready(img) ? '' : ' · <span id="warn">loading…</span>') +
+    (pending.length ? ` · <span style="color:#ff2bd6;font-weight:bold">${pending.length} to review (Tab)</span>` : '');
 }
 
 function tick(now) {
@@ -470,6 +495,11 @@ addEventListener('keydown', e => {
   else if (key === 'b') { showLabels = !showLabels; dirty = true; }
   else if (key === 'n') { showPred = !showPred; dirty = true; }
   else if (key === 'c') { showCands = !showCands; frameCandidates(frames[index]); dirty = true; }
+  else if (key === 'Tab' && canLabel()) {  // open the next unreviewed track of this frame
+    e.preventDefault();
+    const next = (candidates.get(frames[index]) || [])[0];
+    if (next) openPanel(next.bbox, next);
+  }
 });
 addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
 addEventListener('blur', () => held.clear());
