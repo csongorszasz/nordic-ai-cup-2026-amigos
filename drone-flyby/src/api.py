@@ -15,6 +15,7 @@ rather than just the host.
 """
 
 import datetime
+import json
 import logging
 import os
 import time
@@ -50,6 +51,9 @@ else:
     pipeline = None
 
 recorder = recorder_from_env()
+# DRONE_LOG_RESPONSES=<file>: one JSON line per answered frame (view, boxes, time taken), no
+# image, so a live run can be scored against our own labels (training/score_live_log.py).
+RESPONSE_LOG = os.environ.get('DRONE_LOG_RESPONSES')
 start_time = time.time()
 
 
@@ -88,7 +92,16 @@ def predict_endpoint(request: DroneFlybyPredictRequestDto):
             recorder.start(request.sequence_id)
         recorder.record_frame(request)
 
+    took = time.monotonic()
     response = predict(request)
+    if RESPONSE_LOG:
+        with open(RESPONSE_LOG, 'a') as fh:
+            fh.write(json.dumps({
+                'at': round(time.time(), 3), 'ms': round((time.monotonic() - took) * 1000),
+                'sequence_id': request.sequence_id, 'frame': request.frame, 'frame_index': request.frame_index,
+                'level': request.view.resolution_level, 'region': request.view.source_region_xyxy,
+                'annotations': [a.model_dump() for a in response.annotations],
+                'requested_view': response.requested_view.model_dump() if response.requested_view else None}) + '\n')
 
     # Fail here, loudly, rather than having the evaluator silently discard the
     # frame. Every rule this checks is a rule the evaluator also enforces.
