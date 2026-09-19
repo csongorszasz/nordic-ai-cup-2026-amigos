@@ -174,7 +174,10 @@ def verify_model_cache(path):
         or manifest.get("complete") is not True or manifest.get("inference_network_access") is not False
     ):
         raise ValueError("Source scoring requires the complete pinned offline model-cache manifest.")
-    snapshot = Path(snapshot_download(MODEL, revision=REVISION, local_files_only=True))
+    snapshot = Path(snapshot_download(
+        MODEL, revision=REVISION, local_files_only=True,
+        allow_patterns=[entry["path"] for entry in manifest["files"]],
+    ))
     if snapshot.resolve() != Path(manifest["path"]).resolve():
         raise ValueError("The source ranker would load a different cached snapshot.")
     for entry in manifest["files"]:

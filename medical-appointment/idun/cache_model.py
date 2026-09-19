@@ -38,7 +38,7 @@ def main():
     os.environ["HF_HUB_OFFLINE"] = "0"
     os.environ["HF_XET_NUM_CONCURRENT_RANGE_GETS"] = "2"
     from huggingface_hub import HfApi, snapshot_download
-    from huggingface_hub.errors import LocalEntryNotFoundError
+    from huggingface_hub.errors import IncompleteSnapshotError, LocalEntryNotFoundError
 
     info = HfApi().model_info(args.model, revision=args.revision, files_metadata=True)
     if info.sha != args.revision:
@@ -49,8 +49,11 @@ def main():
         raise RuntimeError("Insufficient filesystem headroom for the bounded model cache.")
     print(f"Pinned {info.id}@{info.sha}: {total} bytes; user quota must be checked separately.", flush=True)
     try:
-        existing = Path(snapshot_download(args.model, revision=args.revision, local_files_only=True))
-    except LocalEntryNotFoundError:
+        existing = Path(snapshot_download(
+            args.model, revision=args.revision, local_files_only=True,
+            allow_patterns=[file["path"] for file in files],
+        ))
+    except (IncompleteSnapshotError, LocalEntryNotFoundError):
         existing = None
     cached = existing is not None and all(
         (existing / file["path"]).is_file()
@@ -62,7 +65,8 @@ def main():
     else:
         print("Required pinned files are missing; caching during development.", flush=True)
         path = Path(snapshot_download(
-            args.model, revision=args.revision, allow_patterns=list(PATTERNS), max_workers=2,
+            args.model, revision=args.revision,
+            allow_patterns=[file["path"] for file in files], max_workers=2,
         ))
     if not all(
         (path / file["path"]).is_file() and (path / file["path"]).stat().st_size == file["bytes"]

@@ -1455,3 +1455,13 @@ Question text never enters the encoder prompt through the target argument.
 The insufficient geometry gate remains explicit: this tests source-ranking
 signal without pretending that current unit extents can reach near-perfect
 localization, and it does not fit a larger selector.
+
+- **Cache preparation:** `cache-inverse-t5-5e534d19` completed with seven
+  pinned files, **993,567,070 bytes**, after own-user quota verification.
+- **Initial smoke preflight:** `inverse-question-smoke-7d751934` stopped
+  before model loading because the offline snapshot check requested the
+  entire upstream repository, including intentionally omitted alternate
+  weight formats. The safe inference subset itself was complete.
+  The verifier and cache reuse path now explicitly request only their
+  manifested files. No unsafe pickle/alternate weights were downloaded,
+  networking was not enabled for inference, and no quality result is claimed.
