@@ -744,6 +744,13 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   and measured memory headroom. The pilot remains fixed at two epochs,
   accumulation 4, and conversation-held-out fold 0 / seed 13.
 
+- **Gradient smoke passed:** `lora-gradient-smoke-8271b5b0`, A100 80 GB,
+  143 training-only examples, longest sequence 2,031 tokens, 1,134,592
+  trainable adapter parameters. Finite loss 0.48934, finite nonzero gradients,
+  peak allocation **25.05 GB**; one update took 3.08 s. Base parameters stayed
+  frozen. Add an adapted-generation check on a training-only example before
+  the held-out pilot; this does not select a checkpoint using held-out labels.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

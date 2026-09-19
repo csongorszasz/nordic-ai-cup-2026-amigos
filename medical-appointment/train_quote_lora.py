@@ -203,12 +203,32 @@ def main():
     }
     write_json(args.output / "training.json", smoke)
     if args.smoke:
+        model.gradient_checkpointing_disable()
+        model.eval()
+        probe = training[max(range(len(features)), key=lambda index: len(features[index]["input_ids"]))]
+        raw = client.generate(
+            quote_messages(probe["question"], transcripts[probe["transcript_id"]]),
+            max_new_tokens=128, deadline=time.monotonic() + 20,
+        )
+        parsed = extract_json(raw)
+        quote = parsed.get("evidence_quote") if isinstance(parsed, dict) else None
+        if not isinstance(quote, str) or not align_quote_matches(
+            transcripts[probe["transcript_id"]]["words"], quote
+        ):
+            raise RuntimeError("Adapted generation did not produce a grounded training-probe quote.")
+        smoke["adapted_generation_valid"] = True
+        smoke["generation_probe_question"] = probe["question_id"]
+        smoke["generation_probe_raw"] = raw
+        write_json(args.output / "training.json", smoke)
         print(json.dumps({key: value for key, value in smoke.items() if key != "target_modules"}), flush=True)
         return 0
     model.gradient_checkpointing_disable()
     model.eval()
     model.save_pretrained(args.output / "adapter", safe_serialization=True)
     adapted, after_times = evaluate(client, validation, transcripts, request_times, args.output, "adapted")
+    reasons = {}
+    for row in adapted:
+        reasons[row["localizer_reason"]] = reasons.get(row["localizer_reason"], 0) + 1
     report = {
         "pilot_only": True, "fold": args.fold, "seed": args.seed,
         "baseline": score_records(baseline), "unadapted": score_records(unadapted),
@@ -216,6 +236,7 @@ def main():
         "versus_baseline": paired_comparison(baseline, adapted),
         "versus_unadapted": paired_comparison(unadapted, adapted),
         "training": smoke,
+        "adapted_reasons": reasons,
         "max_estimated_combined_s": max(item["estimated_combined_s"] for item in after_times),
         "latency_note": "Separate-run sum, not an HTTP gate.",
     }
