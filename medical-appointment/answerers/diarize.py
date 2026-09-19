@@ -10,6 +10,8 @@ Pure helpers (window planning, clustering, role naming, assignment) stay
 torch-free so the fast test suite can cover them; the heavy imports are lazy.
 """
 
+import hashlib
+import json
 import logging
 import os
 import re
@@ -181,6 +183,32 @@ def decode_audio(path: str) -> np.ndarray:
     return np.asarray(decode_audio(path, sampling_rate=SAMPLE_RATE), dtype=np.float32)
 
 
+def transcript_fingerprint(transcript: Dict) -> str:
+    """Stable hash of the segment/word timing and text a sidecar is bound to."""
+    payload = {
+        "segments": [
+            [seg.get("id"), round(float(seg["start"]), 3), round(float(seg["end"]), 3),
+             seg.get("text", "")]
+            for seg in transcript.get("segments", [])
+        ],
+        "words": [
+            [round(float(word["start"]), 3), round(float(word["end"]), 3),
+             word.get("word", ""), word.get("seg_idx", -1)]
+            for word in transcript.get("words", [])
+        ],
+    }
+    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def audio_sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def embed_windows(
     waveform: np.ndarray, starts: Sequence[float],
     *, model_name: str = SPEAKER_MODEL, revision: Optional[str] = SPEAKER_REVISION,
@@ -244,6 +272,13 @@ def run(
         "method": "wavlm-xvector-2means",
         "model": model_name,
         "revision": revision,
+        "settings": {
+            "window_s": WINDOW_S, "hop_s": HOP_S,
+            "mixed_confidence": MIXED_CONFIDENCE, "sample_rate": SAMPLE_RATE,
+        },
+        "audio_sha256": audio_sha256(audio_path),
+        "transcript_config_hash": transcript.get("_cache_config_hash"),
+        "transcript_sha256": transcript_fingerprint(transcript),
         "separation": round(separation, 4),
         "role_margin": round(margin, 4),
         "segments": {},
@@ -262,11 +297,40 @@ def run(
     return sidecar
 
 
-def attach(transcript: Dict, sidecar: Dict) -> Dict:
-    """Copy segment-level speaker labels onto a transcript (in place)."""
+def attach(transcript: Dict, sidecar: Dict, *, strict: bool = True) -> Dict:
+    """Copy segment-level speaker labels onto a transcript (in place).
+
+    Validates the sidecar's transcript binding first. In ``strict`` mode a
+    missing or mismatched binding raises; otherwise the transcript is returned
+    untagged with a warning.
+    """
+    problems = []
+    expected_hash = transcript_fingerprint(transcript)
+    if not sidecar.get("transcript_sha256"):
+        problems.append("missing transcript_sha256")
+    elif sidecar["transcript_sha256"] != expected_hash:
+        problems.append("transcript_sha256 mismatch")
+    expected_config = transcript.get("_cache_config_hash")
+    sidecar_config = sidecar.get("transcript_config_hash")
+    if expected_config and sidecar_config and sidecar_config != expected_config:
+        problems.append("transcript_config_hash mismatch")
+    if problems:
+        message = f"Speaker sidecar does not match this transcript: {problems}"
+        if strict:
+            raise ValueError(message)
+        logger.warning("%s; leaving the transcript untagged.", message)
+        return transcript
+
     mapping = {int(seg_id): entry["speaker"] for seg_id, entry in sidecar["segments"].items()}
+    tagged = mixed = unknown = 0
     for seg in transcript.get("segments", []):
         speaker = mapping.get(seg["id"])
-        if speaker and speaker != "mixed":
+        if speaker == "mixed":
+            mixed += 1
+        elif speaker in ("doctor", "patient"):
             seg["speaker"] = speaker
+            tagged += 1
+        else:
+            unknown += 1
+    transcript["_speaker_status"] = {"tagged": tagged, "mixed": mixed, "unknown": unknown}
     return transcript

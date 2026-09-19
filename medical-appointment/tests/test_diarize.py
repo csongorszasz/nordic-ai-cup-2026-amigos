@@ -61,11 +61,59 @@ def test_attach_labels_only_clear_segments():
         ]
     }
     sidecar = {
+        "transcript_sha256": diarize.transcript_fingerprint(transcript),
         "segments": {
             "0": {"speaker": "doctor", "confidence": 1.0},
             "1": {"speaker": "mixed", "confidence": 0.4},
-        }
+        },
     }
     diarize.attach(transcript, sidecar)
     assert transcript["segments"][0]["speaker"] == "doctor"
     assert "speaker" not in transcript["segments"][1]
+    assert transcript["_speaker_status"] == {"tagged": 1, "mixed": 1, "unknown": 0}
+
+
+def _transcript():
+    return {
+        "segments": [
+            {"id": 0, "start": 0.0, "end": 1.0, "text": "hi"},
+            {"id": 1, "start": 1.0, "end": 2.0, "text": "there"},
+        ],
+        "words": [
+            {"start": 0.0, "end": 1.0, "word": " hi", "seg_idx": 0},
+            {"start": 1.0, "end": 2.0, "word": " there", "seg_idx": 1},
+        ],
+    }
+
+
+def test_transcript_fingerprint_changes_with_timing():
+    transcript = _transcript()
+    baseline = diarize.transcript_fingerprint(transcript)
+    assert baseline == diarize.transcript_fingerprint(_transcript())
+    transcript["words"][1]["start"] = 1.05
+    assert diarize.transcript_fingerprint(transcript) != baseline
+
+
+def test_attach_rejects_a_mismatched_transcript():
+    transcript = _transcript()
+    sidecar = {"transcript_sha256": "deadbeef", "segments": {"0": {"speaker": "doctor"}}}
+    import pytest
+
+    with pytest.raises(ValueError, match="does not match"):
+        diarize.attach(transcript, sidecar)
+    assert "speaker" not in transcript["segments"][0]
+
+
+def test_attach_best_effort_leaves_a_stale_sidecar_untagged():
+    transcript = _transcript()
+    sidecar = {"transcript_sha256": "deadbeef", "segments": {"0": {"speaker": "doctor"}}}
+    diarize.attach(transcript, sidecar, strict=False)
+    assert "speaker" not in transcript["segments"][0]
+
+
+def test_attach_requires_a_fingerprint():
+    transcript = _transcript()
+    import pytest
+
+    with pytest.raises(ValueError, match="missing transcript_sha256"):
+        diarize.attach(transcript, {"segments": {"0": {"speaker": "doctor"}}})

@@ -52,6 +52,9 @@ def main() -> int:
     parser.add_argument("--model", default=diarize.SPEAKER_MODEL)
     parser.add_argument("--revision", default=diarize.SPEAKER_REVISION)
     parser.add_argument("--print", action="store_true", help="Print a review table.")
+    parser.add_argument("--require-complete", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="Fail if any requested conversation could not be diarized.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
 
@@ -68,19 +71,33 @@ def main() -> int:
         tids = tids[:args.limit]
 
     args.out.mkdir(parents=True, exist_ok=True)
+    written, failed, tagged = 0, [], {"tagged": 0, "mixed": 0, "unknown": 0}
     for tid in tids:
         audio_path = args.audio_dir / f"conversation_{tid}.mp3"
         if not audio_path.exists():
             print(f"  {tid}: missing audio {audio_path}")
+            failed.append(tid)
             continue
         transcript = load_transcript(tid)
         sidecar = diarize.run(
             transcript, str(audio_path), model_name=args.model, revision=args.revision
         )
         (args.out / f"{tid}.json").write_text(json.dumps(sidecar, indent=2))
+        written += 1
+        for entry in sidecar["segments"].values():
+            speaker = entry.get("speaker")
+            key = speaker if speaker in ("doctor", "patient") else (
+                "mixed" if speaker == "mixed" else "unknown")
+            tagged[key] += 1
         if args.print:
             print(review_table(tid, transcript, sidecar, audio_path))
-    print(f"\nwrote {len(tids)} sidecars to {args.out}")
+    print(f"\nwrote {written}/{len(tids)} sidecars to {args.out}")
+    print(f"segment labels: tagged={tagged['tagged']} mixed={tagged['mixed']} "
+          f"unknown={tagged['unknown']}")
+    if failed:
+        print(f"failed conversations: {failed}")
+        if args.require_complete:
+            return 1
     return 0
 
 

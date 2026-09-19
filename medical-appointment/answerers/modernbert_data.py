@@ -101,17 +101,27 @@ def load_words(transcript_id: str) -> List[Dict]:
 
 
 def load_transcript(transcript_id: str) -> Dict:
-    """Full transcript dict (segments + words), preferring the large-v3 cache."""
+    """Full transcript dict (segments + words), preferring the large-v3 cache.
+
+    ``MEDAPP_LLM_SPEAKERS`` controls speaker tagging: unset/``0`` off,
+    ``1``/``strict`` require a matching sidecar (missing or stale raises), and
+    ``best_effort`` attaches only a compatible sidecar and otherwise warns.
+    """
     path = transcript_path(transcript_id)
     transcript = json.loads(path.read_text())
     transcript["_cache_path"] = str(path)
     transcript["_cache_config_hash"] = path.name.split(".")[1]
-    if os.environ.get("MEDAPP_LLM_SPEAKERS") == "1":
+    mode = os.environ.get("MEDAPP_LLM_SPEAKERS", "0")
+    if mode in ("1", "strict", "best_effort"):
         sidecar = ROOT / "results" / "diarization" / f"{transcript_id}.json"
         if sidecar.exists():
             from .diarize import attach
 
-            attach(transcript, json.loads(sidecar.read_text()))
+            attach(transcript, json.loads(sidecar.read_text()), strict=mode != "best_effort")
+        elif mode != "best_effort":
+            raise FileNotFoundError(
+                f"MEDAPP_LLM_SPEAKERS={mode} but no speaker sidecar for {transcript_id}."
+            )
     return transcript
 
 
