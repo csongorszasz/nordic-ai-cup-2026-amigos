@@ -3,6 +3,26 @@
 import math
 
 from .boundaries import adjusted_span
+from .span_utils import word_char_spans
+
+
+def marked_word_char_spans(words, anchor):
+    if (
+        not isinstance(anchor, (list, tuple)) or len(anchor) != 2
+        or any(isinstance(value, bool) or not isinstance(value, int) for value in anchor)
+        or not 0 <= anchor[0] <= anchor[1] < len(words)
+    ):
+        raise ValueError("The marked anchor must identify real window words.")
+    pieces, positions = [], []
+    for index, word in enumerate(words):
+        if index == anchor[0]:
+            pieces.append("[EVIDENCE]")
+        positions.append(len(pieces))
+        pieces.append(word)
+        if index == anchor[1]:
+            pieces.append("[/EVIDENCE]")
+    text, spans = word_char_spans(pieces)
+    return text, [spans[index] for index in positions]
 
 
 def local_span_lattice(words, anchor, baseline_span, duration, context_words=24):

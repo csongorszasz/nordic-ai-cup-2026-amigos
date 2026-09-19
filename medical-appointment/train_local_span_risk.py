@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 from answerers.lora_data import split_rows
-from answerers.span_lattice import local_span_lattice, word_token_indices
+from answerers.span_lattice import local_span_lattice, marked_word_char_spans, word_token_indices
 from answerers.span_utils import word_char_spans
 from benchmark import paired_comparison, write_json
 from benchmark_alignment import baseline_prediction, load_inputs
@@ -34,6 +34,8 @@ def main():
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--train-encoder", action="store_true",
                         help="Fine-tune the public encoder for a fixed three-epoch pilot.")
+    parser.add_argument("--mark-anchor", action="store_true",
+                        help="Show the encoder the existing quote boundaries without exposing labels.")
     parser.add_argument("--output", type=Path, default=Path("results/local_span_risk"))
     args = parser.parse_args()
     rows, requests, transcripts, _ = load_inputs(args.baseline)
@@ -86,7 +88,10 @@ def main():
         started = time.monotonic()
         case = candidates[row["question_id"]]
         words = transcripts[row["transcript_id"]]["words"][case["first_word"]:case["last_word"] + 1]
-        text, word_spans = word_char_spans([word["word"] for word in words])
+        text, word_spans = (
+            marked_word_char_spans([word["word"] for word in words], case["anchor"])
+            if args.mark_anchor else word_char_spans([word["word"] for word in words])
+        )
         encoding = tokenizer(
             row["question"], text, truncation=False, padding=False, return_offsets_mapping=True,
         )
@@ -164,6 +169,7 @@ def main():
         "training_no_anchor_count": sum(not row["answer"] for row in training),
         "validation_tids": folds[args.fold],
         "context_words": 24, "prior_scale_words": 8.0,
+        "anchor_marked": args.mark_anchor,
         "epochs": epochs, "learning_rate": head_lr, "weight_decay": decay,
         "encoder_learning_rate": 3e-5 if args.train_encoder else None,
         "baseline_sha256": hashlib.sha256((args.baseline / "base_legacy_questions.json").read_bytes()).hexdigest(),

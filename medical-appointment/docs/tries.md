@@ -1285,6 +1285,19 @@ reproduced SOTA.
   Head movement was 0.1182, peak RSS 3.84GB and training 5.07s on eight
   CPU threads. No held-out result is implied. Proceed to the fixed
   three-epoch pilot from fresh public encoder weights and zero heads.
+- **Unmarked encoder-adaptation pilot rejected:** `span-encoder-pilot-d3059304`
+  scored **0.7897** versus **0.8362**, mIoU **0.6496** versus **0.7271**,
+  on all 70 held-out questions with fixed decisions. Delta **-0.046486**,
+  interval **[-0.081607, -0.009969]**, 16 changed spans. Encoder gradients
+  and updates were real; lower training risk still did not establish a
+  useful correction policy. No deployment or full-OOF expansion.
+- **Information ablation:** the unmarked encoder receives the question and
+  surrounding text, but only the decoder's distance prior knows which
+  words the strong LLM actually quoted. Expose that inference-time anchor
+  explicitly with `[EVIDENCE]` markers, excluding marker characters from
+  every pooled word/token span. Keep candidate geometry, model, loss,
+  three-epoch hyperparameters and fold unchanged. This is one fixed input
+  ablation, not a held-out threshold/epoch search or a claim of improvement.
 
 ## ASR stream lifecycle check
 
