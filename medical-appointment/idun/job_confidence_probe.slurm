@@ -42,6 +42,6 @@ export MEDAPP_LLM_LEGACY_SPECIAL_TOKENS=1
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 
-python confidence_probe.py --tag L1_turbo
+python confidence_probe.py --tag L1_turbo "$@"
 
 echo "finished $(date)"
