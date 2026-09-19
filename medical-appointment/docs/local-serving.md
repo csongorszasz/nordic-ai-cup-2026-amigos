@@ -61,6 +61,28 @@ The helper refuses a third medical GPU allocation. CPU-only analyses use
 Serving allocations remain finite, and quick tunnels have no uptime guarantee.
 Do not change competition submission settings automatically.
 
+### Isolated metric-reward training
+
+`requirements-grpo.txt` is **not** a serving upgrade. Create its overlay in a
+fresh CPU snapshot with `idun\setup_lora_env.py --kind grpo`; it pins TRL,
+datasets and a compatible torch/vision/audio stack while leaving the shared
+environment untouched. Inspect `results/grpo_environment.json` before use.
+The setup's torch/cu126 wheels require a compatible driver; the checked
+IDUN A100 allocation reported 575.57.08.
+
+Submit `train_quote_grpo.py` through `idun\run.py` with `--gpu80`,
+`MEDAPP_PYTHON=<environment-run>/.grpo-env/bin/python`, and script arguments
+`--baseline <frozen-run>/results/benchmark --sft-directory <matching-fold-directory>`.
+Use `--smoke` first. A successful smoke is only a feasibility gate; a pilot
+requires a fresh run starting again from the original SFT adapter, not the
+smoke checkpoint. Fold 0 currently uses the frozen `lora_pilot` directory.
+All paths passed to the remote script are IDUN paths.
+
+The script keeps 26B decisions fixed, validates data/split/model provenance,
+and compares SFT versus GRPO in the same runtime. It does not register an
+answerer, alter the live service or contact competition endpoints. A pilot
+gain still needs complete OOF and full uncached serving acceptance.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

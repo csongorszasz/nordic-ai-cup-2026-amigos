@@ -917,6 +917,29 @@ full-OOF result or deployment is claimed by this implementation alone.
   environment still has its original versions and records both runtimes.
   Pre/post-training SFT replay must therefore use this same training runtime.
 
+- **Implemented fixed pilot:** one GRPO epoch, four samples per training
+  question, lr 1e-5, temperature 1, KL coefficient 0.02 against a frozen
+  copy of the SFT adapter, Dr.GRPO loss without per-group reward scaling,
+  128 completion tokens, no vLLM or extra GPU. First run eight updates
+  on the longest training prompts as a feasibility smoke; never evaluate or
+  select a checkpoint using held-out rewards.
+- Preflight checks every baseline question/reference, transcript hash, exact
+  SFT training/held-out/demo split, adapter model/revision, and prompt tokens.
+  Rewards receive only training IDs, not held-out rows. Raw sampled rewards
+  and grounding failures are journaled; finite gradients, actual parameter
+  movement, nonconstant rewards and an unchanged SFT KL reference are gates.
+  Held-out replay includes all 70 fold-0 questions with frozen decisions.
+- A stopping-token audit found tokenizer EOS 1 but native generation stops
+  `[1,106,50]`. TRL masks completions using one tokenizer EOS. Derive that
+  EOS from the actual SFT assistant template instead of accidentally masking
+  completed turns as truncated; verify prompt-token parity afterward.
+- **Compatible overlay passed:** `grpo-runtime-9c9e0e23` imported the pinned
+  trainer/config and verified torch 2.7.1/cu126 inside the overlay, original
+  torch 2.5.1/cu121 in serving, and unchanged transformers/ASR versions.
+  Local real-artifact preflight covers 143 training positives, 70 held-out
+  questions and all 39 content-hashed transcripts. GPU behavior remains a
+  separate gate.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
