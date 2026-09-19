@@ -995,6 +995,11 @@ full-OOF result or deployment is claimed by this implementation alone.
   pinned processor's real tokenization on all 39 frozen transcripts on CPU.
   Its artificial monotonic timestamps exercise mapping only: they must not
   be scored, mistaken for forced-aligner predictions, or used in serving.
+- **CPU mapping outcome:** `alignment-token-map-29b40a5d` passed all **39/39**
+  frozen transcripts with unchanged original word text/order. The pinned
+  processor reports 0.08-second timestamp classes. No neural alignment
+  predictions, audio timing quality, or latency gains have been measured.
+  Keep the future GPU timing trial separate from the active GRPO OOF run.
 
 ## ASR stream lifecycle check
 
