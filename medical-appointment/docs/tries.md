@@ -1279,6 +1279,12 @@ reproduced SOTA.
   gradients and parameter movement (weight decay alone cannot pass).
   Recompute held-out features after training and include that encoder time
   in the latency estimate; never evaluate with stale frozen features.
+- **Encoder-gradient smoke passed:** `span-encoder-smoke-a38792cf`
+  preserved the baseline at initialization and produced nonzero task
+  gradients plus movement in `final_norm.weight` (L2 0.001580).
+  Head movement was 0.1182, peak RSS 3.84GB and training 5.07s on eight
+  CPU threads. No held-out result is implied. Proceed to the fixed
+  three-epoch pilot from fresh public encoder weights and zero heads.
 
 ## ASR stream lifecycle check
 
