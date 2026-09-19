@@ -93,3 +93,52 @@ External access requires an authorized ingress/proxy route; an internal compute
 node port alone does not establish public reachability. Keep serving and training
 isolated, warm up the chosen checkpoint, and do not change it during an attempt.
 **Official validation and evaluation remain human-triggered and approval-gated.**
+
+## Session-scoped public prediction endpoint
+
+Use the existing `cloudflared` binary and a task-trained checkpoint with its
+verified SHA-256. From PowerShell, for example:
+
+```powershell
+.\idun\serve.ps1 -Experiment serving-001 `
+    -WeightsPath /cluster/home/dominiba/nordic-cup/drone-score-loop/experiments/alpha-training-002/runs/training/alpha/weights/best_ap50.pt `
+    -WeightsSha256 fa665aa57c9622ffb41aea90202fb00ed96133aa8968f75fcedbdbae18837bde
+```
+
+The launcher creates an immutable snapshot and stays attached to an SSH
+pseudo-terminal running `srun`. It requests one A100/H100 80 GB GPU on `GPUQ`,
+with a **12-hour maximum walltime**. Keep this command attached to the CLI
+session, not a detached job. Closing the session interrupts the owned
+allocation; the supervisor stops its API and tunnel children together.
+Other jobs and listeners are never killed or reused.
+
+The fixed provisional profile is YOLO standard + world-map + hold, FP16,
+3200-pixel inference, a 0.001 L0 proposal floor, and at most 300 detector
+proposals. Inherited `DRONE_FLYBY_*` overrides are cleared before applying this
+profile; recording and calibration are disabled. The example alpha checkpoint
+improved the foreground-only development audit but is **not competition
+validated**, and it is not an automatic promotion of `profiles\champion.json`.
+
+After source/device/checkpoint checks, one Uvicorn worker binds
+`0.0.0.0:9052`. This does not change `python src/api.py`'s existing 9053 default.
+The supervisor verifies the warmed model and its run nonce before launching
+`cloudflared` on the same compute node, pointed at `http://127.0.0.1:9052`.
+It uses HTTP/2 over outbound TCP 7844; cluster-approved DNS and HTTPS egress
+are also needed. An isolated cloudflared home avoids changing an existing
+configuration, and metrics bind only to loopback.
+
+The printed `TUNNEL_URL` includes `/predict`. It is a temporary, unauthenticated
+Quick Tunnel hostname, **not proof that an external prediction succeeded**.
+Verify `/stats` against `runs/serving/deployment.json`, then send a protocol-valid
+development-frame POST from outside IDUN before handing over the URL. Do not
+send smoke-test sequences during a competition run: the model's state is
+sequence-scoped. This launcher never contacts competition submission APIs.
+
+Logs, PIDs, checkpoint/configuration provenance, node, job expiry, and the
+assigned URL are in the snapshot's `runs/serving/`. The local session log is
+under `runs\idun\<experiment>`. Quick Tunnels have no uptime guarantee; a restart
+gets a new hostname. Either child exiting fails the service rather than
+silently leaving a stale URL. A new launch requires a new snapshot ID.
+An abrupt SSH disconnect can make Slurm kill the entire step before the
+supervisor flushes its final manifest. An assigned URL in an old artifact is
+not a liveness check: consult Slurm and verify the live endpoint's nonce.
