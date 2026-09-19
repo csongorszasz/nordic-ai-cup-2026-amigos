@@ -69,6 +69,8 @@
     <button id="bReject">Reject<kbd>R</kbd></button>
     <button id="bDraw">Draw outline<kbd>D</kbd></button>
     <button id="bSavePoly">Save outline<kbd>Enter</kbd></button>
+    <button id="bAddPoly">Add to mask<kbd>+</kbd></button>
+    <button id="bCutPoly">Cut from mask<kbd>-</kbd></button>
     <button id="bUndo">Undo point<kbd>⌫</kbd></button>
     <button id="bReset">Reset to auto<kbd>U</kbd></button>
     <button id="bMask">Toggle mask<kbd>M</kbd></button>
@@ -178,16 +180,16 @@ canvas.addEventListener('click', ev => {
   points.push([+x.toFixed(2), +y.toFixed(2)]); draw();
 });
 
-async function save(status, polygon = null) {
+async function save(status, polygon = null, mode = 'replace') {
   if (!current) return;
   const res = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ file: current.file, status, polygon }) });
+    body: JSON.stringify({ file: current.file, status, polygon, mode }) });
   if (!res.ok) { alert(await res.text()); return; }
   const file = current.file; await load();
   const it = items.find(i => i.file === file);
   if (status === 'accepted' || status === 'rejected') step(1, it); else open(it);
 }
-function savePolygon() { if (points.length < 3) return; drawing = false; save('manual', points); }
+function savePolygon(mode = 'replace') { if (points.length < 3) return; drawing = false; save('manual', points, mode); }
 function step(dir, from = current) {
   const list = items.filter(i => i.class === cls);
   const idx = list.findIndex(i => i.file === (from && from.file));
@@ -197,7 +199,9 @@ function step(dir, from = current) {
 $('bAccept').onclick = () => save('accepted');
 $('bReject').onclick = () => save('rejected');
 $('bDraw').onclick = () => { if (!current) return; drawing = true; points = []; draw(); };
-$('bSavePoly').onclick = savePolygon;
+$('bSavePoly').onclick = () => savePolygon('replace');
+$('bAddPoly').onclick = () => savePolygon('add');
+$('bCutPoly').onclick = () => savePolygon('subtract');
 $('bUndo').onclick = () => { points.pop(); draw(); };
 $('bReset').onclick = () => save('auto');
 $('bMask').onclick = () => { showMask = !showMask; draw(); };
@@ -210,7 +214,9 @@ document.addEventListener('keydown', ev => {
   if (k === 'a' || k === 'A') save('accepted');
   else if (k === 'r' || k === 'R') save('rejected');
   else if (k === 'd' || k === 'D') $('bDraw').onclick();
-  else if (k === 'Enter') savePolygon();
+  else if (k === 'Enter') savePolygon('replace');
+  else if (k === '+') savePolygon('add');
+  else if (k === '-') savePolygon('subtract');
   else if (k === 'Backspace') { ev.preventDefault(); $('bUndo').onclick(); }
   else if (k === 'Escape') { drawing = false; points = []; draw(); }
   else if (k === 'u' || k === 'U') save('auto');

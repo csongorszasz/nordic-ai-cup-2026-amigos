@@ -4,9 +4,12 @@
     .venv/bin/python training/sprite_review/server.py      # http://localhost:8765
 
 Decisions are stored in sprites/manual.json, keyed by sprite file:
-    {"status": "accepted" | "rejected" | "manual", "polygon": [[x, y], ...] | null}
-Polygons are in 4K source pixels. A manual polygon rewrites the sprite's alpha;
-the GrabCut original is kept in sprites/_grabcut/ so "reset" can restore it.
+    {"status": "accepted" | "rejected" | "manual", "polygon": [[x, y], ...] | null,
+     "edits": [{"mode": "replace" | "add" | "subtract", "polygon": [[x, y], ...]}, ...]}
+Polygons are in 4K source pixels. An outline rewrites the sprite's alpha, or adds to / cuts out
+of it ("add" and "subtract", to fix a mask without redrawing it); the GrabCut original is kept in
+sprites/_grabcut/ so "reset" can restore it. training/spread_outline.py copies the edits of one
+sprite onto the rest of its class.
 """
 
 import json
@@ -652,6 +655,7 @@ class Decision(BaseModel):
     file: str
     status: str                       # accepted | rejected | manual | auto
     polygon: Optional[List[List[float]]] = None
+    mode: str = 'replace'             # manual: replace the mask, or add / subtract the polygon
 
 
 @app.post('/api/save')
@@ -670,11 +674,20 @@ def save(d: Decision):
             shutil.copy2(path, backup)
         x1, y1, x2, y2 = e['bbox']
         rgb = frame_image(e['frame'])[y1:y2, x1:x2]
-        alpha = np.zeros(rgb.shape[:2], np.uint8)
+        if d.mode == 'replace':
+            alpha = np.zeros(rgb.shape[:2], np.uint8)
+        else:   # keep what the mask has and add or cut out the polygon
+            current = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            alpha = (current[:, :, 3].copy() if current is not None and current.shape[2] == 4
+                     else np.zeros(rgb.shape[:2], np.uint8))
         pts = np.round(np.array(d.polygon) - [x1, y1]).astype(np.int32)
-        cv2.fillPoly(alpha, [pts], 255)
+        cv2.fillPoly(alpha, [pts], 0 if d.mode == 'subtract' else 255)
         cv2.imwrite(str(path), np.dstack([rgb, alpha]))
-        manual[d.file] = {'status': 'manual', 'polygon': d.polygon}
+        was = manual.get(d.file, {})
+        edits = [] if d.mode == 'replace' else list(was.get('edits', []))
+        edits.append({'mode': d.mode, 'polygon': d.polygon})
+        manual[d.file] = {'status': 'manual', 'polygon': d.polygon if d.mode == 'replace' else was.get('polygon'),
+                          'edits': edits}
     elif d.status == 'auto':
         if backup.exists():
             shutil.copy2(backup, path)

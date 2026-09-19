@@ -37,15 +37,20 @@ def map_polygon(polygon, source_box, target_box):
     return [[tx1 + (x - sx1) * kx, ty1 + (y - sy1) * ky] for x, y in polygon]
 
 
-def write_alpha(entry, polygon):
+def write_alpha(entry, edits):
+    """Replay the reference's edits (replace / add / subtract) into this sprite's alpha."""
     path, backup = SPRITES / entry['file'], BACKUP / entry['file']
     if not backup.exists():
         backup.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, backup)
     x1, y1, x2, y2 = entry['bbox']
     rgb = load_frame(entry['frame'])[y1:y2, x1:x2]
-    alpha = np.zeros(rgb.shape[:2], np.uint8)
-    cv2.fillPoly(alpha, [np.round(np.array(polygon) - [x1, y1]).astype(np.int32)], 255)
+    alpha = cv2.imread(str(backup), cv2.IMREAD_UNCHANGED)[:, :, 3].copy()   # start from GrabCut's
+    for edit in edits:
+        if edit['mode'] == 'replace':
+            alpha[:] = 0
+        pts = np.round(np.array(edit['polygon']) - [x1, y1]).astype(np.int32)
+        cv2.fillPoly(alpha, [pts], 0 if edit['mode'] == 'subtract' else 255)
     cv2.imwrite(str(path), np.dstack([rgb, alpha]))
     return float((alpha > 0).mean())
 
@@ -59,12 +64,13 @@ def main():
 
     index = {e['file']: e for e in json.loads((SPRITES / 'index.json').read_text())}
     manual = json.loads(MANUAL.read_text()) if MANUAL.exists() else {}
-    drawn = {f: m for f, m in manual.items() if m.get('polygon') and index.get(f, {}).get('class') == args.class_name}
+    drawn = {f: m for f, m in manual.items() if (m.get('polygon') or m.get('edits'))
+             and index.get(f, {}).get('class') == args.class_name}
     if not drawn:
         raise SystemExit(f'no hand-drawn outline for {args.class_name}: draw one at http://localhost:8765')
-    source = args.source or max(drawn, key=lambda f: len(drawn[f]['polygon']))
-    polygon = drawn[source]['polygon']
-    print(f'{source}: {len(polygon)} points -> the rest of {args.class_name}')
+    source = args.source or max(drawn, key=lambda f: len(drawn[f].get('edits') or [1]))
+    edits = drawn[source].get('edits') or [{'mode': 'replace', 'polygon': drawn[source]['polygon']}]
+    print(f'{source}: {len(edits)} outline edit(s) -> the rest of {args.class_name}')
 
     for file, entry in index.items():
         if entry['class'] != args.class_name or file == source:
@@ -72,9 +78,10 @@ def main():
         if file in drawn and not args.force:
             print(f'  {file}: already drawn by hand, left alone')
             continue
-        mapped = map_polygon(polygon, index[source]['bbox'], entry['bbox'])
+        mapped = [{'mode': e['mode'], 'polygon': map_polygon(e['polygon'], index[source]['bbox'], entry['bbox'])}
+                  for e in edits]
         share = write_alpha(entry, mapped)
-        manual[file] = {'status': 'manual', 'polygon': mapped, 'from': source}
+        manual[file] = {'status': 'manual', 'polygon': mapped[0]['polygon'], 'edits': mapped, 'from': source}
         print(f'  {file}: {share:.0%} of the crop kept')
     MANUAL.write_text(json.dumps(manual, indent=1))
 
