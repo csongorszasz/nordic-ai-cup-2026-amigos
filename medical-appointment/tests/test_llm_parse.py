@@ -83,3 +83,24 @@ def test_parse_quotes_accepts_single_string():
 
     parsed = parse_quotes('{"answers":[{"id":"q01","answer":"yes","evidence_quotes":"solo"}]}', ["q01"])
     assert parsed["q01"]["quotes"] == ["solo"]
+
+
+def test_parse_reason_field_is_ignored():
+    text = (
+        '{"answers":[{"id":"q01","reason":"because X","answer":"yes",'
+        '"evidence_quote":"abc"},{"id":"q02","reason":"none","answer":"no",'
+        '"evidence_quote":null}]}'
+    )
+    parsed = parse_answers(text, IDS)
+    assert parsed["q01"] == {"answer": True, "quote": "abc", "candidate": None}
+    assert parsed["q02"] == {"answer": False, "quote": None, "candidate": None}
+
+
+def test_truncated_json_with_reason_preserves_complete_slots():
+    text = (
+        '{"answers":[{"id":"q01","reason":"because X","answer":"yes",'
+        '"evidence_quote":"abc"},{"id":"q02","reason":"ye'
+    )
+    parsed = parse_answers(text, IDS)
+    assert parsed["q01"]["quote"] == "abc"
+    assert parsed["q02"] is None

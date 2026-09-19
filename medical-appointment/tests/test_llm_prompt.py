@@ -122,6 +122,74 @@ def test_audit_rule_preserves_the_actual_question_and_schema():
     assert "clinician's final statement" in changed[0]["content"]
 
 
+def test_complete_rule_requires_full_sentence_and_pair():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="complete")
+    assert changed[-1] == base[-1]
+    assert "COMPLETE clause or sentence" in system_prompt("complete")
+    assert "immediately preceding question" in changed[0]["content"]
+    assert changed[0]["content"] != base[0]["content"]
+
+
+def test_v3_rule_prefers_matching_occurrence():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="v3")
+    assert changed[-1] == base[-1]
+    assert "wording most closely matches the question" in system_prompt("v3")
+
+
+def test_every_declared_variant_has_a_system_rule():
+    from answerers.llm_prompt import VARIANTS
+
+    for variant in VARIANTS:
+        assert system_prompt(variant)
+
+
+def test_reason_rule_adds_reason_before_answer():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="reason")
+    assert changed[-1] != base[-1]
+    assert "reason" in changed[-1]["content"]
+    assert "at most 20 words" in system_prompt("reason")
+    _, assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "reason")
+    assert assistant.index('"reason"') < assistant.index('"answer"')
+    assert '"evidence_quote"' in assistant
+
+
+def test_v1_rule_is_evidence_first_and_reorders_schema():
+    transcript = make_transcript("x")
+    changed = build_l1_messages(transcript, ["Q?"], variant="v1")
+    assert "evidence-first" in system_prompt("v1")
+    user = changed[-1]["content"]
+    assert user.index('"evidence_quote"') < user.index('"answer"')
+
+
+def test_v1_demo_json_orders_evidence_before_answer():
+    transcript = make_transcript("x")
+    _, base_assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "base")
+    assert base_assistant.index('"answer"') < base_assistant.index('"evidence_quote"')
+    _, v1_assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "v1")
+    assert v1_assistant.index('"evidence_quote"') < v1_assistant.index('"answer"')
+
+
+def test_v1_reason_rule_and_schema_order():
+    transcript = make_transcript("x")
+    changed = build_l1_messages(transcript, ["Q?"], variant="v1_reason")
+    assert "evidence-first" in system_prompt("v1_reason")
+    assert "reason" in system_prompt("v1_reason")
+    user = changed[-1]["content"]
+    assert user.index('"reason"') < user.index('"evidence_quote"') < user.index('"answer"')
+    _, assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "v1_reason")
+    assert assistant.index('"reason"') < assistant.index('"evidence_quote"')
+    assert assistant.index('"evidence_quote"') < assistant.index('"answer"')
+
+
 def _sentence_words():
     return [
         {"word": " First", "start": 0.0, "end": 0.3, "seg_idx": 0},
@@ -160,6 +228,38 @@ def test_similar_selection_picks_the_matching_question(monkeypatch):
     monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "similar")
     similar = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "s0", (1, 0, 0))
     assert similar[0]["transcript_id"] == "s2"
+
+
+def test_occurrence_selection_prefers_repeated_fact(monkeypatch):
+    from answerers import llm_prompt
+
+    def make(single):
+        segments = [{"id": 0, "start": 0.0, "end": 1.0, "text": "the dose is 100 mg"}]
+        if not single:
+            segments.append({"id": 1, "start": 1.0, "end": 2.0, "text": "take 100 mg daily"})
+        segments.append({"id": 2, "start": 5.0, "end": 6.0, "text": "unrelated chatter"})
+        words = [
+            {"word": " the", "start": 0.0, "end": 0.2},
+            {"word": " dose", "start": 0.2, "end": 0.4},
+            {"word": " is", "start": 0.4, "end": 0.6},
+            {"word": " 100", "start": 0.6, "end": 0.8},
+            {"word": " mg", "start": 0.8, "end": 1.0},
+        ]
+        return {"segments": segments, "words": words}
+
+    rows_by_tid = {
+        "s0": [{"question_id": "p0", "transcript_id": "s0", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "0.0", "evidence_end": "1.0"}],
+        "s1": [{"question_id": "p1", "transcript_id": "s1", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "0.0", "evidence_end": "1.0"}],
+    }
+    transcripts = {"s0": make(True), "s1": make(False)}
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "first")
+    first = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "target", (1, 0, 0))
+    assert first[0]["transcript_id"] == "s0"
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "occurrence")
+    occurrence = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "target", (1, 0, 0))
+    assert occurrence[0]["transcript_id"] == "s1"
 
 
 def test_build_few_shot_balanced_and_loco_safe():

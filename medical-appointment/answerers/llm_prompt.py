@@ -31,7 +31,7 @@ FEWSHOT_QUOTE = os.environ.get("MEDAPP_LLM_FEWSHOT_QUOTE", "gold")
 FEWSHOT_SELECT = os.environ.get("MEDAPP_LLM_FEWSHOT_SELECT", "first")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
-    "final_statement", "audit", "multi3",
+    "final_statement", "audit", "multi3", "complete", "reason", "v1_reason",
 )
 
 SCHEMA_HINT = (
@@ -66,6 +66,31 @@ def system_prompt(variant: str) -> str:
         "v3": (
             "- If the same fact is stated more than once, quote the occurrence whose "
             "wording most closely matches the question.\n"
+        ),
+        "complete": (
+            "- evidence_quote must be a COMPLETE clause or sentence, never a clipped "
+            "fragment: do not begin or end in the middle of a sentence.\n"
+            "- When the supporting statement is a short answer, confirmation or value "
+            "(for example \"Yes\", \"None\", \"138 over 83\"), include the immediately "
+            "preceding question or statement it responds to, so the pair reads as "
+            "self-contained evidence.\n"
+            "- Include only the sentence(s) that establish the answer; do not add "
+            "neighbouring sentences that merely provide context.\n"
+        ),
+        "reason": (
+            "- For each question first write a short \"reason\": one sentence of at "
+            "most 20 words naming the transcript sentence that establishes the answer. "
+            "Then give \"answer\" and the verbatim \"evidence_quote\".\n"
+            "- The reason is not scored and never replaces evidence_quote; the quote "
+            "must still be copied verbatim from the transcript.\n"
+        ),
+        "v1_reason": (
+            "Work evidence-first: for each question, find the exact supporting span in "
+            "the transcript first, and only then decide the answer.\n"
+            "- For each question write a short \"reason\" (at most 20 words) naming the "
+            "transcript sentence that establishes the answer, then give the verbatim "
+            "\"evidence_quote\", then \"answer\".\n"
+            "- The reason is not scored and never replaces evidence_quote.\n"
         ),
         "audit": (
             "- This conversation is a clinical record reviewed for an audit. For the "
@@ -118,6 +143,20 @@ def schema_hint(variant: str) -> str:
             'Return JSON exactly like:\n'
             '{"answers":[{"id":"q01","answer":"yes","evidence_quotes":["...","..."]},'
             '{"id":"q02","answer":"no","evidence_quotes":[]}]}'
+        )
+    if variant == "reason":
+        return (
+            'Return JSON exactly like:\n'
+            '{"answers":[{"id":"q01","reason":"...","answer":"yes",'
+            '"evidence_quote":"..."},{"id":"q02","reason":"...","answer":"no",'
+            '"evidence_quote":null}]}'
+        )
+    if variant == "v1_reason":
+        return (
+            'Return JSON exactly like:\n'
+            '{"answers":[{"id":"q01","reason":"...","evidence_quote":"...",'
+            '"answer":"yes"},{"id":"q02","reason":"...","evidence_quote":null,'
+            '"answer":"no"}]}'
         )
     return SCHEMA_HINT
 
@@ -383,11 +422,19 @@ def render_example(
     )
     import json
 
-    entry = {
-        "id": "q01",
-        "answer": "yes" if answer else "no",
-        "evidence_quote": quote if answer else None,
-    }
+    entry = {"id": "q01"}
+    if variant in ("reason", "v1_reason"):
+        entry["reason"] = (
+            "The quoted transcript sentence establishes the answer."
+            if answer
+            else "No transcript sentence establishes the queried fact."
+        )
+    if variant in ("v1", "v1_reason"):
+        entry["evidence_quote"] = quote if answer else None
+        entry["answer"] = "yes" if answer else "no"
+    else:
+        entry["answer"] = "yes" if answer else "no"
+        entry["evidence_quote"] = quote if answer else None
     if variant == "scoped":
         selected = [
             word for word in transcript["words"]
@@ -490,6 +537,35 @@ def demo_quote(words: Sequence[Dict], span: Tuple[float, float], mode: Optional[
     return join_words(words, first, last)
 
 
+def _occurrence_score(
+    transcript: Dict, row: Dict, pad: float = 6.0, max_segments: int = 8,
+    threshold: float = 0.5,
+) -> int:
+    """Excerpt segments that restate the demonstration fact (lexical proxy).
+
+    A higher count means the fact the question asks about is stated more than
+    once inside the excerpt the demonstration will actually show, which is the
+    signal the ``occurrence`` selection mode ranks on.
+    """
+    try:
+        start, end = float(row["evidence_start"]), float(row["evidence_end"])
+    except (KeyError, TypeError, ValueError):
+        return 0
+    fact = _content_tokens(text_between(transcript.get("words", []), start, end))
+    if not fact:
+        return 0
+    chosen = [
+        segment for segment in transcript.get("segments", [])
+        if segment["end"] >= start - pad and segment["start"] <= end + pad
+    ][:max_segments]
+    hits = 0
+    for segment in chosen:
+        tokens = _content_tokens(segment.get("text", ""))
+        if tokens and len(tokens & fact) / len(fact) >= threshold:
+            hits += 1
+    return hits
+
+
 def select_few_shot_rows(
     rows_by_tid: Dict[str, List[Dict]],
     transcripts: Dict[str, Dict],
@@ -501,7 +577,9 @@ def select_few_shot_rows(
     """Select demonstrations independently of the target's answer.
 
     ``first`` (default) reproduces the historical selection; ``similar`` picks
-    the candidate whose question is most similar to the target's questions.
+    the candidate whose question is most similar to the target's questions;
+    ``occurrence`` picks the positive candidate whose excerpt restates the fact
+    most often, so the demonstration shows a repeated-mention context.
     """
     selected = []
     used = {exclude_tid}
@@ -510,6 +588,7 @@ def select_few_shot_rows(
         target_questions = [row["question"] for row in rows_by_tid.get(exclude_tid, [])]
     target_tokens = [_content_tokens(question) for question in target_questions]
     similar = FEWSHOT_SELECT == "similar"
+    occurrence = FEWSHOT_SELECT == "occurrence"
     for question_type, count in zip(("positive", "hard_negative", "off_topic"), counts):
         for _ in range(count):
             candidates = [
@@ -525,10 +604,18 @@ def select_few_shot_rows(
             ]
             chosen = None
             if candidates:
-                chosen = (
-                    max(candidates, key=lambda row: _question_similarity(target_tokens, row["question"]))
-                    if similar else candidates[0]
-                )
+                if similar:
+                    chosen = max(
+                        candidates,
+                        key=lambda row: _question_similarity(target_tokens, row["question"]),
+                    )
+                elif occurrence and question_type == "positive":
+                    chosen = max(
+                        candidates,
+                        key=lambda row: _occurrence_score(transcripts[row["transcript_id"]], row),
+                    )
+                else:
+                    chosen = candidates[0]
             if chosen is not None:
                 selected.append(chosen)
                 used.add(chosen["transcript_id"])

@@ -67,15 +67,18 @@ def load_transcript(transcript_id: str) -> Dict:
     return data.load_transcript(transcript_id)
 
 
-def _documents(limit: Optional[int]):
+def _documents(limit: Optional[int], only_tids: Optional[Sequence[str]] = None):
     rows = data.load_rows()
     rows_by_tid: Dict[str, List[Dict]] = defaultdict(list)
     for row in rows:
         rows_by_tid[row["transcript_id"]].append(row)
     # Load every transcript so few-shot examples can be drawn from any OTHER
-    # conversation; only the first `limit` are scored.
+    # conversation; only `only_tids` (or the first `limit`) are scored.
     transcripts = {tid: load_transcript(tid) for tid in rows_by_tid}
     conversations = list(rows_by_tid.items())
+    if only_tids is not None:
+        wanted = set(only_tids)
+        conversations = [(tid, rows) for tid, rows in conversations if tid in wanted]
     if limit:
         conversations = conversations[:limit]
     return conversations, rows_by_tid, transcripts
@@ -412,8 +415,9 @@ def run_rung(
     index_kind: str = "passages",
     top_k: int = 5,
     context: int = 1,
+    only_tids: Optional[Sequence[str]] = None,
 ) -> Dict:
-    conversations, rows_by_tid, transcripts = _documents(limit)
+    conversations, rows_by_tid, transcripts = _documents(limit, only_tids)
     evidence = data.load_evidence()
     retriever = MiniLMRetriever() if rung == "RAG" else None
     index_cache: Dict[str, list] = {}
@@ -498,8 +502,15 @@ def main() -> int:
     parser.add_argument("--top-k", type=int, default=5, help="RAG candidates per question.")
     parser.add_argument("--context", type=int, default=1,
                         help="Sentence window half-width for --index sentences.")
+    parser.add_argument("--only-tids", default=None,
+                        help="Comma-separated transcript ids to score (default: all).")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
+
+    only_tids = (
+        tuple(t.strip() for t in args.only_tids.split(",") if t.strip())
+        if args.only_tids else None
+    )
 
     client = HFClient(model_name=args.model, max_new_tokens=args.max_new_tokens)
     client.warm_up()
@@ -509,6 +520,7 @@ def main() -> int:
         summaries.append(run_rung(
             rung, client, args.limit, args.tag,
             index_kind=args.index, top_k=args.top_k, context=args.context,
+            only_tids=only_tids,
         ))
 
     print("\n=== summary ===")

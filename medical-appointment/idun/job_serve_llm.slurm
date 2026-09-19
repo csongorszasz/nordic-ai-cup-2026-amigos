@@ -115,7 +115,16 @@ fi
 
 test -n "$URL"
 echo "PUBLIC_URL: ${URL}/predict"
-curl -fsS -o /dev/null -w "self-check / -> %{http_code}\n" --max-time 20 "${URL}/"
+# Quick-tunnel hostnames can be negatively cached by DNS if queried too early.
+# Wait for propagation; never treat a fresh NXDOMAIN as a fatal model failure.
+code="000"
+for attempt in $(seq 1 30); do
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${URL}/" 2>/dev/null || true)
+    echo "self-check attempt ${attempt}: ${code}"
+    [ "$code" = "200" ] && break
+    sleep 5
+done
+[ "$code" = "200" ] || echo "WARNING: public self-check not 200 after grace; holding anyway." >&2
 
 echo "serving; holding until SLURM time limit (${SLURM_JOB_ID})."
 echo "URL: ${URL}/predict"
