@@ -864,6 +864,11 @@ defaults to 1 for every existing path.
   is not this comparison's reference. Headroom permits one full paired
   evaluation, but the smoke demonstrates no quality gain.
 
+- The first full-run submission had a mistyped reference-manifest path and
+  was cancelled before inference. Reference files are now loaded before model
+  warm-up so invalid experiment inputs fail without costly weight loading.
+  The cancelled run is not counted as a scientific result.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

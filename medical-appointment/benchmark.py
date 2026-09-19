@@ -313,6 +313,12 @@ def main():
         conversations = conversations[:args.limit]
     if not conversations:
         parser.error("No conversations selected.")
+    reference = (
+        json.loads(Path(args.baseline_records).read_text()) if args.baseline_records else None
+    )
+    reference_requests = (
+        json.loads(Path(args.baseline_requests).read_text()) if args.baseline_requests else None
+    )
     client = HFClient(
         model_name=args.model, revision=args.revision,
         max_new_tokens=args.max_new_tokens,
@@ -351,12 +357,6 @@ def main():
     })
     baseline = None
     comparisons = {}
-    reference = (
-        json.loads(Path(args.baseline_records).read_text()) if args.baseline_records else None
-    )
-    reference_requests = (
-        json.loads(Path(args.baseline_requests).read_text()) if args.baseline_requests else None
-    )
     for tokenization in args.tokenization:
         for variant in args.variants:
             records = run_configuration(

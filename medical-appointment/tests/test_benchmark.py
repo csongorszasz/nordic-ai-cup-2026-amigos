@@ -96,3 +96,23 @@ def test_method_comparison_requires_identical_transcripts():
     changed_audio = [{**changed[0], "audio_sha256": "different-audio"}]
     with pytest.raises(ValueError, match="Unmatched audio"):
         compare_reference(rows, rows, manifest, changed_audio, allow_asr_change=True)
+
+
+def test_reference_files_are_checked_before_model_warmup(monkeypatch, tmp_path):
+    import sys
+    import benchmark
+
+    records = tmp_path / "records.json"
+    records.write_text("[]")
+    monkeypatch.setattr(sys, "argv", [
+        "benchmark.py", "--model", "model", "--revision", "revision",
+        "--baseline-records", str(records),
+        "--baseline-requests", str(tmp_path / "missing.json"),
+    ])
+
+    def must_not_load():
+        raise AssertionError("Reference preflight must happen before model loading.")
+
+    monkeypatch.setattr(benchmark.asr, "warm_up", must_not_load)
+    with pytest.raises(FileNotFoundError):
+        benchmark.main()
