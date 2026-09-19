@@ -297,6 +297,7 @@ def main():
     parser.add_argument("--baseline-requests")
     parser.add_argument("--allow-asr-change", action="store_true")
     parser.add_argument("--expect-asr-compute-type")
+    parser.add_argument("--expect-llm-dtype")
     args = parser.parse_args()
     if args.force_asr and not (ROOT / "run_request.json").exists():
         parser.error("--force-asr is restricted to isolated IDUN snapshots.")
@@ -326,6 +327,9 @@ def main():
         raise RuntimeError(f"Unexpected ASR runtime precision: {asr_runtime!r}")
     client.warm_up()
     import torch
+    actual_llm_dtype = str(next(client._model.parameters()).dtype).removeprefix("torch.")
+    if args.expect_llm_dtype and actual_llm_dtype != args.expect_llm_dtype:
+        raise RuntimeError(f"Unexpected LLM parameter dtype: {actual_llm_dtype}")
 
     write_json(output / "environment.json", {
         "packages": {
@@ -333,6 +337,11 @@ def main():
             for name in ("torch", "transformers", "faster-whisper", "ctranslate2")
         },
         "gpu": torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu",
+        "llm": {
+            "model": client.model_name, "revision": client.revision,
+            "requested_dtype": client.dtype, "actual_dtype": actual_llm_dtype,
+            "device": client._device,
+        },
         "arguments": vars(args),
         "asr": {"model": asr.MODEL_SIZE, "compute_type": asr.COMPUTE_TYPE,
                 "config_hash": asr.config_hash(), "runtime": asr_runtime},

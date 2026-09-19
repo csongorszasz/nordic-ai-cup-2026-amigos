@@ -813,6 +813,22 @@ training-label derivation diagnostic, not achieved inference quality.
   at 0.2 and cannot overlap the reference. Record zero with an explicit
   infeasibility flag and retain the question in every denominator.
 
+- **Complete audit:** `target-audit-complete-379b6c2b`, all 195 positives
+  retained. Unique optimal targets differ on 20 examples (17 non-demo);
+  target tIoU rises only **0.91587 -> 0.92526** overall and
+  **0.91426 -> 0.92350** non-demo. One infeasible case remains zero.
+  The predeclared 0.02-gap gate failed, so no target-only retraining is
+  justified. Original annotations are unchanged.
+
+## Native inference precision
+
+The cached 26B configuration declares BF16; the existing inference recipe uses
+FP16 inherited from earlier GPU compatibility. Test BF16 on the same 80 GB
+target while fixing the model revision, int8 transcripts, base prompt and
+decoding. Record and assert actual parameter dtype; compare common non-demo
+raw/fixed-offset results. Do not change the live FP16 release on a point
+estimate alone.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
