@@ -188,9 +188,9 @@ def embed_windows(
 ) -> Tuple[np.ndarray, List[float]]:
     """WavLM x-vector per window; returns embeddings and the retained starts."""
     import torch
-    from transformers import AutoProcessor, WavLMForXVector
+    from transformers import Wav2Vec2FeatureExtractor, WavLMForXVector
 
-    processor = AutoProcessor.from_pretrained(model_name, revision=revision)
+    processor = Wav2Vec2FeatureExtractor.from_pretrained(model_name, revision=revision)
     model = WavLMForXVector.from_pretrained(model_name, revision=revision)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device).eval()
