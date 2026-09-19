@@ -12,6 +12,7 @@ is replaced where the tagger is confident. Never used by ``/predict``.
 import argparse
 import json
 import logging
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def word_soft_labels(words, spans, mode="union"):
     return [1.0 if value > 0 else 0.0 for value in counts]
 
 
-def build_examples(base, transcripts, evidence, drafts, target="union"):
+def build_examples(base, transcripts, evidence, drafts, questions, target="union"):
     examples = []
     for qid, record in base.items():
         if record.get("label", 1) != 1 or not record.get("answer"):
@@ -66,6 +67,7 @@ def build_examples(base, transcripts, evidence, drafts, target="union"):
             {
                 "question_id": qid,
                 "transcript_id": tid,
+                "question_words": re.findall(r"[A-Za-z0-9']+", questions.get(qid, "")),
                 "words": ["".join(w["word"].split()) or " " for w in words],
                 "soft": word_soft_labels(words, spans, target),
                 "base_span": record.get("span"),
@@ -101,7 +103,9 @@ def main() -> int:
         (PROJECT_ROOT / "annotations" / "drafts" / "ALL.json").read_text())}
     tids = sorted({row["transcript_id"] for row in base.values()})
     transcripts = {tid: data.load_transcript(tid) for tid in tids}
-    examples = build_examples(base, transcripts, evidence, drafts, args.target)
+    examples = build_examples(base, transcripts, evidence, drafts,
+                              {row["question_id"]: row["question"] for row in data.load_rows()},
+                              args.target)
     logger.info("soft examples: %d", len(examples))
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -110,14 +114,18 @@ def main() -> int:
         def __init__(self, items):
             self.items = []
             for example in items:
+                combined = example["question_words"] + ["[SEP]"] + example["words"]
+                offset = len(example["question_words"]) + 1
                 encoding = tokenizer(
-                    example["words"], is_split_into_words=True,
+                    combined, is_split_into_words=True,
                     truncation=True, max_length=args.max_length,
                 )
-                labels = [
-                    -100.0 if wid is None else float(example["soft"][wid])
-                    for wid in encoding.word_ids()
-                ]
+                labels = []
+                for wid in encoding.word_ids():
+                    if wid is None or wid < offset:
+                        labels.append(-100.0)
+                    else:
+                        labels.append(float(example["soft"][wid - offset]))
                 self.items.append(
                     {"input_ids": encoding["input_ids"],
                      "attention_mask": encoding["attention_mask"],
@@ -182,8 +190,10 @@ def main() -> int:
 
     @torch.no_grad()
     def predict(model, head, example):
+        combined = example["question_words"] + ["[SEP]"] + example["words"]
+        offset = len(example["question_words"]) + 1
         encoding = tokenizer(
-            example["words"], is_split_into_words=True,
+            combined, is_split_into_words=True,
             truncation=True, max_length=args.max_length, return_tensors="pt",
         )
         word_ids = encoding.word_ids()
@@ -194,8 +204,8 @@ def main() -> int:
         probs = torch.sigmoid(logits).tolist()
         buckets = defaultdict(list)
         for token_index, wid in enumerate(word_ids):
-            if wid is not None:
-                buckets[wid].append(probs[token_index])
+            if wid is not None and wid >= offset:
+                buckets[wid - offset].append(probs[token_index])
         word_probs = [sum(buckets[i]) / len(buckets[i]) if buckets[i] else 0.0
                       for i in range(len(example["words"]))]
         mean_prob = sum(word_probs) / len(word_probs) if word_probs else 0.0
