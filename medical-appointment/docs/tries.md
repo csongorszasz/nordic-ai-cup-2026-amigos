@@ -957,11 +957,24 @@ full-OOF result or deployment is claimed by this implementation alone.
   `c07281df297b9905d24a508279258cccf987a064`. Native alignment prepare/decode
   APIs are present in transformers 5.17.0. This CPU-only preparation made no
   predictions and does not establish timing accuracy or request latency.
-- **Held-out pilot running:** `grpo-fold0-pilot-caae4435`, job `25405990`,
-  starts from the original SFT adapter with the fixed hyperparameters above.
+- **Held-out pilot:** `grpo-fold0-pilot-caae4435`, job `25405990`,
+  started from the original SFT adapter with the fixed hyperparameters above.
   The A100/BF16 setup is held constant for comparability, not because the
-  measured 17.48 GB smoke peak requires 80 GB. Wait for complete held-out
-  scoring; the healthy qualified service remains unchanged.
+  measured 17.48 GB smoke peak requires 80 GB.
+- **Pilot result:** all 70 questions scored, unchanged decisions, all 35 yes
+  outputs localized. GRPO composite **0.8234**, mIoU **0.7057**; SFT
+  composite 0.8176, incumbent 0.8362 on this same fold. The paired GRPO-SFT
+  delta is **+0.005823**, interval **[-0.015673, +0.025508]**; against the
+  incumbent **-0.012827**, interval **[-0.086988, +0.059290]**.
+  Five SFT spans changed; replay of the original SFT predictions was
+  pointwise identical in the new runtime. Training used 572 rollouts, 101
+  variable-reward groups, 17.48 GB peak and 597 s.
+- This pilot is inconclusive, not a new qualified score. Complete the other
+  four fixed folds serially using their existing SFT adapters and the exact
+  same source/runtime/hyperparameters, reusing the fold-0 result rather than
+  selecting a new seed or checkpoint. Require all 350 non-demo questions
+  exactly once and preserve every baseline decision. Do not deploy or tune
+  on this pilot; the healthy published service remains unchanged.
 
 ## ASR stream lifecycle check
 

@@ -83,6 +83,13 @@ and compares SFT versus GRPO in the same runtime. It does not register an
 answerer, alter the live service or contact competition endpoints. A pilot
 gain still needs complete OOF and full uncached serving acceptance.
 
+`train_quote_grpo_oof.py` completes the remaining four folds sequentially
+with the same interpreter. Pass `--baseline`, `--pilot-run` (the completed
+GRPO pilot snapshot), and `--sft-oof-run` (the existing SFT OOF snapshot).
+It preflights every warm-start split and adapter, pins pilot source/runtime
+and hyperparameters, and reuses fold 0. Partial outputs are explicitly not
+complete OOF; only the final summary certifies all 350 questions.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
