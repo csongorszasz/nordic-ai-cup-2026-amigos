@@ -378,8 +378,9 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
         box = [x, y, x + w, y + h]
         if x < 0 or y < 0 or x + w >= SOURCE_W or y + h >= SOURCE_H or overlaps(box, placed[:-1]):
             continue  # it may overlap its anchor (the last placed), nothing else
-        if anchor_class != 'hangar' and hidden_share(box, placed[-1]) > PARTNER_MAX_HIDDEN:
-            continue  # mostly under its anchor: a label for an object nobody could see
+        if anchor_class != 'hangar' and max(hidden_share(box, placed[-1]),
+                                            hidden_share(placed[-1], box)) > PARTNER_MAX_HIDDEN:
+            continue  # one mostly covers the other (the partner is pasted on top): a label nobody could see
         if anchor_class != 'hangar' and not on_ground(ground, box):
             continue
         pasted = paste(canvas, match_lighting(sprite, canvas[y:y + h, x:x + w, :3], rng, shade), x, y, shadow, rng)
