@@ -90,6 +90,12 @@ It preflights every warm-start split and adapter, pins pilot source/runtime
 and hyperparameters, and reuses fold 0. Partial outputs are explicitly not
 complete OOF; only the final summary certifies all 350 questions.
 
+For independent alignment preparation, run `check_alignment_tokens.py`
+through a CPU snapshot with `--baseline <frozen-run>/results/benchmark` and
+the verified GRPO interpreter. This loads only the pinned Qwen processor,
+not model weights. Its report explicitly labels synthetic timing values;
+passing it establishes token/index compatibility, not localization accuracy.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

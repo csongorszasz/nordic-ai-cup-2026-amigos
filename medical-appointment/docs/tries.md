@@ -975,6 +975,26 @@ full-OOF result or deployment is claimed by this implementation alone.
   selecting a new seed or checkpoint. Require all 350 non-demo questions
   exactly once and preserve every baseline decision. Do not deploy or tune
   on this pilot; the healthy published service remains unchanged.
+- **Complete OOF submitted:** `grpo-oof-bc86d18e`, job `25406077`, reuses
+  fold 0 and runs folds 1-4 sequentially on the single experimental GPU.
+  All frozen pilot source hashes and fixed hyperparameters matched before
+  submission. Its monitor is `grpo-oof-watch`; no extra GPU experiment
+  should be submitted while it is active.
+- **Timing-axis preparation:** the pinned native Qwen processor drops
+  punctuation when constructing alignment units and decodes timestamp
+  classes in 80 ms increments by default. A timing-only comparison must
+  preserve the original ASR text, quote occurrence and word-index anchors,
+  mapping aligned units back without fuzzy text replacement. The processor
+  already repairs non-monotonic timestamps; validate bounds and retain
+  explicit failures instead of dropping questions. These API findings are
+  preparation, not evidence that Qwen timing is better.
+- Implemented a model-free timing-transfer helper that requires exact
+  normalized character order, preserves original ASR text/word indices,
+  handles split/merged units and punctuation boundaries, and rejects changed
+  doses/negations or invalid times. `check_alignment_tokens.py` checks the
+  pinned processor's real tokenization on all 39 frozen transcripts on CPU.
+  Its artificial monotonic timestamps exercise mapping only: they must not
+  be scored, mistaken for forced-aligner predictions, or used in serving.
 
 ## ASR stream lifecycle check
 
