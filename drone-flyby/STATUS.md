@@ -17,10 +17,11 @@ For anyone (person or agent) picking this up. Final submission deadline: 2026-09
 bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15_int8_openvino_model DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
 ```
 
-Next candidate (not yet validated live): add `DRONE_SWEEP_FROM_VIEW=1`. The live log shows camera commands
-applied on the next frame 65% of the time, a frame later 19%, never 16%; the sweep that plans from its last
-command then skips positions (live never looked at the bottom corners). Replayed with that timing
-(`run_policy.py --live-timing`): 0.459 -> 0.608.
+Camera timing live is noisy: commands land on the next frame, a frame later or never, in shares that change
+from run to run (network). Planning from the view received instead of the last command
+(`DRONE_SWEEP_FROM_VIEW=1`) scored 0.357 live in a run that also lost 27 frames to request gaps: keep the
+default planner. `run_policy.py --live-timing NEXT,LATER` replays such timing, but it underrates the default
+planner (0.459 replayed vs 0.589 for the real live answers), so do not choose camera changes on it alone.
 
 - Detector: YOLO11s trained on 400 synthetic 4K frames for 30 epochs (`idun/submit.sh train-synth`), epoch 15,
   OpenVINO int8 on a 4-vCPU VM (~183 ms per request; keep it well under the 333 ms frame interval).

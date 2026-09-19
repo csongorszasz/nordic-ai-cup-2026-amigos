@@ -50,9 +50,10 @@ def main():
     parser.add_argument('--name', help='trace name (default: scene, camera, weights and time)')
     parser.add_argument('--lag', type=int, default=0,
                         help='frames a camera command waits before it applies (the live service: about 1)')
-    parser.add_argument('--live-timing', action='store_true',
-                        help='camera commands as the live service applied them (2026-09-19 log, 244 frames): '
-                             '65%% on the next frame, 19%% one frame later, 16%% never; replaces --lag')
+    parser.add_argument('--live-timing', metavar='NEXT,LATER',
+                        help='camera commands as the live service applies them, replacing --lag: this share on the '
+                             'next frame, this share a frame later, the rest never. Live 2026-09-19: 0.65,0.19 '
+                             '(the 0.517 run) and 0.5,0.5 (the 0.357 run)')
     args = parser.parse_args()
 
     # solution.py reads its settings when imported, so they go in first.
@@ -106,8 +107,9 @@ def main():
                             response.requested_view.center_y]
         if args.live_timing:   # each command due on the next frame, the one after, or never; the newest due wins
             u = timing_rng.random()
-            if response.requested_view is not None and u < 0.84:
-                queue.append((index + (1 if u < 0.65 else 2), response.requested_view))
+            share_next, share_later = (float(v) for v in args.live_timing.split(','))
+            if response.requested_view is not None and u < share_next + share_later:
+                queue.append((index + (1 if u < share_next else 2), response.requested_view))
             due = [c for d, c in queue if d == index + 1]
             queue = [(d, c) for d, c in queue if d > index + 1]
             r = due[-1] if due else None

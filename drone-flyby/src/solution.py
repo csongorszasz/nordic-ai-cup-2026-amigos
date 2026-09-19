@@ -126,7 +126,11 @@ GRID_COLS, GRID_ROWS = (16, 8) if V2_GROUND else (8, 4)       # 240x270 or 480x5
 
 # Six Level-1 centres that tile the frame, visited as a snake.
 SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1400), (1920, 1400), (960, 1400)]  # bottom row at 1400: Copenhagen tune 0.349 / check 0.365 vs 1620
-SWEEP_FROM_VIEW = os.environ.get('DRONE_SWEEP_FROM_VIEW', '0') != '0'
+# Where the sweep plans its next step from. Default: the last command (right when every command
+# lands, one or two frames late). 'stuck': from the view received when the camera did not move
+# since the last frame (a dropped command). 'always' (or 1): always from the view received; live
+# 2026-09-19 that halved the sweep's speed when commands landed two frames late (0.357).
+SWEEP_FROM_VIEW = {'1': 'always', '0': ''}.get(os.environ.get('DRONE_SWEEP_FROM_VIEW', '0'), os.environ.get('DRONE_SWEEP_FROM_VIEW'))
 if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540": Level-1 centres, in order
     SWEEP = [tuple(int(v) for v in p.split(',')) for p in os.environ['DRONE_SWEEP'].split(';')]
 
@@ -258,6 +262,7 @@ class SequenceState:
         # The live service applies camera commands about a frame late: a request can still show
         # the old view while our last command is about to take effect. Remember it until seen.
         self.pending: Optional[Tuple[int, int, int]] = None
+        self.last_view: Optional[Tuple[int, int, int]] = None   # the view received on the previous frame
 
     def velocity_at(self, p) -> np.ndarray:
         return self.velocity + self.field @ ((np.asarray(p) - _CENTRE) / 1000)
@@ -603,8 +608,11 @@ def choose_next_view(request: DroneFlybyPredictRequestDto, state: SequenceState)
     # other move unreachable and the sweep bounced between two top positions (Copenhagen with a
     # one-frame delay: 0.198 mAP50, 165 moves in 248 frames).
     base = state.pending or (current.resolution_level, current.center_x, current.center_y)
-    if SWEEP_FROM_VIEW:   # live drops some commands and applies the rest 1-2 frames late: ask for the
-        base = (current.resolution_level, current.center_x, current.center_y)   # step after what we see; a lost ask is repeated
+    view = (current.resolution_level, current.center_x, current.center_y)
+    stuck = view == state.last_view   # the camera did not move: a command was dropped (live: up to 16%)
+    state.last_view = view
+    if SWEEP_FROM_VIEW == 'always' or (SWEEP_FROM_VIEW == 'stuck' and stuck):
+        base = view   # the step after what we see; a lost ask is repeated
     if base[0] == 1:   # continue after the sweep position the camera is at (or nearest to)
         state.sweep_index = min(range(len(SWEEP)), key=lambda i: np.hypot(SWEEP[i][0] - base[1], SWEEP[i][1] - base[2]))
 
