@@ -107,3 +107,9 @@ models/**/*.mtl
 models/**/textures/
 # Recoloured model copies (recolour_models.py): made on demand, unused by the data by default
 datasets/model_match/_baked/*_recoloured.glb
+
+# Hand review of the recorded Copenhagen flight: test set only, never training data. Kept in git
+# so the review work is not lost; the candidates it refers to can be regenerated.
+!datasets/copenhagen_test/
+datasets/copenhagen_test/*
+!datasets/copenhagen_test/decisions.json

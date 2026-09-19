@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copenhagen Review</title>
+<style>
+  :root { --bg:#10141a; --panel:#1a2029; --line:#2c3440; --text:#e6e9ee; --muted:#8b95a3; --accent:#5aa9ff;
+          --ok:#3ecf8e; --bad:#ff6b6b; --maybe:#ffb84d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif;
+         display:flex; height:100vh; overflow:hidden; }
+  aside { width:280px; flex:none; background:var(--panel); border-right:1px solid var(--line);
+          padding:12px; overflow-y:auto; }
+  aside a { color:var(--accent); text-decoration:none; }
+  h1 { font-size:16px; margin:10px 0 4px; }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:10px; }
+  select { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+           border-radius:6px; padding:6px; font:inherit; margin-bottom:6px; }
+  .stat { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; padding:2px 0; }
+  .stat b { color:var(--text); font-variant-numeric:tabular-nums; }
+  .bar { height:6px; background:var(--bg); border-radius:3px; overflow:hidden; display:flex; margin:6px 0 10px; }
+  .bar i { display:block; height:100%; }
+  .help { color:var(--muted); font-size:12px; line-height:1.9; margin-top:12px; }
+  kbd { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; }
+  main { flex:1; min-width:0; overflow-y:auto; padding:18px 22px; }
+  .head { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .head h2 { margin:0; font-size:20px; }
+  .pill { font-size:12px; padding:2px 8px; border-radius:10px; border:1px solid var(--line); color:var(--muted); }
+  .pill.accepted { color:var(--ok); border-color:var(--ok); }
+  .pill.rejected { color:var(--bad); border-color:var(--bad); }
+  .pill.unsure { color:var(--maybe); border-color:var(--maybe); }
+  .row { display:flex; gap:18px; flex-wrap:wrap; align-items:flex-start; }
+  #big { width:420px; height:420px; border-radius:8px; background:#000; display:block; image-rendering:auto; }
+  .info { min-width:240px; flex:1; }
+  .info .stat { max-width:360px; }
+  .actions { display:flex; gap:8px; margin:14px 0 8px; flex-wrap:wrap; }
+  .actions button { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px;
+                    padding:10px 16px; font:inherit; cursor:pointer; }
+  .actions button:hover { border-color:var(--accent); }
+  .actions .ok { border-color:var(--ok); } .actions .bad { border-color:var(--bad); } .actions .maybe { border-color:var(--maybe); }
+  #strip { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+  #strip figure { margin:0; text-align:center; color:var(--muted); font-size:11px; }
+  #strip img { width:150px; height:150px; border-radius:6px; background:#000; display:block; }
+  #votes { color:var(--muted); font-size:12px; }
+  #empty { color:var(--muted); margin-top:40px; }
+</style>
+</head>
+<body>
+<aside>
+  <a href="/flyby">&larr; flight playback</a>
+  <h1>Copenhagen review</h1>
+  <div class="sub">Test set only: these labels never go into training.</div>
+  <select id="filter">
+    <option value="undecided">Still to review</option>
+    <option value="all">All</option>
+    <option value="accepted">Accepted</option>
+    <option value="rejected">Rejected</option>
+    <option value="unsure">Unsure</option>
+  </select>
+  <select id="cls"><option value="">Every class</option></select>
+  <div class="stat">Reviewed <b id="sDone">-</b></div>
+  <div class="bar" id="bar"></div>
+  <div class="stat">Accepted <b id="sOk">0</b></div>
+  <div class="stat">Rejected <b id="sBad">0</b></div>
+  <div class="stat">Unsure <b id="sMaybe">0</b></div>
+  <div class="stat">In this list <b id="sList">-</b></div>
+  <div class="help">
+    Each card is one object the detector followed across frames. Is the thing in the
+    yellow box really that class?<br>
+    <kbd>A</kbd> accept &nbsp;·&nbsp; <kbd>R</kbd> reject &nbsp;·&nbsp; <kbd>U</kbd> unsure<br>
+    <kbd>1</kbd>–<kbd>0</kbd> <kbd>Q</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd> <kbd>Y</kbd> <kbd>I</kbd>: it is this class instead (accepts it; keys listed in the class menu)<br>
+    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> previous / next &nbsp;·&nbsp; <kbd>Z</kbd> undo the last decision<br>
+    Ordered with the likeliest real objects first: once it is all noise, you can stop.
+    Decisions save as you go, to <code>datasets/copenhagen_test/decisions.json</code>.
+  </div>
+</aside>
+<main>
+  <div id="card"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const CLASS_KEYS = '1234567890qwetyi';   // one key per class, in the challenge order (not A R U Z)
+let data, list = [], pos = 0, history = [];
+
+// Likeliest real objects first: confident, and followed over many frames.
+const priority = c => c.score * Math.log2(1 + c.frames.length);
+const decision = c => data.decisions[c.id];
+const statusOf = c => decision(c) ? decision(c).status : 'undecided';
+const cropUrl = (frame, box, side) => `/review/crop/${frame}.jpg?box=${box.map(Math.round).join(',')}&side=${side}`;
+
+function rebuild(keepId) {
+  const f = $('filter').value, k = $('cls').value;
+  list = data.candidates.filter(c => (f === 'all' || statusOf(c) === f) && (!k || c.class === k))
+                        .sort((a, b) => priority(b) - priority(a));
+  pos = Math.max(0, keepId ? list.findIndex(c => c.id === keepId) : 0);
+  counts();
+  show();
+}
+
+function counts() {
+  const all = data.candidates, n = all.length;
+  const by = s => all.filter(c => statusOf(c) === s).length;
+  const ok = by('accepted'), bad = by('rejected'), maybe = by('unsure');
+  $('sDone').textContent = `${ok + bad + maybe} / ${n}`;
+  $('sOk').textContent = ok; $('sBad').textContent = bad; $('sMaybe').textContent = maybe;
+  $('sList').textContent = list.length ? `${pos + 1} / ${list.length}` : '0';
+  $('bar').innerHTML = [[ok, '--ok'], [bad, '--bad'], [maybe, '--maybe']]
+    .map(([v, c]) => `<i style="width:${100 * v / n}%;background:var(${c})"></i>`).join('');
+}
+
+function show() {
+  const c = list[pos];
+  if (!c) { $('card').innerHTML = '<div id="empty">Nothing left in this list.</div>'; return; }
+  const d = decision(c), status = statusOf(c), shownClass = (d && d.class) || c.class;
+  // Five frames across the track, the best one first in the big view.
+  const picks = [...new Set([0, 0.25, 0.5, 0.75, 1].map(t => Math.round(t * (c.frames.length - 1))))];
+  const votes = Object.entries(c.votes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · ');
+  $('card').innerHTML = `
+    <div class="head"><h2>${shownClass}</h2>
+      <span class="pill ${status}">${status}${d && d.class ? ' (class corrected)' : ''}</span>
+      <span class="pill">score ${c.score.toFixed(2)}</span>
+      <span class="pill">seen in ${c.frames.length} frames (${c.frames[0]}–${c.frames[c.frames.length - 1]})</span></div>
+    <div class="row">
+      <img id="big" src="${cropUrl(c.best_frame, c.best_box, 420)}" alt="best frame">
+      <div class="info">
+        <div class="stat">Detector's class <b>${c.class}</b></div>
+        <div class="stat">Best frame <b>${c.best_frame}</b></div>
+        <div class="stat">Box (4K px) <b>${c.best_box[2] - c.best_box[0]} × ${c.best_box[3] - c.best_box[1]}</b></div>
+        <div id="votes">Votes over the track: ${votes}</div>
+        <div class="actions">
+          <button class="ok" data-s="accepted">Accept <kbd>A</kbd></button>
+          <button class="bad" data-s="rejected">Reject <kbd>R</kbd></button>
+          <button class="maybe" data-s="unsure">Unsure <kbd>U</kbd></button>
+        </div>
+        <select id="fix"><option value="">It is another class… (accepts it)</option>
+          ${data.classes.map((k, i) => `<option value="${k}">${CLASS_KEYS[i]} · ${k}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div id="strip">${picks.map(i => `<figure><img loading="lazy" src="${cropUrl(c.frames[i], c.boxes[i], 150)}" alt="">
+      frame ${c.frames[i]} · ${c.classes[i]} ${c.confs[i].toFixed(2)}</figure>`).join('')}</div>`;
+  for (const b of document.querySelectorAll('.actions button')) b.onclick = () => decide(b.dataset.s);
+  $('fix').onchange = e => e.target.value && decide('accepted', e.target.value);
+  counts();
+  // Warm the next card's big crop.
+  const next = list[pos + 1];
+  if (next) new Image().src = cropUrl(next.best_frame, next.best_box, 420);
+}
+
+async function decide(status, cls = null) {
+  const c = list[pos];
+  if (!c) return;
+  history.push({ c, before: data.decisions[c.id] });
+  await save(c, status, cls);
+  // In a filtered list the card leaves it; otherwise step on.
+  if ($('filter').value === 'all' || $('filter').value === status) pos = Math.min(pos + 1, list.length - 1);
+  else list.splice(pos, 1), pos = Math.min(pos, list.length - 1);
+  show();
+}
+
+async function save(c, status, cls) {
+  const r = await fetch('/api/review/decide', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: c.id, status, cls, best_frame: c.best_frame, best_box: c.best_box }) });
+  if (!r.ok) { alert('Could not save: ' + await r.text()); throw new Error('save failed'); }
+  if (status === 'undecided') delete data.decisions[c.id];
+  else data.decisions[c.id] = { status, class: cls, best_frame: c.best_frame, best_box: c.best_box };
+}
+
+async function undo() {
+  const last = history.pop();
+  if (!last) return;
+  const b = last.before;
+  await save(last.c, b ? b.status : 'undecided', b ? b.class : null);
+  rebuild(last.c.id);
+  if (list.findIndex(c => c.id === last.c.id) < 0) { $('filter').value = 'all'; rebuild(last.c.id); }
+}
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === 'a') decide('accepted');
+  else if (k === 'r') decide('rejected');
+  else if (k === 'u') decide('unsure');
+  else if (k === 'z') undo();
+  else if (e.key === 'ArrowRight') { pos = Math.min(pos + 1, list.length - 1); show(); }
+  else if (e.key === 'ArrowLeft') { pos = Math.max(pos - 1, 0); show(); }
+  else if (CLASS_KEYS.includes(k) && k.length === 1) decide('accepted', data.classes[CLASS_KEYS.indexOf(k)]);
+  else return;
+  e.preventDefault();
+});
+$('filter').onchange = () => rebuild();
+$('cls').onchange = () => rebuild();
+
+(async () => {
+  const r = await fetch('/api/review/candidates');
+  if (!r.ok) { $('card').innerHTML = `<div id="empty">${await r.text()}</div>`; return; }
+  data = await r.json();
+  $('cls').innerHTML += data.classes.map(k => `<option value="${k}">${k}</option>`).join('');
+  rebuild();
+})();
+</script>
+</body>
+</html>

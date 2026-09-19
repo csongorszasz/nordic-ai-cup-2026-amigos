@@ -12,6 +12,7 @@ the GrabCut original is kept in sprites/_grabcut/ so "reset" can restore it.
 import json
 import shutil
 import sys
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
@@ -27,7 +28,7 @@ from pydantic import BaseModel
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'src'))  # dtos.py / utils.py live in src/
 
-from dtos import IMAGE_HEIGHT, IMAGE_WIDTH  # noqa: E402
+from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES  # noqa: E402
 from utils import frame_numbers, load_annotations, load_frame  # noqa: E402
 
 SPRITES = ROOT / 'sprites'
@@ -152,6 +153,80 @@ def flyby_trace(name: str):
     if path.parent != TRACES or not path.exists():
         raise HTTPException(404, 'unknown trace')
     return FileResponse(path)
+
+
+# Copenhagen review (review.html): accept or reject the detector's tracks on the recorded
+# flight (training/copenhagen_candidates.py). TEST SET ONLY: never used for training.
+REVIEW = ROOT / 'datasets' / 'copenhagen_test'
+DECISIONS = REVIEW / 'decisions.json'
+
+
+@lru_cache(maxsize=8)
+def recorded_frame(frame: int):
+    return cv2.imread(str(RECORDED / f'frame_{frame:04d}.jpg'))
+
+
+@app.get('/review', response_class=HTMLResponse)
+def review():
+    return (Path(__file__).parent / 'review.html').read_text()
+
+
+@app.get('/api/review/candidates')
+def review_candidates():
+    path = REVIEW / 'candidates.json'
+    if not path.exists():
+        raise HTTPException(404, 'no candidates yet: run training/copenhagen_candidates.py')
+    data = json.loads(path.read_text())
+    data['decisions'] = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
+    data['classes'] = list(OBJECT_CLASSES)
+    return data
+
+
+@app.get('/review/crop/{frame}.jpg')
+def review_crop(frame: int, box: str, side: int = 360):
+    """A square crop around the box (three times its size, at least 200 px), box drawn in."""
+    x1, y1, x2, y2 = (int(float(v)) for v in box.split(','))
+    image = recorded_frame(frame)
+    if image is None:
+        raise HTTPException(404, 'unknown frame')
+    half = max(max(x2 - x1, y2 - y1) * 1.5, 100)
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    a, b = int(max(cx - half, 0)), int(max(cy - half, 0))
+    c, d = int(min(cx + half, IMAGE_WIDTH)), int(min(cy + half, IMAGE_HEIGHT))
+    crop = image[b:d, a:c].copy()
+    scale = side / max(crop.shape[:2])
+    crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
+    p = lambda x, y: (int((x - a) * scale), int((y - b) * scale))
+    cv2.rectangle(crop, p(x1, y1), p(x2, y2), (0, 230, 255), 1 if side < 250 else 2)
+    ok, jpg = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    return Response(jpg.tobytes(), media_type='image/jpeg', headers={'Cache-Control': 'max-age=3600'})
+
+
+class ReviewDecision(BaseModel):
+    id: str
+    status: str                  # accepted | rejected | unsure | undecided
+    cls: Optional[str] = None    # corrected class, when the detector's was wrong
+    best_frame: int
+    best_box: List[float]
+
+
+@app.post('/api/review/decide')
+def review_decide(d: ReviewDecision):
+    if d.status not in ('accepted', 'rejected', 'unsure', 'undecided'):
+        raise HTTPException(400, 'bad status')
+    if d.cls is not None and d.cls not in OBJECT_CLASSES:
+        raise HTTPException(400, 'bad class')
+    decisions = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
+    if d.status == 'undecided':
+        decisions.pop(d.id, None)
+    else:
+        # The box goes in too, so a decision can be matched to a track of a regenerated candidate set.
+        decisions[d.id] = {'status': d.status, 'class': d.cls, 'best_frame': d.best_frame, 'best_box': d.best_box,
+                           'at': datetime.now().isoformat(timespec='seconds')}
+    tmp = DECISIONS.with_suffix('.tmp')
+    tmp.write_text(json.dumps(decisions, indent=1))
+    tmp.replace(DECISIONS)  # never a half-written file
+    return {'ok': True, 'decided': len(decisions)}
 
 
 @app.get('/api/models')
