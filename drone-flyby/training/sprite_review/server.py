@@ -338,6 +338,49 @@ def flyby_remove(r: RemoveLabel):
     return {'ok': True, 'labels': rebuild_labels()}
 
 
+@app.get('/labels', response_class=HTMLResponse)
+def labels_page():
+    return (Path(__file__).parent / 'labels.html').read_text()
+
+
+@app.get('/api/labels/objects')
+def labels_objects():
+    """Every labelled Copenhagen object with the frames it is labelled in (for labels.html)."""
+    path = REVIEW / 'labels.json'
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text())
+    frames = {}
+    for frame, boxes in data['labels'].items():
+        for b in boxes:
+            frames.setdefault(b['track'], []).append((int(frame), [int(v) for v in b['bbox']]))
+    out = []
+    for o in data['objects']:
+        seen = sorted(frames.get(o['id'], []))
+        if not seen:
+            continue
+        picks = sorted({0, len(seen) // 2, len(seen) - 1})
+        out.append({'id': o['id'], 'class': o['class'], 'frames': len(seen), 'first': seen[0][0], 'last': seen[-1][0],
+                    'views': [{'frame': seen[i][0], 'box': seen[i][1]} for i in picks]})
+    return sorted(out, key=lambda o: (o['class'], o['first']))
+
+
+@app.get('/api/labels/crop')
+def labels_crop(frame: int, x1: int, y1: int, x2: int, y2: int):
+    """A crop of a Copenhagen frame around a box (context 3x its size, at least 160 px), box drawn."""
+    path = RECORDED / f'frame_{frame:04d}.jpg'
+    image = cv2.imread(str(path))
+    if image is None:
+        raise HTTPException(404, 'unknown frame')
+    side = max(160, 3 * max(x2 - x1, y2 - y1))
+    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+    left, top = max(0, cx - side // 2), max(0, cy - side // 2)
+    crop = image[top:top + side, left:left + side].copy()
+    cv2.rectangle(crop, (x1 - left - 3, y1 - top - 3), (x2 - left + 3, y2 - top + 3), (0, 0, 255), 1)
+    crop = cv2.resize(crop, (240, int(240 * crop.shape[0] / max(crop.shape[1], 1))), interpolation=cv2.INTER_CUBIC)
+    return Response(cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes(), media_type='image/jpeg')
+
+
 @app.get('/api/flyby/candidates/{frame}')
 def flyby_candidates(frame: int):
     """The detector's tracks still waiting for a decision, with their box in this frame, so they can
