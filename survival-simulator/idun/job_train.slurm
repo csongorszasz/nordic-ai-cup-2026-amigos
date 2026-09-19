@@ -37,16 +37,13 @@ export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy PYGAME_HIDE_SUPPORT_PROMPT=1
 CONFIG="${1:-configs/ppo-gru.json}"
 NAME="${2:-train}"
 shift 2 || true
-WORKERS=$(( SLURM_CPUS_PER_TASK - 1 ))
-
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
-nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
-echo "config=${CONFIG} name=${NAME} workers=${WORKERS}"
+nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+echo "config=${CONFIG} name=${NAME}; worker and memory settings come from the reviewed run plan"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 
 python train.py \
     --config "${CONFIG}" \
-    --set resources.device=cuda \
-    --set resources.workers="${WORKERS}" \
     --output "training-results/${NAME}-${SLURM_JOB_ID}" \
     "$@"
 

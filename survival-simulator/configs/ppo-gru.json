@@ -3,29 +3,37 @@
   "mode": "ppo",
   "policy": "neural",
   "seed": 12345,
-  "updates": 200,
-  "rollout_steps": 512,
-  "heuristic": {
-    "backend": "hierarchical"
+  "updates": 5,
+  "rollout_steps": 32,
+  "teacher": {
+    "path": "configs/controller-turnaway-wall-aware.json",
+    "sha256": "bd2385a8969f50d2b98bff0ab97e9fd465d6de70d57de69172fd5598da5f8be7"
   },
   "model": {
     "encoder": "pool",
     "memory": "gru",
     "hidden_size": 128,
     "team_context": true,
-    "critic": "team"
+    "critic": "team",
+    "public_context": true
   },
   "ppo": {
     "gamma": 1.0,
-    "gae_lambda": 0.995,
-    "epochs": 4,
-    "sequence_length": 128,
-    "normalize_value": true
+    "gae_lambda": 0.95,
+    "epochs": 1,
+    "sequence_length": 16,
+    "normalize_value": true,
+    "imitation_weight": 0.0
+  },
+  "evaluation": {"enabled": true, "every_updates": 5},
+  "budget": {
+    "kind": "diagnostic", "max_updates": 5, "max_native_ticks": 1024,
+    "max_evaluation_episodes": 9, "host_memory_mb": 16384
   },
   "resources": {
     "device": "auto",
-    "workers": 4,
-    "action_repeat": 5,
+    "workers": 1,
+    "action_repeat": 1,
     "max_vram_mb": 6144
   }
 }

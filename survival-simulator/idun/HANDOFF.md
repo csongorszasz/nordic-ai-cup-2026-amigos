@@ -4,9 +4,10 @@ This runbook lets csongor's agent run the survival-simulator training/benchmark
 and serve the agent endpoint on NTNU **IDUN**, using dominic's IDUN login and
 `share-ie-idi` allocation via a delegated SSH key. Follow the steps in order.
 
-Everything runs from **csongor's machine**. The only human-gated step is
-**Step 1** (dominic authorizes csongor's public key on IDUN). No passwords or
-private keys are ever shared.
+The **user launches every real job** (including training, teacher collection,
+profiles and evaluations). An assistant may prepare code, synthetic tests, saved
+plots and dry-run plans, but must not execute SSH/SLURM experiments. Step 1 also
+requires the account owner's authorization. No passwords or private keys are shared.
 
 ---
 
@@ -93,11 +94,7 @@ bash idun/submit.sh search --set search.candidates=16 --set search.worlds=4
 # Throughput profile (CPU).
 bash idun/submit.sh profile
 
-# Neural training on a GPU (imitation or PPO).
-bash idun/submit.sh train configs/imitation-gru.json imitation
-bash idun/submit.sh train configs/ppo-gru.json ppo
-#   warm start:  bash idun/submit.sh train configs/ppo-gru.json ppo --set checkpoint=training-results/imitation-<id>/checkpoint.pt
-#   resume:      bash idun/submit.sh train configs/ppo-gru.json ppo --resume training-results/ppo-<id>/checkpoint.pt
+# Neural training requires a reviewed preflight; see the staged procedure below.
 
 # Benchmark / compare (CPU).
 bash idun/submit.sh benchmark run --policy src.policies.runtime:create_policy \
@@ -109,16 +106,59 @@ bash idun/submit.sh compare --reference benchmark-results/random-standard \
 bash idun/submit.sh test
 ```
 
-To request an **80 GB GPU** for PPO, run on IDUN from `~/nordic-survival`
-after syncing the project:
+### Teacher, preflight, then manual launch
+
+The exact teacher is `configs/controller-turnaway-wall-aware.json`, pinned by hash.
+Both learner presets start with cadence 1 and deliberately small **diagnostic**
+budgets. Their numerical settings are provisional, not claims of optimality.
+See `docs/pipeline-overview.md` and `configs/evidence-diagnostic.json`.
+
+On a configured machine, generate a plan without constructing a simulator or GPU:
+
+```bash
+python train.py --config configs/imitation-gru.json --preflight \
+  --evidence configs/evidence-diagnostic.json --output plans/bc
+```
+
+The user reviews `plans/bc/run-plan.json`, its exact settings, evidence and total
+episode/storage budgets, then launches:
+
+```bash
+bash idun/submit.sh train configs/imitation-gru.json bc --run-plan plans/bc/run-plan.json
+```
+
+This path copies code to `~/nordic-survival/releases/<plan-id>` once, rather than
+rsyncing over active sources. Training/benchmark outputs remain shared through
+links; logs belong to that release. Reusing the plan reuses frozen code. Changes
+to effective overrides, teacher, weights, or sources require a new preflight.
+Keep paths without spaces when choosing remote root/release names.
+
+To request an **80 GB A100/H100-class allocation**, the user can submit from the
+printed frozen release with the cluster's available constraint:
 
 ```bash
 mkdir -p logs
-sbatch --constraint=gpu80g idun/job_train.slurm configs/ppo-gru.json ppo-80gb
+sbatch --constraint=gpu80g idun/job_train.slurm configs/imitation-gru.json bc-80gb \
+  --run-plan run-plan.json
 ```
 
-This overrides the training script's GPU constraint for this submission only.
-It does not change the application's `resources.max_vram_mb` memory limit.
+An 80 GB allocation does not automatically change `resources.max_vram_mb`, workers,
+batch sizes, or model width. The script no longer overrides worker count from
+`SLURM_CPUS_PER_TASK`. Effective settings must match preflight and fit allocated
+CPUs/GPU memory/host memory. Measure a user-launched pilot before increasing them.
+The application no longer imposes the laptop's 8192 MiB upper validation limit.
+
+After BC, enable DAgger explicitly with `--set imitation.dagger_rounds=1` in a new
+plan and launch. For warm-start PPO, specify the recorded checkpoint in both
+preflight and launch. The scratch PPO preset has no checkpoint and zero teacher
+regularization; it does not query the teacher during collection. No stage
+automatically launches its successor.
+
+Extended run evidence must contain each parameter group's exact resolved values,
+measured-pilot artifact paths, units, alternatives, and uncertainty. Dry-run
+derivations include native-step bounds, GAE/BPTT horizons, scheduled checkpoints,
+and total evaluation episodes including the teacher. References alone are not
+task-specific proof.
 
 Monitor and collect:
 
@@ -132,40 +172,60 @@ Notes:
 - Benchmark `--output` directories are never overwritten; use a new path per run.
 - Search cannot `--resume`; size `search.candidates`/`search.worlds` to finish
   within the 12 h walltime.
-- `resources.workers` is set from `--cpus-per-task - 1`; edit the SLURM files to
-  change CPU/GPU sizing.
+- Choose worker and learner-thread settings deliberately and request enough CPUs;
+  the launcher must not change reviewed hyperparameters.
 
-### Evaluate each new checkpoint without stopping training
+### Evaluate scheduled checkpoints and view the learning curve
 
-On IDUN, submit the watcher directly from `~/nordic-survival`:
+The user starts a separate CPU watcher **from the same frozen release**. Exclude
+the training node so benchmark compute does not distort learner throughput:
 
 ```bash
 sbatch --exclude=<training-node> idun/job_watch.slurm \
   --training-job <training-job-id> \
-  --run training-results/<training-run> \
-  --reference benchmark-results/<completed-random-quick-run> \
-  --output benchmark-results/<new-monitor-directory>
+  --run training-results/<training-run>
 ```
 
-The CPUQ job captures the current checkpoint and checks for new generations every
-five seconds. Copies are published only when the weights, checksum sidecar, and
-policy descriptor agree; update numbers come from the saved training state.
-One evaluator runs full-horizon `quick` benchmarks and paired comparisons against
-the existing reference. Capture continues while evaluation is busy, so snapshots
-can queue without blocking training. The output contains `status.json`,
-`snapshots/update-NNNN`, per-update logs, benchmarks, and comparison reports.
+The trainer publishes slim, immutable snapshots initially, every five completed
+updates by default, and at the final update. The watcher processes durable ready
+manifests, not whichever overwritten latest file a poll happens to catch.
+It evaluates the pinned teacher and each checkpoint on the same full-episode
+development cases, serially, with explicit per-episode timeouts.
 
-The watcher stops capturing when the training job leaves the queue, then finishes
-pending evaluations, subject to its own 12-hour walltime. It records missed update
-numbers and evaluation failures instead of silently treating them as successes.
-Restart with the same output to process preserved snapshots; completed and failed
-evaluations are not rerun. Earlier overwritten checkpoints cannot be recovered.
-Quick-suite results remain exploratory; reserve holdout worlds for final selection.
+Every completed evaluation refreshes:
 
-For an already-running training job, copy only `watch_checkpoints.py` and
-`job_watch.slurm` into the remote `idun` directory. Do not use `submit.sh` to deploy
-the watcher: its resync can change live sources and delete remote logs. Exclude
-the training node to keep benchmark compute separate; no GPU is requested.
+- `training-results/<run>/progress/learning-curve.png`
+- `learning-curve-ticks.png`, `learning-curve.csv`, `evaluations.jsonl`, `status.json`
+- immutable episode records under the run's `evaluation/` directory
+
+The line is mean native final episode score. The band is observed world-seed
+range, not a confidence interval. Queued/failed/missing updates are visible;
+losses and partial training rewards never stand in for an evaluation.
+
+Queue and storage caps are reviewed configuration. If the pending queue fills,
+the trainer pauses with a saved completed-update checkpoint (exit 3); it does not
+discard checkpoints or spawn extra jobs. The user drains the existing queue
+with the watcher or `python -m idun.watch_checkpoints --run ... --once`, then
+creates a new reviewed `--resume` plan/output. Historical score points and actual
+native-step counters are retained. The watcher drains only scheduled requests
+inside the authorized episode/attempt budget when the trainer stops.
+
+Failures are not automatically retried. `python -m src.training.evaluation retry
+--run ... --update N --reason "..."` enables an explicit retry only if the original
+plan reserved another attempt with `evaluation.max_attempts`. Successful cases
+are not rerun. Default attempts are one.
+
+Plot-only inspection is safe and starts no simulations:
+
+```bash
+python -m src.training.progress --run training-results/<run>
+```
+
+Legacy rolling-checkpoint monitoring remains available only with
+`--legacy-latest --output ... --reference ... --training-job ...`; it can miss
+overwritten updates and does not provide the scheduled pipeline's guarantees.
+Do not update or resync live sources. Earlier overwritten checkpoints cannot
+be recovered. Reserve holdout for a final frozen policy.
 
 ---
 

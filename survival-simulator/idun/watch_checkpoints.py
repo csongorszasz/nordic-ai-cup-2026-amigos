@@ -191,16 +191,58 @@ def monitor(run_path: Path, output: Path, reference: Path, job_id: int,
     return status
 
 
+def monitor_scheduled(run_path: Path, job_id: int | None, *, poll_seconds: float = 5, once: bool = False) -> dict:
+    """User-launched monitor for durable requests; never submits another job."""
+    from src.training.evaluation import evaluate_pending, schedule_path
+    from src.training.progress import render_progress, progress_data
+
+    while True:
+        active = training_active(job_id) if job_id is not None and not once else False
+        manifest = run_path / "manifest.json"
+        if not schedule_path(run_path).exists():
+            if once or not active:
+                raise ValueError("Training has not published an evaluation schedule.")
+        else:
+            evaluate_pending(run_path)
+            render_progress(run_path)
+            data = progress_data(run_path)
+            print(json.dumps({
+                "event": "evaluation_progress", "latest_evaluated": data["latest_evaluated_update"],
+                "latest_published": data["latest_published_update"],
+            }), flush=True)
+            status = read_json(manifest)["status"] if manifest.exists() else "running"
+            if once or not active or status in ("complete", "failed", "interrupted", "paused"):
+                failed = any(point["state"] == "failed" for point in data["points"])
+                missing = any(point["state"] != "complete" for point in data["points"])
+                return {"state": "finished_with_errors" if failed else "incomplete" if missing else "complete",
+                        "training_state": status}
+        Event().wait(poll_seconds)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--reference", type=Path, required=True)
-    parser.add_argument("--training-job", type=int, required=True)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--reference", type=Path)
+    parser.add_argument("--training-job", type=int)
     parser.add_argument("--poll-seconds", type=float, default=5)
+    parser.add_argument("--once", action="store_true", help="Evaluate only published requests, then exit.")
+    parser.add_argument("--legacy-latest", action="store_true", help="Explicit opt-in for old rolling-checkpoint runs.")
     args = parser.parse_args()
     if args.poll_seconds <= 0:
         parser.error("--poll-seconds must be positive")
+    if not args.legacy_latest:
+        if args.output is not None or args.reference is not None:
+            parser.error("Scheduled evaluation writes inside the run and uses its pinned teacher reference.")
+        if args.training_job is None and not args.once:
+            parser.error("Provide --training-job or --once.")
+        from src.training.evaluation import evaluation_lock
+        with evaluation_lock(args.run / "progress" / "watcher"):
+            status = monitor_scheduled(args.run.resolve(), args.training_job,
+                                       poll_seconds=args.poll_seconds, once=args.once)
+        return 0 if status["state"] == "complete" else 1
+    if args.output is None or args.reference is None or args.training_job is None:
+        parser.error("Legacy mode requires --output, --reference and --training-job.")
     import fcntl
     import torch
 

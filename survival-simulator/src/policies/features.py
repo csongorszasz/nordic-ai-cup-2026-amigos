@@ -12,9 +12,11 @@ from src.utils.DTOs import ActionRequest, ObservationResponse, StepResponse
 
 
 FEATURE_VERSION = "structured-v1"
+PUBLIC_FEATURE_VERSION = "structured-public-v2"
 ENTITY_TYPES = ("Fruit", "Tree", "Predator", "Agent", "Edge")
 BIOMES = tuple(BIOME_MOVEMENT)
 SCALAR_DIM = 22
+PUBLIC_SCALAR_DIM = SCALAR_DIM + 3
 ENTITY_DIM = 10
 
 
@@ -126,11 +128,12 @@ def parse_entities(agent: ObservationResponse) -> tuple[Entity, ...]:
 
 def encode_step(
     step: StepResponse, previous_actions: Mapping[int, ActionRequest] | None = None, *,
-    validate: bool = True,
+    validate: bool = True, public_context: bool = False,
 ) -> FeatureBatch:
     if validate:
         validate_step(step)
     previous_actions = previous_actions or {}
+    ranks = {agent_id: index for index, agent_id in enumerate(sorted(a.agent_id for a in step.agent_status))}
     scalars, features, types, owners = [], [], [], []
     for index, agent in enumerate(step.agent_status):
         previous = previous_actions.get(agent.agent_id)
@@ -140,12 +143,16 @@ def encode_step(
              math.cos(previous.turn_angle), float(previous.spawn_agent)]
             if previous is not None else [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
         )
+        public = [
+            math.log1p(agent.agent_id), step.score / 3000.0,
+            ranks[agent.agent_id] / max(1, len(ranks) - 1),
+        ] if public_context else []
         scalars.append([
             agent.energy / 500.0, agent.energy / agent.max_energy, agent.age / 120.0,
             agent.speed / 20.0, agent.sprint_speed / 40.0, agent.hearing_radius / 100.0,
             agent.vision_range / 400.0, agent.vision_angle / math.pi,
             agent.max_energy / 1000.0, step.sim_time / 3000.0, math.log1p(step.n_agents) / 5.0,
-            *(float(agent.biome == biome) for biome in BIOMES), *history,
+            *(float(agent.biome == biome) for biome in BIOMES), *public, *history,
         ])
         for entity in parse_entities(agent):
             if entity.segment is not None:
@@ -161,7 +168,9 @@ def encode_step(
             features.append(row)
             types.append(ENTITY_TYPES.index(entity.kind))
             owners.append(index)
-    scalar_array = np.asarray(scalars, dtype=np.float32).reshape(-1, SCALAR_DIM)
+    scalar_array = np.asarray(scalars, dtype=np.float32).reshape(
+        -1, PUBLIC_SCALAR_DIM if public_context else SCALAR_DIM,
+    )
     entity_array = np.asarray(features, dtype=np.float32).reshape(-1, ENTITY_DIM)
     if not np.isfinite(scalar_array).all() or not np.isfinite(entity_array).all():
         raise ValueError("Encoded features contain non-finite or overflowing values.")

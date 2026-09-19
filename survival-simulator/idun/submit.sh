@@ -60,10 +60,35 @@ sync_code() {
     echo "Sync complete."
 }
 
+sync_training_release() {
+    # A reviewed run gets its own immutable source directory, not the live shared tree.
+    local plan="$1"
+    local plan_id
+    plan_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["plan_id"])' "$plan")
+    [[ "$plan_id" =~ ^[a-f0-9]{64}$ ]] || { echo "Invalid run-plan ID"; exit 1; }
+    local base="$REMOTE_DIR"
+    local release="${base}/releases/${plan_id}"
+    if ssh "$REMOTE" "test -d ${release}"; then
+        echo "Reusing frozen release ${plan_id}"
+    else
+        local staging="${base}/releases/.upload-${plan_id}-$$"
+        ssh "$REMOTE" "mkdir -p ${staging} ${base}/training-results ${base}/benchmark-results"
+        rsync -az --exclude='.git' --exclude='__pycache__' --exclude='.venv' \
+            --exclude='training-results' --exclude='benchmark-results' --exclude='logs' \
+            "${PROJECT_ROOT}/" "${REMOTE}:${staging}/"
+        rsync -az "$plan" "${REMOTE}:${staging}/run-plan.json"
+        ssh "$REMOTE" "ln -s ${base}/training-results ${staging}/training-results && \
+            ln -s ${base}/benchmark-results ${staging}/benchmark-results && \
+            mv -T ${staging} ${release}"
+    fi
+    REMOTE_DIR="$release"
+}
+
 submit_job() {
     # $1 = slurm filename, rest = script args
     local script="$1"; shift || true
-    local args="$*"
+    local args
+    printf -v args '%q ' "$@"
     local out
     out=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/${script} ${args}")
     echo "$out"
@@ -104,12 +129,24 @@ case "$ACTION" in
         ;;
 
     train)
-        check_ssh; sync_code
         shift || true
         job_config="${1:-configs/ppo-gru.json}"
         job_name="${2:-train}"
         shift 2 2>/dev/null || true
-        submit_job job_train.slurm "${job_config} ${job_name} $*"
+        plan=""
+        extras=()
+        while (( $# )); do
+            if [[ "$1" == "--run-plan" ]]; then
+                [[ $# -ge 2 ]] || { echo "--run-plan needs a path"; exit 1; }
+                plan="$2"; shift 2
+            else
+                extras+=("$1"); shift
+            fi
+        done
+        [[ -f "$plan" ]] || { echo "Training requires a user-reviewed --run-plan file; nothing submitted."; exit 1; }
+        check_ssh
+        sync_training_release "$plan"
+        submit_job job_train.slurm "$job_config" "$job_name" --run-plan run-plan.json "${extras[@]}"
         ;;
 
     benchmark)

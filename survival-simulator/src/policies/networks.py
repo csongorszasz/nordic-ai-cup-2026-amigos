@@ -9,7 +9,7 @@ import torch
 from torch import Tensor, nn
 
 from src.policies.config import ModelConfig
-from src.policies.features import ENTITY_DIM, ENTITY_TYPES, SCALAR_DIM, FeatureBatch
+from src.policies.features import ENTITY_DIM, ENTITY_TYPES, SCALAR_DIM, PUBLIC_SCALAR_DIM, FeatureBatch
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,8 @@ class PolicyNetwork(nn.Module):
             nn.Sequential(nn.Linear(ENTITY_DIM, entity), nn.SiLU(), nn.Linear(entity, entity), nn.SiLU())
             for _ in ENTITY_TYPES
         ])
-        self.scalar_encoder = nn.Sequential(nn.Linear(SCALAR_DIM, hidden), nn.SiLU())
+        self.scalar_dim = PUBLIC_SCALAR_DIM if config.public_context else SCALAR_DIM
+        self.scalar_encoder = nn.Sequential(nn.Linear(self.scalar_dim, hidden), nn.SiLU())
         self.attention_queries = nn.ModuleList(
             [nn.Linear(hidden, entity) for _ in ENTITY_TYPES] if config.encoder == "attention" else []
         )
@@ -46,7 +47,8 @@ class PolicyNetwork(nn.Module):
         )
         self.mean_head = nn.Linear(hidden, 3)
         self.spawn_head = nn.Linear(hidden, 1)
-        self.log_std_parameter = nn.Parameter(torch.full((3,), math.log(9 / 5)))
+        fraction = (config.initial_log_std - config.log_std_min) / (config.log_std_max - config.log_std_min)
+        self.log_std_parameter = nn.Parameter(torch.full((3,), math.log(fraction / (1 - fraction))))
         self.critic = nn.Sequential(
             nn.Linear(hidden * (2 if config.critic == "team" else 1), hidden), nn.SiLU(),
             nn.Linear(hidden, 1),
@@ -66,7 +68,7 @@ class PolicyNetwork(nn.Module):
             raise ValueError("Entity features must have shape [M, ENTITY_DIM].")
         entities = batch.entities.shape[0]
         for name, shape, integer in (
-            ("scalars", (count, SCALAR_DIM), False),
+            ("scalars", (count, self.scalar_dim), False),
             ("entities", (entities, ENTITY_DIM), False),
             ("entity_types", (entities,), True), ("entity_owners", (entities,), True),
         ):
@@ -168,7 +170,8 @@ class PolicyNetwork(nn.Module):
             value = local_values.mean() if features.shape[0] else local_values.sum()
         output = PolicyOutput(
             self.mean_head(actor),
-            (-5 + 7 * self.log_std_parameter.sigmoid()).expand(features.shape[0], 3),
+            (self.config.log_std_min + (self.config.log_std_max - self.config.log_std_min)
+             * self.log_std_parameter.sigmoid()).expand(features.shape[0], 3),
             self.spawn_head(actor).squeeze(-1), value, features,
         )
         if any(not torch.isfinite(value).all().item() for value in (

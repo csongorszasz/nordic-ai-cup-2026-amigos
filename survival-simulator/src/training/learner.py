@@ -10,7 +10,7 @@ import torch
 from src.policies.config import ExperimentConfig
 from src.policies.networks import PolicyNetwork
 from src.training.imitation import ImitationDataset, dagger_schedule, train_imitation
-from src.training.ppo import ACTOR_DIVISOR, RunningReturnStats, train_ppo
+from src.training.ppo import RunningReturnStats, teacher_regularization_weight, train_ppo
 from src.training.rollout import RolloutCollector
 
 
@@ -34,6 +34,8 @@ def run_learning(
     start_update: int = 0,
     training_state: dict | None = None,
     dataset_callback: Callable[[dict], None] | None = None,
+    update_callback: Callable[[dict], None] | None = None,
+    prior_native_ticks: int = 0,
 ) -> dict:
     """Run to TARGET total updates, checkpointing after each successful update.
 
@@ -82,6 +84,7 @@ def run_learning(
         ):
             raise ValueError("Saved learning counters or collector state are invalid.")
         normalizer.load_state_dict(training_state["value_normalizer"])
+        prior_native_ticks = training_state.get("prior_native_ticks", 0)
         if dataset is not None:
             dataset.load_state_dict(training_state["imitation_dataset"])
     if dataset is not None:
@@ -95,7 +98,7 @@ def run_learning(
     emit_checked({
         "event": "learning_semantics", "mode": config.mode,
         "start_update": start_update, "target_total_updates": config.updates,
-        "raw_native_team_rewards": True, "actor_divisor": ACTOR_DIVISOR,
+        "raw_native_team_rewards": True, "actor_divisor": config.ppo.actor_divisor,
         "entropy": "per_agent_mean_analytic_latent_surrogate_then_mean_team_ticks",
         "value_normalization": "scale_squared_raw_errors_only_std_floor_1",
         "recurrence": "detached_collected_boundary_then_identity_aligned_truncated_BPTT",
@@ -107,11 +110,18 @@ def run_learning(
     last_metrics = {}
     with RolloutCollector(config, network, emit=emit_checked, state=collector_state) as collector:
         for update in range(start_update, config.updates):
+            if config.budget and (
+                collector.native_tick_count + config.resources.workers
+                * config.rollout_steps * (config.resources.action_repeat + 1)
+                > config.budget.max_native_ticks
+            ):
+                raise ValueError("The next rollout would exceed the reviewed native-tick budget.")
             teacher_probability = 0.0
             if dataset is not None:
                 teacher_probability, dagger_round = dagger_schedule(config, update, dagger_round)
             rollout = collector.collect(
                 config.rollout_steps, policy_version=update, teacher_probability=teacher_probability,
+                label_teacher=dataset is not None or teacher_regularization_weight(config, update) > 0,
             )
             if not rollout.frame_count:
                 raise ValueError("Collection produced no actionable frames; the update cannot succeed.")
@@ -141,6 +151,8 @@ def run_learning(
                 "next_update": update + 1, "optimizer_steps": optimizer_steps,
                 "dagger_round": dagger_round, "collector": collector.state_dict(),
                 "value_normalizer": normalizer.state_dict(),
+                "native_ticks_total": collector.native_tick_count,
+                "prior_native_ticks": prior_native_ticks,
             }
             if dataset is not None:
                 state["imitation_dataset"] = dataset.state_dict()
@@ -154,6 +166,8 @@ def run_learning(
                 }
                 dataset_callback(snapshot)
             emit_checked(event)
+            if update_callback is not None:
+                update_callback(state)
         result = {
             "mode": config.mode, "next_update": config.updates,
             "updates_completed_this_run": config.updates - start_update,
@@ -161,6 +175,8 @@ def run_learning(
             "optimizer_steps_this_run": optimizer_steps - initial_optimizer_steps,
             "collection_frames": collector.frame_count, "seed_index": collector.seed_index,
             "completed_episodes": collector.completed_episodes,
+            "native_ticks_total": collector.native_tick_count,
+            "prior_native_ticks": prior_native_ticks,
             "environments_reset_on_resume": training_state is not None,
             "last_update": last_metrics,
         }

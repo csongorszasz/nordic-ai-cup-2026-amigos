@@ -9,7 +9,9 @@ import torch
 
 from src.policies.actions import ACTION_VERSION, imitation_loss
 from src.policies.config import ExperimentConfig
-from src.policies.features import ENTITY_DIM, FEATURE_VERSION, SCALAR_DIM, FeatureBatch
+from src.policies.features import (
+    ENTITY_DIM, FEATURE_VERSION, PUBLIC_FEATURE_VERSION, SCALAR_DIM, PUBLIC_SCALAR_DIM, FeatureBatch,
+)
 from src.policies.networks import PolicyNetwork
 from src.training.rollout import Rollout, RolloutFrame, require_finite, sequence_chunks, unroll_sequence
 from src.utils.DTOs import ActionRequest, StepResponse
@@ -132,7 +134,7 @@ def _restore_frame(state: dict) -> RolloutFrame:
     count, entities = len(agent_ids), len(arrays["entities"])
     if (
         not count or len(set(agent_ids)) != count
-        or arrays["scalars"].shape != (count, SCALAR_DIM)
+        or arrays["scalars"].shape not in ((count, SCALAR_DIM), (count, PUBLIC_SCALAR_DIM))
         or arrays["entities"].shape != (entities, ENTITY_DIM)
         or arrays["entity_types"].shape != (entities,)
         or arrays["entity_owners"].shape != (entities,)
@@ -244,7 +246,10 @@ class ImitationDataset:
         """
         return {
             "format": "imitation-dataset-json", "version": 1,
-            "feature_version": FEATURE_VERSION, "action_version": ACTION_VERSION,
+            "feature_version": (
+                PUBLIC_FEATURE_VERSION if self._frames and self._frames[0].features.scalars.shape[1] == PUBLIC_SCALAR_DIM
+                else FEATURE_VERSION
+            ), "action_version": ACTION_VERSION,
             "max_frames": self.max_frames, "total_seen": self.total_seen,
             "evicted_frames": self.evicted_frames,
             "eviction_policy": "oldest_collected_team_tick_first",
@@ -255,7 +260,7 @@ class ImitationDataset:
         """Rebuild bounded replay from json.loads of a compatible artifact."""
         if (
             snapshot.get("format") != "imitation-dataset-json" or snapshot.get("version") != 1
-            or snapshot.get("feature_version") != FEATURE_VERSION
+            or snapshot.get("feature_version") not in (FEATURE_VERSION, PUBLIC_FEATURE_VERSION)
             or snapshot.get("action_version") != ACTION_VERSION
             or snapshot.get("max_frames") != self.max_frames
         ):
