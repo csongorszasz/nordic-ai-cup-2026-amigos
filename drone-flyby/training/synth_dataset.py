@@ -159,7 +159,7 @@ def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: boo
         manual = json.loads(manual_path.read_text())
 
     by_class: dict[str, list[np.ndarray]] = {name: [] for name in OBJECT_CLASSES}
-    for entry in index:
+    for entry in index:   # LEAN_OF keeps where each cut-out was photographed, for --lean-aware
         if entry.get('truncated') and not include_truncated:
             continue
         if entry.get('suspect') and not include_suspect and entry['file'] not in manual:
@@ -168,6 +168,8 @@ def load_sprites(sprite_dir: Path, include_suspect: bool, include_truncated: boo
         if image is None or image.shape[2] != 4 or image.shape[0] < 4 or image.shape[1] < 4:
             continue
         by_class[entry['class']].append(image)
+        x1, y1, x2, y2 = entry['bbox']
+        LEAN_OF[id(image)] = lean_at((x1 + x2) / 2, (y1 + y2) / 2)[1]
     return {name: sprites for name, sprites in by_class.items() if sprites}
 
 
@@ -198,12 +200,22 @@ def pick_model_sprite(bank, cx: float, cy: float, rng: random.Random):
     return min(candidates, key=cost)
 
 
-def transform_sprite(sprite: np.ndarray, rng: random.Random):
-    """Random rotation, scale and flip. Returns the RGBA sprite, still tight around its alpha."""
+def transform_sprite(sprite: np.ndarray, rng: random.Random, spot=None):
+    """Random rotation, scale and flip. Returns the RGBA sprite, still tight around its alpha.
+
+    With LEAN_AWARE and a spot, the turn is not random: the cut-out is turned by as much as the
+    camera's lean direction differs between where it was photographed and where it is pasted, so
+    a tall object still leans away from the nadir point. Its yaw ends up arbitrary, which any
+    object's is anyway.
+    """
+    source_lean = LEAN_OF.get(id(sprite))
     if rng.random() < 0.5:
         sprite = cv2.flip(sprite, 1)
+        source_lean = None if source_lean is None else (-source_lean) % 360
     scale = rng.uniform(0.75, 1.35)
     angle = rng.uniform(0, 360)
+    if LEAN_AWARE and spot is not None and source_lean is not None:
+        angle = (lean_at(*spot)[1] - source_lean) % 360 + rng.uniform(-8, 8)
 
     h, w = sprite.shape[:2]
     matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, scale)
@@ -338,6 +350,8 @@ def overlaps(box, placed, margin: int = 6) -> bool:
 PARTNER_MAX_HIDDEN = 1.0   # share of a neighbour's box its anchor may cover (--partner-max-hidden)
 CUTOUTS_ONLY = set()       # classes pasted only from the real cut-outs (--cutouts-only)
 MODELS_ONLY = set()        # classes pasted only from the 3D-model renders (--models-only)
+LEAN_AWARE = False         # turn cut-outs so they lean away from the nadir point (--lean-aware)
+LEAN_OF: dict = {}         # id(sprite image) -> the lean direction where it was photographed
 
 
 def hidden_share(box, other) -> float:
@@ -378,7 +392,7 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
         if use_model:
             sprite, _, _, yaw = pick_model_sprite(model_sprites[name], cx, cy, rng)
         else:
-            sprite = transform_sprite(rng.choice(sprites[name]), rng)
+            sprite = transform_sprite(rng.choice(sprites[name]), rng, (cx, cy))
             if sprite is None:
                 return
         h, w = sprite.shape[:2]
@@ -441,13 +455,15 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
     for class_name in wanted:
         use_model = class_name in model_sprites and class_name not in CUTOUTS_ONLY and (
             class_name not in sprites or class_name in MODELS_ONLY or rng.random() < model_share)
-        sprite = None if use_model else transform_sprite(rng.choice(sprites[class_name]), rng)
-        if sprite is None and not use_model:
-            continue
+        sprite = None
         for _ in range(30 if ground is None else 80):  # try a few spots before giving up on this object
             cx, cy = pick_spot(ground, rng)
             if use_model:  # the spot decides the pose: pick the matching render
                 sprite, _, _, yaw = pick_model_sprite(model_sprites[class_name], cx, cy, rng)
+            else:          # and how much a cut-out is turned, with --lean-aware
+                sprite = transform_sprite(rng.choice(sprites[class_name]), rng, (cx, cy))
+                if sprite is None:
+                    continue
             h, w = sprite.shape[:2]
             if h >= SOURCE_H or w >= SOURCE_W:
                 break
@@ -505,6 +521,9 @@ def main():
     parser.add_argument('--cutouts-only', nargs='*', default=[], metavar='CLASS',
                         help='paste these classes only from the real cut-outs (their 3D renders look wrong: '
                              'helicopter without rotor, launchers blurred, ta-ta a blob)')
+    parser.add_argument('--lean-aware', action='store_true',
+                        help='turn cut-outs by the difference in the camera\'s lean direction instead of at '
+                             'random, so tall ones lean away from the nadir point as the real ones do')
     parser.add_argument('--models-only', nargs='*', default=[], metavar='CLASS',
                         help='paste these classes only from the 3D-model renders (the helicopter cut-outs lost '
                              'their rotor to GrabCut)')
@@ -522,6 +541,8 @@ def main():
     PARTNER_MAX_HIDDEN = args.partner_max_hidden
     CUTOUTS_ONLY.update(args.cutouts_only)
     MODELS_ONLY.update(args.models_only)
+    global LEAN_AWARE
+    LEAN_AWARE = args.lean_aware
     rng = random.Random(args.seed)
     np.random.seed(args.seed)
 
