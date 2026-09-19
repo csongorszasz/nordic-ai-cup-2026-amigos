@@ -1,7 +1,3 @@
 {
- "jet_plane": "no more see-through fuselage (faces drawn from both sides); mid grey, dark grey tail",
- "large_tower": "cabin walls light wooden planks; roof, legs and stairs darker",
- "small_launcher": "launcher body (the centre) much darker, missiles and the disc under it a little darker",
- "small_tower": "rebuilt in plain colours: grey concrete base + small second slab with a crate, light green cabin, dark green roof with darker edges",
- "tank": "long barrel added, a third of the hull beyond its front (dark olive)"
+ "large_tower": "cabin walls light orange-brown wooden planks; roof, legs and stairs darker"
 }

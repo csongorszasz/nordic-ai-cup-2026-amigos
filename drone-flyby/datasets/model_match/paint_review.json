@@ -10,9 +10,9 @@
   "at": "2026-09-19T12:51:43"
  },
  "jet_plane": {
-  "status": "note",
+  "status": "proposed",
   "note": "the proposed is almost fully white xd no sense, btw the current one is transparent/has wholes in the center, which i guess ti will make it have the colors of the floor instead of the normal gray+darkgreyinthetail it should really have",
-  "at": "2026-09-19T12:50:49"
+  "at": "2026-09-19T13:26:45"
  },
  "large_launcher": {
   "status": "note",
@@ -21,8 +21,8 @@
  },
  "large_tower": {
   "status": "note",
-  "note": "again, the found in copenhagen are quite darker, so the curret one one is better than the proposed, itheree seems to bsome lighter wood planks in the walls of the tower, but onl on the walls, te ceiling +legs+stairs are darker. the curren one has similar dark pattern everywhere so thats soethign to try improving",
-  "at": "2026-09-19T12:54:56"
+  "note": "again, the found in copenhagen are quite darker, so the curret one one is better than the proposed, itheree seems to bsome lighter wood planks in the walls of the tower, but onl on the walls, te ceiling +legs+stairs are darker. the curren one has similar dark pattern everywhere so thats soethign to try improving. NEW NOTE: the walls you put are completely white, we can put them some lightorange/brownish",
+  "at": "2026-09-19T13:27:30"
  },
  "medium_launcher": {
   "status": "note",
@@ -40,9 +40,9 @@
   "at": "2026-09-19T13:00:04"
  },
  "small_launcher": {
-  "status": "note",
+  "status": "proposed",
   "note": "the copenhagen ones sem to be darker allowing more shape distinction, and not just hte lightgreen splat of helsinki, the current model seems good but i would make darker the cilinder in the center maybe",
-  "at": "2026-09-19T13:01:53"
+  "at": "2026-09-19T13:27:41"
  },
  "small_plane": {
   "status": "current",
@@ -50,9 +50,9 @@
   "at": "2026-09-19T13:07:43"
  },
  "small_tower": {
-  "status": "note",
+  "status": "proposed",
   "note": "the current prite is awful, it is painting everyting,. the ceiling should be darkgreen with the borders a bit darker, then the lightgreen and the ground concrete baasement floor is actually flat grey, and it is not completely squared, it has an extra small grey concrete basement floor with some small shit onit, fi you can add 3d stuff to the model for having that also, should be better in conjunction with the needed repainting as stated",
-  "at": "2026-09-19T13:04:49"
+  "at": "2026-09-19T13:27:59"
  },
  "ta-ta": {
   "status": "note",
@@ -60,9 +60,9 @@
   "at": "2026-09-19T13:06:06"
  },
  "tank": {
-  "status": "note",
+  "status": "proposed",
   "note": "the current 3d model doesnt have the huge long cannon poping out of the front part in the top view, as the dataset has in both, again a bit darker everything in copenhagen",
-  "at": "2026-09-19T13:07:02"
+  "at": "2026-09-19T13:28:06"
  },
  "condor": {
   "status": "current",

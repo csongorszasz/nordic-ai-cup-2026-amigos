@@ -6,7 +6,7 @@
    0.2,
    0.2
   ],
-  "length_m": 8.7,
+  "length_m": 11.48,
   "mean_colour_error": 32.3,
   "mean_iou": 0.84,
   "mesh": "models/tank/churchill/scene.gltf",
@@ -15,7 +15,7 @@
    98.8,
    52.3
   ],
-  "paint": "projected",
+  "paint": "edited",
   "per_sprite": [
    {
     "colour_error": 33.0,
@@ -91,6 +91,7 @@
    }
   ],
   "tilt": 24.0,
-  "up": "auto"
+  "up": "auto",
+  "edits": "long barrel added, a third of the hull beyond its front (dark olive)"
  }
 }

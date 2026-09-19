@@ -74,6 +74,8 @@ def two_sided(mesh):
     out = trimesh.Trimesh(mesh.vertices, faces, process=False)
     if isinstance(visual, trimesh.visual.TextureVisuals):
         out.visual = trimesh.visual.TextureVisuals(uv=visual.uv, image=visual.material.image)
+    elif visual.kind == 'face':  # plain colours (shaded()): the back faces take their front's colour
+        out.visual = trimesh.visual.ColorVisuals(out, face_colors=np.vstack([visual.face_colors, visual.face_colors]))
     return out
 
 
@@ -124,8 +126,8 @@ def large_tower(meshes, rng):
     cabin = upright & (centres[:, 2] > top * 0.75) & (centres[:, 2] < top * 0.93)
     walls, rest = split(mesh, cabin)
     rest = retextured(rest, darker(0.6))
-    planks = shaded(walls, (200, 170, 120), rng, variation=0.12)
-    return [two_sided(rest), two_sided(planks)], 'cabin walls light wooden planks; roof, legs and stairs darker'
+    planks = shaded(walls, (175, 118, 65), rng, variation=0.12)  # light orange-brown wood (Juan: not white)
+    return [two_sided(rest), two_sided(planks)], 'cabin walls light orange-brown wooden planks; roof, legs and stairs darker'
 
 
 def small_launcher(meshes, rng):

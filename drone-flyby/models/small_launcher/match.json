@@ -15,7 +15,7 @@
    176.3,
    132.6
   ],
-  "paint": "projected",
+  "paint": "edited",
   "per_sprite": [
    {
     "colour_error": 9.2,
@@ -91,6 +91,7 @@
    }
   ],
   "tilt": 4.0,
-  "up": "auto"
+  "up": "auto",
+  "edits": "launcher body (the centre) much darker, missiles and the disc under it a little darker"
  }
 }

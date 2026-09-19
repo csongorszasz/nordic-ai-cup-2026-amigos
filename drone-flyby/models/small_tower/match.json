@@ -6,7 +6,7 @@
    2.733,
    2.733
   ],
-  "length_m": 7.2,
+  "length_m": 9.36,
   "mean_colour_error": 24.9,
   "mean_iou": 0.854,
   "mesh": "models/small_tower/procedural_tower/tower.glb",
@@ -15,7 +15,7 @@
    -37.5,
    -40.0
   ],
-  "paint": "projected",
+  "paint": "edited",
   "per_sprite": [
    {
     "colour_error": 24.8,
@@ -91,7 +91,8 @@
    }
   ],
   "tilt": 16.0,
-  "up": "auto"
+  "up": "auto",
+  "edits": "rebuilt in plain colours: grey concrete base + small second slab with a crate, light green cabin, dark green roof with darker edges"
  },
  "watchtower": {
   "dropped_parts": [],
