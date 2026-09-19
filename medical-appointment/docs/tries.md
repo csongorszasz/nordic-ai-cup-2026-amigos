@@ -1162,6 +1162,31 @@ Primary model candidates reviewed September 19, 2026:
 - The older backlog's unspecified PriMock57 **turbo** checkpoint remains
   unverified. Do not turn that note into a claimed available model or result.
 
+- **Vocabulary diagnostic outcome:** `asr-med-vocabulary-2ef438ab`
+  completed all nine transcriptions using CPU `int8_float32`, with valid
+  word times. Initial context did not correct the examined medication
+  spellings. Hotwords changed `panadil` to `Panodil` in sample_5, but
+  left `Activel` unchanged. CPU control already differed from cached GPU
+  output, so those results cannot be transferred silently to GPU.
+- Hotwords omitted the repeated clause "spread around the body rather than
+  in one place" at 80.88-84.04s in sample_20, present in both unprompted
+  transcripts. Other wording still expressed widespread pain, and this
+  omission overlapped no supplied positive reference span. It is a
+  fidelity warning, not proof of a composite-score regression.
+  Negation tokens stayed unchanged; initial context rendered the digit
+  `8` as `eight`, a formatting difference rather than a detected dose error.
+  No glossary drug was introduced in the sample_4 comparison.
+- Keep hints disabled in the qualified service. Next compare the verified
+  medical checkpoint with generic **full large-v3**, not only turbo, to
+  avoid attributing decoder-size differences to medical adaptation.
+  Pin `Na0s/Medical-Whisper-Large-v3` revision
+  `9943ad3338e2ffdcdadb193d9e2abc9feeded448` (public, model-card Apache-2.0).
+  Its two safe-tensor shards total about 6.17GB; cache the tokenizer's
+  `merges.txt` as well, but not `training_args.bin`. Checkpoint metadata
+  includes alignment heads, whose conversion must be verified before
+  claiming usable word timestamps. Generic full-v3 CT2 control is already
+  cached at `edaa852ec7e145841d8ffdb056a99866b5f0a478`.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

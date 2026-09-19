@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 
 
-PATTERNS = ("*.json", "*.jinja", "*.safetensors")
+PATTERNS = ("*.json", "*.jinja", "*.safetensors", "merges.txt")
 
 
 def planned_files(siblings, maximum_bytes):
