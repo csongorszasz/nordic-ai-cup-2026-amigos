@@ -751,6 +751,12 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   frozen. Add an adapted-generation check on a training-only example before
   the held-out pilot; this does not select a checkpoint using held-out labels.
 
+- **Adapted generation passed:** `lora-generation-smoke-efcaa693`, same
+  finite loss and 25.05 GB peak. After the optimizer update, the adapter
+  produced valid JSON with a verbatim quote found in its training-only
+  probe transcript. Proceed to the fixed two-epoch, fold-0 pilot; do not
+  interpret these feasibility checks as a generalization result.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
