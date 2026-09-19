@@ -43,6 +43,9 @@ IMGSZ = int(os.environ.get('DRONE_IMGSZ', 960))  # model input side; above 960 e
 # found, but at 1600 the helicopter is lost (0.62 -> 0.01), so only these classes are kept
 # from it. 0 turns it off.
 SMALL_IMGSZ = int(os.environ.get('DRONE_SMALL_IMGSZ', 0))
+DETECT_TTA = os.environ.get('DRONE_TTA', '0') != '0'   # flipped and rescaled copies too (ultralytics augment): ~3x slower
+EXTRA_MODEL_PATHS = [p for p in os.environ.get('DRONE_EXTRA_MODELS', '').split(',') if p]   # boxes averaged with these
+ENSEMBLE_IOU = 0.55
 SMALL_CLASSES = os.environ.get('DRONE_SMALL_CLASSES', 'ta-ta,small_launcher,medium_launcher').split(',')
 USE_MEMORY = os.environ.get('DRONE_MEMORY', '1') != '0'
 CAMERA_POLICY = os.environ.get('DRONE_CAMERA', 'hybrid')  # 'hybrid', 'sweep' (L1 snake), 'l0' (always full view) or 'record'
@@ -112,12 +115,13 @@ if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540":
 # --------------------------------------------------------------------------- model
 
 _model = None
+_extra_models = []
 HALF = False
 _lock = threading.Lock()
 
 
 def _load_model():
-    global _model
+    global _model, _extra_models
     if not MODEL_PATH.exists():
         logger.error('No model at %s: serving empty detections', MODEL_PATH)
         return
@@ -133,20 +137,21 @@ def _load_model():
         _model.predict(dummy, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
         if SMALL_IMGSZ:
             _model.predict(dummy, imgsz=SMALL_IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
-    logger.info('Loaded %s', MODEL_PATH)
+    for path in EXTRA_MODEL_PATHS:
+        _extra_models.append(YOLO(path))
+        _extra_models[-1].predict(dummy, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)
+    logger.info('Loaded %s', str(MODEL_PATH) + ''.join(f' + {p}' for p in EXTRA_MODEL_PATHS))
 
 
 _load_model()
 
 
-def run_detector(image: np.ndarray, region: Tuple[int, int, int, int]) -> List[Tuple[str, float, np.ndarray]]:
-    """Detections on one view, as (class, confidence, box in source pixels)."""
-    if _model is None:
-        return []
-    results = [_model.predict(image, imgsz=IMGSZ, conf=DETECT_CONF, verbose=False, half=HALF)[0]]
+def _detect_with(model, image: np.ndarray, region) -> List[Tuple[str, float, np.ndarray]]:
+    kw = dict(conf=DETECT_CONF, verbose=False, half=HALF, augment=DETECT_TTA)
+    results = [model.predict(image, imgsz=IMGSZ, **kw)[0]]
     small = [OBJECT_CLASSES.index(c) for c in SMALL_CLASSES if c in OBJECT_CLASSES]
     if SMALL_IMGSZ and small and region[2] - region[0] > 960:  # a shrunk view
-        results.append(_model.predict(image, imgsz=SMALL_IMGSZ, conf=DETECT_CONF, classes=small, verbose=False, half=HALF)[0])
+        results.append(model.predict(image, imgsz=SMALL_IMGSZ, classes=small, **kw)[0])
         results[0] = results[0][[int(c) not in small for c in results[0].boxes.cls]] if len(results[0].boxes) else results[0]
     h, w = image.shape[:2]
     rx1, ry1, rx2, ry2 = region
@@ -162,6 +167,30 @@ def run_detector(image: np.ndarray, region: Tuple[int, int, int, int]) -> List[T
             box = np.array([rx1 + x1 * sx, ry1 + y1 * sy, rx1 + x2 * sx, ry1 + y2 * sy])
             out.append((OBJECT_CLASSES[cls], float(conf), box))
     return out
+
+
+def run_detector(image: np.ndarray, region: Tuple[int, int, int, int]) -> List[Tuple[str, float, np.ndarray]]:
+    """Detections on one view, as (class, confidence, box in source pixels)."""
+    if _model is None:
+        return []
+    out = _detect_with(_model, image, region)
+    if not _extra_models:
+        return out
+    # Several models (DRONE_EXTRA_MODELS): same-class boxes that overlap are one object, its box
+    # the confidence-weighted mean, its confidence the mean over all models (a miss counts 0).
+    for model in _extra_models:
+        out += _detect_with(model, image, region)
+    out.sort(key=lambda d: -d[1])
+    merged, n = [], 1 + len(_extra_models)
+    for cls, conf, box in out:
+        group = next((g for g in merged if g[0] == cls and _iou(g[2] / g[1], box) >= ENSEMBLE_IOU), None)
+        if group is None:
+            merged.append([cls, conf, box * conf, 1])
+        else:
+            group[1] += conf
+            group[2] = group[2] + box * conf
+            group[3] += 1
+    return [(cls, total / n, weighted / total) for cls, total, weighted, _ in merged]
 
 
 # --------------------------------------------------------------------------- memory
