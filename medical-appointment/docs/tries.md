@@ -1207,6 +1207,53 @@ Primary model candidates reviewed September 19, 2026:
   provenance before inference, and flag numeric/negation/word-time changes.
   This compares checkpoint candidates; it is not a human-reference WER
   measurement, a competition score, or a GPU latency qualification.
+- **Matched recognition outcome:** `medical-asr-compare-14aa54f5`
+  completed all six new transcriptions at CPU `int8_float32`, eight
+  threads, with valid word times and no hints. No convincing medication
+  spelling advantage appeared: medical full-v3 rendered the controls'
+  `Ibumetin` as `Ibumetan` in both medication clips. Both full-v3 models
+  rendered one `Pamol` mention as `Pamel`/`PAMEL`; neither solved the
+  examined Panodil/Activelle discrepancies.
+- Numeric differences observed were formatting (`2017` versus its spoken
+  words; `8` versus `eight`), and negation-token lists stayed unchanged.
+  Other wording differed, so this is not a WER ranking without human
+  reference transcripts. Medical full-v3 took 75.60-172.29s per clip on
+  these CPUs, compared with turbo's 30.73-70.12s and generic full-v3's
+  82.57-187.22s. Those CPU costs do not establish GPU latency, but plainly
+  do not qualify a CPU serving replacement under the request budget.
+- **Decision:** keep current turbo and hints disabled. Neither vocabulary
+  prompting nor the examined medical checkpoint has demonstrated a
+  downstream score gain. Continue investigating evidence selection/extent
+  rather than swapping ASR based on a model name or another corpus's WER.
+
+## Contextual local span risk (CPU feasibility)
+
+Timing-only replacement did not qualify, and the legacy refiner optimizes
+word-delta/token losses rather than the final interval reward. Test a
+different, bounded hypothesis: frozen public ModernBERT word features
+conditioned on the question, with a small residual start/end scorer trained
+against the **exact expected competition tIoU** over a finite local span
+lattice. This is a task-specific metric-risk adaptation, not a claim of
+reproduced SOTA.
+
+- Pin `answerdotai/ModernBERT-base` at
+  `8949b909ec900327062f0ebf497f51aef5e6f0c8`, CPU float32, offline, encoder
+  frozen. Never load the legacy full-data-trained checkpoint.
+- Candidates cover the existing quote plus/minus 24 words, retain the
+  corrected incumbent as candidate zero, use the unchanged +0.2s mapping,
+  and reject invalid/duplicate intervals. Inputs contain no gold bounds.
+- Zero-initialize the two linear boundary heads; an eight-word-distance
+  prior makes the untrained decoder retain every baseline span. Enumerate
+  ordered word pairs rather than independently choosing invalid endpoints.
+- Fixed seed 13/fold 0, thirty head-only epochs, learning rate 0.01,
+  weight decay 0.1, accumulation four. No held-out early stopping.
+  Exclude the four demonstration conversations and retain every validation
+  question and every frozen yes/no decision.
+- First run eight longest training windows for a two-epoch feasibility
+  smoke: exact token/word mapping without truncation, baseline preservation,
+  finite nonzero head updates and CPU resource accounting. Then one fixed
+  held-out pilot. Candidate oracles are explicitly gold-assisted
+  diagnostics, never achieved scores or inference applicability gates.
 
 ## ASR stream lifecycle check
 
