@@ -185,27 +185,32 @@ def test_rank_driver_retains_complete_outputs_and_distinguishes_smoke_from_quali
             assert predictions[0]["source_reason"] == "conversation_error_keep"
 
 
-def test_cache_verification_requests_only_the_explicit_safe_snapshot_subset(monkeypatch, tmp_path):
+@pytest.mark.parametrize("custom_model", [False, True])
+def test_cache_verification_requests_only_the_explicit_safe_snapshot_subset(monkeypatch, tmp_path, custom_model):
+    expected_model = "facebook/wav2vec2-base-960h" if custom_model else probe.MODEL
+    expected_revision = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156" if custom_model else probe.REVISION
+    options = {"model": expected_model, "revision": expected_revision} if custom_model else {}
     snapshot = tmp_path / "snapshot"
     snapshot.mkdir()
     (snapshot / "config.json").write_bytes(b"{}")
     (snapshot / "model.safetensors").write_bytes(b"weights")
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({
-        "model": probe.MODEL, "revision": probe.REVISION, "complete": True,
+        "model": expected_model, "revision": expected_revision, "complete": True,
         "inference_network_access": False, "path": str(snapshot),
         "files": [{"path": "config.json", "bytes": 2}, {"path": "model.safetensors", "bytes": 7}],
     }))
 
     def snapshot_download(model, *, revision, local_files_only, allow_patterns):
-        assert model == probe.MODEL and revision == probe.REVISION
+        assert model == expected_model and revision == expected_revision
         assert local_files_only is True
         assert allow_patterns == ["config.json", "model.safetensors"]
         return str(snapshot)
 
     monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(snapshot_download=snapshot_download))
-    proof = probe.verify_model_cache(manifest)
+    proof = probe.verify_model_cache(manifest, **options)
     assert proof["weights_sha256"] == hashlib.sha256(b"weights").hexdigest()
+    assert proof["model"] == expected_model and proof["revision"] == expected_revision
     (snapshot / "model.safetensors").write_bytes(b"truncated")
     with pytest.raises(ValueError, match="cache changed"):
-        probe.verify_model_cache(manifest)
+        probe.verify_model_cache(manifest, **options)

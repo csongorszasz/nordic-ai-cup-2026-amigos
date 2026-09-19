@@ -165,21 +165,21 @@ def ranked_prediction(row, units, scores, policy):
     }
 
 
-def verify_model_cache(path):
+def verify_model_cache(path, *, model=MODEL, revision=REVISION):
     from huggingface_hub import snapshot_download
 
     manifest = json.loads(path.read_text())
     if (
-        manifest.get("model") != MODEL or manifest.get("revision") != REVISION
+        manifest.get("model") != model or manifest.get("revision") != revision
         or manifest.get("complete") is not True or manifest.get("inference_network_access") is not False
     ):
-        raise ValueError("Source scoring requires the complete pinned offline model-cache manifest.")
+        raise ValueError("The experiment requires the complete pinned offline model-cache manifest.")
     snapshot = Path(snapshot_download(
-        MODEL, revision=REVISION, local_files_only=True,
+        model, revision=revision, local_files_only=True,
         allow_patterns=[entry["path"] for entry in manifest["files"]],
     ))
     if snapshot.resolve() != Path(manifest["path"]).resolve():
-        raise ValueError("The source ranker would load a different cached snapshot.")
+        raise ValueError("The experiment would load a different cached snapshot.")
     for entry in manifest["files"]:
         target = snapshot / entry["path"]
         if not target.is_file() or target.stat().st_size != entry["bytes"]:
@@ -189,7 +189,7 @@ def verify_model_cache(path):
     return {
         "cache_manifest_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "weights_sha256": weights_sha256,
-        "model": MODEL, "revision": REVISION, "path": str(snapshot),
+        "model": model, "revision": revision, "path": str(snapshot),
     }
 
 

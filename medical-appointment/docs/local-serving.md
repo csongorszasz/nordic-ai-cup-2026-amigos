@@ -256,6 +256,36 @@ and unchanged protected runtime versions, then writes
 `results/acoustic_environment.json`. Do not add that target to the live service
 or treat dependency preparation as an alignment-quality result.
 
+### Conditional CTC timing probe
+
+Cache `facebook/wav2vec2-base-960h` at
+`22aad52d435eb6dbaf354bdad9b0da84ce7d6156` through `idun\cache_model.py`,
+with a 500,000,000-byte ceiling. `benchmark_ctc.py` requires the frozen raw
+`--baseline`, accepted HTTP `--qualified` directory, `--cache-manifest`,
+and `--normalizer-manifest` from the acoustic dependency run. Use the verified
+training interpreter, eight CPU cores, and 16 GB in an isolated snapshot.
+Start with `--smoke` (three longest supplied conversations).
+
+The probe decodes each clip once, preserves all incumbent decisions and exact
+word anchors, and aligns a bounded context of eight words per side. Crop
+origins are on the global 320-sample grid; the 400-sample receptive field
+determines the actual frame count. It never scales frame indices by clip
+duration divided by frame count, pads the crop clock, or reapplies the
+Whisper +0.2 s correction to CTC timestamps.
+
+Numeric verbalization and unambiguous quantity-unit expansions retain their
+original ASR word owners. Leading decimals retain their value; unsupported
+forms such as medical alphanumeric codes are logged and keep the incumbent.
+Budget skips and operational failures remain in every scoring denominator.
+The primary output uses aligned frame-cell boundaries. At most eight acoustic
+positions per endpoint plus the unchanged incumbent form a separate diagnostic
+proposal set; its gold-assisted oracle is not a serving selector.
+
+`questions.json`, `proposals.json`, and `conversations.json` are persisted
+as complete conversations finish. Only the final `summary.json` certifies
+full requested coverage. CPU timings and separate-run latency sums never
+qualify deployment; `api.py`, `dtos.py`, and the active service remain unchanged.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

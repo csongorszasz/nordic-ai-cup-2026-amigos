@@ -1507,3 +1507,26 @@ Spoken-number normalization is prepared separately with
 `num2words` and its declared CLI dependency are installed; neither the shared
 serving environment nor the existing training overlay is upgraded. This
 preparation is not a boundary-quality result or an ASR replacement.
+
+- **Dependencies:** `acoustic-deps-03eed4e0`, CPU job `25407638`, completed
+  with `num2words 0.5.14` and `docopt 0.6.2` under its own dependency target.
+  Integer, fractional, and negative renderings were verified; protected model
+  and serving versions did not change.
+- **Model cache:** `cache-ctc-acoustic-4995ff87`, CPU job `25407752`,
+  completed with seven pinned safe inference files, **377,610,353 bytes**.
+  No alternate pickled weights or serving environment were installed.
+
+`answerers/acoustic_boundaries.py` and `benchmark_ctc.py` implement the bounded
+timing-only hypothesis. Freeze original word occurrences and decisions, use
+eight words of context per side and a 30-second maximum crop, and preserve the
+actual sample clock through model convolution. Numeric expansions keep their
+original word owner rather than inserting new ASR indices. Unsupported formats
+and budget limits explicitly keep the qualified baseline and remain scored.
+
+The initial primary policy is the CTC frame-cell interval with **no additional
+offset**. A separate, at-most-65-span proposal set retains the incumbent and
+uses bounded local acoustic activation quantiles; it is not a calibrated
+annotation posterior. The script rechecks the complete qualified replay before
+model loading, then reports exact matched scores, grouped uncertainty,
+eligibility/failure counts, model/runtime provenance, and component timing.
+No acoustic-quality result has been established merely by preparing this code.
