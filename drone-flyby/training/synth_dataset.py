@@ -282,7 +282,8 @@ def grade(background: np.ndarray, rng: random.Random):
 def load_background(path: Path):
     """(BGR frame, open-ground mask shrunk by GROUND_CLEARANCE_M, or None) for one background."""
     mask_path = path.with_name(path.stem + '_ground.png')
-    mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE) if mask_path.exists() else None
+    mask = None if IGNORE_GROUND else (
+        cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE) if mask_path.exists() else None)
     if mask is None:
         return cv2.imread(str(path)), None
     metres_per_px = METRES_PER_PIXEL * SOURCE_W / mask.shape[1]
@@ -351,6 +352,7 @@ PARTNER_MAX_HIDDEN = 1.0   # share of a neighbour's box its anchor may cover (--
 CUTOUTS_ONLY = set()       # classes pasted only from the real cut-outs (--cutouts-only)
 MODELS_ONLY = set()        # classes pasted only from the 3D-model renders (--models-only)
 LEAN_AWARE = False         # turn cut-outs so they lean away from the nadir point (--lean-aware)
+IGNORE_GROUND = False      # paste anywhere, ignoring the open-ground masks (--ignore-ground)
 LEAN_OF: dict = {}         # id(sprite image) -> the lean direction where it was photographed
 
 
@@ -521,6 +523,10 @@ def main():
     parser.add_argument('--cutouts-only', nargs='*', default=[], metavar='CLASS',
                         help='paste these classes only from the real cut-outs (their 3D renders look wrong: '
                              'helicopter without rotor, launchers blurred, ta-ta a blob)')
+    parser.add_argument('--ignore-ground', action='store_true',
+                        help='paste anywhere in the background, ignoring <name>_ground.png. The masks keep '
+                             'grass, fields and sand only (11-16%% of a frame), which forbids the tarmac and '
+                             'concrete the real objects actually stand on')
     parser.add_argument('--lean-aware', action='store_true',
                         help='turn cut-outs by the difference in the camera\'s lean direction instead of at '
                              'random, so tall ones lean away from the nadir point as the real ones do')
@@ -541,8 +547,9 @@ def main():
     PARTNER_MAX_HIDDEN = args.partner_max_hidden
     CUTOUTS_ONLY.update(args.cutouts_only)
     MODELS_ONLY.update(args.models_only)
-    global LEAN_AWARE
+    global LEAN_AWARE, IGNORE_GROUND
     LEAN_AWARE = args.lean_aware
+    IGNORE_GROUND = args.ignore_ground
     rng = random.Random(args.seed)
     np.random.seed(args.seed)
 
