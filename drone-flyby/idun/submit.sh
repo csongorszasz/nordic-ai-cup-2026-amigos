@@ -7,8 +7,10 @@
 #   bash idun/submit.sh setup                 # once: build the conda env on IDUN
 #   bash idun/submit.sh test                  # 20-min job: GPU, torch, ultralytics sanity
 #   bash idun/submit.sh run <command...>      # GPU job running any command in drone-flyby/
-#   bash idun/submit.sh train-synth [frames] [label]  # synthetic dataset + YOLO training, one job;
-#                                             # weights in runs/synth<frames>_<label>_<date>/
+#   bash idun/submit.sh train-synth [frames] [label] [model] [batch]
+#                                             # synthetic dataset + YOLO training, one job; weights in
+#                                             # runs/synth<frames>_<size>_<label>_<date>/. Jobs can run
+#                                             # side by side (each builds its own dataset).
 #   bash idun/submit.sh queue                 # your jobs
 #   bash idun/submit.sh logs [job_id]         # tail the latest (or one) job log
 #   bash idun/submit.sh scores [run]          # validation per epoch of the latest (or one) run
@@ -18,6 +20,7 @@
 # Examples:
 #   bash idun/submit.sh run python training/train_yolo.py --epochs 60 --batch 32
 #   bash idun/submit.sh train-synth 400
+#   bash idun/submit.sh train-synth 400 padded yolo11m
 #
 # Overrides:
 #   REMOTE=idun                        SSH alias from ~/.ssh/config
@@ -117,13 +120,19 @@ case "$ACTION" in
     train-synth)
         FRAMES="${2:-300}"
         LABEL="${3:-run}"
-        NAME="synth${FRAMES}_${LABEL}_$(date +%m%d-%H%M)"   # unique: never overwrites an earlier run
-        echo "Run name: ${NAME} (commit ${GIT_COMMIT})"
+        MODEL="${4:-yolo11s}"                 # yolo11n/s/m/l/x
+        BATCH="${5:-$([ "$MODEL" = yolo11s ] || [ "$MODEL" = yolo11n ] && echo 32 || echo 16)}"
+        NAME="synth${FRAMES}_${MODEL#yolo}_${LABEL}_$(date +%m%d-%H%M)"   # unique: never overwrites an earlier run
+        DATA="datasets/runs/${NAME}"          # per run, so jobs can run side by side
+        echo "Run name: ${NAME} (commit ${GIT_COMMIT}, batch ${BATCH})"
         check_ssh
         sync_code
+        # Pretrained weights come from the login node; compute nodes may have no internet.
+        ssh "$REMOTE" "cd ${REMOTE_DIR} && [ -s ${MODEL}.pt ] || curl -sSfL -o ${MODEL}.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/${MODEL}.pt"
         # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
         # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
-        submit job.slurm "python training/make_dataset.py --all-val --out datasets/helsinki_real && python training/synth_dataset.py --frames ${FRAMES} --val-dir datasets/helsinki_real/images/val && python training/train_yolo.py --data datasets/synth_yolo/data.yaml --epochs 60 --batch 32 --name ${NAME}"
+        # The generated images are deleted after a successful run (the seed rebuilds them).
+        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs 60 --batch ${BATCH} --name ${NAME} && rm -rf ${DATA}"
         ;;
 
     queue)

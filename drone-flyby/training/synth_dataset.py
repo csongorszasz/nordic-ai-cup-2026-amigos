@@ -424,7 +424,7 @@ def main():
           f'model renders for {len(model_sprites)} ({sum(map(len, model_sprites.values()))} sprites)'
           + (f'; missing: {", ".join(missing)}' if missing else ''))
 
-    out = Path(args.out)
+    out = Path(args.out).resolve()  # data.yaml needs it absolute; YOLO reads relative paths from its own datasets dir
     if args.preview:
         preview_dir = out.parent / 'synth_preview'
         preview_dir.mkdir(parents=True, exist_ok=True)
