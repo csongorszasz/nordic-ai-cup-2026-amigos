@@ -156,6 +156,17 @@ medical and generic full-v3 while retaining the prior turbo control.
 Review differences against audio; none of these transcripts is treated as
 human ground truth.
 
+### CPU local span-risk pilot
+
+`train_local_span_risk.py --baseline <frozen-run>/results/benchmark --smoke`
+checks the frozen public ModernBERT encoder and zero-initialized residual
+word-boundary heads. Use the verified training interpreter in a CPU
+snapshot with eight cores / 16 GB. Remove `--smoke` in a fresh run for the
+fixed fold-0 pilot; no smoke weights or held-out checkpoint selection are
+used. The encoder is frozen and labels only enter the training risk and
+final scoring. Every baseline decision remains fixed; a gold-assisted
+candidate oracle is explicitly separate from achieved performance.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

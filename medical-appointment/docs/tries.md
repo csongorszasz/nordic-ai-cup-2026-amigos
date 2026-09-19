@@ -1254,6 +1254,15 @@ reproduced SOTA.
   finite nonzero head updates and CPU resource accounting. Then one fixed
   held-out pilot. Candidate oracles are explicitly gold-assisted
   diagnostics, never achieved scores or inference applicability gates.
+- **Feasibility passed:** `local-span-risk-smoke-55b140d8` preserved every
+  baseline before training, encoded eight training cases without
+  truncation, and produced finite nonzero updates to 1,536 head weights.
+  Training risk fell from 0.6767 to 0.5332 over two smoke epochs; this is
+  training behavior, not a quality result. Maximum measured encoding time
+  0.182s/case, peak RSS 1.31GB, head training 0.58s on eight CPU threads.
+  The only unused checkpoint weights were the public model's MLM head,
+  expected when loading its encoder. Proceed to the fixed 70-question
+  fold-0 pilot from freshly zeroed heads, not the smoke weights.
 
 ## ASR stream lifecycle check
 
