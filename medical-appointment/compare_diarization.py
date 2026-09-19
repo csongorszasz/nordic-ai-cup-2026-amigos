@@ -16,7 +16,8 @@ from collections import defaultdict
 from pathlib import Path
 
 from answerers.boundaries import adjusted_span
-from answerers.llm_prompt import VARIANT, few_shot_counts, select_few_shot_rows
+from answerers import llm_prompt
+from answerers.llm_prompt import VARIANT, few_shot_counts
 from answerers.modernbert_data import load_evidence, load_rows, load_transcript
 from benchmark import paired_comparison
 
@@ -24,18 +25,24 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 
 def demonstration_tids(tids):
-    """Every conversation used as a few-shot source for some scored target."""
+    """Every conversation used as a few-shot source under either selection mode."""
     rows_by_tid = defaultdict(list)
     for row in load_rows():
         rows_by_tid[row["transcript_id"]].append(row)
     transcripts = {tid: load_transcript(tid) for tid in rows_by_tid}
     evidence = load_evidence()
+    original = llm_prompt.FEWSHOT_SELECT
     demo = set()
-    for tid in tids:
-        for row in select_few_shot_rows(
-            rows_by_tid, transcripts, evidence, tid, few_shot_counts(VARIANT)
-        ):
-            demo.add(row["transcript_id"])
+    try:
+        for mode in ("first", "similar"):
+            llm_prompt.FEWSHOT_SELECT = mode
+            for tid in tids:
+                for row in llm_prompt.select_few_shot_rows(
+                    rows_by_tid, transcripts, evidence, tid, few_shot_counts(VARIANT)
+                ):
+                    demo.add(row["transcript_id"])
+    finally:
+        llm_prompt.FEWSHOT_SELECT = original
     return demo
 
 

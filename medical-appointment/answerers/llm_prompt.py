@@ -6,6 +6,7 @@ includes retrieved candidates (L0-L2 are transcript-only).
 """
 
 import os
+import re
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .align import text_between
@@ -25,6 +26,9 @@ SYSTEM_PROMPT = (
     "- Output ONLY a JSON object, no prose."
 )
 VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
+# Few-shot variation axes (defaults reproduce the historical demonstrations).
+FEWSHOT_QUOTE = os.environ.get("MEDAPP_LLM_FEWSHOT_QUOTE", "gold")
+FEWSHOT_SELECT = os.environ.get("MEDAPP_LLM_FEWSHOT_SELECT", "first")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
     "final_statement", "audit",
@@ -389,36 +393,130 @@ def render_example(
     return user, assistant
 
 
+_STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "do",
+    "does", "did", "has", "have", "had", "to", "of", "in", "on", "for", "and",
+    "or", "at", "by", "with", "this", "that", "these", "those", "it", "its",
+    "patient", "there", "any", "also", "still", "not", "no", "yes",
+}
+
+
+def _content_tokens(text: str) -> set:
+    return {
+        token for token in re.findall(r"[a-z0-9]+", (text or "").lower())
+        if token not in _STOPWORDS
+    }
+
+
+def _question_similarity(target_tokens: Sequence[set], question: str) -> float:
+    tokens = _content_tokens(question)
+    if not tokens:
+        return 0.0
+    best = 0.0
+    for target in target_tokens:
+        if not target:
+            continue
+        union = len(tokens | target)
+        best = max(best, len(tokens & target) / union if union else 0.0)
+    return best
+
+
+def _word_range(words: Sequence[Dict], start: float, end: float):
+    indices = [i for i, word in enumerate(words) if word["end"] > start and word["start"] < end]
+    return (indices[0], indices[-1]) if indices else None
+
+
+def _clause_range(words: Sequence[Dict], first: int, last: int):
+    from windows import PAUSE_GAP, _ends_sentence
+
+    i = first
+    while i > 0:
+        previous, current = words[i - 1], words[i]
+        if _ends_sentence(previous["word"]):
+            break
+        if current["start"] - previous["end"] > PAUSE_GAP:
+            break
+        if current.get("seg_idx", 0) != previous.get("seg_idx", 0):
+            break
+        i -= 1
+    j = last
+    while j + 1 < len(words):
+        current, following = words[j], words[j + 1]
+        if _ends_sentence(current["word"]):
+            break
+        if following["start"] - current["end"] > PAUSE_GAP:
+            break
+        if following.get("seg_idx", 0) != current.get("seg_idx", 0):
+            break
+        j += 1
+    return i, j
+
+
+def _turn_range(words: Sequence[Dict], first: int, last: int):
+    seg_indices = [word.get("seg_idx", 0) for word in words]
+    low, high = min(seg_indices[first], seg_indices[last]), max(seg_indices[first], seg_indices[last])
+    indices = [i for i, seg in enumerate(seg_indices) if low <= seg <= high]
+    return indices[0], indices[-1]
+
+
+def demo_quote(words: Sequence[Dict], span: Tuple[float, float], mode: Optional[str] = None) -> str:
+    """Positive demonstration quote under the selected few-shot extent mode."""
+    from windows import join_words
+
+    mode = (mode or FEWSHOT_QUOTE).lower()
+    if mode == "gold":
+        return text_between(words, span[0], span[1])
+    word_range = _word_range(words, span[0], span[1])
+    if word_range is None:
+        return text_between(words, span[0], span[1])
+    if mode == "clause":
+        first, last = _clause_range(words, *word_range)
+    elif mode == "turn":
+        first, last = _turn_range(words, *word_range)
+    else:
+        first, last = word_range
+    return join_words(words, first, last)
+
+
 def select_few_shot_rows(
     rows_by_tid: Dict[str, List[Dict]],
     transcripts: Dict[str, Dict],
     evidence: Dict[str, Dict],
     exclude_tid: str,
     counts: Tuple[int, int, int] = (1, 1, 1),
+    target_questions: Sequence[str] = (),
 ) -> List[Dict]:
-    """Select demonstrations independently of the target's answer."""
+    """Select demonstrations independently of the target's answer.
+
+    ``first`` (default) reproduces the historical selection; ``similar`` picks
+    the candidate whose question is most similar to the target's questions.
+    """
     selected = []
     used = {exclude_tid}
     tids = sorted(rows_by_tid)
+    if not target_questions:
+        target_questions = [row["question"] for row in rows_by_tid.get(exclude_tid, [])]
+    target_tokens = [_content_tokens(question) for question in target_questions]
+    similar = FEWSHOT_SELECT == "similar"
     for question_type, count in zip(("positive", "hard_negative", "off_topic"), counts):
         for _ in range(count):
-            chosen = None
-            for tid in tids:
-                if tid in used or tid not in transcripts:
-                    continue
-                chosen = next(
-                    (
-                        row for row in rows_by_tid[tid]
-                        if row["question_type"] == question_type
-                        and (
-                            question_type != "hard_negative"
-                            or evidence.get(row["question_id"], {}).get("bucket") == "refute"
-                        )
-                    ),
-                    None,
+            candidates = [
+                row
+                for tid in tids
+                if tid not in used and tid in transcripts
+                for row in rows_by_tid[tid]
+                if row["question_type"] == question_type
+                and (
+                    question_type != "hard_negative"
+                    or evidence.get(row["question_id"], {}).get("bucket") == "refute"
                 )
-                if chosen is not None:
-                    break
+            ]
+            chosen = None
+            if candidates:
+                chosen = (
+                    max(candidates, key=lambda row: _question_similarity(target_tokens, row["question"]))
+                    if similar else candidates[0]
+                )
             if chosen is not None:
                 selected.append(chosen)
                 used.add(chosen["transcript_id"])
@@ -445,7 +543,15 @@ def build_few_shot(
         item = evidence.get(row["question_id"], {})
         if row["question_type"] == "positive":
             span = (float(row["evidence_start"]), float(row["evidence_end"]))
-            quote = text_between(words, span[0], span[1])
+            quote = demo_quote(words, span)
+            word_range = _word_range(words, span[0], span[1])
+            if word_range is not None and FEWSHOT_QUOTE in ("clause", "turn"):
+                first, last = (
+                    _clause_range(words, *word_range)
+                    if FEWSHOT_QUOTE == "clause"
+                    else _turn_range(words, *word_range)
+                )
+                span = (words[first]["start"], words[last]["end"])
             examples.append(render_example(
                 transcripts[tid], row["question"], True, quote, span, variant
             ))

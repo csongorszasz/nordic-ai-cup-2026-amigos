@@ -122,6 +122,46 @@ def test_audit_rule_preserves_the_actual_question_and_schema():
     assert "clinician's final statement" in changed[0]["content"]
 
 
+def _sentence_words():
+    return [
+        {"word": " First", "start": 0.0, "end": 0.3, "seg_idx": 0},
+        {"word": " clause.", "start": 0.3, "end": 0.8, "seg_idx": 0},
+        {"word": " Second", "start": 0.9, "end": 1.2, "seg_idx": 0},
+        {"word": " clause", "start": 1.2, "end": 1.6, "seg_idx": 0},
+        {"word": " here.", "start": 1.6, "end": 2.0, "seg_idx": 0},
+    ]
+
+
+def test_demo_quote_extent_modes():
+    from answerers import llm_prompt
+
+    words = _sentence_words()
+    span = (0.35, 0.7)
+    assert llm_prompt.demo_quote(words, span, "gold") == "clause."
+    assert llm_prompt.demo_quote(words, span, "clause") == "First clause."
+    assert llm_prompt.demo_quote(words, span, "turn") == "First clause. Second clause here."
+
+
+def test_similar_selection_picks_the_matching_question(monkeypatch):
+    from answerers import llm_prompt
+
+    rows_by_tid = {
+        "s0": [{"question_id": "t", "transcript_id": "s0", "question_type": "positive",
+                "question": "What was the dose?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+        "s1": [{"question_id": "p1", "transcript_id": "s1", "question_type": "positive",
+                "question": "Did the patient attend for asthma?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+        "s2": [{"question_id": "p2", "transcript_id": "s2", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+    }
+    transcripts = {tid: make_transcript(tid) for tid in rows_by_tid}
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "first")
+    first = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "s0", (1, 0, 0))
+    assert first[0]["transcript_id"] == "s1"
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "similar")
+    similar = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "s0", (1, 0, 0))
+    assert similar[0]["transcript_id"] == "s2"
+
+
 def test_build_few_shot_balanced_and_loco_safe():
     rows_by_tid = {
         "s1": [{
