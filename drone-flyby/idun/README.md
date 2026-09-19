@@ -38,6 +38,11 @@ reused by subsequent snapshots with compatible requirements.
 
 `test` submits a small GPU forward-pass check instead of a custom command.
 `fetch` retrieves logs and results under `runs\idun\<experiment>`.
+On Windows, deeply nested recordings can exceed OpenSSH SCP's path limit.
+Use `-FetchDirectory "$env:TEMP\drone-flyby\baseline-001"` to select a shorter
+final experiment directory. It still receives the `runs` and `logs` folders;
+this option is valid only for `fetch`. `fetch-status.json` records completion
+or failure, so a partial download is not mistaken for missing producer data.
 An experiment failure is not a zero-score result: inspect Slurm's state and
 exit code, the error log, and any `failure.json`.
 
@@ -115,7 +120,7 @@ Other jobs and listeners are never killed or reused.
 The fixed provisional profile is YOLO standard + world-map + hold, FP16,
 3200-pixel inference, a 0.001 L0 proposal floor, and at most 300 detector
 proposals. Inherited `DRONE_FLYBY_*` overrides are cleared before applying this
-profile; recording and calibration are disabled. The example alpha checkpoint
+profile; recording is opt-in and calibration is disabled. The example alpha checkpoint
 improved the foreground-only development audit but is **not competition
 validated**, and it is not an automatic promotion of `profiles\champion.json`.
 
@@ -142,3 +147,49 @@ silently leaving a stale URL. A new launch requires a new snapshot ID.
 An abrupt SSH disconnect can make Slurm kill the entire step before the
 supervisor flushes its final manifest. An assigned URL in an old artifact is
 not a liveness check: consult Slurm and verify the live endpoint's nonce.
+
+The supervisor also probes the public hostname using non-mutating `/stats`
+requests and verifies its nonce. `public_health` in the deployment manifest
+distinguishes reachable, unreachable, and stalled/inconclusive checks. DNS
+failure does not silently rotate the URL or stop the origin. Probes are bounded
+to one outstanding daemon thread so a stalled resolver cannot stall child
+supervision. An origin-node check is not proof of every external client's RTT.
+
+### Evaluation-only diagnostic capture
+
+Add `-RecordValidation` to `serve.ps1` to enable capture **without changing the
+model/tracker/camera profile**. Use a new immutable snapshot and isolated
+diagnostic allocation rather than altering an active submission service.
+Captures live under its `runs/recorded_validation_data/<sequence_id>`.
+The original serving allocation stays separate, and no second GPU experiment
+may compete with a diagnostic endpoint while it is receiving an attempt.
+
+Each received request has a unique stem shared by its exact input PNG,
+complete DTO metadata, response, and pipeline diagnostics. Retries cannot
+overwrite earlier inputs; response and diagnostic identity are checked.
+Diagnostics distinguish raw post-YOLO/pre-tracker detections, final fresh/memory
+rank provenance, timing, observed frame-index gaps, cached responses, and
+fallbacks. They never add fields to the competition response.
+
+Image hashes and serving provenance accompany the recording. Queue drops,
+failed writes, missing pairs, and failed predictions are explicit in status
+files and `/stats`; a generated response is **not** evidence of evaluator
+acceptance. With the known validation denominator:
+
+```bash
+python src/offline/summarize_recording.py \
+  --dir runs/recorded_validation_data/<sequence_id> \
+  --expected-frames 249 --output-json runs/capture-summary.json
+```
+
+The summary does not invent AP without ground truth or infer missing optical
+views from a transmitted crop. Modern metadata can be reconstructed exactly
+with `load_recorded_request`; legacy recordings missing protocol fields are
+rejected for exact replay rather than filled with guessed defaults.
+All captures are marked **evaluation-only** and excluded from training,
+pseudo-labeling, augmentation, and calibration. Keep images, logs and temporary
+URLs out of Git. Only the user triggers official competition attempts.
+
+For an owned development HTTP replay, `experiment_runner.py --mode http
+--capture-inputs ...` verifies the same capture path and its overhead without
+contacting the competition.

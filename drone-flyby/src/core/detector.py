@@ -415,6 +415,7 @@ class YoloDetector(BaseDetector):
         self.half = half
         self.nms_iou = nms_iou
         self.max_det = max_det
+        self.last_proposal_count: Optional[int] = None
         self._validate_class_map(list(expected_classes))
 
     @property
@@ -513,6 +514,7 @@ class YoloDetector(BaseDetector):
         zoom_level: int,
         source_region_xyxy: Tuple[int, int, int, int],
     ) -> List[DetectionResult]:
+        self.last_proposal_count = None
         conf = min(self.conf_thresholds[zoom_level], min(self.calibration.values(), default=1.0))
         precision = {"quantize": 16 if self.half else None} if _USES_QUANTIZE else {"half": self.half}
         results = self.model.predict(
@@ -521,7 +523,10 @@ class YoloDetector(BaseDetector):
             iou=self.nms_iou, max_det=self.max_det, predictor=MeasuredPredictor,
         )
         if not results:
+            self.last_proposal_count = 0
             return []
+        boxes = getattr(results[0], "boxes", None)
+        self.last_proposal_count = len(boxes) if boxes is not None else 0
         return self._parse_result(results[0], zoom_level, source_region_xyxy)
 
 

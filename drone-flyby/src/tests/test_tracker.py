@@ -18,6 +18,16 @@ SOURCE_WIDTH = 3840
 SOURCE_HEIGHT = 2160
 
 
+def test_current_freshness_ranking_can_suppress_an_accurate_memory_box():
+    """Characterize the current policy; do not change it without a score ablation."""
+    truth = [0.4, 0.4, 0.5, 0.5]
+    fresh_box = [0.436, 0.4, 0.536, 0.5]
+    memory = DroneFlybyPredictionDto(object_id="tank", bbox=truth, confidence=0.49 * 0.9)
+    fresh = DroneFlybyPredictionDto(object_id="tank", bbox=fresh_box, confidence=0.5 + 0.5 * 0.001)
+    assert 0.45 < compute_iou(truth, fresh_box) < 0.50
+    assert apply_class_aware_nms([memory, fresh], iou_threshold=0.45) == [fresh]
+
+
 def _load_real_detections(frame_index: int):
     annotations = load_annotations(frame_index, scene="helsinki")
     return [

@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import threading
+from urllib.error import URLError
 from unittest.mock import Mock
 
 import pytest
@@ -139,3 +140,53 @@ def test_launcher_uses_attached_srun_and_preserves_api_default():
     assert "--ntasks=1" in launcher
     assert "sbatch" not in launcher
     assert "PORT = 9053" in (ROOT / "src" / "api.py").read_text()
+
+
+def test_capture_is_explicit_and_pins_the_unchanged_model(tmp_path):
+    provenance = {"checkpoint_sha256": "pinned", "commit": "source"}
+    ordinary = serve.model_environment(Path("alpha.pt"), "nonce")
+    recording = serve.model_environment(Path("alpha.pt"), "nonce", tmp_path, provenance)
+    assert recording["DRONE_FLYBY_RECORD_VALIDATION_DATA"] == "1"
+    assert recording["DRONE_FLYBY_RECORD_DIR"] == str(tmp_path)
+    metadata = json.loads(recording["DRONE_FLYBY_CAPTURE_PROVENANCE"])
+    assert metadata["checkpoint_sha256"] == "pinned"
+    assert metadata["run_nonce"] == "nonce"
+    for key, value in metadata["model_overrides"].items():
+        assert ordinary[key] == recording[key] == value
+    with pytest.raises(ValueError, match="provenance"):
+        serve.model_environment(Path("alpha.pt"), "nonce", tmp_path)
+
+
+def test_public_health_does_not_turn_dns_failure_into_success(monkeypatch):
+    def fail(*args, **kwargs):
+        raise URLError("DNS failure")
+    monkeypatch.setattr(serve, "build_opener", lambda *args: Mock(open=fail))
+    result = serve.probe_public_health("https://owned.trycloudflare.com/predict", "nonce")
+    assert result["status"] == "unreachable"
+    assert "DNS failure" in result["error"]
+
+
+def test_public_monitor_stays_bounded_when_a_resolver_stalls(monkeypatch):
+    started, release = threading.Event(), threading.Event()
+    calls = []
+    def blocking_probe(url, nonce):
+        calls.append(url)
+        started.set()
+        assert release.wait(timeout=5)
+        return {"status": "reachable"}
+    monkeypatch.setattr(serve, "probe_public_health", blocking_probe)
+    clock = [0.0]
+    monkeypatch.setattr(serve.time, "monotonic", lambda: clock[0])
+    monitor = serve.PublicHealthMonitor("https://owned.trycloudflare.com/predict", "nonce")
+    try:
+        assert monitor.poll() is None
+        assert started.wait(timeout=2)
+        clock[0] = 11
+        assert monitor.poll()["status"] == "inconclusive"
+        clock[0] = 100
+        assert monitor.poll() is None
+        assert len(calls) == 1
+    finally:
+        release.set()
+        monitor.worker.join(timeout=2)
+    assert monitor.poll()["status"] == "reachable"

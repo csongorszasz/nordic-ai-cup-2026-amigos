@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory)][ValidatePattern('^[a-fA-F0-9]{64}$')]
     [string]$WeightsSha256,
     [ValidateRange(1024, 65535)][int]$Port = 9052,
+    [switch]$RecordValidation,
     [string]$Remote = 'idun',
     [string]$RemoteRoot = 'nordic-cup/drone-score-loop',
     [string]$Environment = 'env-v2',
@@ -39,6 +40,7 @@ $command = "set -euo pipefail; cd '$remoteDir'; mkdir .serving; " +
     "--nodes=1 --ntasks=1 --cpus-per-task=8 --mem=48G --time=12:00:00 " +
     "--kill-on-bad-exit=1 --chdir=`"`$PWD`" bash idun/serve.sh " +
     "--weights '$WeightsPath' --sha256 '$($WeightsSha256.ToLowerInvariant())' --port $Port"
+if ($RecordValidation) { $command += ' --record-validation' }
 
 @{
     experiment = $Experiment
@@ -47,6 +49,7 @@ $command = "set -euo pipefail; cd '$remoteDir'; mkdir .serving; " +
     weights = $WeightsPath
     checkpoint_sha256 = $WeightsSha256.ToLowerInvariant()
     port = $Port
+    record_validation = [bool]$RecordValidation
     lifetime = 'Attached SSH/srun session; maximum 12 hours'
     started_at = [DateTimeOffset]::UtcNow.ToString('o')
 } | ConvertTo-Json | Set-Content (Join-Path $localRun 'launch.json') -Encoding utf8NoBOM

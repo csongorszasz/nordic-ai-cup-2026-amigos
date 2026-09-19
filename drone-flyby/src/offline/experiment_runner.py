@@ -38,7 +38,8 @@ def checkpoint_hash(path: Path | None) -> str | None:
         return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
-def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latency_ms: float = 0.0) -> dict:
+def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latency_ms: float = 0.0,
+             capture_inputs: bool = False) -> dict:
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
@@ -52,7 +53,7 @@ def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latenc
         "DRONE_FLYBY_YOLO_AUX_WEIGHTS_PATH": str(config.YOLO_AUX_WEIGHTS_PATH or ""),
         "DRONE_FLYBY_POLICY_TYPE": config.POLICY_TYPE,
         "DRONE_FLYBY_TRACKER_TYPE": config.TRACKER_TYPE,
-        "DRONE_FLYBY_RECORD_VALIDATION_DATA": "0",
+        "DRONE_FLYBY_RECORD_VALIDATION_DATA": "1" if capture_inputs else "0",
         "DRONE_FLYBY_INFERENCE_IMAGE_SIZE": str(config.INFERENCE_IMAGE_SIZE),
         "DRONE_FLYBY_INFERENCE_IMAGE_SIZES": (
             ",".join(str(size) for size in config.INFERENCE_IMAGE_SIZES)
@@ -64,6 +65,14 @@ def run_http(config: DroneFlybyConfig, scene: str, output: Path, simulate_latenc
         "DRONE_FLYBY_DETECTOR_MAX_DET": str(config.DETECTOR_MAX_DET),
         "DRONE_FLYBY_RUN_NONCE": run_nonce,
     })
+    if capture_inputs:
+        environment["DRONE_FLYBY_RECORD_DIR"] = str((output / "recorded_validation_data").resolve())
+        environment["DRONE_FLYBY_CAPTURE_PROVENANCE"] = json.dumps({
+            "checkpoint_sha256": checkpoint_hash(config.YOLO_WEIGHTS_PATH),
+            "config": asdict(config), "run_nonce": run_nonce,
+            "job_id": os.environ.get("SLURM_JOB_ID"),
+            "snapshot_sha256": checkpoint_hash(Path("snapshot.json")) if Path("snapshot.json").exists() else None,
+        }, default=str)
     url = f"http://127.0.0.1:{port}/predict"
     with (output / "server.log").open("w", encoding="utf-8") as log:
         process = subprocess.Popen(
@@ -101,6 +110,9 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
     delay = getattr(arguments, "simulate_latency_ms", 0.0)
     if not math.isfinite(delay) or delay < 0 or (delay and arguments.mode != "http"):
         raise ValueError("Simulated latency must be finite, nonnegative, and used only with HTTP replay")
+    capture_inputs = getattr(arguments, "capture_inputs", False)
+    if capture_inputs and arguments.mode != "http":
+        raise ValueError("Request capture requires HTTP mode")
     arguments.output.mkdir(parents=True, exist_ok=False)
     arguments.scene = arguments.scene or "helsinki"
     records = []
@@ -138,7 +150,7 @@ def run_matrix(arguments: argparse.Namespace) -> list[dict]:
             started = time.monotonic()
             try:
                 if arguments.mode == "http":
-                    result = run_http(config, arguments.scene, output, delay)
+                    result = run_http(config, arguments.scene, output, delay, capture_inputs=capture_inputs)
                 else:
                     result = asdict(run_simulation(
                         config, arguments.scene, detector=detector,
@@ -191,6 +203,8 @@ def main() -> int:
     parser.add_argument("--min-view-pixels", type=int, default=0)
     parser.add_argument("--simulate-latency-ms", type=float, default=0.0,
                         help="Additional HTTP request-cycle delay for cadence stress tests.")
+    parser.add_argument("--capture-inputs", action="store_true",
+                        help="HTTP only: save evaluation-only inputs and request-bound diagnostics.")
     parser.add_argument("--policies", nargs="+", default=["hold", "deterministic_l1", "active_coverage", "belief_voi"])
     parser.add_argument("--trackers", nargs="+", default=["passthrough", "world_map"])
     arguments = parser.parse_args()

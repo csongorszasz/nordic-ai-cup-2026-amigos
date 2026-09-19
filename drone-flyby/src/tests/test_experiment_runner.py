@@ -60,3 +60,12 @@ def test_latency_stress_is_explicit_and_validated(tmp_path, mode, delay):
     with pytest.raises(ValueError, match="Simulated latency"):
         runner.run_matrix(arguments)
     assert not arguments.output.exists()
+
+
+def test_capture_cannot_silently_apply_to_non_http_experiments(tmp_path):
+    arguments = argparse.Namespace(
+        mode="oracle", weights=None, output=tmp_path / "run", capture_inputs=True,
+    )
+    with pytest.raises(ValueError, match="capture requires HTTP"):
+        runner.run_matrix(arguments)
+    assert not arguments.output.exists()

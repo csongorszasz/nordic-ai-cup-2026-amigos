@@ -168,3 +168,42 @@ def test_transient_latency_spike_does_not_disable_inference_forever(monkeypatch)
         validate_response(response)
     assert len(calls) >= 2
     assert pipeline._detector_estimate_ms < 3333
+
+
+def test_diagnostics_are_request_bound_and_do_not_change_predictions(monkeypatch):
+    config = DroneFlybyConfig(DETECTOR_TYPE="dummy", TRACKER_TYPE="world_map", POLICY_TYPE="hold")
+    plain, observed = build_pipeline(config), build_pipeline(config)
+    for pipeline in (plain, observed):
+        monkeypatch.setattr(pipeline.detector, "detect", lambda **kwargs: [_detection()])
+    for frame in (0, 3):
+        request = create_synthetic_request("captured", frame)
+        diagnostics = {}
+        assert observed.handle_request(request, diagnostics=diagnostics) == plain.handle_request(request)
+        assert diagnostics["request_id"] == request.request_id
+        assert diagnostics["raw_detections"][0]["confidence"] == 0.9
+        assert len(diagnostics["output_sources"]) >= 1
+        assert diagnostics["tracker_emission"]["fresh_before_nms"] == 1
+        assert diagnostics["timings"]["total_ms"] >= diagnostics["timings"]["detector_ms"]
+    assert diagnostics["forward_frame_gap"] == 2
+    previous = diagnostics
+    duplicate = {}
+    observed.handle_request(request, diagnostics=duplicate)
+    assert "cached_response" in duplicate["events"]
+    assert duplicate["raw_detections"] is None
+    assert all(source == "cached" for source in duplicate["output_sources"])
+    assert previous["raw_detections"] is not None
+
+
+def test_failed_detection_is_distinguishable_from_an_empty_observation(monkeypatch):
+    pipeline = build_pipeline(DroneFlybyConfig(DETECTOR_TYPE="dummy", POLICY_TYPE="hold"))
+    def fail(**kwargs):
+        raise RuntimeError("inference unavailable")
+    monkeypatch.setattr(pipeline.detector, "detect", fail)
+    diagnostics = {}
+    pipeline.handle_request(create_synthetic_request(), diagnostics=diagnostics)
+    assert diagnostics["raw_detections"] is None
+    assert "detector_error" in diagnostics["events"]
+    monkeypatch.setattr(pipeline.detector, "detect", lambda **kwargs: [])
+    pipeline.handle_request(create_synthetic_request(frame_index=1), diagnostics=diagnostics)
+    assert diagnostics["raw_detections"] == []
+    assert "detector_error" not in diagnostics["events"]

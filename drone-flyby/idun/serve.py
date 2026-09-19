@@ -8,12 +8,14 @@ import json
 import logging
 import os
 from pathlib import Path
+import queue
 import re
 import shutil
 import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
 from urllib.error import URLError
 from urllib.request import ProxyHandler, build_opener
@@ -46,7 +48,8 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def model_environment(weights: Path, nonce: str) -> dict[str, str]:
+def model_environment(weights: Path, nonce: str, record_dir: Path | None = None,
+                      provenance: dict | None = None) -> dict[str, str]:
     environment = {
         key: value for key, value in os.environ.items()
         if not key.startswith("DRONE_FLYBY_")
@@ -68,6 +71,20 @@ def model_environment(weights: Path, nonce: str) -> dict[str, str]:
         "DRONE_FLYBY_RECORD_VALIDATION_DATA": "0",
         "DRONE_FLYBY_RUN_NONCE": nonce,
     })
+    if record_dir is not None:
+        if provenance is None:
+            raise ValueError("Recording requires explicit serving provenance")
+        model_overrides = {
+            key: value for key, value in environment.items()
+            if key.startswith("DRONE_FLYBY_") and not key.startswith("DRONE_FLYBY_RECORD")
+        }
+        environment.update({
+            "DRONE_FLYBY_RECORD_VALIDATION_DATA": "1",
+            "DRONE_FLYBY_RECORD_DIR": str(record_dir),
+            "DRONE_FLYBY_CAPTURE_PROVENANCE": json.dumps({
+                **provenance, "run_nonce": nonce, "model_overrides": model_overrides,
+            }),
+        })
     return environment
 
 
@@ -138,11 +155,63 @@ def write_manifest(path: Path, manifest: dict) -> None:
     temporary.replace(path)
 
 
+def probe_public_health(predict_url: str, nonce: str) -> dict:
+    result = {"checked_at": now(), "probe_location": "origin-node-via-public-hostname"}
+    try:
+        url = predict_url.rsplit("/", 1)[0] + "/stats"
+        with build_opener(ProxyHandler({})).open(url, timeout=5) as response:
+            stats = json.load(response)
+        if not isinstance(stats, dict) or stats.get("run_nonce") != nonce:
+            raise ValueError("Public endpoint does not identify this serving process")
+        return {**result, "status": "reachable"}
+    except (OSError, ValueError, URLError) as error:
+        return {**result, "status": "unreachable", "error": str(error)}
+
+
+class PublicHealthMonitor:
+    """A stalled resolver must not stall child supervision or spawn more probes."""
+
+    def __init__(self, predict_url: str, nonce: str):
+        self.predict_url = predict_url
+        self.nonce = nonce
+        self.results: queue.Queue[dict] = queue.Queue(maxsize=1)
+        self.worker: threading.Thread | None = None
+        self.next_probe = 0.0
+        self.started = 0.0
+        self.reported_timeout = False
+
+    def poll(self) -> dict | None:
+        current = time.monotonic()
+        if self.worker is None and current >= self.next_probe:
+            self.started = current
+            self.reported_timeout = False
+            self.worker = threading.Thread(
+                target=lambda: self.results.put(probe_public_health(self.predict_url, self.nonce)),
+                name="public-health", daemon=True,
+            )
+            self.worker.start()
+        if self.worker is None:
+            return None
+        try:
+            result = self.results.get_nowait()
+        except queue.Empty:
+            if not self.reported_timeout and current - self.started >= 10:
+                self.reported_timeout = True
+                return {"status": "inconclusive", "checked_at": now(),
+                        "error": "Public health probe exceeded its observation budget; still pending"}
+            return None
+        self.worker = None
+        self.next_probe = current + 30
+        return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--weights", type=Path, required=True)
     parser.add_argument("--sha256", required=True)
     parser.add_argument("--port", type=int, default=9052)
+    parser.add_argument("--record-validation", action="store_true",
+                        help="Capture evaluation-only requests, raw detections and diagnostics.")
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error("--port must be between 1024 and 65535")
@@ -159,6 +228,7 @@ def main() -> int:
         "job_id": os.environ["SLURM_JOB_ID"], "node": socket.gethostname(),
         "bind": f"0.0.0.0:{args.port}", "origin": f"http://127.0.0.1:{args.port}",
         "model_quality": "provisional-development-model-not-competition-validated",
+        "record_validation": args.record_validation,
     }
     children: dict[str, subprocess.Popen] = {}
     signals = [signal.SIGINT, signal.SIGTERM, signal.SIGHUP]
@@ -191,8 +261,13 @@ def main() -> int:
                 probe.bind(("0.0.0.0", args.port))
 
             nonce = uuid.uuid4().hex
-            environment = model_environment(weights, nonce)
+            record_dir = ROOT / "runs" / "recorded_validation_data" if args.record_validation else None
+            provenance = {key: manifest[key] for key in (
+                "checkpoint_sha256", "snapshot_sha256", "commit", "weights", "job_id", "node",
+            )}
+            environment = model_environment(weights, nonce, record_dir, provenance)
             manifest["run_nonce"] = nonce
+            manifest["capture_directory"] = str(record_dir) if record_dir is not None else None
             manifest["overrides"] = {
                 key: value for key, value in environment.items() if key.startswith("DRONE_FLYBY_")
             }
@@ -207,6 +282,8 @@ def main() -> int:
             manifest["api_pid"] = children["api"].pid
             write_manifest(manifest_path, manifest)
             manifest["startup_stats"] = wait_for_origin(children, args.port, nonce)
+            if args.record_validation and manifest["startup_stats"].get("recorder") is None:
+                raise RuntimeError("Capture-enabled API did not initialize its recorder")
             print(f"ORIGIN_READY={manifest['origin']}", flush=True)
 
             tunnel_home = run / "cloudflared-home"
@@ -228,8 +305,20 @@ def main() -> int:
             manifest["status"] = "tunnel-assigned-awaiting-external-verification"
             write_manifest(manifest_path, manifest)
             print(f"TUNNEL_URL={manifest['predict_url']}", flush=True)
+            public_health = PublicHealthMonitor(manifest["predict_url"], nonce)
             while True:
                 check_children(children)
+                health = public_health.poll()
+                if health is not None:
+                    previous = manifest.get("public_health", {}).get("status")
+                    manifest["public_health"] = health
+                    write_manifest(manifest_path, manifest)
+                    if health["status"] != previous:
+                        if health["status"] == "reachable":
+                            LOGGER.info("Public endpoint identity verified through its hostname")
+                        else:
+                            LOGGER.error("Public endpoint health %s; keeping origin unchanged: %s",
+                                         health["status"], health.get("error"))
                 time.sleep(1)
         except RequestedShutdown as error:
             manifest.update(status="stopped", reason=str(error))

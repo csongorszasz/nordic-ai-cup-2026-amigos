@@ -7,11 +7,15 @@ param(
     [string]$Remote = 'idun',
     [string]$RemoteRoot = 'nordic-cup/drone-score-loop',
     [string]$Environment = 'env-v1',
-    [string]$Account = 'share-ie-idi'
+    [string]$Account = 'share-ie-idi',
+    [string]$FetchDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+if ($FetchDirectory -and $Action -ne 'fetch') {
+    throw 'FetchDirectory is only valid with -Action fetch'
+}
 foreach ($value in @($Remote, $RemoteRoot, $Environment, $Account)) {
     if ($value -notmatch '^[a-zA-Z0-9_./@-]+$' -or $value.Contains('..') -or $value.StartsWith('/')) {
         throw "Unsafe remote identifier: $value"
@@ -20,6 +24,7 @@ foreach ($value in @($Remote, $RemoteRoot, $Environment, $Account)) {
 $remoteDir = "$RemoteRoot/experiments/$Experiment"
 $envDir = "`$HOME/$RemoteRoot/$Environment"
 $localRun = Join-Path $root "runs\idun\$Experiment"
+if ($FetchDirectory) { $localRun = [IO.Path]::GetFullPath($FetchDirectory) }
 $sshOptions = @('-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'StrictHostKeyChecking=yes')
 
 function Invoke-Remote([string]$Command) {
@@ -90,6 +95,20 @@ if ($Action -eq 'sync') {
     Invoke-Remote "cd $remoteDir && if [ -f job.id ]; then job=`$(cut -d';' -f1 job.id); squeue -j `"`$job`" -o '%.12i %.8T %.12M %.30R'; sacct -j `"`$job`" --format=JobID,State,ExitCode,Elapsed,MaxRSS --noheader; else echo 'Not submitted'; fi"
 } elseif ($Action -eq 'fetch') {
     New-Item -ItemType Directory -Force $localRun | Out-Null
+    $fetchStatus = @{
+        experiment = $Experiment
+        source = "${Remote}:$remoteDir"
+        status = 'in-progress'
+    }
+    $statusPath = Join-Path $localRun 'fetch-status.json'
+    $fetchStatus | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8NoBOM
     & scp @sshOptions -r "${Remote}:$remoteDir/runs" "${Remote}:$remoteDir/logs" $localRun
-    if ($LASTEXITCODE -ne 0) { throw 'Artifact fetch failed' }
+    $fetchExitCode = $LASTEXITCODE
+    $fetchStatus.status = if ($fetchExitCode -eq 0) { 'completed' } else { 'failed' }
+    $fetchStatus.exit_code = $fetchExitCode
+    $fetchStatus | ConvertTo-Json | Set-Content -LiteralPath $statusPath -Encoding utf8NoBOM
+    if ($fetchExitCode -ne 0) {
+        throw 'Artifact fetch failed; local files may be partial. For Windows path-length errors, use a short -FetchDirectory.'
+    }
+    Write-Output "Artifacts fetched: $localRun"
 }

@@ -474,6 +474,7 @@ class WorldMapTracker(BaseTracker):
                     object_id=detection.class_name, bbox=bbox,
                     confidence=0.5 + 0.5 * detection.confidence,
                 ))
+        fresh_count = len(output_predictions)
         for track in self.tracks.values():
             if not self._is_confirmed(track):
                 continue
@@ -497,7 +498,14 @@ class WorldMapTracker(BaseTracker):
                 )
             )
 
-        return apply_class_aware_nms(output_predictions, iou_threshold=self.nms_threshold)
+        selected = apply_class_aware_nms(output_predictions, iou_threshold=self.nms_threshold)
+        self.last_emission_counts = {
+            "fresh_before_nms": fresh_count,
+            "memory_before_nms": len(output_predictions) - fresh_count,
+            "after_nms": len(selected),
+            "output_at_cap": len(selected) == 500,
+        }
+        return selected
 
     def get_summary(self) -> TrackerSummary:
         """Provide world state summary for camera steering decisions.
