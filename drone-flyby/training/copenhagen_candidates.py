@@ -124,7 +124,9 @@ def main():
     parser.add_argument('--model', required=True)
     parser.add_argument('--conf', type=float, default=0.1, help='detections below this are not linked at all')
     parser.add_argument('--min-score', type=float, default=0.3,
-                        help='keep a track if its best confidence reaches this, or if it was seen in 3+ frames')
+                        help='keep a track if its best confidence reaches this, or if it was seen in --min-frames frames')
+    parser.add_argument('--min-frames', type=int, default=3,
+                        help='frames that keep a track below --min-score (low, persistent junk on the map passed at 3)')
     args = parser.parse_args()
 
     from ultralytics import YOLO
@@ -167,7 +169,7 @@ def main():
         votes = {}
         for cls, conf in zip(t['classes'], t['confs']):
             votes[cls] = votes.get(cls, 0.0) + conf
-        if max(t['confs']) < args.min_score and len(t['frames']) < 3:
+        if max(t['confs']) < args.min_score and len(t['frames']) < args.min_frames:
             continue
         frame, box = t['frames'][best], t['boxes'][best]
         candidates.append({
