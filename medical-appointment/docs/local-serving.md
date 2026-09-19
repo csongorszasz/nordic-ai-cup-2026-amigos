@@ -139,6 +139,14 @@ weights and no transcript cache, and flags number/negation changes without
 claiming they are errors. CPU int8 results need a matched served-device
 comparison and complete downstream score/latency gates before promotion.
 
+Medical Whisper preparation uses `prepare_medical_whisper.py
+--cache-manifest <cache-run>/results/model_cache.json` in a fresh CPU run
+with the verified training interpreter, 8 cores and 32 GB. It converts
+only the pinned safe-tensor checkpoint to run-local CT2 int8, exports a
+fast tokenizer for offline loading, preserves alignment heads, and checks
+word timestamps on a short training-audio prefix. Never overwrite the
+shared serving model or treat conversion success as an ASR quality win.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

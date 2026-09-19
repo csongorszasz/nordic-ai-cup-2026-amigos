@@ -1186,6 +1186,14 @@ Primary model candidates reviewed September 19, 2026:
   includes alignment heads, whose conversion must be verified before
   claiming usable word timestamps. Generic full-v3 CT2 control is already
   cached at `edaa852ec7e145841d8ffdb056a99866b5f0a478`.
+- **Medical checkpoint cache complete:** `cache-medical-whisper-80ae70dc`,
+  12 required files / 6,176,131,893 bytes, exact pinned revision; no
+  training pickle or hosted inference. Conversion is run-local and
+  offline. `prepare_medical_whisper.py` refuses existing destinations,
+  exports the missing fast-tokenizer JSON, verifies exact alignment-head
+  preservation, and requires real word timestamps on a 12-second supplied
+  training-audio prefix. This is a format/feasibility gate, not a medical
+  accuracy or competition-score result.
 
 ## ASR stream lifecycle check
 
