@@ -447,7 +447,10 @@ def models_3d():
 # with a proposed new paint. Verdicts and notes go to datasets/model_match/paint_review.json.
 MODEL_SPRITES = ROOT / 'datasets' / 'model_sprites'
 PAINT_REVIEW = MODEL_MATCH / 'paint_review.json'
+PROPOSED_SPRITES = ROOT / 'datasets' / 'model_sprites_proposed'  # model_sprites.py --proposed
 app.mount('/model_sprites', StaticFiles(directory=MODEL_SPRITES), name='model_sprites')
+PROPOSED_SPRITES.mkdir(parents=True, exist_ok=True)
+app.mount('/model_sprites_proposed', StaticFiles(directory=PROPOSED_SPRITES), name='model_sprites_proposed')
 
 
 @app.get('/paint', response_class=HTMLResponse)
@@ -465,6 +468,7 @@ def paint_classes():
     import random
     models = {m['key']: m for m in models_3d()}
     sprites = json.loads((MODEL_SPRITES / 'index.json').read_text()) if (MODEL_SPRITES / 'index.json').exists() else []
+    proposed_sprites = json.loads((PROPOSED_SPRITES / 'index.json').read_text()) if (PROPOSED_SPRITES / 'index.json').exists() else []
     cph = json.loads((REVIEW / 'labels.json').read_text())['objects'] if (REVIEW / 'labels.json').exists() else []
     review = json.loads(PAINT_REVIEW.read_text()) if PAINT_REVIEW.exists() else {}
     helsinki = reference_sprites(8)
@@ -479,10 +483,10 @@ def paint_classes():
         item = {'cls': cls, 'model': name, 'review': review.get(cls)}
         if name:
             m = models.get(f'{cls}/{name}', {})
-            used = '_recoloured' if fit.get('paint') == 'recoloured' else ''
+            used = {'recoloured': '_recoloured', 'edited': '_edited'}.get(fit.get('paint'), '')
             proposed = '_proposed' if baked_url(cls, name, '_proposed') else ('' if used else '_recoloured')
             item.update(original=m.get('url'), current=baked_url(cls, name, used),
-                        current_label='recoloured' if used else 'projected from the Helsinki cut-outs',
+                        current_label={'_recoloured': 'recoloured', '_edited': 'edited: ' + fit.get('edits', '')}.get(used, 'projected from the Helsinki cut-outs'),
                         proposed=baked_url(cls, name, proposed) if proposed != used else None,
                         proposed_label={'_proposed': proposals.get(cls, 'proposed new paint'), '_recoloured':
                                         'recoloured (model texture shifted to the real colours)',
@@ -490,6 +494,7 @@ def paint_classes():
                         dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'], up=fit.get('up', 'auto'))
         pool = [e['file'] for e in sprites if e['class'] == cls]
         item['sprites'] = random.Random(cls).sample(pool, min(8, len(pool)))
+        item['proposed_sprites'] = [e['file'] for e in proposed_sprites if e['class'] == cls][:8]
         item['helsinki'] = helsinki[cls]
         item['copenhagen'] = [{'frame': o['ref'], 'box': o['box']} for o in cph if o['class'] == cls][:8]
         out.append(item)

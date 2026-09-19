@@ -120,9 +120,10 @@ def painted_path(class_name: str, name: str, fit: dict) -> Path:
 
     <class>_<model>.glb has the real top-down colours projected onto it (export_painted);
     <class>_<model>_recoloured.glb keeps the model's texture with shifted colours
-    (recolour_models.py). match.json's "paint" says which one the data uses.
+    (recolour_models.py), <class>_<model>_edited.glb a hand-edited one (edit_models.py).
+    match.json's "paint" says which one the data uses.
     """
-    suffix = '_recoloured' if fit.get('paint') == 'recoloured' else ''
+    suffix = {'recoloured': '_recoloured', 'edited': '_edited'}.get(fit.get('paint'), '')
     return BAKED / f'{class_name}_{name}{suffix}.glb'
 
 

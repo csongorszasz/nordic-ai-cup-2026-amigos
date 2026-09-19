@@ -82,6 +82,7 @@
   <h3>Helsinki: real, labelled (what training compares against)</h3><div class="strip" id="helsinki"></div>
   <h3>Copenhagen: real, from your review (test only: for your eyes, never for training)</h3><div class="strip" id="copenhagen"></div>
   <h3>Training sprites now: rendered from the current paint</h3><div class="strip sprites" id="sprites"></div>
+  <h3 id="proposedHead">Training sprites proposed: rendered from the proposed model</h3><div class="strip sprites" id="proposedSprites"></div>
 </main>
 <script type="module">
 import * as THREE from 'three';
@@ -199,6 +200,8 @@ function open(i) {
   strip('helsinki', c.helsinki.map(f => `/flyby/refcrop/${f}?side=260`));
   strip('copenhagen', c.copenhagen.map(o => `/review/crop/${o.frame}.jpg?box=${o.box.join(',')}&side=260`));
   strip('sprites', c.sprites.map(f => `/model_sprites/${f}`));
+  strip('proposedSprites', (c.proposed_sprites || []).map(f => `/model_sprites_proposed/${f}`));
+  document.getElementById('proposedHead').style.display = (c.proposed_sprites || []).length ? '' : 'none';
   closeNote(); drawList(); drawVerdict();
   location.hash = c.cls;
 }

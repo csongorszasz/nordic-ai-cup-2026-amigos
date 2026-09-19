@@ -7,6 +7,7 @@ new yaws, camera tilts and lean directions, at the size the real object has on s
 
     python training/model_sprites.py                    # -> datasets/model_sprites/
     python training/model_sprites.py --per-class 300 --classes tank helicopter
+    python training/model_sprites.py --proposed         # edit_models.py's proposals -> datasets/model_sprites_proposed/
 
 Per class it uses the model with the best fit in models/<class>/match.json that has a
 painted .glb. Size: the fitted length in metres, over METRES_PER_PIXEL, jittered a
@@ -30,6 +31,7 @@ import render_models as rm  # noqa: E402
 
 ROOT = rm.ROOT
 OUT = ROOT / 'datasets' / 'model_sprites'
+PROPOSED_OUT = ROOT / 'datasets' / 'model_sprites_proposed'
 SIZE_JITTER = 0.08   # relative; the fitted lengths vary about this much between frames
 MAX_TILT = 45        # degrees off vertical at the far corners of the frame (drone_camera.lean_at)
 # Rotor radius in model units (longest side = 1). The rotor was dropped from the fit
@@ -119,9 +121,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--classes', nargs='*', default=None)
     parser.add_argument('--per-class', type=int, default=200)
-    parser.add_argument('--out', default=str(OUT))
+    parser.add_argument('--out', default=None, help=f'default {OUT.name}, or {PROPOSED_OUT.name} with --proposed')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--proposed', action='store_true',
+                        help="render the classes that have a <class>_<model>_proposed.glb (edit_models.py), from it")
     args = parser.parse_args()
+    args.out = args.out or str(PROPOSED_OUT if args.proposed else OUT)
 
     rng = random.Random(args.seed)
     out = Path(args.out)
@@ -132,7 +137,15 @@ def main():
             print(f'{class_name}: no painted model, skipped')
             continue
         name, fit = found
-        meshes, height = load_painted(rm.painted_path(class_name, name, fit))
+        path = rm.painted_path(class_name, name, fit)
+        length_scale = 1.0
+        if args.proposed:
+            path = rm.BAKED / f'{class_name}_{name}_proposed.glb'
+            if not path.exists():
+                continue
+            meta = path.with_suffix('.json')  # an added part can make the longest side longer
+            length_scale = json.loads(meta.read_text())['length_scale'] if meta.exists() else 1.0
+        meshes, height = load_painted(path)
         # Recoloured models (recolour_models.py) keep their own texture, which carries no real
         # light: render them lit. Projection-painted ones carry the real image's light: flat.
         renderer = rm.Renderer(meshes, height, flat=fit.get('paint') != 'recoloured')
@@ -141,7 +154,7 @@ def main():
             vertices = np.vstack([m.vertices for m in meshes])
             top = vertices[vertices[:, 2] > vertices[:, 2].max() - 0.02]
             rotor = (top.mean(axis=0), ROTORS[class_name])
-        length_px = fit['length_m'] / rm.METRES_PER_PIXEL
+        length_px = fit['length_m'] * length_scale / rm.METRES_PER_PIXEL
         # Tilt and lean depend on where the object sits in the frame (drone_camera.lean_at);
         # the bank covers the whole range and synth_dataset picks the pose for each spot.
         max_tilt = MAX_TILT
