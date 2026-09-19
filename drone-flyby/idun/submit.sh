@@ -57,6 +57,9 @@ sync_code() {
     echo "Syncing ${DRONE_DIR} -> ${REMOTE}:${REMOTE_DIR}"
     local inputs=(src idun requirements.txt pytest.ini data/helsinki)
     [ ! -d "${DRONE_DIR}/weights" ] || inputs+=(weights)
+    for manifest in profiles/champion.json research/foreground_review.json research/background_sources.json; do
+        [ ! -f "${DRONE_DIR}/${manifest}" ] || inputs+=("$manifest")
+    done
     tar --exclude='__pycache__' --exclude='*.pyc' -czf - -C "$DRONE_DIR" "${inputs[@]}" |
         ssh "$REMOTE" "cd ${REMOTE_DIR} && tar -xzf - && mkdir -p logs runs"
     ssh "$REMOTE" "cd ${REMOTE_DIR} && find src idun data/helsinki -type f -exec sha256sum {} + > snapshot.sha256 && chmod -R a-w src idun requirements.txt pytest.ini"

@@ -53,13 +53,17 @@ def test_orthophoto_uses_verified_scale_and_preserves_attribution(tmp_path, monk
     }))
     monkeypatch.setattr(generator, "read_georeference", lambda path: {"gsd_m": 0.5, "gsd_source": "embedded-gml"})
     terrain, metadata = generator.orthophoto_background(
-        image, manifest, 64, 32, np.random.default_rng(0), target_gsd=0.25,
+        image, manifest, 64, 32, np.random.default_rng(0), target_gsd=0.25, origin=(8, 9),
     )
     assert terrain.shape == (32, 64, 3)
     assert tuple(terrain[0, 0]) == (120, 80, 20)
     assert metadata["output_gsd_x_m"] == 0.25
     assert metadata["output_gsd_y_m"] == 0.25
     assert metadata["attribution"] == "fixture provider"
+    assert metadata["source_crop_xyxy"] == [8, 9, 40, 25]
+    with pytest.raises(ValueError, match="outside"):
+        generator.orthophoto_background(image, manifest, 64, 32, np.random.default_rng(0),
+                                       target_gsd=0.25, origin=(63, 63))
 
 
 def test_orthophoto_requires_provenance_and_matching_hash(tmp_path):

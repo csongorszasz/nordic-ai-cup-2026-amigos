@@ -23,6 +23,7 @@ if str(SRC_ROOT) not in sys.path:
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES
 from offline.dataset_provenance import assert_training_source, split_source_frames
 from offline.convert_nls_ortho import Image, read_georeference
+from offline.foreground_assets import composite_sprite, load_reviewed_assets, resize_sprite
 from utils import frame_numbers, load_annotations, load_frame, scene_directory
 
 
@@ -64,7 +65,7 @@ def harvest_sprites(scene):
     return sprites, provenance
 
 
-def orthophoto_background(path, provenance_path, width, height, rng, target_gsd=0.2395):
+def orthophoto_background(path, provenance_path, width, height, rng, target_gsd=0.2395, origin=None):
     if provenance_path is None:
         raise ValueError("An orthophoto requires source/license/hash provenance")
     provenance = json.loads(Path(provenance_path).read_text(encoding="utf-8"))
@@ -87,8 +88,13 @@ def orthophoto_background(path, provenance_path, width, height, rng, target_gsd=
             raise ValueError("Orthophoto exceeds the supported working set")
         if source_width > image.width or source_height > image.height:
             raise ValueError("The orthophoto cannot contain the complete requested flight strip")
-        x = int(rng.integers(image.width - source_width + 1))
-        y = int(rng.integers(image.height - source_height + 1))
+        if origin is None:
+            x = int(rng.integers(image.width - source_width + 1))
+            y = int(rng.integers(image.height - source_height + 1))
+        else:
+            x, y = origin
+            if x < 0 or y < 0 or x + source_width > image.width or y + source_height > image.height:
+                raise ValueError("The reviewed background origin is outside the source image")
         crop = np.asarray(image.crop((x, y, x + source_width, y + source_height)).convert("RGB"))
     interpolation = cv2.INTER_AREA if source_width >= width else cv2.INTER_LINEAR
     terrain = cv2.resize(crop[:, :, ::-1].copy(), (width, height), interpolation=interpolation)
@@ -105,14 +111,22 @@ def orthophoto_background(path, provenance_path, width, height, rng, target_gsd=
 def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
                    shift_x=0, shift_y=58, objects_per_frame=16,
                    purpose="development-evaluation", rotate=True,
-                   background=None, background_provenance=None, target_gsd=0.2395):
+                   background=None, background_provenance=None, target_gsd=0.2395, background_origin=None,
+                   sprite_review=None, sprite_artifact_root=None, allow_context_patches=False):
     if frames < 2 or frames > 300 or objects_per_frame < 1 or abs(shift_x) > 200 or abs(shift_y) > 200:
         raise ValueError("Use 2..300 frames, positive density, and shifts within 200 source pixels")
     if output.exists():
         raise FileExistsError(f"Use a new episode directory: {output}")
     if purpose not in {"training-development", "development-evaluation"}:
         raise ValueError(f"Unknown data role: {purpose}")
-    sprites, provenance = harvest_sprites(scene)
+    if (sprite_review is None) != (sprite_artifact_root is None):
+        raise ValueError("A sprite review and artifact root must be supplied together")
+    if background is not None and sprite_review is None and not allow_context_patches:
+        raise ValueError("Natural-background audits require reviewed alpha assets or explicit --allow-context-patches")
+    sprites, provenance = (
+        load_reviewed_assets(Path(sprite_review), Path(sprite_artifact_root))
+        if sprite_review is not None else harvest_sprites(scene)
+    )
     rng = np.random.default_rng(seed)
     width = IMAGE_WIDTH + abs(shift_x) * (frames - 1)
     height = IMAGE_HEIGHT + abs(shift_y) * (frames - 1)
@@ -135,7 +149,7 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         if purpose == "training-development":
             assert_training_source(Path(background))
         terrain, background_info = orthophoto_background(
-            Path(background), background_provenance, width, height, rng, target_gsd,
+            Path(background), background_provenance, width, height, rng, target_gsd, background_origin,
         )
 
     count = math.ceil(objects_per_frame * width * height / (IMAGE_WIDTH * IMAGE_HEIGHT))
@@ -147,7 +161,8 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         rotation = sampled_rotation if rotate else 0
         sprite = np.rot90(sprites[name], rotation).copy()
         scale = float(rng.uniform(0.85, 1.15))
-        sprite = cv2.resize(sprite, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+        sprite = resize_sprite(sprite, max(1, int(round(sprite.shape[1] * scale))),
+                               max(1, int(round(sprite.shape[0] * scale))))
         h, w = sprite.shape[:2]
         side = max(w, h)
         for _ in range(1000):
@@ -160,7 +175,7 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
                 break
         else:
             raise RuntimeError("Cannot place a labeled object without overlap")
-        terrain[y:y + h, x:x + w] = sprite
+        composite_sprite(terrain[y:y + h, x:x + w], sprite)
         reserved.append(square)
         objects.append({
             "object_id": name, "instance_id": f"{seed}:{index}", "bbox": list(box),
@@ -184,10 +199,11 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         }), encoding="utf-8")
     metadata = {
         "seed": seed, "frames": frames, "shift": [shift_x, shift_y],
-        "object_appearances": "shared training sprites; novel procedural background and placement",
+        "object_appearances": "shared training sprites; novel background and placement, not unseen object appearances",
         "sprites": provenance, "objects": objects,
         "rotate_objects": rotate,
         "background": background_info,
+        "sprite_compositing": "reviewed-alpha" if sprite_review is not None else "rectangular-context-patch",
     }
     (output / "run_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     (output / "data_role.json").write_text(json.dumps({"data_role": purpose}), encoding="utf-8")
@@ -207,13 +223,22 @@ def main():
     parser.add_argument("--background", type=Path, help="Optional NLS GeoJP2 background, never a validation capture.")
     parser.add_argument("--background-provenance", type=Path, help="Required source/license/hash manifest.")
     parser.add_argument("--target-gsd", type=float, default=0.2395, help="Explicit simulated source-frame metres per pixel.")
+    parser.add_argument("--background-origin", type=int, nargs=2, metavar=("X", "Y"),
+                        help="Reviewed crop origin in native background-image pixels.")
+    parser.add_argument("--sprite-review", type=Path, help="Explicit hash-pinned visual review specification.")
+    parser.add_argument("--sprite-artifact-root", type=Path, help="Root containing the referenced mask experiments.")
+    parser.add_argument("--allow-context-patches", action="store_true",
+                        help="Explicit artifact-prone control only; not foreground-isolated transfer evidence.")
     parser.add_argument("--purpose", choices=["training-development", "development-evaluation"],
                         default="development-evaluation")
     arguments = parser.parse_args()
     build_sequence(arguments.output, arguments.source_scene, arguments.frames, arguments.seed,
                    arguments.shift_x, arguments.shift_y, arguments.objects_per_frame, arguments.purpose,
                    rotate=not arguments.no_rotation, background=arguments.background,
-                   background_provenance=arguments.background_provenance, target_gsd=arguments.target_gsd)
+                   background_provenance=arguments.background_provenance, target_gsd=arguments.target_gsd,
+                   background_origin=arguments.background_origin, sprite_review=arguments.sprite_review,
+                   sprite_artifact_root=arguments.sprite_artifact_root,
+                   allow_context_patches=arguments.allow_context_patches)
 
 
 if __name__ == "__main__":

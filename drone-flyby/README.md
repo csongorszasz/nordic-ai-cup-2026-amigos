@@ -144,6 +144,16 @@ The natural-background preview exposed this shortcut clearly; their scores
 are limited compositing diagnostics, not evidence of foreground-only recognition.
 Do not promote a model from these composites without a reviewed mask-based audit.
 
+`extract_foreground_bank.py` proposes box-prompted SAM alpha masks from permitted
+training frames and exports an explicitly unreviewed contact sheet. The
+hash-pinned decisions in `research\foreground_review.json` select reviewed
+proposals; predicted mask confidence alone is not approval. The renderer's
+`--sprite-review` and `--sprite-artifact-root` options enforce that gate, retain
+the original annotation canvas, and use premultiplied-alpha resampling to avoid
+source-context color bleeding. Use a reviewed `--background-origin X Y` to
+choose a terrestrial crop. Rectangular controls on natural backgrounds require
+the explicit `--allow-context-patches` flag.
+
 The NLS converter reads GML boxes even after the image codestream, including
 null-terminated XML. It no longer guesses 0.25 metres per pixel from filenames:
 the inspected `02m`-directory image actually declares 0.5 metres per pixel.

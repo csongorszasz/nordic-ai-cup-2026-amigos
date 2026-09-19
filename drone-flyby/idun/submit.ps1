@@ -40,7 +40,11 @@ if ($Action -eq 'sync') {
                 Where-Object { $_.FullName -notmatch '[\\/](?:__pycache__|\.pytest_cache)[\\/]' }
         }
     }
-    foreach ($name in @('requirements.txt', 'pytest.ini')) { $files += Get-Item (Join-Path $root $name) }
+    foreach ($name in @('requirements.txt', 'pytest.ini', 'profiles\champion.json',
+                        'research\foreground_review.json', 'research\background_sources.json')) {
+        $path = Join-Path $root $name
+        if (Test-Path $path) { $files += Get-Item $path }
+    }
     $entries = @($files | Sort-Object FullName | ForEach-Object {
         $hash = if ($_.Extension -in '.sh', '.slurm') {
             $bytes = [Text.Encoding]::UTF8.GetBytes([IO.File]::ReadAllText($_.FullName).Replace("`r`n", "`n"))
