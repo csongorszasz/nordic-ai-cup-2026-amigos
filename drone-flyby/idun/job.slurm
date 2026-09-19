@@ -4,7 +4,7 @@
 #SBATCH --time=0-12:00:00
 #SBATCH --partition=GPUQ
 #SBATCH --gres=gpu:1
-#SBATCH --constraint="gpu32g|gpu40g|gpu80g"
+#SBATCH --constraint="gpu80g&(a100|h100)"
 #SBATCH --mem=48G
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
@@ -17,21 +17,15 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 mkdir -p logs runs datasets
 
-module purge
-module load Anaconda3/2023.09-0
-source /cluster/apps/eb/software/Anaconda3/2023.09-0/etc/profile.d/conda.sh
-conda activate drone
-
-export PYTHONUNBUFFERED=1
+source idun/runtime.sh
 
 echo "job ${SLURM_JOB_ID} on ${SLURM_NODELIST}, $(date)"
-nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader || true
-python -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())"
+python idun/preflight.py
 echo "RUN_CMD: ${RUN_CMD:-<none>}"
 echo "------------------------------------------------------------------------"
 
 [ -n "${RUN_CMD:-}" ] || { echo "No RUN_CMD given"; exit 1; }
-eval "$RUN_CMD"
+bash -euo pipefail -c "$RUN_CMD"
 
 echo "------------------------------------------------------------------------"
 echo "done $(date)"

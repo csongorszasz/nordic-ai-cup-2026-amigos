@@ -35,6 +35,23 @@ DATA_DIRECTORY = PROJECT_ROOT / 'data'
 DEFAULT_SCENE = 'helsinki'
 
 
+def pairwise_iou(boxes_a: np.ndarray, boxes_b: np.ndarray) -> np.ndarray:
+    """Pairwise IoU for arrays of xyxy boxes in one coordinate system."""
+    boxes_a = np.asarray(boxes_a, dtype=np.float64)
+    boxes_b = np.asarray(boxes_b, dtype=np.float64)
+    if boxes_a.ndim != 2 or boxes_b.ndim != 2 or boxes_a.shape[1] != 4 or boxes_b.shape[1] != 4:
+        raise ValueError("IoU inputs must have shape (N, 4)")
+    if len(boxes_a) == 0 or len(boxes_b) == 0:
+        return np.zeros((len(boxes_a), len(boxes_b)), dtype=np.float64)
+    top_left = np.maximum(boxes_a[:, None, :2], boxes_b[None, :, :2])
+    bottom_right = np.minimum(boxes_a[:, None, 2:], boxes_b[None, :, 2:])
+    intersection = np.maximum(bottom_right - top_left, 0.0).prod(axis=2)
+    areas_a = np.maximum(boxes_a[:, 2:] - boxes_a[:, :2], 0.0).prod(axis=1)
+    areas_b = np.maximum(boxes_b[:, 2:] - boxes_b[:, :2], 0.0).prod(axis=1)
+    union = areas_a[:, None] + areas_b[None, :] - intersection
+    return np.divide(intersection, union, out=np.zeros_like(intersection), where=union > 0)
+
+
 # --------------------------------------------------------------------------- #
 # Images on the wire
 # --------------------------------------------------------------------------- #

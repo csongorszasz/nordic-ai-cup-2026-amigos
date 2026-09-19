@@ -49,9 +49,9 @@ class EgoMotionEstimator:
         self,
         method: str = "phase_correlation",
         min_response: float = 0.15,
-        min_shift_y: float = 10.0,
-        max_shift_y: float = 130.0,
-        max_abs_shift_x: float = 40.0,
+        min_shift_y: float = -200.0,
+        max_shift_y: float = 200.0,
+        max_abs_shift_x: float = 200.0,
         ecc_iterations: int = 50,
         ecc_epsilon: float = 1e-4,
         ecc_working_width: int = 480,
@@ -79,7 +79,26 @@ class EgoMotionEstimator:
     ) -> Optional[Tuple[float, float, float]]:
         try:
             shift, response = cv2.phaseCorrelate(previous, current)
-        except Exception:
+        except cv2.error:
+            return None
+        if not np.isfinite([*shift, response]).all():
+            return None
+        dx, dy = int(round(shift[0])), int(round(shift[1]))
+        height, width = current.shape
+        overlap_width, overlap_height = width - abs(dx), height - abs(dy)
+        if overlap_width < 16 or overlap_height < 16:
+            return None
+        # Phase correlation wraps at image edges. Check linear overlap so a
+        # mostly disjoint view cannot masquerade as a small reverse motion.
+        first = previous[max(0, -dy):max(0, -dy) + overlap_height,
+                         max(0, -dx):max(0, -dx) + overlap_width]
+        second = current[max(0, dy):max(0, dy) + overlap_height,
+                         max(0, dx):max(0, dx) + overlap_width]
+        step = max(1, int(np.sqrt(first.size / 100000)))
+        a, b = first[::step, ::step], second[::step, ::step]
+        a, b = a - a.mean(), b - b.mean()
+        denominator = float(np.sqrt(np.sum(a * a) * np.sum(b * b)))
+        if denominator == 0 or float(np.sum(a * b)) / denominator < 0.1:
             return None
         return float(shift[0]), float(shift[1]), float(response)
 
@@ -126,6 +145,58 @@ class EgoMotionEstimator:
         if self.method == "ecc":
             return self._measure_ecc(previous, current)
         return self._measure_phase_correlation(previous, current)
+
+    def estimate_views(
+        self,
+        previous_gray: np.ndarray,
+        current_gray: np.ndarray,
+        previous_region: Tuple[int, int, int, int],
+        current_region: Tuple[int, int, int, int],
+        gap: int,
+        prior: Tuple[float, float],
+    ) -> EgoMotionResult:
+        """Register common source-space terrain, including zoom transitions."""
+        gap = max(1, gap)
+        dx, dy = prior[0] * gap, prior[1] * gap
+        px1, py1, px2, py2 = previous_region
+        cx1, cy1, cx2, cy2 = current_region
+        x1, y1 = max(px1 + dx, cx1), max(py1 + dy, cy1)
+        x2, y2 = min(px2 + dx, cx2), min(py2 + dy, cy2)
+        previous_scale = (px2 - px1) / previous_gray.shape[1]
+        current_scale = (cx2 - cx1) / current_gray.shape[1]
+        scale = max(previous_scale, current_scale, (x2 - x1) / 960.0)
+        width, height = int((x2 - x1) / scale), int((y2 - y1) / scale)
+        if width < 32 or height < 32:
+            return EgoMotionResult(*prior, 0.0, False, self.method)
+        xx, yy = np.meshgrid(
+            x1 + (np.arange(width, dtype=np.float32) + 0.5) * scale,
+            y1 + (np.arange(height, dtype=np.float32) + 0.5) * scale,
+        )
+        previous = cv2.remap(
+            previous_gray.astype(np.float32),
+            (xx - dx - px1) / previous_scale - 0.5,
+            (yy - dy - py1) / previous_scale - 0.5,
+            cv2.INTER_LINEAR,
+        )
+        current = cv2.remap(
+            current_gray.astype(np.float32),
+            (xx - cx1) / current_scale - 0.5,
+            (yy - cy1) / current_scale - 0.5,
+            cv2.INTER_LINEAR,
+        )
+        measured = self.measure(previous, current)
+        if measured is None:
+            return EgoMotionResult(*prior, 0.0, False, self.method)
+        rx, ry, response = measured
+        measured_dx = (dx + rx * scale) / gap
+        measured_dy = (dy + ry * scale) / gap
+        accepted = (
+            np.isfinite([measured_dx, measured_dy, response]).all()
+            and response >= self.min_response
+            and self.min_shift_y <= measured_dy <= self.max_shift_y
+            and abs(measured_dx) <= self.max_abs_shift_x
+        )
+        return EgoMotionResult(measured_dx, measured_dy, response, bool(accepted), self.method)
 
     # ------------------------------------------------------------------ #
     # Public API

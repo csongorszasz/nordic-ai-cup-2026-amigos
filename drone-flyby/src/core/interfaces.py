@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from dtos import (
@@ -55,6 +55,7 @@ class TrackerSummary:
     # compute value of information. Defaults to empty so simple trackers stay
     # source-compatible.
     track_beliefs: List[TrackBelief] = field(default_factory=list)
+    fresh_class_confidences: Dict[str, float] = field(default_factory=dict)
 
 
 class BaseDetector(ABC):
@@ -97,8 +98,8 @@ class BaseTracker(ABC):
         pass
 
     @abstractmethod
-    def predict_only(self) -> List[DroneFlybyPredictionDto]:
-        """Return the current belief without incorporating new observations.
+    def predict_only(self, frame_index: Optional[int] = None) -> List[DroneFlybyPredictionDto]:
+        """Advance to a frame without treating an unavailable observation as a miss.
 
         Used on the deadline path: when a detector cannot finish in time, the
         memory still owes the evaluator its best full-frame answer.
@@ -127,4 +128,3 @@ class BaseCameraPolicy(ABC):
     ) -> Optional[RequestedViewDto]:
         """Determine the next camera view adhering to constraints."""
         pass
-

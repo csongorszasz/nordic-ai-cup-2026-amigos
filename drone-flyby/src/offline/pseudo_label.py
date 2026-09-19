@@ -25,6 +25,7 @@ from config import DroneFlybyConfig
 from core.detector import create_detector
 from core.interfaces import BaseDetector
 from dtos import OBJECT_CLASSES
+from offline.dataset_provenance import assert_training_source
 
 CLASS_INDEX = {name: index for index, name in enumerate(OBJECT_CLASSES)}
 
@@ -54,6 +55,8 @@ def pseudo_label_directory(
     config: Optional[DroneFlybyConfig] = None,
 ) -> Dict[str, int]:
     """Generate YOLO labels for every image in a directory."""
+    assert_training_source(images_dir)
+    assert_training_source(labels_dir)
     if detector is None:
         detector = create_detector(config or DroneFlybyConfig())
     detector.warmup()

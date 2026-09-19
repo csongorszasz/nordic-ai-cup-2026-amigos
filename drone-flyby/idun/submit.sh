@@ -19,7 +19,8 @@
 #
 # Overrides:
 #   REMOTE=idun                        SSH alias from ~/.ssh/config
-#   REMOTE_DIR=~/nordic-cup/drone-flyby  kept apart from anything else in the home dir
+#   EXPERIMENT_ID=baseline-001         required, immutable snapshot name
+#   REMOTE_ROOT=~/nordic-cup/drone-score-loop
 #   SLURM_ACCOUNT=share-ie-idi         allocation to bill
 # ==============================================================================
 
@@ -29,7 +30,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRONE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 REMOTE="${REMOTE:-idun}"
-REMOTE_DIR="${REMOTE_DIR:-~/nordic-cup/drone-flyby}"
+REMOTE_ROOT="${REMOTE_ROOT:-~/nordic-cup/drone-score-loop}"
+EXPERIMENT_ID="${EXPERIMENT_ID:-}"
+REMOTE_DIR="${REMOTE_ROOT}/experiments/${EXPERIMENT_ID}"
+DRONE_ENV_PATH="${DRONE_ENV_PATH:-${REMOTE_ROOT}/env-v1}"
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-share-ie-idi}"
 
 ACTION="${1:-help}"
@@ -45,37 +49,26 @@ check_ssh() {
     echo "OK"
 }
 
-# Code and the supplied scene go up; generated datasets, checkpoints, runs and
-# the local venv stay here. The exact-view dataset is rebuilt on IDUN, which is
-# faster than uploading it.
 sync_code() {
-    ssh "$REMOTE" "mkdir -p ${REMOTE_DIR}"
+    [[ "$EXPERIMENT_ID" =~ ^[a-zA-Z0-9][a-zA-Z0-9_-]+$ ]] || {
+        echo "Set EXPERIMENT_ID to a new snapshot name"; exit 1;
+    }
+    ssh "$REMOTE" "mkdir -p ${REMOTE_ROOT}/experiments && mkdir ${REMOTE_DIR}"
     echo "Syncing ${DRONE_DIR} -> ${REMOTE}:${REMOTE_DIR}"
-    rsync -az --delete --info=stats1 \
-        --exclude='.venv' \
-        --exclude='__pycache__' \
-        --exclude='*.pyc' \
-        --exclude='.pytest_cache' \
-        --exclude='.downloads' \
-        --exclude='datasets' \
-        --exclude='training_artifacts' \
-        --exclude='runs' \
-        --exclude='recordings' \
-        --exclude='logs' \
-        --exclude='annotated' \
-        --include='weights/' \
-        --include='weights/***' \
-        --exclude='*.pt' \
-        "${DRONE_DIR}/" "${REMOTE}:${REMOTE_DIR}/"
+    local inputs=(src idun requirements.txt pytest.ini data/helsinki)
+    [ ! -d "${DRONE_DIR}/weights" ] || inputs+=(weights)
+    tar --exclude='__pycache__' --exclude='*.pyc' -czf - -C "$DRONE_DIR" "${inputs[@]}" |
+        ssh "$REMOTE" "cd ${REMOTE_DIR} && tar -xzf - && mkdir -p logs runs"
+    ssh "$REMOTE" "cd ${REMOTE_DIR} && find src idun data/helsinki -type f -exec sha256sum {} + > snapshot.sha256 && chmod -R a-w src idun requirements.txt pytest.ini"
 }
 
 submit() {
     local job_file="$1" cmd="$2"
     local out
-    out=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && RUN_CMD=$(printf '%q' "$cmd") sbatch --export=ALL --account=${SLURM_ACCOUNT} idun/${job_file}")
+    out=$(ssh "$REMOTE" "set -euo pipefail; cd ${REMOTE_DIR} && mkdir .submitted && export DRONE_ENV_PATH=${DRONE_ENV_PATH} && export RUN_CMD=$(printf '%q' "$cmd") && sbatch --parsable --export=ALL --account=${SLURM_ACCOUNT} idun/${job_file} | tee job.id")
     echo "$out"
     local job_id
-    job_id=$(awk '{print $NF}' <<<"$out")
+    job_id=$(cut -d';' -f1 <<<"$out")
     echo ""
     echo "Follow it with:  bash idun/submit.sh logs ${job_id}"
 }
@@ -89,7 +82,7 @@ case "$ACTION" in
     setup)
         check_ssh
         sync_code
-        ssh -t "$REMOTE" "cd ${REMOTE_DIR} && bash idun/setup_env.sh"
+        ssh "$REMOTE" "cd ${REMOTE_DIR} && export DRONE_ENV_PATH=${DRONE_ENV_PATH} && bash idun/setup_env.sh"
         ;;
 
     test)

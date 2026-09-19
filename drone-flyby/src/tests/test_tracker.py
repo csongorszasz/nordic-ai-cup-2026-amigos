@@ -490,7 +490,7 @@ def test_camera_delta_corrects_measured_ego_motion():
     assert shift[1] == pytest.approx(14.0, abs=2.0)
 
 
-def test_ego_motion_rejects_a_level_change():
+def test_ego_motion_registers_overlap_across_a_level_change():
     base = cv2.cvtColor(load_frame(0, scene="helsinki"), cv2.COLOR_BGR2GRAY)
     region_l1 = (960, 540, 2880, 1620)
     region_l2 = (1440, 810, 2400, 1350)
@@ -503,6 +503,201 @@ def test_ego_motion_rejects_a_level_change():
     tracker._estimate_ego_motion(gray_l1, 0, region_l1)
     shift = tracker._estimate_ego_motion(gray_l2, 1, region_l2)
 
-    # The prior is untouched because the field of view changed.
-    assert shift == (0.0, 58.0)
+    # Both views show stationary terrain; only the prior's smoothing term remains.
+    assert shift[0] == pytest.approx(0.0, abs=2.0)
+    assert shift[1] == pytest.approx(17.4, abs=2.0)
 
+
+def _small_detection(box, level=2, name="tank"):
+    x1, y1, x2, y2 = box
+    return DetectionResult(name, (x1 / 3840, y1 / 2160, x2 / 3840, y2 / 2160),
+                           0.9, level, tuple(float(v) for v in box))
+
+
+def test_lower_zoom_reanchors_position_without_destroying_precise_size():
+    tracker = WorldMapTracker(default_shift=(0, 0), min_hits_to_confirm=1)
+    tracker.update([_small_detection((100, 100, 140, 140))], 2, (0, 0, 960, 540), 0)
+    tracker.update([_small_detection((130, 90, 190, 150), 1)], 1, (0, 0, 1920, 1080), 1)
+    assert tracker.tracks[0].bbox_4k == pytest.approx((140, 100, 180, 140))
+    assert tracker.tracks[0].best_zoom == 2
+
+
+def test_recent_reobservation_resets_expiry_not_lifetime_miss_count():
+    tracker = WorldMapTracker(default_shift=(0, 0), min_hits_to_confirm=1, out_of_view_max_age=2)
+    detection = _small_detection((100, 100, 140, 140))
+    for frame in range(12):
+        if frame % 2 == 0:
+            tracker.update([detection], 2, (0, 0, 960, 540), frame)
+        else:
+            tracker.update([], 2, (2000, 1000, 2960, 1540), frame)
+    assert len(tracker.tracks) == 1
+    assert tracker.tracks[0].hits == 6
+
+
+def test_predict_only_advances_without_negative_observation():
+    tracker = WorldMapTracker(default_shift=(0, 20), min_hits_to_confirm=1)
+    tracker.update([_small_detection((100, 100, 140, 140))], 2, (0, 0, 960, 540), 0)
+    predicted = tracker.predict_only(frame_index=3)
+    assert predicted[0].bbox[1] * 2160 == pytest.approx(160)
+    assert tracker.tracks[0].frames_since_seen == 3
+    assert tracker.tracks[0].existence > 0.7
+    tracker.predict_only(frame_index=3)
+    assert tracker.tracks[0].bbox_4k[1] == pytest.approx(160)
+
+
+def test_assignment_prefers_a_valid_distance_match_over_invalid_tie():
+    tracker = WorldMapTracker(default_shift=(0, 0), min_hits_to_confirm=1)
+    tracker.update([
+        _small_detection((100, 100, 140, 140)),
+        _small_detection((1000, 500, 1030, 530), name="ta-ta"),
+    ], 0, (0, 0, 3840, 2160), 0)
+    tracker.update([_small_detection((1060, 500, 1090, 530), name="ta-ta")],
+                   0, (0, 0, 3840, 2160), 1)
+    assert len(tracker.tracks) == 2
+    assert tracker.tracks[1].hits == 2
+
+
+def test_tiny_in_view_miss_is_not_strong_negative_evidence():
+    tracker = WorldMapTracker(default_shift=(0, 0), min_hits_to_confirm=1)
+    tracker.update([_small_detection((100, 100, 120, 120))], 2, (0, 0, 960, 540), 0)
+    tracker.update([], 0, (0, 0, 3840, 2160), 1)
+    assert tracker.tracks[0].existence > 0.7
+
+
+def test_uncertainty_does_not_grow_quadratically_with_frame_gap():
+    trackers = [WorldMapTracker(default_shift=(0, 20), min_hits_to_confirm=1) for _ in range(2)]
+    for tracker in trackers:
+        tracker.update([_small_detection((100, 100, 140, 140))], 2, (0, 0, 960, 540), 0)
+    trackers[0].predict_only(frame_index=1)
+    trackers[1].predict_only(frame_index=4)
+    assert trackers[1].tracks[0].position_std <= 4 * trackers[0].tracks[0].position_std
+
+
+def test_crop_edge_observation_anchors_visible_edge_without_shrinking_track():
+    tracker = WorldMapTracker(default_shift=(0, 0), min_hits_to_confirm=1)
+    tracker.update([_small_detection((940, 400, 1040, 500))], 0, (0, 0, 3840, 2160), 0)
+    tracker.update([_small_detection((960, 400, 1040, 500))], 2, (960, 270, 1920, 810), 1)
+    assert tracker.tracks[0].bbox_4k == pytest.approx((940, 400, 1040, 500))
+    assert tracker.tracks[0].best_zoom == 0
+
+
+def test_fresh_weak_detection_is_emitted_without_premature_memory_confirmation():
+    tracker = WorldMapTracker(default_shift=(0, 0))
+    detection = _small_detection((100, 100, 140, 140))
+    detection.confidence = 0.001
+    output = tracker.update([detection], 2, (0, 0, 960, 540), 0)
+    assert len(output) == 1
+    assert output[0].confidence == pytest.approx(0.5005)
+    assert not tracker._is_confirmed(tracker.tracks[0])
+
+
+def test_speculative_memory_does_not_degrade_fresh_detection_ap():
+    from local_evaluator import score_ground_truth
+
+    tracker = WorldMapTracker(default_shift=(0, 0))
+    false_positive = _small_detection((3000, 1000, 3040, 1040))
+    true_positive = _small_detection((100, 100, 140, 140))
+    true_positive.confidence = 0.001
+    first = tracker.update([false_positive], 0, (0, 0, 3840, 2160), 0)
+    second = tracker.update([true_positive], 2, (0, 0, 960, 540), 1)
+    assert second[0].bbox[0] * 3840 == pytest.approx(100)
+    assert second[0].confidence > second[1].confidence
+    truth = {0: [], 1: [{"object_id": "tank", "bbox": [100, 100, 140, 140]}]}
+    def prediction(box, confidence):
+        return {"object_id": "tank", "bbox": box, "confidence": confidence}
+    baseline = {
+        0: [prediction(false_positive.source_pixel_bbox, false_positive.confidence)],
+        1: [prediction(true_positive.source_pixel_bbox, true_positive.confidence)],
+    }
+    with_memory = {
+        frame: [prediction([p.bbox[0] * 3840, p.bbox[1] * 2160,
+                            p.bbox[2] * 3840, p.bbox[3] * 2160], p.confidence) for p in predictions]
+        for frame, predictions in enumerate([first, second])
+    }
+    assert score_ground_truth(truth, with_memory)[0] >= score_ground_truth(truth, baseline)[0]
+
+
+def test_vectorized_association_preserves_scalar_gates_costs_and_assignments(monkeypatch):
+    from scipy.optimize import linear_sum_assignment
+    from core.tracker import TrackedObject, compute_iou
+    import core.tracker as tracker_module
+
+    captured = []
+    def capture_cost(cost):
+        captured.append(cost.copy())
+        return linear_sum_assignment(cost)
+    monkeypatch.setattr(tracker_module, "linear_sum_assignment", capture_cost)
+
+    rng = np.random.default_rng(91)
+    classes = ["tank", "jammer", "helicopter"]
+    for trial in range(40):
+        tracker = WorldMapTracker()
+        tracks = 1 + trial % 17
+        count = 1 + trial % 13
+        for index in range(tracks):
+            x, y = rng.uniform(0, 500, 2)
+            width, height = rng.uniform(5, 180, 2)
+            box = tuple(float(v) for v in (x, y, x + width, y + height))
+            tracker.tracks[index] = TrackedObject(index, classes[index % 3], box, 0.9, 1)
+        detections = []
+        for index in range(count):
+            box = np.asarray(tracker.tracks[index % tracks].bbox_4k)
+            dx, dy = rng.uniform(-180, 180, 2)
+            box += (dx, dy, dx, dy)
+            detections.append(_small_detection(box, name=classes[(index + trial) % 3]))
+        ids = list(reversed(tracker.tracks))
+        costs = np.full((count, tracks + count), 1e6, dtype=np.float32)
+        costs[:, tracks:] = 1.5
+        gates = np.zeros((count, tracks), dtype=bool)
+        for row, detection in enumerate(detections):
+            a = detection.source_pixel_bbox
+            for column, tid in enumerate(ids):
+                track = tracker.tracks[tid]
+                b = track.bbox_4k
+                overlap = compute_iou(a, b)
+                distance = (((a[0] + a[2]) / 2 - (b[0] + b[2]) / 2) ** 2
+                            + ((a[1] + a[3]) / 2 - (b[1] + b[3]) / 2) ** 2) ** 0.5
+                diagonal = max(((b[2] - b[0]) ** 2 + (b[3] - b[1]) ** 2) ** 0.5, 1.0)
+                same_class = detection.class_name == track.class_name
+                if overlap >= tracker.iou_match_threshold or (same_class and distance <= max(diagonal, 150)):
+                    gates[row, column] = True
+                    costs[row, column] = (1 - overlap - 0.25 * max(0, 1 - distance / diagonal)
+                                          + (0 if same_class else 0.2))
+        rows, columns = linear_sum_assignment(costs)
+        expected = [(int(row), ids[column]) for row, column in zip(rows, columns)
+                    if column < tracks and gates[row, column]]
+        actual, detection_ids, matched_tracks = tracker._associate(detections, ids)
+        np.testing.assert_array_equal(captured[-1], costs)
+        assert actual == expected
+        assert detection_ids == {row for row, _ in expected}
+        assert matched_tracks == {tid for _, tid in expected}
+
+
+def test_vectorized_nms_matches_scalar_order_thresholds_and_global_cap():
+    from collections import defaultdict
+    from core.tracker import apply_class_aware_nms, compute_iou
+    from dtos import DroneFlybyPredictionDto
+
+    rng = np.random.default_rng(32)
+    for threshold in (0.0, 0.2, 0.45, 0.7, 1.0):
+        predictions = []
+        for index in range(180):
+            x, y = rng.uniform(0, 0.7, 2)
+            width, height = rng.uniform(0.02, 0.3, 2)
+            predictions.append(DroneFlybyPredictionDto(
+                object_id=("tank", "jammer", "helicopter")[index % 3],
+                bbox=(float(x), float(y), float(x + width), float(y + height)),
+                confidence=float(rng.choice([0.1, 0.3, 0.6, 0.9])),
+            ))
+        grouped = defaultdict(list)
+        for prediction in predictions:
+            grouped[prediction.object_id].append(prediction)
+        expected = []
+        for group in grouped.values():
+            kept = []
+            for prediction in sorted(group, key=lambda item: -item.confidence):
+                if not any(compute_iou(prediction.bbox, box) > threshold for box in kept):
+                    expected.append(prediction)
+                    kept.append(prediction.bbox)
+        expected.sort(key=lambda item: -item.confidence)
+        assert apply_class_aware_nms(predictions, threshold, max_total=37) == expected[:37]

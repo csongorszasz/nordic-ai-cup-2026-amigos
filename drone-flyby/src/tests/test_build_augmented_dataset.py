@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+import json
 
 from dtos import TRANSMITTED_VIEW_SIZE
 from offline.build_augmented_dataset import (
@@ -9,6 +10,7 @@ from offline.build_augmented_dataset import (
     build_augmented_dataset,
     crop_objects_from_view,
     paste_augment,
+    rotate_object_crop,
 )
 
 
@@ -116,3 +118,72 @@ def test_build_augmented_dataset_writes_a_usable_tree(tmp_path):
     assert val_images
     assert "names:" in data_yaml.read_text()
     assert (dataset_dir / "augmentation_stats.json").is_file()
+    manifest = json.loads((dataset_dir / "manifest.json").read_text())
+    assert {item["source_frame"] for item in manifest["bank"]} == {0}
+    assert {item["frame"] for item in manifest["samples"] if item["split"] == "train"} == {0}
+    assert {item["frame"] for item in manifest["samples"] if item["split"] == "val"} == {1}
+
+
+def test_copy_paste_label_keeps_tight_box_not_context():
+    rows = [(0, 0.5, 0.5, 0.1, 0.1)]
+    bank = crop_objects_from_view(_blank_view(), rows, margin=0.5)
+    _, labels = paste_augment(
+        _blank_view(), [], bank, np.random.default_rng(1),
+        scale_range=(1.0, 1.0), max_pastes=1,
+    )
+    assert labels[0][3:] == pytest.approx((0.1, 0.1))
+
+
+def test_copy_paste_does_not_mix_zoom_scales():
+    bank = crop_objects_from_view(_blank_view(), [(0, 0.5, 0.5, 0.1, 0.1)], zoom_level=2)
+    _, labels = paste_augment(_blank_view(), [], bank, np.random.default_rng(1), zoom_level=0)
+    assert labels == []
+
+
+def test_augmented_dataset_retains_empty_views(tmp_path):
+    data_yaml = build_augmented_dataset(
+        scene="helsinki", output_dir=tmp_path, levels=[2],
+        frames=[0, 1], step_fraction=1.0, neg_stride=0,
+    )
+    labels = list((data_yaml.parent / "labels").rglob("*.txt"))
+    assert any(not path.read_text().strip() for path in labels)
+
+
+def test_unaugmented_control_has_identical_views_labels_and_negative_sampling(tmp_path, monkeypatch):
+    import offline.build_exact_view_dataset as exact
+
+    monkeypatch.setattr(exact, "frame_numbers", lambda scene: [0, 1])
+    control = exact.build_exact_view_dataset(
+        "helsinki", tmp_path / "control", levels=[2], val_fraction=0.5,
+        neg_stride=2, step_fraction=1.0,
+    ).parent
+    candidate = build_augmented_dataset(
+        "helsinki", tmp_path / "candidate", levels=[2], val_fraction=0.5,
+        neg_stride=2, step_fraction=1.0, frames=[0, 1],
+    ).parent
+    for folder, suffix in (("images", ".png"), ("labels", ".txt")):
+        expected = sorted(path.relative_to(control) for path in (control / folder).rglob(f"*{suffix}"))
+        actual = sorted(path.relative_to(candidate) for path in (candidate / folder).rglob(f"*{suffix}"))
+        assert actual == expected
+        for path in expected:
+            assert (candidate / path).read_bytes() == (control / path).read_bytes()
+
+
+@pytest.mark.parametrize("turns", range(4))
+def test_quarter_turn_labels_match_the_rotated_foreground_pixels(turns):
+    image = np.zeros((6, 10, 3), dtype=np.uint8)
+    image[1:4, 2:7] = 255
+    crop = ObjectCrop(3, image, 10, 6, object_box=(2, 1, 7, 4), zoom_level=2, source_frame=12)
+    rotated = rotate_object_crop(crop, turns)
+    ys, xs = np.nonzero(rotated.image[:, :, 0])
+    assert rotated.object_box == (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
+    assert rotated.image.shape[:2] == (rotated.height, rotated.width)
+    assert (rotated.class_index, rotated.zoom_level, rotated.source_frame) == (3, 2, 12)
+
+
+def test_fractional_tiny_box_is_fully_contained_in_its_crop():
+    rows = [(0, (503.99 + 1.6) / VIEW_WIDTH, 0.5, 3.2 / VIEW_WIDTH, 6 / VIEW_HEIGHT)]
+    crop = crop_objects_from_view(_blank_view(), rows)[0]
+    x1, y1, x2, y2 = crop.object_box
+    assert 0 <= x1 < x2 <= crop.width
+    assert 0 <= y1 < y2 <= crop.height

@@ -71,6 +71,9 @@ class ValidationDatasetRecorder:
             self.session_dir = session_dir
             for name in ("images", "metadata", "responses"):
                 (session_dir / name).mkdir(parents=True, exist_ok=True)
+            (session_dir / "data_role.json").write_text(
+                json.dumps({"data_role": "evaluation-only"}), encoding="utf-8"
+            )
             self.enabled = True
         self._ensure_worker()
         logger.info("Recording validation sequence to %s", session_dir)

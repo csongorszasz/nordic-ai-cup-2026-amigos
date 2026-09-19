@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
+import pytest
 
 from config import DroneFlybyConfig
 from core.camera_policy import (
@@ -402,13 +403,20 @@ def test_hold_policy_never_moves():
     assert policy.decide_next_view(request, _simple_summary((900, 600))) is None
 
 
-def test_unknown_policy_falls_back_to_hold():
-    policy = create_camera_policy(DroneFlybyConfig(POLICY_TYPE="not_a_policy"))
-    policy.reset("unknown_seq")
-    camera = SimulatedCamera()
-    request = _build_request(camera, frame_index=0, sequence_id="unknown_seq")
+def test_unknown_policy_fails_instead_of_disguising_a_configuration_error():
+    with pytest.raises(ValueError, match="Unknown camera policy"):
+        create_camera_policy(DroneFlybyConfig(POLICY_TYPE="not_a_policy"))
 
-    assert policy.decide_next_view(request, _simple_summary()) is None
+
+def test_deterministic_l1_is_independent_of_tracker_candidates():
+    first = create_camera_policy(DroneFlybyConfig(POLICY_TYPE="deterministic_l1"))
+    second = create_camera_policy(DroneFlybyConfig(POLICY_TYPE="deterministic_l1"))
+    camera = SimulatedCamera()
+    for frame in range(15):
+        request = _build_request(camera, frame, "deterministic")
+        command = first.decide_next_view(request, _simple_summary())
+        assert second.decide_next_view(request, _simple_summary((1920, 1080))) == command
+        camera.apply(command)
 
 
 def test_active_coverage_rate_limits_l2_zoom():

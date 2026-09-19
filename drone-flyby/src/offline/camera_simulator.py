@@ -33,7 +33,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from config import DroneFlybyConfig  # noqa: E402
 from core.camera_policy import create_camera_policy  # noqa: E402
-from core.interfaces import DetectionResult  # noqa: E402
+from core.interfaces import BaseDetector, DetectionResult  # noqa: E402
 from core.tracker import create_tracker  # noqa: E402
 from dtos import (  # noqa: E402
     IMAGE_HEIGHT,
@@ -72,11 +72,17 @@ class SimulatorReport:
     illegal_moves: int
     coverage_l1: float
     coverage_l2: float
-    instances_seen_l1: int
-    instances_seen_l2: int
-    total_instances: int
+    observed_object_frames_l1: int
+    observed_object_frames_l2: int
+    total_object_frames: int
     map50: float
     per_class: Dict[str, float] = field(default_factory=dict)
+    predictions: Dict[int, List[Dict]] = field(default_factory=dict)
+    trajectory: List[Dict] = field(default_factory=list)
+    detector: str = "view_oracle"
+    min_view_pixels: int = 0
+    scene: str = ""
+    evaluation_frames: List[int] = field(default_factory=list)
 
     def summary(self) -> str:
         return (
@@ -84,8 +90,8 @@ class SimulatorReport:
             f"  illegal camera moves : {self.illegal_moves}\n"
             f"  L1 coverage          : {self.coverage_l1:.1%}\n"
             f"  L2 coverage          : {self.coverage_l2:.1%}\n"
-            f"  instances seen L1    : {self.instances_seen_l1}/{self.total_instances}\n"
-            f"  instances seen L2    : {self.instances_seen_l2}/{self.total_instances}\n"
+            f"  object-frames seen L1: {self.observed_object_frames_l1}/{self.total_object_frames}\n"
+            f"  object-frames seen L2: {self.observed_object_frames_l2}/{self.total_object_frames}\n"
             f"  COCO mAP@0.50        : {self.map50:.4f}"
         )
 
@@ -96,14 +102,13 @@ def view_oracle_detections(
     level: int,
     min_view_pixels: int = 0,
 ) -> List[DetectionResult]:
-    """Ground-truth objects the current view can plausibly resolve.
+    """Privileged oracle observations with an optional diagnostic size gate.
 
     An object is reported when its centre lies inside the view and, if
     ``min_view_pixels`` is set, when its largest apparent dimension in the
     transmitted 960x540 image is at least that many pixels. The size gate is
-    what makes the simulation honest: at Level 0 a 50-px object is under 13 px
-    and a real detector cannot see it, so a policy that holds at Level 0 must
-    not be credited with detecting it.
+    a diagnostic assumption, not an estimate of real detector recall. Small
+    L0 objects can be detected; use real-detector replays to compare policies.
 
     Boxes are returned in both global-normalized and source-pixel coordinates,
     the shape the tracker's association step expects.
@@ -140,11 +145,6 @@ def view_oracle_detections(
     return detections
 
 
-def _instance_key(annotation: Dict) -> Tuple[str, int, int]:
-    x1, y1, _, _ = (float(c) for c in annotation["bbox"])
-    return annotation["object_id"], int(round(x1 / 40.0)), int(round(y1 / 40.0))
-
-
 def _view_gray(frame_image: np.ndarray, source_region: Sequence[int]) -> np.ndarray:
     x1, y1, x2, y2 = (int(v) for v in source_region)
     view = frame_image[y1:y2, x1:x2]
@@ -160,13 +160,13 @@ def run_simulation(
     annotation_provider: Optional[AnnotationProvider] = None,
     score_fn: Optional[Callable[[str, Dict[int, List[Dict]]], Tuple[float, Dict[str, float]]]] = None,
     min_view_pixels: int = 0,
+    detector: Optional[BaseDetector] = None,
 ) -> SimulatorReport:
     """Replay one policy through a scene and score the whole loop."""
     frame_provider = frame_provider or (lambda frame: load_frame(frame, scene))
     annotation_provider = annotation_provider or (
         lambda frame: load_annotations(frame, scene)
     )
-    score_fn = score_fn or score
 
     tracker = create_tracker(config)
     policy = create_camera_policy(config)
@@ -176,25 +176,34 @@ def run_simulation(
 
     frame_list = list(frames) if frames is not None else frame_numbers(scene)
     predictions: Dict[int, List[Dict]] = {}
-    seen_l1: set = set()
-    seen_l2: set = set()
+    seen_l1 = 0
+    seen_l2 = 0
+    total_object_frames = 0
+    trajectory = []
     illegal_moves = 0
     feedback = None
 
-    for frame_index, frame in enumerate(frame_list):
+    if not frame_list or frame_list != sorted(set(frame_list)):
+        raise ValueError("Simulation frames must be nonempty, unique and increasing")
+    for frame in frame_list:
+        frame_index = frame - frame_list[0]
         frame_image = frame_provider(frame)
         annotations = annotation_provider(frame)
         source_region = camera.source_region
 
-        for annotation in annotations:
-            if camera.resolution_level >= 1:
-                seen_l1.add(_instance_key(annotation))
-            if camera.resolution_level >= 2:
-                seen_l2.add(_instance_key(annotation))
-
-        detections = view_oracle_detections(
+        visible = view_oracle_detections(
             annotations, source_region, camera.resolution_level, min_view_pixels
         )
+        total_object_frames += len(annotations)
+        if camera.resolution_level >= 1:
+            seen_l1 += len(visible)
+        if camera.resolution_level >= 2:
+            seen_l2 += len(visible)
+        detections = visible
+        if detector is not None:
+            x1, y1, x2, y2 = source_region
+            view = cv2.resize(frame_image[y1:y2, x1:x2], (960, 540), interpolation=cv2.INTER_AREA)
+            detections = detector.detect(view, camera.resolution_level, source_region)
         gray = _view_gray(frame_image, source_region)
         emitted = tracker.update(
             detections=detections,
@@ -216,12 +225,21 @@ def run_simulation(
             }
             for p in emitted
         ]
+        summary = tracker.get_summary()
+        trajectory.append({
+            "frame": frame, "frame_index": frame_index,
+            "level": camera.resolution_level, "region": list(source_region),
+            "visible_objects": len(visible), "detections": len(detections),
+            "emitted": len(emitted),
+            "motion_per_frame": list(summary.current_shift_estimate),
+            "active_tracks": summary.num_active_tracks,
+        })
 
         encoded = render_view(frame_image, camera)
         request = DroneFlybyPredictRequestDto(
             **build_request(frame, frame_index, camera, encoded, feedback)
         )
-        next_view = policy.decide_next_view(request, tracker.get_summary())
+        next_view = policy.decide_next_view(request, summary)
         feedback = None
         if next_view is not None:
             try:
@@ -238,10 +256,12 @@ def run_simulation(
                     "reason": str(rejection),
                 }
 
-    map50, per_class = score_fn(scene, predictions)
+    map50, per_class = (
+        score_fn(scene, predictions) if score_fn is not None
+        else score(scene, predictions, evaluation_frames=frame_list)
+    )
     coverage_l1 = _policy_coverage(policy, 1)
     coverage_l2 = _policy_coverage(policy, 2)
-    total_instances = len({_instance_key(a) for f in frame_list for a in annotation_provider(f)})
 
     return SimulatorReport(
         policy=config.POLICY_TYPE,
@@ -250,11 +270,17 @@ def run_simulation(
         illegal_moves=illegal_moves,
         coverage_l1=coverage_l1,
         coverage_l2=coverage_l2,
-        instances_seen_l1=len(seen_l1),
-        instances_seen_l2=len(seen_l2),
-        total_instances=total_instances,
+        observed_object_frames_l1=seen_l1,
+        observed_object_frames_l2=seen_l2,
+        total_object_frames=total_object_frames,
         map50=map50,
         per_class=per_class,
+        predictions=predictions,
+        trajectory=trajectory,
+        detector=type(detector).__name__ if detector is not None else "view_oracle",
+        min_view_pixels=min_view_pixels,
+        scene=scene,
+        evaluation_frames=frame_list,
     )
 
 
@@ -278,7 +304,7 @@ def main() -> int:
         default=0,
         help="Detectability gate: an object is only 'seen' if its largest "
         "apparent dimension in the transmitted image is at least this many "
-        "pixels. Use ~16 to model a real detector; 0 credits even L0.",
+        "pixels. This is a diagnostic assumption, not a measured detector model.",
     )
     parser.add_argument("--json", action="store_true", help="Print the report as JSON.")
     arguments = parser.parse_args()

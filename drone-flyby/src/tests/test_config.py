@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from config import DEFAULT_WEIGHTS_PATH, DroneFlybyConfig
+import pytest
 
 
 def test_default_weights_path_is_absolute_and_under_weights():
@@ -47,3 +48,15 @@ def test_env_blank_path_falls_back_to_default(monkeypatch):
     config = DroneFlybyConfig.from_env()
 
     assert config.YOLO_WEIGHTS_PATH == DroneFlybyConfig.YOLO_WEIGHTS_PATH
+
+
+def test_per_zoom_inference_shapes_are_explicit(monkeypatch):
+    monkeypatch.setenv("DRONE_FLYBY_INFERENCE_IMAGE_SIZES", "3200,1600,960")
+    assert DroneFlybyConfig.from_env().INFERENCE_IMAGE_SIZES == (3200, 1600, 960)
+
+
+@pytest.mark.parametrize("value", ["3200,960", "3200,1600,0", "3200,1000,960"])
+def test_invalid_per_zoom_shapes_fail(monkeypatch, value):
+    monkeypatch.setenv("DRONE_FLYBY_INFERENCE_IMAGE_SIZES", value)
+    with pytest.raises(ValueError):
+        DroneFlybyConfig.from_env()

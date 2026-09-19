@@ -1,5 +1,11 @@
 # Drone-Flyby — Training and Manual Deployment Guide
 
+> Historical run notes below are not reproduced competition estimates. Use
+> `idun\README.md` for the current 80 GB IDUN workflow and isolated environments.
+> Validation recordings are evaluation-only and cannot supply training or
+> calibration data. Exact-view validation now groups source frames, but Helsinki
+> still shares object instances across splits.
+
 This guide explains how to train the current detector baseline on the supplied Helsinki scene and how to run the API for manual submission testing.
 
 ## 1. Is the system ready for training?
@@ -24,11 +30,13 @@ For the first training pass, use:
 
 - the supplied [data/helsinki](data/helsinki) frames as supervised labels
 - a YOLOv11s-style model if Ultralytics is installed
-- the current template-bank detector as a fallback if you want something deterministic before YOLO is ready
+- the template-bank detector only for debugging, never as an automatic deployment fallback
 
 ## 3. Build the training dataset
 
-The training helper now splits the supplied Helsinki frames into train/val subsets and can also accept pseudo-labeled recordings later.
+The training helper splits the supplied Helsinki frames into train/val subsets.
+Additional pseudo-labels must come from separately authorized training data, not
+validation recordings.
 
 Example:
 
@@ -133,17 +141,13 @@ python src/api.py
 
 The recorder will save incoming images and metadata per sequence.
 
-## 6. Pseudo-label recorded validation data
+## 6. Keep validation recordings out of training
 
-Once recordings exist, generate pseudo-labels with the current detector baseline:
-
-```bash
-python src/offline/pseudo_label.py \
-  --images-dir recorded_validation_data/<sequence_id>/images \
-  --labels-dir recorded_validation_data/<sequence_id>/labels
-```
-
-Later, you can use a stronger detector backend for pseudo-label generation.
+The recorder marks each sequence as `evaluation-only`. Preserve this marker when
+copying recordings to IDUN for evaluation. The dataset builders, training entry
+point, and pseudo-labeler reject such inputs. Pseudo-labeling is available only
+for separate training-development data; model predictions are not ground truth
+for reporting validation AP.
 
 ## 7. Deploy the API with a trained YOLO baseline
 

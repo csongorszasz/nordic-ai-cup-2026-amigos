@@ -119,6 +119,16 @@ def stats():
         'tracker_type': DEFAULT_CONFIG.TRACKER_TYPE,
         'policy_type': DEFAULT_CONFIG.POLICY_TYPE,
         'peak_vram_mb': peak_vram_mb,
+        'inference_shape': getattr(pipeline.detector, 'last_input_shape', None),
+        'inference_dtype': getattr(pipeline.detector, 'last_input_dtype', None),
+        'component_inference_shapes': getattr(pipeline.detector, 'component_inference_shapes', None),
+        'component_inference_dtypes': getattr(pipeline.detector, 'component_inference_dtypes', None),
+        'inference_image_size': DEFAULT_CONFIG.INFERENCE_IMAGE_SIZE,
+        'inference_image_sizes': getattr(pipeline.detector, 'image_sizes', None),
+        'inference_rect': DEFAULT_CONFIG.INFERENCE_RECT,
+        'inference_half': DEFAULT_CONFIG.INFERENCE_HALF,
+        'last_timings': pipeline.last_timings,
+        'run_nonce': os.getenv('DRONE_FLYBY_RUN_NONCE'),
     }
 
 
@@ -128,4 +138,4 @@ def index():
 
 
 if __name__ == '__main__':
-    uvicorn.run('api:app', host=HOST, port=PORT)
+    uvicorn.run(app, host=HOST, port=PORT)

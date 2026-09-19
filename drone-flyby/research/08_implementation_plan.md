@@ -1,5 +1,10 @@
 # Drone Flyby — Implementation Plan (Architecture A+B, staged)
 
+> Historical implementation record. The current score-driven loop repairs
+> measurement and data integrity before promotion, advances coverage with terrain,
+> and compares actual realtime AP against simpler baselines. Static coverage
+> and the all-visible oracle below are not sufficient deployment gates.
+
 > Companion to `07_new_research.md`. This document is the plan **and** the record
 > of what has been implemented. Training is **not** run here; the offline
 > training/data pipeline is prepared and tested, ready to execute on IDUN.
@@ -152,7 +157,7 @@ cat training_artifacts/augmented/drone_flyby_augmented/augmentation_stats.json
 bash idun/submit.sh run python src/offline/train_yolo.py \
     --data-yaml training_artifacts/augmented/drone_flyby_augmented/drone_flyby_augmented.yaml \
     --weights yolo11s_drone_flyby.pt --imgsz 1280 --batch 32 --epochs 150 \
-    --multi-scale --copy-paste 0.3 --project runs/augmented --name yolo11s_aug
+    --multi-scale --project runs/augmented --name yolo11s_aug
 
 bash idun/submit.sh fetch       # retrieve runs/augmented/.../weights/best.pt
 ```

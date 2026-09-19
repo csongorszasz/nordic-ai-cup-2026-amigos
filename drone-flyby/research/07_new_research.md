@@ -1,5 +1,12 @@
 # Drone Flyby — Architecture Research: Why the Current Pipeline Scores Zero, and What to Build Instead
 
+> Historical hypothesis, not the current conclusion. Subsequent reproducible
+> IDUN experiments show that L0 can score well, that proposal thresholds and
+> actual inference resolution matter substantially, and that the original
+> active policy trailed hold/passthrough. The 3333 ms timeout is not a loss-free
+> latency budget. Use the current README and persisted experiment results;
+> the claims and measurements below describe the earlier system.
+
 > Scope: system-first architecture research. Detector model-level choices are covered as a
 > secondary section because the current zero score is not caused by the detector.
 > This document is independent of the earlier `01`–`06` research notes.

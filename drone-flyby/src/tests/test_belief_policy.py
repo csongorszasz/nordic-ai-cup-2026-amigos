@@ -169,15 +169,17 @@ def test_exploration_never_idles_while_ground_is_uncovered():
     assert policy.coverage_fraction("coverage_seq", 1) > 0.5
 
 
-def test_coverage_is_monotonic():
-    policy = BeliefVoIPolicy()
+def test_stationary_unexpired_coverage_is_monotonic():
+    policy = BeliefVoIPolicy(coverage_max_age_frames=100)
     policy.reset("monotonic_seq")
     camera = SimulatedCamera()
     previous = 0.0
 
     for frame_index in range(15):
         request = _build_request(camera, frame_index, "monotonic_seq")
-        next_view = policy.decide_next_view(request, _summary())
+        summary = _summary()
+        summary.current_shift_estimate = (0, 0)
+        next_view = policy.decide_next_view(request, summary)
         current = policy.coverage_fraction("monotonic_seq", 1)
         assert current >= previous
         previous = current
@@ -260,3 +262,18 @@ def test_reset_clears_coverage():
     policy.reset("reset_seq")
     assert policy.coverage_fraction("reset_seq", 0) == 0.0
     assert policy.coverage_fraction("reset_seq", 1) == 0.0
+
+
+def test_long_moving_sequence_keeps_exploring():
+    policy = BeliefVoIPolicy()
+    policy.reset("long_seq")
+    camera = SimulatedCamera()
+    late_centers = set()
+    for frame_index in range(100):
+        request = _build_request(camera, frame_index, "long_seq")
+        next_view = policy.decide_next_view(request, _summary())
+        assert next_view is not None
+        camera.apply(next_view)
+        if frame_index >= 50:
+            late_centers.add((camera.center_x, camera.center_y))
+    assert len(late_centers) > 3

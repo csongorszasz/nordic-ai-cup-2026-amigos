@@ -3,15 +3,16 @@
 import json
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 from config import DroneFlybyConfig
 from core.interfaces import BaseDetector, DetectionResult
-from dtos import OBJECT_CLASSES
+from dtos import OBJECT_CLASSES, SOURCE_REGION_SIZES
 from utils import (
     clip_bbox_to_frame,
     load_annotations,
@@ -20,17 +21,31 @@ from utils import (
     source_bbox_to_global,
     view_bbox_to_global,
     view_bbox_to_source,
+    pairwise_iou,
 )
 
 logger = logging.getLogger(__name__)
 
 try:  # Optional backend; the detector still works without it.
     from ultralytics import YOLO  # type: ignore
+    from ultralytics.cfg import DEFAULT_CFG_DICT
+    from ultralytics.models.yolo.detect.predict import DetectionPredictor
 
     _ULTRALYTICS_AVAILABLE = True
+    _USES_QUANTIZE = "quantize" in DEFAULT_CFG_DICT
+
+    class MeasuredPredictor(DetectionPredictor):
+        def preprocess(self, images):
+            tensor = super().preprocess(images)
+            self.last_input_shape = tuple(tensor.shape)
+            self.last_input_dtype = str(tensor.dtype)
+            return tensor
+
 except Exception:  # pragma: no cover - exercised only when the package exists.
     YOLO = None
+    MeasuredPredictor = None
     _ULTRALYTICS_AVAILABLE = False
+    _USES_QUANTIZE = False
 
 
 def load_calibration(path: Path) -> Dict[str, float]:
@@ -354,10 +369,13 @@ class YoloDetector(BaseDetector):
         confidence_threshold_l2: float = 0.20,
         expected_classes: Sequence[str] = OBJECT_CLASSES,
         calibration: Optional[Dict[str, float]] = None,
+        imgsz: int = 960,
+        rect: bool = True,
+        half: bool = False,
+        nms_iou: float = 0.7,
+        max_det: int = 300,
+        image_sizes: Optional[Tuple[int, int, int]] = None,
     ):
-        if not _ULTRALYTICS_AVAILABLE:
-            raise RuntimeError("ultralytics is not installed; the YOLO backend is unavailable")
-
         if not weights_path:
             raise ValueError(
                 "A weights path is required for the YOLO backend. Set "
@@ -371,6 +389,14 @@ class YoloDetector(BaseDetector):
                 f"with an unvalidated fallback model."
             )
 
+        if not _ULTRALYTICS_AVAILABLE:
+            raise RuntimeError("ultralytics is not installed; the YOLO backend is unavailable")
+
+        sizes = image_sizes if image_sizes is not None else (imgsz, imgsz, imgsz)
+        if len(sizes) != 3 or any(size <= 0 or size % 32 for size in sizes):
+            raise ValueError("Per-zoom image sizes must be three positive multiples of 32")
+        if weights_file.suffix.lower() == ".engine" and len(set(sizes)) > 1:
+            raise ValueError("Per-zoom shapes require the PyTorch backend; dynamic TensorRT profiles are not verified")
         yolo_cls = YOLO
         assert yolo_cls is not None
         self.model = yolo_cls(str(weights_file))
@@ -381,7 +407,23 @@ class YoloDetector(BaseDetector):
             2: confidence_threshold_l2,
         }
         self.calibration = dict(calibration) if calibration else {}
+        if imgsz <= 0 or imgsz % 32 or not 0 < max_det <= 500 or not 0 <= nms_iou <= 1:
+            raise ValueError("imgsz must be a positive multiple of 32, max_det 1..500, and NMS IoU 0..1")
+        self.imgsz = imgsz
+        self.image_sizes = sizes
+        self.rect = rect
+        self.half = half
+        self.nms_iou = nms_iou
+        self.max_det = max_det
         self._validate_class_map(list(expected_classes))
+
+    @property
+    def last_input_shape(self) -> Optional[Tuple[int, ...]]:
+        return getattr(getattr(self.model, "predictor", None), "last_input_shape", None)
+
+    @property
+    def last_input_dtype(self) -> Optional[str]:
+        return getattr(getattr(self.model, "predictor", None), "last_input_dtype", None)
 
     def _validate_class_map(self, expected_classes: List[str]) -> None:
         names = getattr(self.model, "names", None)
@@ -400,7 +442,13 @@ class YoloDetector(BaseDetector):
 
     def warmup(self) -> None:
         dummy = np.zeros((540, 960, 3), dtype=np.uint8)
-        _ = self.detect(dummy, zoom_level=0, source_region_xyxy=(0, 0, 3840, 2160))
+        warmed = set()
+        for level, size in enumerate(self.image_sizes):
+            if size in warmed:
+                continue
+            width, height = SOURCE_REGION_SIZES[level]
+            self.detect(dummy, zoom_level=level, source_region_xyxy=(0, 0, width, height))
+            warmed.add(size)
 
     def _parse_result(
         self,
@@ -416,17 +464,14 @@ class YoloDetector(BaseDetector):
         if boxes is None:
             return detections
 
-        for box in boxes:
-            cls_id = int(box.cls.item()) if hasattr(box.cls, "item") else int(box.cls)
+        for cls_id, conf, xyxy in self._box_rows(boxes):
             raw_name = names.get(cls_id, str(cls_id)) if isinstance(names, dict) else names[cls_id]
             class_name = _normalize_class_name(str(raw_name))
             if class_name not in OBJECT_CLASSES:
                 continue
-            conf = float(box.conf.item() if hasattr(box.conf, "item") else box.conf)
-            class_threshold = self.calibration.get(class_name)
-            if class_threshold is not None and conf < class_threshold:
+            class_threshold = self.calibration.get(class_name, self.conf_thresholds[zoom_level])
+            if conf < class_threshold:
                 continue
-            xyxy = box.xyxy[0].tolist() if hasattr(box.xyxy, "__getitem__") else list(box.xyxy)
             x1, y1, x2, y2 = (float(v) for v in xyxy)
             view_bbox = (x1 / image_w, y1 / image_h, x2 / image_w, y2 / image_h)
             global_bbox = view_bbox_to_global(view_bbox, source_region_xyxy)
@@ -444,17 +489,123 @@ class YoloDetector(BaseDetector):
             )
         return detections
 
+    @staticmethod
+    def _box_rows(boxes):
+        if hasattr(boxes, "data"):
+            data = boxes.data
+            if len(data.shape) != 2 or data.shape[1] not in (6, 7):
+                raise ValueError("YOLO boxes must contain xyxy, optional track ID, confidence and class")
+            if hasattr(data, "detach"):
+                data = data.detach().cpu()
+            # Transfer the entire tensor once, not three synchronized transfers per box.
+            for row in data.tolist():
+                yield int(row[-1]), float(row[-2]), row[:4]
+        else:
+            for box in boxes:
+                cls_id = int(box.cls.item()) if hasattr(box.cls, "item") else int(box.cls)
+                confidence = float(box.conf.item() if hasattr(box.conf, "item") else box.conf)
+                xyxy = box.xyxy[0].tolist() if hasattr(box.xyxy, "__getitem__") else list(box.xyxy)
+                yield cls_id, confidence, xyxy
+
     def detect(
         self,
         image_bgr: np.ndarray,
         zoom_level: int,
         source_region_xyxy: Tuple[int, int, int, int],
     ) -> List[DetectionResult]:
-        conf = self.conf_thresholds.get(zoom_level, 0.15)
-        results = self.model.predict(image_bgr, conf=conf, device=self.device, verbose=False)
+        conf = min(self.conf_thresholds[zoom_level], min(self.calibration.values(), default=1.0))
+        precision = {"quantize": 16 if self.half else None} if _USES_QUANTIZE else {"half": self.half}
+        results = self.model.predict(
+            image_bgr, conf=conf, device=self.device, verbose=False,
+            imgsz=self.image_sizes[zoom_level], rect=self.rect, **precision,
+            iou=self.nms_iou, max_det=self.max_det, predictor=MeasuredPredictor,
+        )
         if not results:
             return []
         return self._parse_result(results[0], zoom_level, source_region_xyxy)
+
+
+def fuse_detection_pairs(
+    first: List[DetectionResult], second: List[DetectionResult],
+    iou_threshold: float = 0.55, max_proposals: int = 300,
+) -> List[DetectionResult]:
+    """Fuse at most one same-class observation per model in each matched box."""
+    if not 0 <= iou_threshold <= 1 or max_proposals < 1:
+        raise ValueError("Fusion requires IoU in [0, 1] and a positive proposal limit")
+    fused = []
+    used_first, used_second = set(), set()
+    if first and second:
+        boxes_a = np.asarray([item.source_pixel_bbox for item in first], dtype=np.float64)
+        boxes_b = np.asarray([item.source_pixel_bbox for item in second], dtype=np.float64)
+        overlap = pairwise_iou(boxes_a, boxes_b)
+        same_class = (
+            np.asarray([item.class_name for item in first], dtype=object)[:, None]
+            == np.asarray([item.class_name for item in second], dtype=object)[None, :]
+        )
+        gate = same_class & (overlap >= iou_threshold)
+        cost = np.full((len(first), len(second) + len(first)), 1e6, dtype=np.float32)
+        cost[:, len(second):] = 1.5
+        cost[:, :len(second)] = np.where(gate, 1.0 - overlap, 1e6)
+        rows, columns = linear_sum_assignment(cost)
+        for row, column in zip(rows, columns):
+            if column >= len(second) or not gate[row, column]:
+                continue
+            a, b = first[row], second[column]
+            total = a.confidence + b.confidence
+            weight_a = a.confidence / total if total else 0.5
+            box = tuple(
+                float(weight_a * left + (1.0 - weight_a) * right)
+                for left, right in zip(a.source_pixel_bbox, b.source_pixel_bbox)
+            )
+            fused.append(DetectionResult(
+                class_name=a.class_name, bbox_global=source_bbox_to_global(box),
+                confidence=total / 2, zoom_level=a.zoom_level, source_pixel_bbox=box,
+            ))
+            used_first.add(row)
+            used_second.add(column)
+    fused.extend(replace(item, confidence=item.confidence / 2)
+                 for index, item in enumerate(first) if index not in used_first)
+    fused.extend(replace(item, confidence=item.confidence / 2)
+                 for index, item in enumerate(second) if index not in used_second)
+    return sorted(fused, key=lambda item: -item.confidence)[:max_proposals]
+
+
+class PairedYoloDetector(BaseDetector):
+    """Opt-in two-checkpoint ensemble; latency and AP must both be measured."""
+
+    def __init__(self, primary: BaseDetector, secondary: BaseDetector, max_proposals=300):
+        self.primary = primary
+        self.secondary = secondary
+        self.max_proposals = max_proposals
+
+    def warmup(self):
+        self.primary.warmup()
+        self.secondary.warmup()
+
+    @property
+    def last_input_shape(self):
+        return getattr(self.primary, "last_input_shape", None)
+
+    @property
+    def last_input_dtype(self):
+        return getattr(self.primary, "last_input_dtype", None)
+
+    @property
+    def image_sizes(self):
+        return getattr(self.primary, "image_sizes", None)
+
+    @property
+    def component_inference_shapes(self):
+        return [getattr(model, "last_input_shape", None) for model in (self.primary, self.secondary)]
+
+    @property
+    def component_inference_dtypes(self):
+        return [getattr(model, "last_input_dtype", None) for model in (self.primary, self.secondary)]
+
+    def detect(self, image_bgr, zoom_level, source_region_xyxy):
+        first = self.primary.detect(image_bgr, zoom_level, source_region_xyxy)
+        second = self.secondary.detect(image_bgr, zoom_level, source_region_xyxy)
+        return fuse_detection_pairs(first, second, max_proposals=self.max_proposals)
 
 
 def _load_calibration(config: DroneFlybyConfig) -> Optional[Dict[str, float]]:
@@ -484,7 +635,21 @@ def create_detector(config: DroneFlybyConfig) -> BaseDetector:
             confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
             confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
             calibration=_load_calibration(config),
+            imgsz=config.INFERENCE_IMAGE_SIZE, rect=config.INFERENCE_RECT,
+            half=config.INFERENCE_HALF, nms_iou=config.DETECTOR_NMS_IOU,
+            max_det=config.DETECTOR_MAX_DET,
+            image_sizes=config.INFERENCE_IMAGE_SIZES,
         )
+    elif config.DETECTOR_TYPE == "yolo_pair":
+        if config.YOLO_AUX_WEIGHTS_PATH is None:
+            raise ValueError("yolo_pair requires DRONE_FLYBY_YOLO_AUX_WEIGHTS_PATH")
+        if config.CALIBRATION_PATH is not None:
+            raise ValueError("Single-checkpoint calibration is not verified for yolo_pair")
+        primary = create_detector(replace(config, DETECTOR_TYPE="yolo_standard"))
+        secondary = create_detector(replace(
+            config, DETECTOR_TYPE="yolo_standard", YOLO_WEIGHTS_PATH=config.YOLO_AUX_WEIGHTS_PATH,
+        ))
+        return PairedYoloDetector(primary, secondary, config.DETECTOR_MAX_DET)
     elif config.DETECTOR_TYPE == "tensorrt":
         return YoloDetector(
             weights_path=str(config.TRT_ENGINE_PATH) if config.TRT_ENGINE_PATH else None,
@@ -493,6 +658,10 @@ def create_detector(config: DroneFlybyConfig) -> BaseDetector:
             confidence_threshold_l1=config.CONFIDENCE_THRESHOLD_L1,
             confidence_threshold_l2=config.CONFIDENCE_THRESHOLD_L2,
             calibration=_load_calibration(config),
+            imgsz=config.INFERENCE_IMAGE_SIZE, rect=config.INFERENCE_RECT,
+            half=config.INFERENCE_HALF, nms_iou=config.DETECTOR_NMS_IOU,
+            max_det=config.DETECTOR_MAX_DET,
+            image_sizes=config.INFERENCE_IMAGE_SIZES,
         )
     elif config.DETECTOR_TYPE == "template_bank":
         logger.warning(
@@ -513,6 +682,5 @@ def create_detector(config: DroneFlybyConfig) -> BaseDetector:
     else:
         raise ValueError(
             f"Unknown DETECTOR_TYPE '{config.DETECTOR_TYPE}'. Valid values: "
-            f"yolo_standard, tensorrt, template_bank, dummy."
+            f"yolo_standard, yolo_pair, tensorrt, template_bank, dummy."
         )
-

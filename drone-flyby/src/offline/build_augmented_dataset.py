@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,14 +41,14 @@ if str(SRC_ROOT) not in sys.path:
 
 from dtos import OBJECT_CLASSES, TRANSMITTED_VIEW_SIZE  # noqa: E402
 from offline.build_exact_view_dataset import (  # noqa: E402
-    MIN_VISIBLE_FRACTION,
+    _annotation_to_yolo,
     grid_centers,
     render_view,
 )
-from utils import DEFAULT_SCENE, frame_numbers, load_annotations, load_frame, source_bbox_to_view  # noqa: E402
+from utils import DEFAULT_SCENE, frame_numbers, load_annotations, load_frame, scene_directory  # noqa: E402
+from offline.dataset_provenance import assert_training_source, mark_training_dataset, split_source_frames
 
 
-CLASS_INDEX = {name: index for index, name in enumerate(OBJECT_CLASSES)}
 VIEW_WIDTH, VIEW_HEIGHT = TRANSMITTED_VIEW_SIZE
 
 
@@ -59,6 +60,9 @@ class ObjectCrop:
     image: np.ndarray
     width: int
     height: int
+    object_box: Optional[Tuple[float, float, float, float]] = None
+    zoom_level: int = -1
+    source_frame: int = -1
 
 
 @dataclass
@@ -111,6 +115,8 @@ def crop_objects_from_view(
     label_rows: Sequence[Tuple[int, float, float, float, float]],
     margin: float = 0.15,
     minimum_pixels: int = 4,
+    zoom_level: int = -1,
+    source_frame: int = -1,
 ) -> List[ObjectCrop]:
     """Crop each labelled object out of a rendered view.
 
@@ -121,12 +127,13 @@ def crop_objects_from_view(
     crops: List[ObjectCrop] = []
     for class_index, cx, cy, width, height in label_rows:
         x1, y1, x2, y2 = _pixel_box(cx, cy, width, height)
+        tight_box = (x1, y1, x2, y2)
         pad_x = (x2 - x1) * margin
         pad_y = (y2 - y1) * margin
-        x1 = max(0, int(round(x1 - pad_x)))
-        y1 = max(0, int(round(y1 - pad_y)))
-        x2 = min(VIEW_WIDTH, int(round(x2 + pad_x)))
-        y2 = min(VIEW_HEIGHT, int(round(y2 + pad_y)))
+        x1 = max(0, math.floor(x1 - pad_x))
+        y1 = max(0, math.floor(y1 - pad_y))
+        x2 = min(VIEW_WIDTH, math.ceil(x2 + pad_x))
+        y2 = min(VIEW_HEIGHT, math.ceil(y2 + pad_y))
         if x2 - x1 < minimum_pixels or y2 - y1 < minimum_pixels:
             continue
         crops.append(
@@ -135,9 +142,29 @@ def crop_objects_from_view(
                 image=view[y1:y2, x1:x2].copy(),
                 width=x2 - x1,
                 height=y2 - y1,
+                object_box=(tight_box[0] - x1, tight_box[1] - y1,
+                            tight_box[2] - x1, tight_box[3] - y1),
+                zoom_level=zoom_level,
+                source_frame=source_frame,
             )
         )
     return crops
+
+
+def rotate_object_crop(crop: ObjectCrop, quarter_turns: int) -> ObjectCrop:
+    """Rotate pixels and the tight object box together, without interpolation."""
+    turns = quarter_turns % 4
+    image = np.rot90(crop.image, turns).copy()
+    box = crop.object_box or (0.0, 0.0, float(crop.width), float(crop.height))
+    width, height = crop.width, crop.height
+    for _ in range(turns):
+        x1, y1, x2, y2 = box
+        box = (y1, width - x2, y2, width - x1)
+        width, height = height, width
+    return ObjectCrop(
+        class_index=crop.class_index, image=image, width=width, height=height,
+        object_box=box, zoom_level=crop.zoom_level, source_frame=crop.source_frame,
+    )
 
 
 def paste_augment(
@@ -149,6 +176,8 @@ def paste_augment(
     scale_range: Tuple[float, float] = (0.7, 1.3),
     overlap_tolerance: float = 0.10,
     attempts: int = 12,
+    zoom_level: Optional[int] = None,
+    rotate_pastes: bool = False,
 ) -> Tuple[np.ndarray, List[Tuple[int, float, float, float, float]]]:
     """Paste up to ``max_pastes`` crops onto a view and return it plus labels.
 
@@ -157,15 +186,23 @@ def paste_augment(
     of the same class near an existing instance are the main failure mode of
     naive copy-paste, so overlap is checked against *all* classes.
     """
+    bank = [crop for crop in bank if zoom_level is None or crop.zoom_level in (-1, zoom_level)]
     if not bank or max_pastes <= 0:
         return view.copy(), list(label_rows)
 
     canvas = view.copy()
     labels = list(label_rows)
     boxes = [_pixel_box(cx, cy, w, h) for _, cx, cy, w, h in labels]
+    by_class: Dict[int, List[ObjectCrop]] = {}
+    for crop in bank:
+        by_class.setdefault(crop.class_index, []).append(crop)
+    classes = sorted(by_class)
 
     for _ in range(max_pastes):
-        crop = bank[int(rng.integers(0, len(bank)))]
+        class_crops = by_class[classes[int(rng.integers(len(classes)))]]
+        crop = class_crops[int(rng.integers(len(class_crops)))]
+        if rotate_pastes:
+            crop = rotate_object_crop(crop, int(rng.integers(4)))
         scale = float(rng.uniform(*scale_range))
         target_w = max(3, int(round(crop.width * scale)))
         target_h = max(3, int(round(crop.height * scale)))
@@ -177,7 +214,13 @@ def paste_augment(
             x = int(rng.integers(0, VIEW_WIDTH - target_w + 1))
             y = int(rng.integers(0, VIEW_HEIGHT - target_h + 1))
             candidate = (float(x), float(y), float(x + target_w), float(y + target_h))
-            if any(_iou_pixels(candidate, box) > overlap_tolerance for box in boxes):
+            if any(
+                max(0, min(candidate[2], box[2]) - max(candidate[0], box[0]))
+                * max(0, min(candidate[3], box[3]) - max(candidate[1], box[1]))
+                / max(1.0, (box[2] - box[0]) * (box[3] - box[1])) > overlap_tolerance
+                or _iou_pixels(candidate, box) > overlap_tolerance
+                for box in boxes
+            ):
                 continue
 
             resized = cv2.resize(
@@ -188,14 +231,21 @@ def paste_augment(
             blended = region * (1.0 - alpha[..., None]) + resized.astype(np.float32) * alpha[..., None]
             canvas[y : y + target_h, x : x + target_w] = np.clip(blended, 0, 255).astype(np.uint8)
 
-            boxes.append(candidate)
+            tight = crop.object_box or (0.0, 0.0, float(crop.width), float(crop.height))
+            target_box = (
+                x + tight[0] * target_w / crop.width,
+                y + tight[1] * target_h / crop.height,
+                x + tight[2] * target_w / crop.width,
+                y + tight[3] * target_h / crop.height,
+            )
+            boxes.append(target_box)
             labels.append(
                 (
                     crop.class_index,
-                    (candidate[0] + candidate[2]) / 2.0 / VIEW_WIDTH,
-                    (candidate[1] + candidate[3]) / 2.0 / VIEW_HEIGHT,
-                    (candidate[2] - candidate[0]) / VIEW_WIDTH,
-                    (candidate[3] - candidate[1]) / VIEW_HEIGHT,
+                    (target_box[0] + target_box[2]) / 2.0 / VIEW_WIDTH,
+                    (target_box[1] + target_box[3]) / 2.0 / VIEW_HEIGHT,
+                    (target_box[2] - target_box[0]) / VIEW_WIDTH,
+                    (target_box[3] - target_box[1]) / VIEW_HEIGHT,
                 )
             )
             placed = True
@@ -212,30 +262,8 @@ def paste_augment(
 
 def _annotation_rows(annotations: Sequence[Dict], source_region: Sequence[int]):
     """Convert source annotations to view-normalised YOLO rows."""
-    rows: List[Tuple[int, float, float, float, float]] = []
-    for annotation in annotations:
-        object_id = annotation["object_id"]
-        if object_id not in CLASS_INDEX:
-            continue
-        x1, y1, x2, y2 = source_bbox_to_view(annotation["bbox"], source_region)
-        clip_x1, clip_y1 = max(0.0, x1), max(0.0, y1)
-        clip_x2, clip_y2 = min(1.0, x2), min(1.0, y2)
-        if clip_x2 <= clip_x1 or clip_y2 <= clip_y1:
-            continue
-        full_area = (x2 - x1) * (y2 - y1)
-        visible = (clip_x2 - clip_x1) * (clip_y2 - clip_y1)
-        if full_area <= 0.0 or visible / full_area < MIN_VISIBLE_FRACTION:
-            continue
-        rows.append(
-            (
-                CLASS_INDEX[object_id],
-                (clip_x1 + clip_x2) / 2.0,
-                (clip_y1 + clip_y2) / 2.0,
-                clip_x2 - clip_x1,
-                clip_y2 - clip_y1,
-            )
-        )
-    return rows
+    return [row for annotation in annotations
+            if (row := _annotation_to_yolo(annotation, source_region)) is not None]
 
 
 def _write_sample(images_dir: Path, labels_dir: Path, stem: str, view: np.ndarray, rows) -> None:
@@ -261,13 +289,19 @@ def build_augmented_dataset(
     max_bank_per_class: int = 40,
     seed: int = 0,
     frames: Optional[Sequence[int]] = None,
+    neg_stride: int = 5,
+    rotate_pastes: bool = False,
 ) -> Path:
     """Render exact views, apply copy-paste augmentation, and write a dataset.
 
     Returns the path to the generated ``data.yaml``.
     """
     rng = np.random.default_rng(seed)
+    assert_training_source(scene_directory(scene))
+    frame_list = list(frames) if frames is not None else frame_numbers(scene)
+    source_splits = split_source_frames(frame_list, val_fraction)
     dataset_dir = output_dir / "drone_flyby_augmented"
+    mark_training_dataset(dataset_dir)
     dirs = {
         split: {
             "images": dataset_dir / "images" / split,
@@ -280,26 +314,32 @@ def build_augmented_dataset(
             path.mkdir(parents=True, exist_ok=True)
 
     grids = {level: grid_centers(level, step_fraction) for level in levels}
-    frame_list = list(frames) if frames is not None else frame_numbers(scene)
 
     # Pass 1: build the object bank from rendered views.
     bank: List[ObjectCrop] = []
-    bank_counts: Dict[int, int] = {}
-    samples: List[Tuple[str, int, int, int, np.ndarray, List]] = []
+    bank_groups: Dict[Tuple[int, int], List[ObjectCrop]] = {}
+    bank_counts: Dict[Tuple[int, int], int] = {}
 
     for frame in frame_list:
+        if source_splits[frame] != "train":
+            continue
         image = load_frame(frame, scene)
         annotations = load_annotations(frame, scene)
         for level in levels:
             for center_x, center_y in grids[level]:
                 view, source_region = render_view(image, center_x, center_y, level)
                 rows = _annotation_rows(annotations, source_region)
-                samples.append((f"L{level}_f{frame:06d}_x{center_x}_y{center_y}", level, center_x, center_y, view, rows))
-                for crop in crop_objects_from_view(view, rows):
-                    if bank_counts.get(crop.class_index, 0) >= max_bank_per_class:
-                        continue
-                    bank.append(crop)
-                    bank_counts[crop.class_index] = bank_counts.get(crop.class_index, 0) + 1
+                for crop in crop_objects_from_view(view, rows, zoom_level=level, source_frame=frame):
+                    key = (crop.class_index, level)
+                    group = bank_groups.setdefault(key, [])
+                    bank_counts[key] = bank_counts.get(key, 0) + 1
+                    if len(group) < max_bank_per_class:
+                        group.append(crop)
+                    else:
+                        index = int(rng.integers(bank_counts[key]))
+                        if index < max_bank_per_class:
+                            group[index] = crop
+    bank = [crop for group in bank_groups.values() for crop in group]
 
     if not bank:
         raise RuntimeError(
@@ -308,18 +348,21 @@ def build_augmented_dataset(
 
     # Pass 2: write the dataset, optionally with augmented copies.
     stats = AugmentationStats(bank_size=len(bank))
-    val_every = max(1, int(round(1.0 / val_fraction))) if val_fraction > 0 else 0
-    sample_index = 0
-
-    for stem, level, center_x, center_y, view, rows in samples:
-        if not rows:
+    manifest = []
+    for sample_index, (frame, level, center_x, center_y, view, rows) in enumerate(
+        _render_samples(scene, frame_list, levels, grids)
+    ):
+        stem = f"L{level}_f{frame:06d}_x{center_x}_y{center_y}"
+        if not rows and neg_stride > 0 and sample_index % neg_stride:
             stats.empty_skipped += 1
             continue
 
-        split = "val" if val_every and sample_index % val_every == 0 else "train"
+        split = source_splits[frame]
         _write_sample(dirs[split]["images"], dirs[split]["labels"], stem, view, rows)
         stats.train += split == "train"
         stats.val += split == "val"
+        manifest.append({"stem": stem, "split": split, "frame": frame,
+                         "level": level, "scene": scene, "objects": len(rows)})
         for cls, *_ in rows:
             name = OBJECT_CLASSES[cls]
             stats.per_class[name] = stats.per_class.get(name, 0) + 1
@@ -327,23 +370,25 @@ def build_augmented_dataset(
         if split == "train" and copy_paste_per_view > 0:
             for copy_index in range(copies_per_source):
                 augmented, augmented_rows = paste_augment(
-                    view, rows, bank, rng, max_pastes=copy_paste_per_view
+                    view, rows, bank, rng, max_pastes=copy_paste_per_view,
+                    zoom_level=level, rotate_pastes=rotate_pastes,
                 )
                 if len(augmented_rows) == len(rows):
                     continue
                 augmented_stem = f"{stem}_cp{copy_index}"
                 _write_sample(dirs["train"]["images"], dirs["train"]["labels"], augmented_stem, augmented, augmented_rows)
                 stats.train += 1
+                manifest.append({"stem": augmented_stem, "split": "train", "frame": frame,
+                                 "level": level, "scene": scene, "objects": len(augmented_rows),
+                                 "augmentation": "copy-paste"})
                 stats.pasted_objects += len(augmented_rows) - len(rows)
                 for cls, *_ in augmented_rows[len(rows):]:
                     name = OBJECT_CLASSES[cls]
                     stats.per_class[name] = stats.per_class.get(name, 0) + 1
 
-        sample_index += 1
-
     data_yaml = dataset_dir / "drone_flyby_augmented.yaml"
     data_yaml.write_text(
-        "path: {}\n".format(dataset_dir.as_posix())
+        "path: {}\n".format(dataset_dir.resolve().as_posix())
         + "train: images/train\n"
         + "val: images/val\n"
         + "names:\n"
@@ -352,6 +397,12 @@ def build_augmented_dataset(
     (dataset_dir / "augmentation_stats.json").write_text(
         json.dumps(stats.__dict__, indent=2, sort_keys=True)
     )
+    (dataset_dir / "manifest.json").write_text(json.dumps({
+        "samples": manifest,
+        "bank": [{"source_frame": crop.source_frame, "level": crop.zoom_level,
+                  "class_index": crop.class_index} for crop in bank],
+        "rotate_pastes": rotate_pastes,
+    }, indent=2), encoding="utf-8")
     print(
         "Augmented exact-view dataset written to {} (train={train}, val={val}, "
         "empty-skipped={empty_skipped}, pasted={pasted_objects}, bank={bank_size})".format(
@@ -359,6 +410,16 @@ def build_augmented_dataset(
         )
     )
     return data_yaml
+
+
+def _render_samples(scene, frames, levels, grids):
+    for frame in frames:
+        image = load_frame(frame, scene)
+        annotations = load_annotations(frame, scene)
+        for level in levels:
+            for center_x, center_y in grids[level]:
+                view, source_region = render_view(image, center_x, center_y, level)
+                yield frame, level, center_x, center_y, view, _annotation_rows(annotations, source_region)
 
 
 def main() -> int:
@@ -372,6 +433,7 @@ def main() -> int:
     parser.add_argument("--copies-per-source", type=int, default=1)
     parser.add_argument("--max-bank-per-class", type=int, default=40)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--rotate-pastes", action="store_true", help="Apply label-exact random quarter turns to pasted objects.")
     arguments = parser.parse_args()
 
     data_yaml = build_augmented_dataset(
@@ -384,6 +446,7 @@ def main() -> int:
         copies_per_source=arguments.copies_per_source,
         max_bank_per_class=arguments.max_bank_per_class,
         seed=arguments.seed,
+        rotate_pastes=arguments.rotate_pastes,
     )
     print(f"Data YAML: {data_yaml}")
     return 0

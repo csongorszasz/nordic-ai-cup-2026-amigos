@@ -136,9 +136,9 @@ def test_build_candidates_includes_verify_and_explore():
     assert values == sorted(values, reverse=True)
 
 
-def test_build_candidates_skips_tracks_already_seen_at_that_level():
+def test_build_candidates_skips_certain_tracks_already_seen_at_that_level():
     field = BeliefField(cell_size=120)
-    tracks = [_track(2000, 1000, best_zoom=2)]
+    tracks = [_track(2000, 1000, best_zoom=2, confidence=0.95)]
 
     candidates = field.build_candidates(
         2, (1920, 1080), tracks, 551.0, (480, 3360, 270, 1890),
@@ -155,3 +155,36 @@ def test_reset_clears_the_field():
 
     field.reset()
     assert not field.is_fully_covered(0)
+
+
+def test_new_terrain_is_not_permanently_marked_as_covered():
+    field = BeliefField(cell_size=120)
+    field.advance_to(0, (0, 58))
+    field.mark_observed(FULL_FRAME, 2, 0)
+    field.advance_to(1, (0, 58))
+    assert not field.is_fully_covered(1)
+    assert (field.observed_level[0] == -1).all()
+    field.advance_to(3, (0, 58))
+    assert field.coverage_fraction(1) < 1.0
+
+
+def test_zoom_specific_observations_expire_independently():
+    field = BeliefField(max_age_frames=3)
+    field.advance_to(0, (0, 0))
+    field.mark_observed(FULL_FRAME, 2, 0)
+    field.advance_to(2, (0, 0))
+    field.mark_observed(FULL_FRAME, 0, 2)
+    field.advance_to(4, (0, 0))
+    assert field.coverage_fraction(0) == 1.0
+    assert field.coverage_fraction(1) == 0.0
+
+
+def test_high_zoom_tracks_can_be_revisited_when_position_drifts():
+    field = BeliefField()
+    track = _track(2000, 1000, best_zoom=2, confidence=0.95)
+    track.position_std = 30
+    candidates = field.build_candidates(
+        2, (1920, 1080), [track], 551.0, (480, 3360, 270, 1890),
+        include_exploration=False,
+    )
+    assert len(candidates) == 1

@@ -1,7 +1,9 @@
 """Checkpoint discovery and resume behaviour of the training entrypoint."""
 
 import argparse
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -75,30 +77,75 @@ def test_build_augment_kwargs_maps_cli_flags():
     }
 
 
-def test_train_forwards_augmentation_kwargs(monkeypatch):
+def test_train_forwards_augmentation_kwargs(monkeypatch, tmp_path):
     captured = {}
 
     class FakeModel:
+        task = "detect"
+
         def __init__(self, weights):
             self.weights = weights
 
         def train(self, **kwargs):
             captured.update(kwargs)
 
+        def add_callback(self, event, callback):
+            assert event == "on_fit_epoch_end"
+
     monkeypatch.setattr(train_yolo, "_ULTRALYTICS_AVAILABLE", True)
     monkeypatch.setattr(train_yolo, "YOLO", FakeModel)
 
+    data_yaml = tmp_path / "data.yaml"
+    data_yaml.write_text("train: images/train\nval: images/val\n")
     train(
-        data_yaml=Path("data.yaml"),
+        data_yaml=data_yaml,
         weights="yolo11s.pt",
         epochs=1,
         imgsz=960,
         batch=2,
         device="cpu",
-        augment_kwargs={"copy_paste": 0.5, "mosaic": 0.0},
+        augment_kwargs={"mixup": 0.1, "mosaic": 0.0},
     )
 
-    assert captured["copy_paste"] == 0.5
+    assert captured["mixup"] == 0.1
     assert captured["mosaic"] == 0.0
-    assert captured["data"] == "data.yaml"
+    assert captured["data"] == str(data_yaml)
     assert captured["imgsz"] == 960
+    assert captured["seed"] == 0
+    assert captured["save_period"] == 10
+    assert captured["warmup_epochs"] == 3.0
+
+
+def test_ap50_checkpoint_selection_is_independent_of_library_fitness(tmp_path):
+    weights = tmp_path / "weights"
+    weights.mkdir()
+    last = weights / "last.pt"
+    trainer = SimpleNamespace(save_dir=tmp_path, last=last, epoch=0,
+                              metrics={"metrics/mAP50(B)": 0.7})
+    last.write_bytes(b"first")
+    train_yolo.save_ap50_checkpoint(trainer)
+    last.write_bytes(b"worse-ap50")
+    trainer.metrics["metrics/mAP50(B)"] = 0.6
+    train_yolo.save_ap50_checkpoint(trainer)
+    assert (weights / "best_ap50.pt").read_bytes() == b"first"
+    trainer.metrics["metrics/mAP50(B)"] = 0.8
+    trainer.epoch = 2
+    last.write_bytes(b"better-ap50")
+    train_yolo.save_ap50_checkpoint(trainer)
+    assert (weights / "best_ap50.pt").read_bytes() == b"better-ap50"
+    assert json.loads((weights / "best_ap50.json").read_text())["epoch"] == 3
+
+
+def test_training_rejects_silent_segmentation_only_copy_paste(monkeypatch, tmp_path):
+    class FakeModel:
+        task = "detect"
+
+        def __init__(self, weights):
+            pass
+
+    monkeypatch.setattr(train_yolo, "_ULTRALYTICS_AVAILABLE", True)
+    monkeypatch.setattr(train_yolo, "YOLO", FakeModel)
+    yaml = tmp_path / "data.yaml"
+    yaml.write_text("train: images/train\nval: images/val\n")
+    with pytest.raises(ValueError, match="segmentation masks"):
+        train(yaml, "fake.pt", 1, 960, 1, "cpu", augment_kwargs={"copy_paste": 0.5})
