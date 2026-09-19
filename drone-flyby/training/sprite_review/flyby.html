@@ -88,12 +88,13 @@
     <div id="hud"></div>
   </div>
   <div id="panel">
-    <div class="imgs"><figure><img id="pDrawn"><figcaption>your box (Copenhagen)</figcaption></figure></div>
+    <div class="imgs"><figure><img id="pDrawn"><figcaption id="pDrawnCap">your box (Copenhagen)</figcaption></figure></div>
+    <div id="pAlso" class="classes" style="margin-top:6px"></div>
     <h2>Class</h2>
     <div class="classes" id="pClasses"></div>
     <h2 id="pRefTitle">Helsinki labels of this class, framed the same way</h2>
     <div class="imgs" id="pRefs"></div>
-    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pReject">Not an object (R)</button><button id="pCancel">Cancel (Esc)</button></div>
+    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pReject">Not an object (R)</button><button id="pRemove">Remove label (X)</button><button id="pCancel">Cancel (Esc)</button></div>
     <div class="msg" id="pMsg"></div>
   </div>
 </main>
@@ -189,24 +190,33 @@ function selectAt([x, y]) {
   // A candidate under the click opens it for review; otherwise a label gets selected.
   const cands = (showCands && candidates.get(frames[index]) || []).filter(c => inside([x, y], c.bbox));
   if (cands.length) { cands.sort((a, b) => area(a.bbox) - area(b.bbox)); openPanel(cands[0].bbox, cands[0]); return; }
-  const hits = (labels.get(frames[index]) || []).filter(b => x >= b.bbox[0] && x <= b.bbox[2] && y >= b.bbox[1] && y <= b.bbox[3]);
-  hits.sort((a, b) => (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1]) - (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1]));
+  const hits = (labels.get(frames[index]) || []).filter(b => inside([x, y], b.bbox));
+  hits.sort((a, b) => area(a.bbox) - area(b.bbox));
   selected = hits.length ? hits[0].track : null;
-  $('sNote').textContent = selected ? `selected ${hits[0].class} (${selected}): X removes it from the labels` : '';
+  if (hits.length) openPanel(hits[0].bbox, null, hits[0], hits);
   dirty = true;
 }
-async function openPanel(box, candidate = null) {
+async function openPanel(box, candidate = null, label = null, overlapping = []) {
   playing = false;
-  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10), candidate };
+  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10), candidate, label };
+  selected = label ? label.track : null;
   $('pReject').style.display = candidate ? '' : 'none';
+  $('pRemove').style.display = label ? '' : 'none';
+  $('pSave').textContent = label ? 'Save class (Enter)' : candidate ? 'Accept (Enter)' : 'Save (Enter)';
+  $('pDrawnCap').textContent = label ? `label ${label.track}` : candidate ? 'detector track (not reviewed)' : 'your box (Copenhagen)';
+  // Other labels under the same click (e.g. two boxes on one object): switch between them.
+  $('pAlso').innerHTML = overlapping.length > 1 ? 'Also here: ' + overlapping.map((o, i) =>
+    `<button data-i="${i}" class="${o === label ? 'on' : ''}" style="color:${colour(o.class)}">${o.class} ${Math.round(o.bbox[2] - o.bbox[0])}×${Math.round(o.bbox[3] - o.bbox[1])}</button>`).join('') : '';
+  for (const b of $('pAlso').querySelectorAll('button')) b.onclick = () => { const o = overlapping[+b.dataset.i]; openPanel(o.bbox, null, o, overlapping); };
   if (!refs) refs = await (await fetch('/api/flyby/references')).json();
   $('pDrawn').src = `/review/crop/${drawn.frame}.jpg?box=${drawn.box.join(',')}&side=300`;
   $('pClasses').innerHTML = refs.classes.map(c => `<button data-c="${c}" style="color:${colour(c)}">${c}</button>`).join('');
   for (const b of $('pClasses').children) b.onclick = () => pickClass(b.dataset.c);
   $('pMsg').textContent = `${Math.round(box[2] - box[0])}×${Math.round(box[3] - box[1])} px in the 4K frame · frame ${drawn.frame}` +
+    (label ? ' · a reviewed object, carried through the whole flight' : '') +
     (candidate ? ` · detector track ${candidate.id}, score ${candidate.score.toFixed(2)}: Enter accepts the whole track` : '');
   $('panel').style.display = 'block';
-  pickClass(candidate ? candidate.class : drawnClass || refs.classes[0]);
+  pickClass(label ? label.class : candidate ? candidate.class : drawnClass || refs.classes[0]);
   dirty = true;
 }
 function pickClass(c) {
@@ -218,7 +228,7 @@ function pickClass(c) {
     return `<figure><img src="/flyby/refcrop/${f}?side=300"><figcaption>${Math.round(cc - a)}×${Math.round(d - b)} px</figcaption></figure>`;
   }).join('');
 }
-function closePanel() { drawn = null; $('panel').style.display = 'none'; dirty = true; }
+function closePanel() { drawn = null; selected = null; $('panel').style.display = 'none'; dirty = true; }
 async function refreshLabels(reply) {
   labels.clear();
   const s = sources.find(s => s.name === 'validation_4k');
@@ -249,7 +259,10 @@ async function saveDrawn() {
   $('pMsg').textContent = 'saving and rebuilding the labels…';
   try {
     let reply;
-    if (drawn.candidate) { await decide('accepted'); reply = await post('/api/flyby/rebuild', {}); }
+    if (drawn.label) {
+      if (drawnClass === drawn.label.class) { closePanel(); return; }
+      reply = await post('/api/flyby/relabel', { track: drawn.label.track, cls: drawnClass });
+    } else if (drawn.candidate) { await decide('accepted'); reply = await post('/api/flyby/rebuild', {}); }
     else reply = await post('/api/flyby/manual', { frame: drawn.frame, box: drawn.box, cls: drawnClass });
     closePanel();
     await refreshLabels(reply);
@@ -259,12 +272,13 @@ async function removeSelected() {
   if (!selected || !confirm(`Remove ${selected} from the Copenhagen labels (the whole flight)?`)) return;
   try {
     const reply = await post('/api/flyby/remove', { track: selected });
-    selected = null;
+    closePanel();
     await refreshLabels(reply);
   } catch (err) { $('sNote').textContent = 'remove failed: ' + err.message; }
 }
 $('pSave').onclick = saveDrawn;
 $('pReject').onclick = rejectDrawn;
+$('pRemove').onclick = removeSelected;
 $('pCancel').onclick = closePanel;
 
 function image(i) {
@@ -436,6 +450,7 @@ addEventListener('keydown', e => {
   if (drawn) {  // the class panel is open: only its keys
     if (e.key === 'Enter') saveDrawn();
     else if (e.key.toLowerCase() === 'r') rejectDrawn();
+    else if (e.key.toLowerCase() === 'x' && drawn.label) removeSelected();
     else if (e.key === 'Escape') closePanel();
     e.preventDefault();
     return;

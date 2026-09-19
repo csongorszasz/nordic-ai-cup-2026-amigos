@@ -347,6 +347,38 @@ def flyby_rebuild():
     return {'ok': True, 'labels': rebuild_labels()}
 
 
+class Relabel(BaseModel):
+    track: str
+    cls: str
+
+
+@app.post('/api/flyby/relabel')
+def flyby_relabel(r: Relabel):
+    """Give an object in the labels another class: a hand-drawn box's, or the reviewed track's (and
+    the duplicates merged into it)."""
+    if r.cls not in OBJECT_CLASSES:
+        raise HTTPException(400, 'bad class')
+    boxes = json.loads(MANUAL_BOXES.read_text()) if MANUAL_BOXES.exists() else {}
+    if r.track in boxes:
+        boxes[r.track]['class'] = r.cls
+        write_json(MANUAL_BOXES, boxes)
+        return {'ok': True, 'labels': rebuild_labels()}
+    obj = next((o for o in json.loads((REVIEW / 'labels.json').read_text())['objects'] if o['id'] == r.track), None)
+    if obj is None:
+        raise HTTPException(404, 'unknown object')
+    decisions = json.loads(DECISIONS.read_text()) if DECISIONS.exists() else {}
+    fixes_path = REVIEW / 'note_fixes.json'
+    fixes = json.loads(fixes_path.read_text()) if fixes_path.exists() else {}
+    for tid in [obj['id']] + obj['merged']:
+        if tid in decisions:
+            decisions[tid]['class'] = r.cls
+        if 'class' in fixes.get(tid, {}):
+            fixes[tid]['class'] = r.cls   # a note fix's class would win over the decision's
+    write_json(DECISIONS, decisions)
+    write_json(fixes_path, fixes)
+    return {'ok': True, 'labels': rebuild_labels()}
+
+
 class ReviewDecision(BaseModel):
     id: str
     status: str                  # accepted | rejected | unsure | note | undecided
