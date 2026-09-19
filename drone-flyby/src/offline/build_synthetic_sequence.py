@@ -7,6 +7,7 @@ supplied training frames. These episodes are not a competition-score estimate.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -21,6 +22,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from dtos import IMAGE_HEIGHT, IMAGE_WIDTH, OBJECT_CLASSES
 from offline.dataset_provenance import assert_training_source, split_source_frames
+from offline.convert_nls_ortho import Image, read_georeference
 from utils import frame_numbers, load_annotations, load_frame, scene_directory
 
 
@@ -62,9 +64,48 @@ def harvest_sprites(scene):
     return sprites, provenance
 
 
+def orthophoto_background(path, provenance_path, width, height, rng, target_gsd=0.2395):
+    if provenance_path is None:
+        raise ValueError("An orthophoto requires source/license/hash provenance")
+    provenance = json.loads(Path(provenance_path).read_text(encoding="utf-8"))
+    for key in ("source_url", "license", "attribution", "sha256"):
+        if not provenance.get(key):
+            raise ValueError(f"Background provenance is missing {key}")
+    with Path(path).open("rb") as handle:
+        actual_hash = hashlib.file_digest(handle, "sha256").hexdigest()
+    if actual_hash != provenance["sha256"].lower():
+        raise ValueError("Background file does not match its provenance hash")
+    geo = read_georeference(Path(path))
+    if geo is None:
+        raise ValueError("An orthophoto audit requires embedded verified georeferencing")
+    if not math.isfinite(target_gsd) or target_gsd <= 0:
+        raise ValueError("Target GSD must be positive and finite")
+    source_width = max(1, int(round(width * target_gsd / geo["gsd_m"])))
+    source_height = max(1, int(round(height * target_gsd / geo["gsd_m"])))
+    with Image.open(path) as image:
+        if image.width * image.height > 150_000_000:
+            raise ValueError("Orthophoto exceeds the supported working set")
+        if source_width > image.width or source_height > image.height:
+            raise ValueError("The orthophoto cannot contain the complete requested flight strip")
+        x = int(rng.integers(image.width - source_width + 1))
+        y = int(rng.integers(image.height - source_height + 1))
+        crop = np.asarray(image.crop((x, y, x + source_width, y + source_height)).convert("RGB"))
+    interpolation = cv2.INTER_AREA if source_width >= width else cv2.INTER_LINEAR
+    terrain = cv2.resize(crop[:, :, ::-1].copy(), (width, height), interpolation=interpolation)
+    return terrain, {
+        **provenance, "kind": "orthophoto", "georeference": geo,
+        "source_crop_xyxy": [x, y, x + source_width, y + source_height],
+        "output_gsd_x_m": source_width * geo["gsd_m"] / width,
+        "output_gsd_y_m": source_height * geo["gsd_m"] / height,
+        "native_detail_note": "Resampling does not create detail beyond the source GSD.",
+        "label_scope": "Inserted challenge sprites only; natural background objects are not annotated.",
+    }
+
+
 def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
                    shift_x=0, shift_y=58, objects_per_frame=16,
-                   purpose="development-evaluation", rotate=True):
+                   purpose="development-evaluation", rotate=True,
+                   background=None, background_provenance=None, target_gsd=0.2395):
     if frames < 2 or frames > 300 or objects_per_frame < 1 or abs(shift_x) > 200 or abs(shift_y) > 200:
         raise ValueError("Use 2..300 frames, positive density, and shifts within 200 source pixels")
     if output.exists():
@@ -77,17 +118,25 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
     height = IMAGE_HEIGHT + abs(shift_y) * (frames - 1)
     if width * height > 120_000_000:
         raise ValueError("Episode strip exceeds the bounded 120-megapixel working set")
-    coarse = rng.integers(35, 100, (math.ceil(height / 48), math.ceil(width / 48), 3), dtype=np.uint8)
-    terrain = cv2.resize(coarse, (width, height), interpolation=cv2.INTER_LINEAR)
-    for x in range(250, width, 600):
-        cv2.rectangle(terrain, (x, 0), (x + 35, height - 1), (105, 105, 105), -1)
-    for y in range(300, height, 700):
-        cv2.rectangle(terrain, (0, y), (width - 1, y + 30), (110, 110, 110), -1)
-    for _ in range(width * height // 15000):
-        x, y = int(rng.integers(width - 100)), int(rng.integers(height - 100))
-        w, h = int(rng.integers(15, 95)), int(rng.integers(15, 95))
-        color = tuple(int(v) for v in rng.integers(50, 155, 3))
-        cv2.rectangle(terrain, (x, y), (x + w, y + h), color, -1)
+    if background is None:
+        background_info = {"kind": "procedural", "seed": seed}
+        coarse = rng.integers(35, 100, (math.ceil(height / 48), math.ceil(width / 48), 3), dtype=np.uint8)
+        terrain = cv2.resize(coarse, (width, height), interpolation=cv2.INTER_LINEAR)
+        for x in range(250, width, 600):
+            cv2.rectangle(terrain, (x, 0), (x + 35, height - 1), (105, 105, 105), -1)
+        for y in range(300, height, 700):
+            cv2.rectangle(terrain, (0, y), (width - 1, y + 30), (110, 110, 110), -1)
+        for _ in range(width * height // 15000):
+            x, y = int(rng.integers(width - 100)), int(rng.integers(height - 100))
+            w, h = int(rng.integers(15, 95)), int(rng.integers(15, 95))
+            color = tuple(int(v) for v in rng.integers(50, 155, 3))
+            cv2.rectangle(terrain, (x, y), (x + w, y + h), color, -1)
+    else:
+        if purpose == "training-development":
+            assert_training_source(Path(background))
+        terrain, background_info = orthophoto_background(
+            Path(background), background_provenance, width, height, rng, target_gsd,
+        )
 
     count = math.ceil(objects_per_frame * width * height / (IMAGE_WIDTH * IMAGE_HEIGHT))
     objects = []
@@ -120,6 +169,9 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
 
     (output / "images").mkdir(parents=True)
     (output / "annotations").mkdir()
+    preview = cv2.resize(terrain, (min(1280, width), max(1, int(height * min(1280, width) / width))))
+    if not cv2.imwrite(str(output / "overview.jpg"), preview):
+        raise OSError("Synthetic overview encoding failed")
     start_x, start_y = max(0, (frames - 1) * shift_x), max(0, (frames - 1) * shift_y)
     for frame in range(frames):
         offset = (start_x - frame * shift_x, start_y - frame * shift_y)
@@ -135,6 +187,7 @@ def build_sequence(output: Path, scene="helsinki", frames=80, seed=101,
         "object_appearances": "shared training sprites; novel procedural background and placement",
         "sprites": provenance, "objects": objects,
         "rotate_objects": rotate,
+        "background": background_info,
     }
     (output / "run_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     (output / "data_role.json").write_text(json.dumps({"data_role": purpose}), encoding="utf-8")
@@ -151,12 +204,16 @@ def main():
     parser.add_argument("--shift-y", type=int, default=58)
     parser.add_argument("--objects-per-frame", type=int, default=16)
     parser.add_argument("--no-rotation", action="store_true", help="Paired orientation ablation with identical placements.")
+    parser.add_argument("--background", type=Path, help="Optional NLS GeoJP2 background, never a validation capture.")
+    parser.add_argument("--background-provenance", type=Path, help="Required source/license/hash manifest.")
+    parser.add_argument("--target-gsd", type=float, default=0.2395, help="Explicit simulated source-frame metres per pixel.")
     parser.add_argument("--purpose", choices=["training-development", "development-evaluation"],
                         default="development-evaluation")
     arguments = parser.parse_args()
     build_sequence(arguments.output, arguments.source_scene, arguments.frames, arguments.seed,
                    arguments.shift_x, arguments.shift_y, arguments.objects_per_frame, arguments.purpose,
-                   rotate=not arguments.no_rotation)
+                   rotate=not arguments.no_rotation, background=arguments.background,
+                   background_provenance=arguments.background_provenance, target_gsd=arguments.target_gsd)
 
 
 if __name__ == "__main__":

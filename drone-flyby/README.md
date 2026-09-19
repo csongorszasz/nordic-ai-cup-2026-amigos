@@ -132,6 +132,24 @@ checkpoint relative to its named IDUN experiment (or fetched `runs\idun`
 directory), verify its hash, and use the recorded runtime before serving.
 The profile is not evidence of public endpoint readiness or an official score.
 
+Natural-background audits can use a licensed NLS GeoJP2 through
+`build_synthetic_sequence.py --background ... --background-provenance ...`.
+The file hash, attribution, embedded pixel scale, crop, and resampling are
+preserved in the scene metadata. `research\background_sources.json` records the
+public audit source; its pixels remain outside Git and outside training.
+Only inserted challenge sprites are annotated, so review natural background
+objects before interpreting the score.
+Current rectangular sprite cutouts also carry source-background context.
+The natural-background preview exposed this shortcut clearly; their scores
+are limited compositing diagnostics, not evidence of foreground-only recognition.
+Do not promote a model from these composites without a reviewed mask-based audit.
+
+The NLS converter reads GML boxes even after the image codestream, including
+null-terminated XML. It no longer guesses 0.25 metres per pixel from filenames:
+the inspected `02m`-directory image actually declares 0.5 metres per pixel.
+Missing georeferencing requires an explicit `--gsd-m` override, and an override
+contradicting embedded metadata is rejected.
+
 ## About the challenge
 
 The drone films a 3840x2160 sequence at 3 frames per second. You do not get the

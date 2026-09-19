@@ -42,7 +42,7 @@
       "synthetic_505_added_120_ms_skipped": 5,
       "scope": "Fixed artificial request-cycle delay, not measured public-ingress latency"
     },
-    "limitations": "Reference shares training instances; synthetic scenes share training sprites and have been used for development selection. None of these scores estimates official competition performance."
+    "limitations": "Reference shares training instances. Synthetic scenes share training sprites, carry rectangular class-specific source-background context, and have been used for development selection. A visual orthophoto audit exposed this shortcut. These are limited compositing diagnostics, not foreground-only recognition or official competition estimates."
   },
   "official_submission_requires_user_approval": true
 }

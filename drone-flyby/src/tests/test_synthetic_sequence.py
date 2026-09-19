@@ -1,6 +1,8 @@
 import pytest
 import json
+import hashlib
 import numpy as np
+from PIL import Image
 
 from offline.build_synthetic_sequence import build_sequence, project_annotations
 import offline.build_synthetic_sequence as generator
@@ -38,3 +40,36 @@ def test_rotation_ablation_uses_identical_placement_and_scale(tmp_path, monkeypa
         assert first["placement"] == second["placement"]
         assert first["scale"] == second["scale"]
         assert first["rotation_quarters"] == 0
+
+
+def test_orthophoto_uses_verified_scale_and_preserves_attribution(tmp_path, monkeypatch):
+    image = tmp_path / "background.png"
+    Image.fromarray(np.full((64, 64, 3), [20, 80, 120], dtype=np.uint8)).save(image)
+    manifest = tmp_path / "source.json"
+    manifest.write_text(json.dumps({
+        "source_url": "https://example.invalid/test-image",
+        "license": "fixture", "attribution": "fixture provider",
+        "sha256": hashlib.sha256(image.read_bytes()).hexdigest(),
+    }))
+    monkeypatch.setattr(generator, "read_georeference", lambda path: {"gsd_m": 0.5, "gsd_source": "embedded-gml"})
+    terrain, metadata = generator.orthophoto_background(
+        image, manifest, 64, 32, np.random.default_rng(0), target_gsd=0.25,
+    )
+    assert terrain.shape == (32, 64, 3)
+    assert tuple(terrain[0, 0]) == (120, 80, 20)
+    assert metadata["output_gsd_x_m"] == 0.25
+    assert metadata["output_gsd_y_m"] == 0.25
+    assert metadata["attribution"] == "fixture provider"
+
+
+def test_orthophoto_requires_provenance_and_matching_hash(tmp_path):
+    image = tmp_path / "background.jp2"
+    image.write_bytes(b"fixture")
+    with pytest.raises(ValueError, match="provenance"):
+        generator.orthophoto_background(image, None, 64, 32, np.random.default_rng(0))
+    manifest = tmp_path / "source.json"
+    manifest.write_text(json.dumps({
+        "source_url": "fixture", "license": "fixture", "attribution": "fixture", "sha256": "0" * 64,
+    }))
+    with pytest.raises(ValueError, match="hash"):
+        generator.orthophoto_background(image, manifest, 64, 32, np.random.default_rng(0))
