@@ -1,6 +1,8 @@
 #!/bin/bash
-# Serve the Gemma 4 E4B L1 answerer (ASR + LLM) on a GPU node behind a
-# cloudflared quick tunnel, for a validation attempt.
+# Serve the LLM answerer (ASR + LLM) on a GPU node behind a public tunnel, for
+# a validation attempt. The tunnel is selected with MEDAPP_TUNNEL:
+#   cloudflared (default) -> ephemeral https://<id>.trycloudflare.com URL
+#   ngrok                 -> stable https://$NGROK_DOMAIN URL
 #
 #   bash idun/submit.sh serve --llm
 #
@@ -40,17 +42,20 @@ unset MEDAPP_SKIP_WARMUP
 export WHISPER_MODEL=large-v3-turbo
 export WHISPER_COMPUTE_TYPE=int8
 export MEDAPP_CAPTURE=1
+export MEDAPP_TUNNEL="${MEDAPP_TUNNEL:-cloudflared}"
+export NGROK_DOMAIN="${NGROK_DOMAIN:-}"
 
 echo "Job ${SLURM_JOB_ID} on ${SLURM_NODELIST}   $(date)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 
 python api.py > "logs/api_serve_${SLURM_JOB_ID}.log" 2>&1 &
 API_PID=$!
-CF_PID=""
+TUNNEL_PID=""
+TUNNEL_LOG="logs/tunnel_${SLURM_JOB_ID}.log"
 cleanup() {
-    if [ -n "$CF_PID" ]; then
-        kill "$CF_PID" 2>/dev/null || true
-        wait "$CF_PID" 2>/dev/null || true
+    if [ -n "$TUNNEL_PID" ]; then
+        kill "$TUNNEL_PID" 2>/dev/null || true
+        wait "$TUNNEL_PID" 2>/dev/null || true
     fi
     kill "$API_PID" 2>/dev/null || true
     wait "$API_PID" 2>/dev/null || true
@@ -68,27 +73,49 @@ for _ in $(seq 1 320); do
 done
 curl -fsS --max-time 3 http://localhost:9054/ && echo
 
-"$HOME/.local/bin/cloudflared" tunnel --url http://localhost:9054 \
-    --no-autoupdate > "logs/tunnel_${SLURM_JOB_ID}.log" 2>&1 &
-CF_PID=$!
-CF_LOG="logs/tunnel_${SLURM_JOB_ID}.log"
-
 URL=""
-for _ in $(seq 1 40); do
-    URL=$(grep -aoE "https://[a-z0-9-]+\.trycloudflare\.com" "$CF_LOG" 2>/dev/null | tail -1 || true)
-    [ -n "$URL" ] && break
-    if ! kill -0 "$CF_PID" 2>/dev/null; then
-        echo "Tunnel exited before readiness." >&2
+if [ "$MEDAPP_TUNNEL" = "ngrok" ]; then
+    if [ -z "$NGROK_DOMAIN" ]; then
+        echo "MEDAPP_TUNNEL=ngrok requires NGROK_DOMAIN." >&2
         exit 1
     fi
-    sleep 2
-done
-echo "PUBLIC_URL: ${URL}/predict"
+    URL="https://${NGROK_DOMAIN}"
+    "$HOME/.local/bin/ngrok" http --domain="$NGROK_DOMAIN" http://localhost:9054 \
+        --log=stdout > "$TUNNEL_LOG" 2>&1 &
+    TUNNEL_PID=$!
+    for _ in $(seq 1 40); do
+        grep -aq "started tunnel" "$TUNNEL_LOG" 2>/dev/null && break
+        if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+            echo "ngrok tunnel exited before readiness." >&2
+            tail -n 40 "$TUNNEL_LOG" >&2 || true
+            exit 1
+        fi
+        sleep 2
+    done
+elif [ "$MEDAPP_TUNNEL" = "cloudflared" ]; then
+    "$HOME/.local/bin/cloudflared" tunnel --url http://localhost:9054 \
+        --no-autoupdate > "$TUNNEL_LOG" 2>&1 &
+    TUNNEL_PID=$!
+    for _ in $(seq 1 40); do
+        URL=$(grep -aoE "https://[a-z0-9-]+\.trycloudflare\.com" "$TUNNEL_LOG" 2>/dev/null | tail -1 || true)
+        [ -n "$URL" ] && break
+        if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+            echo "Tunnel exited before readiness." >&2
+            exit 1
+        fi
+        sleep 2
+    done
+else
+    echo "Unknown MEDAPP_TUNNEL='$MEDAPP_TUNNEL' (expected cloudflared or ngrok)." >&2
+    exit 1
+fi
+
 test -n "$URL"
+echo "PUBLIC_URL: ${URL}/predict"
 curl -fsS -o /dev/null -w "self-check / -> %{http_code}\n" --max-time 20 "${URL}/"
 
 echo "serving; holding until SLURM time limit (${SLURM_JOB_ID})."
 echo "URL: ${URL}/predict"
-wait -n "$API_PID" "$CF_PID"
+wait -n "$API_PID" "$TUNNEL_PID"
 echo "A serving process exited; terminating this allocation's owned processes." >&2
 exit 1

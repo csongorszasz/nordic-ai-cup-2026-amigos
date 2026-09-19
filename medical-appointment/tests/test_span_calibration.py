@@ -58,3 +58,15 @@ def test_fine_grid_is_explicit_and_keeps_baseline_comparable():
     _, candidate, folds = cross_validate(rows(), set(), 2, 13, grid)
     assert all(fold["offsets"] == [0.2, 0.0] for fold in folds)
     assert all(row["span"] == [1.2, 2.0] for row in candidate)
+
+
+def test_tracked_release_artifact_matches_the_incumbent_contract():
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "calibration" / "span_offset_base.json"
+    calibration = OffsetCalibration.load(path)
+    assert (calibration.start_offset_s, calibration.end_offset_s) == (0.2, 0.0)
+    assert calibration.model == "google/gemma-4-26b-a4b-it"
+    assert calibration.revision == "4d7ae4984b7db7de8f8457170b3f1a419ee76d52"
+    assert calibration.variant == "base"
+    assert calibration.asr_config_hash == "e75a7f6e"

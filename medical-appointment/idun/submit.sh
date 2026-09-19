@@ -11,7 +11,19 @@
 #   bash idun/submit.sh train [args]# train the ModernBERT answerer (grouped OOF)
 #   bash idun/submit.sh llm [args]  # LLM ceiling probe (L0/L1/L2)
 #   bash idun/submit.sh llm80 [args]# same, forced onto an 80 GB GPU (26B/31B)
-#   bash idun/submit.sh serve       # serve the LLM endpoint + cloudflared tunnel
+#   bash idun/submit.sh serve       # serve the LLM endpoint + public tunnel
+#
+# `serve` forwards these when set: MEDAPP_LLM_MODEL, MEDAPP_LLM_REVISION,
+# MEDAPP_LLM_MAX_NEW_TOKENS, MEDAPP_LLM_LEGACY_SPECIAL_TOKENS,
+# MEDAPP_SPAN_CALIBRATION, MEDAPP_TUNNEL (cloudflared|ngrok), NGROK_DOMAIN.
+# Example (26B + calibration behind the stable ngrok domain):
+#   REMOTE_DIR=~/nordic-medical-ngrok CONSTRAINT=gpu80g MEM=128G TIME=2-00:00:00 \
+#   MEDAPP_LLM_MODEL=google/gemma-4-26b-a4b-it \
+#   MEDAPP_LLM_REVISION=4d7ae4984b7db7de8f8457170b3f1a419ee76d52 \
+#   MEDAPP_LLM_MAX_NEW_TOKENS=1024 MEDAPP_LLM_LEGACY_SPECIAL_TOKENS=1 \
+#   MEDAPP_SPAN_CALIBRATION=calibration/span_offset_base.json \
+#   MEDAPP_TUNNEL=ngrok NGROK_DOMAIN=motor-throttle-viewer.ngrok-free.dev \
+#   bash idun/submit.sh serve
 #   bash idun/submit.sh eval        # submit an end-to-end HTTP scoring job
 #   bash idun/submit.sh queue       # show your SLURM jobs
 #   bash idun/submit.sh logs [id]   # tail a job log
@@ -21,6 +33,9 @@
 #   REMOTE="idun"                  SSH alias from ~/.ssh/config
 #   REMOTE_DIR="~/nordic-medical"  target dir on IDUN
 #   SLURM_ACCOUNT="share-ie-idi"   SLURM allocation
+#   CONSTRAINT="gpu40g|gpu80g"     serve GPU constraint
+#   MEM="32G"                      serve memory request
+#   TIME="0-04:00:00"              serve walltime
 # ==============================================================================
 
 set -euo pipefail
@@ -97,7 +112,17 @@ case "$ACTION" in
 
     serve)
         check_ssh; sync_code; sync_transcripts
-        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && sbatch --account=${SLURM_ACCOUNT} idun/job_serve_llm.slurm")
+        FORWARD=""
+        for var in MEDAPP_LLM_MODEL MEDAPP_LLM_REVISION MEDAPP_LLM_MAX_NEW_TOKENS \
+                   MEDAPP_LLM_LEGACY_SPECIAL_TOKENS MEDAPP_SPAN_CALIBRATION \
+                   MEDAPP_TUNNEL NGROK_DOMAIN; do
+            value="${!var:-}"
+            [ -n "$value" ] && FORWARD="${FORWARD} ${var}=$(printf '%q' "$value")"
+        done
+        RESOURCES="--constraint=$(printf '%q' "${CONSTRAINT:-gpu40g|gpu80g}")"
+        RESOURCES="${RESOURCES} --mem=$(printf '%q' "${MEM:-32G}")"
+        RESOURCES="${RESOURCES} --time=$(printf '%q' "${TIME:-0-04:00:00}")"
+        JOB_SUBMIT=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs &&${FORWARD} sbatch --account=${SLURM_ACCOUNT} ${RESOURCES} idun/job_serve_llm.slurm")
         echo "$JOB_SUBMIT"
         JOB_ID=$(echo "$JOB_SUBMIT" | awk '{print $NF}')
         echo "  URL: ssh ${REMOTE} \"grep -a PUBLIC_URL ${REMOTE_DIR}/logs/med_serve_llm_${JOB_ID}.out\""
