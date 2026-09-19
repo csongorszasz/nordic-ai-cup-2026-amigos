@@ -42,6 +42,13 @@ has whole-unit oracle mIoU **0.882069**, falling to **0.838940** after the fixed
 improvements; they do not support a near-perfect claim. The qualified service
 is unchanged.
 
+The complete pretrained inverse-question experiment did not improve source
+selection: full composite scores were **0.5434** (context), **0.6000**
+(source only), and **0.5804** (context ablation), versus **0.8007**.
+Every demo-disjoint paired interval was negative. Reject these policies;
+CPU feasibility and correct likelihood computation did not imply useful
+reference localization.
+
 **Reference agreement is not always semantic correctness.** CSV references
 `sample_63_yes_q02` and `sample_64_yes_q02` point to the opening greeting
 instead of the later medical fact in both immutable, audio-matched full-v3 and

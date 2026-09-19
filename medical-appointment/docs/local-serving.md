@@ -244,6 +244,18 @@ keeps the complete incumbent outputs, and fails the feasibility flag.
 This older small model tests a different ranking objective, not a claimed SOTA
 result or a solution to the still-insufficient source-extent coverage.
 
+### Isolated acoustic normalization dependencies
+
+The conditional CTC experiment uses the existing torch/torchaudio 2.7.1
+training interpreter, not the shared serving packages. Run
+`idun\setup_acoustic_env.py` through a fresh CPU snapshot with that interpreter
+selected by `MEDAPP_PYTHON`. It installs the two pins in
+`requirements-acoustic.txt` under the run's `.acoustic-deps`, using an explicit
+target and no implicit dependency upgrades. It verifies spoken-number outputs
+and unchanged protected runtime versions, then writes
+`results/acoustic_environment.json`. Do not add that target to the live service
+or treat dependency preparation as an alignment-quality result.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

@@ -1474,3 +1474,36 @@ localization, and it does not fit a larger selector.
   The full comparison retains incumbent-first ties within the predeclared
   numerical equivalence tolerance **1e-5**, preventing padding/batch roundoff
   from choosing another equal-likelihood occurrence.
+- **Complete comparison:** `inverse-question-full-20d667a2`, CPU job
+  `25407471`, completed all 390 questions with zero conversation failures and
+  unchanged booleans. All three fixed policies are **rejected**:
+
+  | Policy | Full composite | Full mIoU | Demo-disjoint composite |
+  | --- | --- | --- | --- |
+  | Qualified incumbent | 0.800742 | 0.669612 | 0.797842 |
+  | Context likelihood (primary) | 0.543352 | 0.240630 | 0.544295 |
+  | Source-only likelihood | 0.599985 | 0.335018 | 0.595516 |
+  | Context-minus-masked-source | 0.580439 | 0.302441 | 0.581516 |
+
+  Demo-disjoint composite deltas were **-0.253547**, **-0.202326**, and
+  **-0.216326**, respectively, with wholly negative paired intervals.
+  Peak RSS was 2.15 GiB and the slowest CPU scoring component was 15.32 s.
+  Neither metric is an HTTP deployment gate. Do not expand this failed small-
+  model selector through more prompt variants, synthetic training, or a
+  gold-selected mixture. This rejects the implementation, not a theorem about
+  all possible inverse-question models. The incumbent stays unchanged.
+
+### Conditional CTC boundary preparation
+
+The independent next arm freezes every incumbent source occurrence and tests
+local acoustic endpoints using
+`facebook/wav2vec2-base-960h@22aad52d435eb6dbaf354bdad9b0da84ce7d6156`.
+Its explicit convolution clock has a 320-sample stride and 400-sample receptive
+field at 16 kHz; do not stretch frame indices by waveform-duration/frame-count.
+The compatible isolated runtime already has torch/torchaudio 2.7.1+cu126.
+
+Spoken-number normalization is prepared separately with
+`requirements-acoustic.txt` in a run-local `.acoustic-deps` target. Only
+`num2words` and its declared CLI dependency are installed; neither the shared
+serving environment nor the existing training overlay is upgraded. This
+preparation is not a boundary-quality result or an ASR replacement.
