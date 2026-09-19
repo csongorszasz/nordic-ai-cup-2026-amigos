@@ -161,7 +161,20 @@ def small_tower(meshes, rng):
     return out, 'rebuilt in plain colours: grey concrete base + small second slab with a crate, light green cabin, dark green roof with darker edges'
 
 
-RECIPES = {'tank': tank, 'jet_plane': jet_plane, 'large_tower': large_tower,
+def hangar(meshes, rng):
+    """The door leaves, open at the shelter's mouth, still showed from above as two sticks
+    (Juan, synthetic frame 2). They and the posts stand low beyond the end of the body; the
+    frame above the mouth (higher up) stays, or the mouth looks notched."""
+    # The body: the parts that run the whole length from the back (x < -0.4), the outer shell excepted.
+    shell = max(meshes, key=lambda m: len(m.faces))
+    body_end = max(m.bounds[1][0] for m in meshes if m is not shell and m.bounds[0][0] < -0.4
+                   and len(m.faces) > 1000)
+    door = [m for m in meshes if m.bounds[0][0] > body_end and m.bounds[1][2] < 0.13]
+    kept = [m for m in meshes if not any(m is d for d in door)]
+    return kept, f'door leaves and posts removed ({len(door)} low parts beyond the end of the body)'
+
+
+RECIPES = {'hangar': hangar, 'tank': tank, 'jet_plane': jet_plane, 'large_tower': large_tower,
            'small_launcher': small_launcher, 'small_tower': small_tower}
 
 
