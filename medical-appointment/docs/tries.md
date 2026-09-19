@@ -807,6 +807,12 @@ uniquely decodable quotes, since the runtime preserves baseline evidence for
 ambiguous text. Original reference timestamps stay unchanged; this is a
 training-label derivation diagnostic, not achieved inference quality.
 
+- The first audit exposed an infeasible target, not a reason to drop a row:
+  `sample_64_yes_q02` has reference [0, 0.16]. The only positive-overlap
+  corrected quote is the repeated word “Good”; a longer unique quote starts
+  at 0.2 and cannot overlap the reference. Record zero with an explicit
+  infeasibility flag and retain the question in every denominator.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

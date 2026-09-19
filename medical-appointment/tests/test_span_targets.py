@@ -27,3 +27,14 @@ def test_unique_target_does_not_choose_an_ambiguous_single_word():
     assert raw["quote"] == "yes"
     assert unique["quote"] != "yes"
     assert unique["span"][1] <= 3.0
+
+
+def test_unservable_short_initial_reference_is_reported_not_dropped():
+    words = [
+        {"word": " Good", "start": 0.0, "end": 0.18},
+        {"word": " afternoon.", "start": 0.18, "end": 0.6},
+        {"word": " Good", "start": 5.0, "end": 5.5},
+    ]
+    assert optimal_quote_target(words, [0.0, 0.16], 6.0) is None
+    raw = optimal_quote_target(words, [0.0, 0.16], 6.0, unique=False)
+    assert raw["quote"] == "Good" and raw["tiou"] > 0.8

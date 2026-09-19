@@ -11,6 +11,7 @@ def word_text(words, first, last):
 
 
 def optimal_quote_target(words, gold, duration, *, unique=True, offsets=(0.2, 0.0)):
+    """Return the best feasible target, or None if none can overlap the reference."""
     if not words or gold[1] <= gold[0]:
         raise ValueError("A positive reference and timestamped words are required.")
     starts = np.asarray([word["start"] for word in words], dtype=float)[:, None]
@@ -51,4 +52,4 @@ def optimal_quote_target(words, gold, duration, *, unique=True, offsets=(0.2, 0.
             "quote": quote, "first_word": i, "last_word": j,
             "span": span, "tiou": float(scores.ravel()[flat_index]),
         }
-    raise ValueError("No valid, decodable quote target overlaps the reference.")
+    return None
