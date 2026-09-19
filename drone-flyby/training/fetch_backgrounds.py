@@ -54,6 +54,30 @@ AREAS = {
     'coast_maine':      (43.8000, -69.8000, 'rocky coast, small harbours'),
     'desert_nevada':    (36.6000, -115.2000, 'bare desert, tracks'),
     'quarry_utah':      (40.5200, -112.1500, 'quarry, spoil heaps, plant'),
+    # Added after counting the live model's false positives on Copenhagen: over 249 frames it
+    # reported 1255 jammers, 439 spacecraft and 177 condors in a scene that has none of them,
+    # firing on moored boats, field sheds, parked lorries, car yards and bushes. These areas are
+    # those same things, so the detector meets them with nothing to find.
+    'marina_annapolis': (38.9500, -76.4800, 'moored yachts, pontoons, boatyard'),
+    'marina_lakeunion': (47.6500, -122.3300, 'houseboats and marina berths in a city'),
+    'marina_michigan':  (42.1000, -86.4800, 'lake marina, dinghies, slipways'),
+    'boatyard_newport': (41.4900, -71.3200, 'hauled-out hulls on hardstanding'),
+    'allotments_pdx':   (45.5300, -122.6500, 'allotment plots, sheds, polytunnels'),
+    'trailerpark_tampa': (27.9500, -82.3500, 'rows of caravans and mobile homes'),
+    'dealership_dallas': (32.9000, -96.8000, 'ranked new cars and lorries'),
+    'carpark_ohio':     (39.9800, -83.1300, 'mall car parks, service yards'),
+    'cemetery_chicago': (41.8600, -87.8300, 'rows of small pale rectangles on grass'),
+    'greenhouse_salinas': (36.6800, -121.6500, 'glasshouse blocks and packing sheds'),
+    'solarfarm_nevada': (35.8000, -115.4700, 'panel arrays, inverter cabins'),
+    'windfarm_texas':   (32.3000, -100.9000, 'turbines, access tracks, pads'),
+    'golf_scottsdale':  (33.6000, -111.9200, 'fairways, bunkers, cart sheds'),
+    'sportsfields_denver': (39.7500, -104.9000, 'pitches, dugouts, floodlight masts'),
+    'construction_austin': (30.3500, -97.7200, 'plant, spoil, part-built slabs'),
+    'orchard_yakima':   (46.5800, -120.5000, 'tree rows, hail netting, bins'),
+    'pasture_wisconsin': (43.6000, -89.7000, 'round bales and stock troughs on grass'),
+    'scrub_newmexico':  (35.1000, -106.5000, 'scattered bushes on bare ground'),
+    'marsh_louisiana':  (29.7000, -90.1000, 'water channels, spoil banks, jetties'),
+    'coast_oregon':     (44.6300, -124.0500, 'rocky shore, small craft, jetties'),
 }
 
 
