@@ -67,15 +67,38 @@ large_launcher 0.79, tank 0.79, jet_plane 0.86, helicopter 0.89, small_plane 0.9
 Run the live detector straight at the three ta-ta in the 4K Copenhagen frame and it finds all three at
 **conf 0.72-0.78** with boxes that match the labels. Feed it the Level-1 view the drone actually transmits
 (1920x1080 of source into 960x540, so a 2x downscale) and it finds nothing, or 0.07. A ta-ta is 19x44 px in
-the source, so it arrives as 9x22 px. The policy trace confirms it: **zero ta-ta predictions over all 249
-frames.** The model knows the class; the pixels never arrive. Only a Level-2 visit would fix it, and L2
-dives cost more coverage than they win (0.568).
+the source, so it arrives as 9x22 px. The model knows the class; the pixels never arrive. Only a Level-2
+visit would fix it, and L2 dives cost more coverage than they win (0.568).
+
+It is worse than a miss. Over the 249 frames the run reports **353 ta-ta boxes, and not one reaches IoU 0.5
+with any of the three real ones** (best 0.06). They land on dark bushes and a circular field feature. So
+ta-ta contributes 0.00 and adds false positives on top.
 
 Raising the second small-object pass from 1280 to 1600 gives 0.640 -> **0.648**, all of it from
 medium_launcher (0.40 -> 0.48) and small_launcher (0.46 -> 0.48); ta-ta stays 0.00. It costs about 35% more
 inference (960+1280 = 237 ms on the laptop, 960+1600 = 320 ms; the VM ran 960+1280 in 183 ms, so expect
 ~247 ms against a 333 ms frame interval). Not deployed: +0.008 is not worth risking dropped frames without
 measuring on the VM first.
+
+## A quarter of what we report is for classes that are not there
+
+Counting every box the live model reports over the 249 Copenhagen frames:
+
+| class | in our labels | boxes reported | max conf | fires on |
+|---|---|---|---|---|
+| jammer | **0** | **1255** | 0.78 | sheds and bushes in fields, parked trucks, cars in yards |
+| spacecraft | **0** | 439 | 0.77 | one dark angular vehicle, over and over |
+| condor | **0** | 177 | 0.86 | **boats in a marina**, a rooftop |
+| ta-ta | 3 | 353 | 0.73 | bushes, a circular field feature (never the real ones) |
+
+1871 of 7765 boxes, 24%, are for three classes with no instance in the scene. They cost nothing offline
+(the scorer only averages classes present in the ground truth) but the supplied Helsinki scene has all 16,
+so the real evaluation probably does too, and then these decide those classes' AP.
+
+On the Helsinki scene the same model scores condor 0.87, jammer 0.74, spacecraft 0.90, so the classes are
+not broken; the model has simply never seen a marina, a Danish shed or a city yard and reads them as
+objects. That is the same finding as the background experiment from the other direction, and it is the
+argument for more and more varied sharp photo backgrounds rather than more sprite work.
 
 ## The recipe with no flags is still the one to beat
 
