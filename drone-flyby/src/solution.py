@@ -82,6 +82,7 @@ H_UPGRADE_WEIGHT = float(os.environ.get('H_UPGRADE', 1.0))   # object never seen
 # frames are too few; there they were neutral or worse). V2_GMC=0 gives back v1 exactly.
 _V2 = os.environ.get('DRONE_V2', '0')
 V2_GMC = os.environ.get('V2_GMC', '1') != '0'
+V2_INTEGRATE = os.environ.get('V2_INTEGRATE', '1') != '0'   # predicted_box: step through the motion field, growing the box
 V2_GROUND = os.environ.get('V2_GROUND', _V2) != '0'
 V2_VOTES = os.environ.get('V2_VOTES', _V2) != '0'
 V2_TRUNC = os.environ.get('V2_TRUNC', _V2) != '0'
@@ -216,9 +217,22 @@ class SequenceState:
     def predicted_box(self, track: Track, frame: int) -> np.ndarray:
         # With measured ground motion, a track's own estimate is only trusted once it has a few hits.
         own = track.velocity is not None and not (V2_GMC and track.hits < 3)
-        v = track.velocity if own else self.velocity_at(track.centre())
         dt = frame - track.last_frame
-        return track.box + np.array([v[0], v[1], v[0], v[1]]) * dt
+        if not (V2_INTEGRATE and V2_GMC) or dt <= 0:
+            v = track.velocity if own else self.velocity_at(track.centre())
+            return track.box + np.array([v[0], v[1], v[0], v[1]]) * dt
+        # Frame by frame through the motion field: the ground speeds up towards the bottom of the
+        # frame (the camera is pitched) and an object grows as it comes closer. One constant speed
+        # left remembered boxes behind their objects (Copenhagen: 18% of labels missed that way,
+        # 17 px short and 10-15% small after 2-5 frames unseen).
+        offset = track.velocity - self.velocity_at(track.centre()) if own else np.zeros(2)
+        grow = 1 + np.diag(self.field) / 1000   # d(vx)/dx, d(vy)/dy per frame
+        box = track.box.astype(float).copy()
+        for _ in range(dt):
+            c = np.array([(box[0] + box[2]) / 2, (box[1] + box[3]) / 2]) + self.velocity_at(track.centre(box)) + offset
+            half = np.array([box[2] - box[0], box[3] - box[1]]) * grow / 2
+            box = np.array([c[0] - half[0], c[1] - half[1], c[0] + half[0], c[1] + half[1]])
+        return box
 
     def _add_motion(self, p, v: np.ndarray, weight: float):
         """A measurement from the images; refit the motion field to the recent ones."""
