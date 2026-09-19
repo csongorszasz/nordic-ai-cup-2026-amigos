@@ -829,6 +829,20 @@ decoding. Record and assert actual parameter dtype; compare common non-demo
 raw/fixed-offset results. Do not change the live FP16 release on a point
 estimate alone.
 
+- **Outcome:** `incumbent-bf16-ef8602bb` rejected. Actual BF16 verified with
+  matched transcripts and unchanged decisions, but fixed-offset score
+  **0.7924** versus 0.8007; non-demo delta **-0.009161**, interval
+  **[-0.019913, -0.001105]**. Preserve FP16 for this checkpoint.
+
+## Local word-pointer representation
+
+Use the blinded local-extraction setup, fixed decisions, same +/-24-word
+regions and excluded demonstration sources, but request inclusive local word
+IDs rather than generated quote prose. Reference examples use the same
+overlap-derived word ranges. Reject invalid or out-of-region indices and retain
+baseline evidence; keep the 20-second added-call cap. This tests representation,
+not a new global occurrence preference or label-dependent applicability gate.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.

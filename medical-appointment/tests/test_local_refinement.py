@@ -36,3 +36,18 @@ def test_blind_extraction_hides_only_the_anchor():
     assert "CURRENT:" not in blind and "the proposed answer" not in blind
     assert "CONTEXT [1.00-3.00]: unchanged local words" in blind
     assert '"keep"' not in blind
+
+
+def test_word_pointer_bounds_are_local_and_inclusive():
+    span, reason = decode_refinement(
+        {"first_word": "w03", "last_word": "w04"}, CASE, TRANSCRIPT, word_indices=True
+    )
+    assert span == [1.4, 1.9] and reason == "refined"
+    for entry in (
+        {"first_word": "w04", "last_word": "w03"},
+        {"first_word": "w00", "last_word": "w99"},
+        {"first_word": 0, "last_word": 4},
+    ):
+        assert decode_refinement(entry, CASE, TRANSCRIPT, word_indices=True) == (
+            [0.2, 1.9], "invalid_indices"
+        )

@@ -161,6 +161,9 @@ def parse_answers(
         result[qid] = {"answer": answer, "quote": quote, "candidate": candidate}
         if "keep" in item:
             result[qid]["keep"] = item["keep"] is True
+        for key in ("first_word", "last_word"):
+            if key in item:
+                result[qid][key] = item[key]
         if "segment_start" in item or "segment_end" in item:
             result[qid]["segment_start"] = item.get("segment_start")
             result[qid]["segment_end"] = item.get("segment_end")
