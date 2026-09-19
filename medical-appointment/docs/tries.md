@@ -980,6 +980,18 @@ full-OOF result or deployment is claimed by this implementation alone.
   All frozen pilot source hashes and fixed hyperparameters matched before
   submission. Its monitor is `grpo-oof-watch`; no extra GPU experiment
   should be submitted while it is active.
+- **Complete GRPO OOF outcome:** all 350 non-demo questions appeared once
+  with unchanged decisions. GRPO composite **0.8040**, mIoU **0.6753**,
+  versus incumbent **0.7978**, mIoU **0.6650** on this same cohort.
+  The paired composite delta is **+0.006181**, interval
+  **[-0.022475, +0.034658]**: not a qualified replacement.
+  Same-runtime SFT scored 0.7986; the GRPO-SFT delta is **+0.005450**,
+  interval **[-0.004435, +0.016439]**. One SFT replay span in fold 2
+  changed under the newer runtime; that change is not attributed to RL.
+  GRPO differs from the original SFT on 20 spans, with one ambiguity
+  fallback. Maximum estimated combined time 34.89 s is not an HTTP gate.
+  Retain the published incumbent; these 350-question scores must not be
+  compared directly to its 390-question 0.8007 result.
 - **Timing-axis preparation:** the pinned native Qwen processor drops
   punctuation when constructing alignment units and decodes timestamp
   classes in 80 ms increments by default. A timing-only comparison must
@@ -1014,6 +1026,17 @@ full-OOF result or deployment is claimed by this implementation alone.
   Profile added time and model-only memory; a separate-run latency sum is
   not a co-resident HTTP gate. Do not launch while GRPO OOF holds the sole
   experimental GPU.
+- **Resume/resource constraint:** two serving allocations and another
+  medical GPU experiment were active when work resumed on September 19.
+  Leave those jobs untouched and keep the existing GPU-capacity guard.
+  Continue the same longest-three alignment-quality smoke on CPU instead,
+  using an isolated 8-core / 32 GB allocation and the verified interpreter.
+- `benchmark_alignment.py --device cpu` loads float32 and explicitly marks
+  the result quality-only. It records allocated PyTorch threads, actual
+  dtype, CPU time and peak process RSS. Its GPU feasibility flag stays
+  false regardless of CPU speed. CPU float32 and later GPU BF16 predictions
+  may differ; numerical parity and co-resident HTTP acceptance are still
+  required before any serving claim. No serving environment is upgraded.
 
 ## ASR stream lifecycle check
 

@@ -58,6 +58,10 @@ grace period rather than treating a fresh NXDOMAIN as a model failure.
 
 The helper refuses a third medical GPU allocation. CPU-only analyses use
 `--cpu` and a separate CPUQ job/lock; they cannot load a visible GPU.
+Their default allocation remains two cores / 8 GB. Explicit
+`--cpu-cores 8 --cpu-memory-gb 32` overrides those CPU-only resources and
+records the allocation arguments in the run manifest. GPU resource rules
+are unchanged, and CPU overrides are rejected for GPU jobs.
 Serving allocations remain finite, and quick tunnels have no uptime guarantee.
 Do not change competition submission settings automatically.
 
@@ -103,6 +107,13 @@ GRPO interpreter. It never re-runs the decision LLM or changes quote
 occurrences. Remove `--smoke` only after feasibility; full results must
 include every question, failure fallback, and the demonstration-disjoint
 paired comparison. Zero new offsets are the primary alignment policy.
+
+When GPU capacity is occupied, the same benchmark can run as a **CPU
+quality diagnostic**: submit with `--cpu --cpu-cores 8 --cpu-memory-gb 32`
+and script argument `--device cpu --smoke`. It uses float32 and bounds
+PyTorch threads to `SLURM_CPUS_PER_TASK`. CPU completion never passes the
+GPU-feasibility flag; CPU timings and dtype-dependent predictions do not
+qualify the intended GPU service.
 
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the

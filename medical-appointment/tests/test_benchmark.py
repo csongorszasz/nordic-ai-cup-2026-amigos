@@ -9,6 +9,29 @@ from benchmark import compare_reference, paired_comparison
 from idun import run
 
 
+def test_cpu_resource_requests_do_not_add_gpu_resources():
+    assert run.allocation_arguments(cpu=True, gpu80=False) == "--mem=8G --cpus-per-task=2"
+    assert run.allocation_arguments(
+        cpu=True, gpu80=False, cpu_cores=8, cpu_memory_gb=32,
+    ) == "--mem=32G --cpus-per-task=8"
+    assert run.allocation_arguments(cpu=False, gpu80=True) == "--constraint=gpu80g --mem=128G"
+    assert "--mem=64G" in run.allocation_arguments(cpu=False, gpu80=False)
+
+
+@pytest.mark.parametrize("value", [0, -1, True, 1.5, "8"])
+def test_invalid_cpu_resource_requests_fail(value):
+    for field in ("cpu_cores", "cpu_memory_gb"):
+        with pytest.raises(ValueError, match="positive integers"):
+            run.allocation_arguments(cpu=True, gpu80=False, **{field: value})
+
+
+def test_cpu_overrides_cannot_silently_change_gpu_jobs():
+    with pytest.raises(ValueError, match="require --cpu"):
+        run.allocation_arguments(cpu=False, gpu80=True, cpu_memory_gb=32)
+    with pytest.raises(ValueError, match="cannot request"):
+        run.allocation_arguments(cpu=True, gpu80=True)
+
+
 def record(qid, tid, label, answer, span=None):
     return {
         "question_id": qid, "transcript_id": tid, "label": label,

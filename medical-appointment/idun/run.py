@@ -85,7 +85,25 @@ def snapshot(destination, request, assets=()):
     return manifest
 
 
+def allocation_arguments(*, cpu, gpu80, cpu_cores=None, cpu_memory_gb=None):
+    if not cpu:
+        if cpu_cores is not None or cpu_memory_gb is not None:
+            raise ValueError("CPU resource overrides require --cpu.")
+        constraint = "gpu80g" if gpu80 else "gpu32g|gpu40g|gpu80g"
+        return f"--constraint={shlex.quote(constraint)} --mem={'128G' if gpu80 else '64G'}"
+    if gpu80:
+        raise ValueError("CPU allocations cannot request a GPU constraint.")
+    cores = 2 if cpu_cores is None else cpu_cores
+    memory = 8 if cpu_memory_gb is None else cpu_memory_gb
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in (cores, memory)):
+        raise ValueError("CPU cores and memory must be positive integers.")
+    return f"--mem={memory}G --cpus-per-task={cores}"
+
+
 def submit(args):
+    resource_args = allocation_arguments(
+        cpu=args.cpu, gpu80=args.gpu80, cpu_cores=args.cpu_cores, cpu_memory_gb=args.cpu_memory_gb,
+    )
     run_id = f"{args.tag}-{uuid.uuid4().hex[:8]}"
     local = RUNS / run_id
     local.mkdir(parents=True)
@@ -106,6 +124,7 @@ def submit(args):
         "role": args.role,
         "walltime": args.walltime,
         "cpu_only": args.cpu,
+        "allocation_arguments": resource_args,
         "after_job": args.after_job,
     }
     if request["arguments"][:1] == ["--"]:
@@ -160,13 +179,8 @@ for tid in sorted(tids):
         manifest["transcripts"][path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
 (root / "input_manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True))
 '''
-    constraint = "gpu80g" if args.gpu80 else "gpu32g|gpu40g|gpu80g"
     active_file = "active-cpu-job" if args.cpu else "active-job"
     prefix = "cpu" if args.cpu else "serve" if args.role == "serving" else "iter"
-    resource_args = (
-        "--mem=8G" if args.cpu else
-        f"--constraint={shlex.quote(constraint)} --mem={'128G' if args.gpu80 else '64G'}"
-    )
     job_script = "idun/job_cpu_experiment.slurm" if args.cpu else "idun/job_experiment.slurm"
     remote_command = f"""
 set -eu
@@ -345,6 +359,8 @@ def main():
     parser.add_argument("--after-job")
     parser.add_argument("--gpu80", action="store_true")
     parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--cpu-cores", type=int)
+    parser.add_argument("--cpu-memory-gb", type=int)
     parser.add_argument("--script")
     parser.add_argument("--asset", action="append", default=[])
     parser.add_argument("--env", action="append", default=[])

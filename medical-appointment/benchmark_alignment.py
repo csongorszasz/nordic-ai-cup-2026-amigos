@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import math
+import os
 import time
 from collections import Counter
 from pathlib import Path
@@ -137,10 +138,22 @@ def align_audio(model, processor, audio_bytes, transcript):
     return batches[0]
 
 
+def alignment_gates(report):
+    successful = report["conversation_failures"] == 0 and report["reasons"].get("retimed", 0) > 0
+    return {
+        "alignment_success": successful,
+        "feasibility_passed": (
+            successful and report["device"] == "cuda" and report["max_estimated_combined_s"] < 50
+        ),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline", type=Path, required=True)
     parser.add_argument("--smoke", action="store_true", help="Only the three longest frozen conversations.")
+    parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda",
+                        help="CPU uses float32 for quality diagnosis only, never a GPU latency gate.")
     parser.add_argument("--output", type=Path, default=Path("results/alignment_benchmark"))
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
@@ -154,20 +167,35 @@ def main():
     excluded = {tid for entry in requests for tid in entry["demonstration_tids"]}
     args.output.mkdir(parents=True, exist_ok=True)
 
+    import resource
     import torch
+
+    if args.device == "cuda":
+        if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
+            raise RuntimeError("This timing experiment requires exactly its allocated GPU.")
+        dtype = torch.bfloat16
+    else:
+        if torch.cuda.is_available():
+            raise RuntimeError("CPU quality diagnostics require a CPU-only allocation with GPUs hidden.")
+        threads = int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))
+        if threads < 1:
+            raise ValueError("The allocated CPU thread count must be positive.")
+        torch.set_num_threads(threads)
+        torch.set_num_interop_threads(1)
+        dtype = torch.float32
     from transformers import AutoModelForTokenClassification, AutoProcessor
 
-    if not torch.cuda.is_available() or torch.cuda.device_count() != 1:
-        raise RuntimeError("This timing experiment requires exactly its allocated GPU.")
     processor = AutoProcessor.from_pretrained(MODEL, revision=REVISION, local_files_only=True)
     model = AutoModelForTokenClassification.from_pretrained(
-        MODEL, revision=REVISION, dtype=torch.bfloat16, local_files_only=True,
-    ).to("cuda").eval()
-    if next(model.parameters()).dtype != torch.bfloat16:
-        raise RuntimeError("Forced-aligner weights did not load in the declared BF16 precision.")
+        MODEL, revision=REVISION, dtype=dtype, local_files_only=True,
+    ).to(args.device).eval()
+    if next(model.parameters()).dtype != dtype:
+        raise RuntimeError("Forced-aligner weights did not load in the declared precision.")
+    print(json.dumps({"device": args.device, "dtype": str(dtype), "cpu_threads": torch.get_num_threads()}), flush=True)
     warm = requests[0]["transcript_id"]
     align_audio(model, processor, audio[warm], transcripts[warm])
-    torch.cuda.reset_peak_memory_stats()
+    if args.device == "cuda":
+        torch.cuda.reset_peak_memory_stats()
     predictions, timings = [], []
     for entry in requests:
         tid = entry["transcript_id"]
@@ -185,7 +213,8 @@ def main():
             logger.exception("Alignment failed for %s; retaining every incumbent answer/span.", tid)
             error = f"{type(exc).__name__}: {exc}"
             changed = [baseline_prediction(row, "conversation_error_keep") for row in group]
-            torch.cuda.empty_cache()
+            if args.device == "cuda":
+                torch.cuda.empty_cache()
         elapsed = time.monotonic() - began
         validate_coverage(changed, group)
         predictions.extend(changed)
@@ -202,6 +231,8 @@ def main():
     safe_pred = [row for row in predictions if row["transcript_id"] not in excluded]
     report = {
         "complete": True, "smoke_only": args.smoke, "questions": len(rows),
+        "device": args.device, "dtype": str(dtype), "cpu_threads": torch.get_num_threads(),
+        "quality_only": args.device == "cpu",
         "model": MODEL, "revision": REVISION, "timestamp_quantum_s": processor.timestamp_segment_time / 1000,
         "baseline": score_records(baseline), "aligned": score_records(predictions),
         "paired": paired_comparison(baseline, predictions),
@@ -214,18 +245,20 @@ def main():
         "conversation_failures": sum(entry["error"] is not None for entry in timings),
         "max_alignment_s": max(entry["alignment_s"] for entry in timings),
         "max_estimated_combined_s": max(entry["estimated_combined_s"] for entry in timings),
-        "peak_cuda_gb": torch.cuda.max_memory_allocated() / 1e9,
+        "peak_cuda_gb": torch.cuda.max_memory_allocated() / 1e9 if args.device == "cuda" else None,
+        "peak_process_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024 / 1e9,
         "runtime": {name: importlib.metadata.version(name) for name in ("torch", "transformers", "faster-whisper")},
-        "latency_note": "Separate-run sum with only aligner loaded, not a co-resident HTTP gate.",
+        "latency_note": (
+            "CPU float32 quality diagnostic; GPU numerical parity and co-resident HTTP latency unverified."
+            if args.device == "cpu" else
+            "Separate-run sum with only aligner loaded, not a co-resident HTTP gate."
+        ),
         "word_text_and_anchors_frozen": True, "aligner_offsets": [0.0, 0.0],
     }
-    report["feasibility_passed"] = (
-        report["conversation_failures"] == 0 and report["max_estimated_combined_s"] < 50
-        and report["reasons"].get("retimed", 0) > 0
-    )
+    report.update(alignment_gates(report))
     write_json(args.output / "summary.json", report)
     print(json.dumps(report, allow_nan=False), flush=True)
-    return 0 if report["feasibility_passed"] else 1
+    return 0 if report["alignment_success" if args.device == "cpu" else "feasibility_passed"] else 1
 
 
 if __name__ == "__main__":

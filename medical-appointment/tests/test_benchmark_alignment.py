@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from benchmark_alignment import baseline_prediction, retime_prediction, word_anchor
+from benchmark_alignment import alignment_gates, baseline_prediction, retime_prediction, word_anchor
 
 
 WORDS = [
@@ -17,6 +17,28 @@ ROW = {
     "span": [3.0, 3.5], "gold": [3.1, 3.4], "duration": 5.0,
     "quote": "Good.", "word_range": [1, 1],
 }
+
+
+@pytest.mark.parametrize("latency", [1.0, 300.0])
+def test_cpu_quality_run_never_qualifies_as_gpu_feasibility(latency):
+    report = {
+        "device": "cpu", "conversation_failures": 0,
+        "reasons": {"retimed": 5}, "max_estimated_combined_s": latency,
+    }
+    assert alignment_gates(report) == {"alignment_success": True, "feasibility_passed": False}
+
+
+def test_gpu_gate_requires_successful_alignment_and_latency_headroom():
+    report = {
+        "device": "cuda", "conversation_failures": 0,
+        "reasons": {"retimed": 5}, "max_estimated_combined_s": 30.0,
+    }
+    assert alignment_gates(report)["feasibility_passed"] is True
+    assert alignment_gates({**report, "max_estimated_combined_s": 50.0})["feasibility_passed"] is False
+    for changed in ({"conversation_failures": 1}, {"reasons": {"conversation_error_keep": 5}}):
+        assert alignment_gates({**report, **changed}) == {
+            "alignment_success": False, "feasibility_passed": False,
+        }
 
 
 def test_retiming_preserves_the_selected_repeated_occurrence():
