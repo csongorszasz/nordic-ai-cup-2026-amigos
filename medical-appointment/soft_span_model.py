@@ -155,7 +155,10 @@ def main() -> int:
         optimizer = torch.optim.AdamW(
             list(model.parameters()) + list(head.parameters()), lr=args.lr
         )
-        loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none")
+        positives = sum(1 for e in train_items for value in e["soft"] if value > 0.5)
+        negatives = sum(1 for e in train_items for value in e["soft"] if value <= 0.5)
+        pos_weight = torch.tensor([negatives / max(1, positives)], device=device)
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction="none", pos_weight=pos_weight)
         loader = DataLoader(SoftDataset(train_items), batch_size=args.batch_size,
                             shuffle=True, collate_fn=collate)
         model.train()
@@ -195,12 +198,13 @@ def main() -> int:
                 buckets[wid].append(probs[token_index])
         word_probs = [sum(buckets[i]) / len(buckets[i]) if buckets[i] else 0.0
                       for i in range(len(example["words"]))]
-        # Maximum-subarray on (p - 0.5): the contiguous run with the strongest
-        # evidence excess, so a span is always produced.
+        mean_prob = sum(word_probs) / len(word_probs) if word_probs else 0.0
+        # Maximum-subarray on (p - mean): the contiguous run with the strongest
+        # evidence excess, so a span is always produced despite class imbalance.
         best, best_sum = None, 0.0
         current, current_sum = None, 0.0
         for index, probability in enumerate(word_probs):
-            excess = probability - 0.5
+            excess = probability - mean_prob
             if current is None or current_sum + excess < excess:
                 current, current_sum = [index], excess
             else:
