@@ -85,9 +85,10 @@ def paste_warped(canvas, level_map, img, M, level):
         return
     shifted = np.array([[1, 0, -x0], [0, 1, -y0], [0, 0, 1]], dtype=np.float64) @ M
     size = (x1 - x0, y1 - y0)
-    warped = cv2.warpPerspective(img, shifted, size, flags=cv2.INTER_LINEAR)
+    # Edge pixels repeat outside the view, so interpolation at its border never blends in black.
+    warped = cv2.warpPerspective(img, shifted, size, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
     mask = cv2.warpPerspective(np.full((h, w), 255, np.uint8), shifted, size, flags=cv2.INTER_NEAREST)
-    mask = cv2.erode(mask, np.ones((3, 3), np.uint8)) > 0  # no half-black edge pixels
+    mask = mask > 0
     canvas[y0:y1, x0:x1][mask] = warped[mask]
     level_map[y0:y1, x0:x1][mask] = level
 
