@@ -757,6 +757,19 @@ Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/pack
   probe transcript. Proceed to the fixed two-epoch, fold-0 pilot; do not
   interpret these feasibility checks as a generalization result.
 
+- **Fixed held-out pilot:** `lora-fold0-pilot-4af0ceec`, 7 conversations /
+  70 questions. Baseline **0.8362**, unadapted E4B localizer **0.7650**,
+  adapted **0.8176**. Relative to unadapted, delta **+0.05258** with interval
+  **[+0.02253, +0.08519]**; relative to the incumbent, delta **-0.01865**
+  with a wide interval. All 35 predicted positives localized; decisions
+  unchanged and no alignment/budget fallback. Estimated combined maximum
+  28.11 s is not a serving measurement.
+- Learning is measurable, but this fold does not beat the incumbent and
+  cannot justify deployment. Complete the remaining four fixed folds
+  sequentially on one GPU, reusing (not reselecting) the frozen fold-0
+  result. Verify source hashes, identical hyperparameters, split isolation,
+  complete unique OOF coverage, and unchanged base decisions.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
