@@ -1091,6 +1091,23 @@ full-OOF result or deployment is claimed by this implementation alone.
   fallbacks. `calibrate_alignment.py` writes diagnostic OOF results only,
   not an artifact compatible with the current serving calibration loader.
   CPU float32 results still require GPU parity and HTTP acceptance.
+- **Calibration outcome:** `alignment-offset-cv-94bb821e` used all 350
+  non-demo questions under both seeds, with verified fit/held-out/demo
+  separation and unchanged fallbacks. Every fold chose start **0.0s**,
+  end **-0.2s**. Both calibrated results scored **0.7935**, mIoU **0.6578**,
+  versus incumbent **0.7978**, mIoU **0.6650**. Delta **-0.004306**;
+  intervals **[-0.009458, +0.000783]** and
+  **[-0.009424, +0.000541]**. Calibration improves raw Qwen timing, but
+  does not justify replacing the incumbent or adding inference overhead.
+  Close this timing-provider trial without deployment.
+- **Next low-cost control:** apply the same two previously specified,
+  unfitted agreement rules to the completed GRPO OOF proposals, instead
+  of the earlier SFT proposals. Keep threshold 0.5 and midpoint weight 0.5
+  unchanged; no threshold/model fitting on OOF labels. Verify the chosen
+  proposal file against its complete OOF score summary and retain every
+  baseline decision. This needs no new model or GPU call.
+  Use `evaluate_adapter_agreement.py --proposal-kind grpo`; the default
+  still reads the original SFT `adapted_oof.json` files.
 
 ## ASR stream lifecycle check
 
