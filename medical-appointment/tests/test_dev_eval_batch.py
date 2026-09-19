@@ -46,7 +46,13 @@ class FakeBatch:
         out = []
         for _ in range(min(n, len(questions))):
             if return_info:
-                out.append((True, (1.0, 2.0), {"p": 0.9}))
+                out.append(
+                    (
+                        True,
+                        (1.0, 2.0),
+                        {"p": 0.9, "span": (0.8, 2.2)},
+                    )
+                )
             else:
                 out.append((True, (1.0, 2.0)))
         return out
@@ -81,6 +87,7 @@ def test_batch_branch_uses_batch_answerer(monkeypatch, tmp_path):
     assert len(records) == 3
     assert records[0]["p"] == 0.9
     assert records[0]["span"] == [1.0, 2.0]
+    assert records[0]["proposed_span"] == [0.8, 2.2]
 
 
 def test_batch_short_return_is_padded_with_guesses(monkeypatch):
@@ -91,7 +98,7 @@ def test_batch_short_return_is_padded_with_guesses(monkeypatch):
     )
 
     assert stats.total == 3
-    assert stats.correct == 1
+    assert stats.correct == 2
 
 
 def test_batch_without_info_support(monkeypatch):

@@ -3,6 +3,7 @@
 from answerers.span_utils import (
     LABEL_NOT_MENTIONED,
     LABEL_SUPPORT,
+    best_passage_span,
     char_span_to_words,
     pick_supported_candidate,
     psupport_accept,
@@ -77,3 +78,18 @@ def test_pick_supported_candidate_prefers_best_tiou():
     ]
     assert pick_supported_candidate(candidates) == 2
     assert pick_supported_candidate([candidates[0]]) is None
+
+
+def test_best_passage_span_ignores_padding_and_requires_order():
+    sequence_ids = [None, 0, None, 1, 1, 1, None]
+    starts = [0.0, 0.0, 0.0, 1.0, 8.0, 2.0, 100.0, 200.0]
+    ends = [0.0, 0.0, 0.0, 9.0, 1.0, 7.0, 100.0, 200.0]
+    assert best_passage_span(starts, ends, sequence_ids) == (4, 5)
+
+
+def test_best_passage_span_respects_max_length():
+    starts = [10.0, 0.0, 0.0, 0.0]
+    ends = [0.0, 0.0, 0.0, 10.0]
+    assert best_passage_span(starts, ends, [1] * 4) == (0, 3)
+    assert best_passage_span(starts, ends, [1] * 4, max_span_tokens=2) != (0, 3)
+    assert best_passage_span(starts, ends, [None] * 4) is None

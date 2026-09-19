@@ -1,5 +1,17 @@
 # LLM ceiling probe
 
+For deployment-matched comparisons, use `benchmark.py` through
+`idun/run.py`, not this historical probe alone. The benchmark calls the same
+`example.predict` path with the selected answerer, records raw output and
+demonstration sources, and saves exact ASR transcripts and hashes.
+Its first configuration can force uncached ASR in the isolated snapshot;
+later configurations reuse those transcripts. Cached and uncached latency
+must remain labeled separately.
+
+The legacy probe below is still useful for exploratory L0/L2/RAG diagnostics.
+Its scores are not deployment validation, and old large-v3 results cannot be
+directly compared with a turbo serving claim.
+
 Establish an upper bound on the task with a local instruction model: one call per
 conversation, transcript-only (no retrieved candidates), strict JSON with a
 verbatim `evidence_quote` aligned back to ASR word timestamps. The score is

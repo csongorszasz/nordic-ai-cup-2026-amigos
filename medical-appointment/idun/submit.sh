@@ -57,6 +57,7 @@ sync_code() {
         --exclude='transcripts' \
         --exclude='logs' \
         --exclude='results' \
+        --exclude='captured' \
         --exclude='.scratch' \
         "${PROJECT_ROOT}/" "${REMOTE}:${REMOTE_DIR}/"
     echo "Sync complete."

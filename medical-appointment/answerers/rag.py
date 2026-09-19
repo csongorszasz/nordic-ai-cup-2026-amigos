@@ -47,13 +47,18 @@ def retrieve(
 
 
 def union_oracle_tiou(words: List[Dict], candidates: Sequence[Passage], gold) -> float:
-    """Best tIoU of any word sub-range inside the union of the candidates."""
+    """Best word sub-range contained in one legal cited candidate."""
     from dev_eval import _best_subrange
 
-    indices: List[int] = []
-    for passage in candidates:
-        indices.extend(range(passage.first_word, passage.last_word + 1))
-    return _best_subrange(words, sorted(set(indices)), gold)
+    return max(
+        (
+            _best_subrange(
+                words, range(passage.first_word, passage.last_word + 1), gold
+            )
+            for passage in candidates
+        ),
+        default=0.0,
+    )
 
 
 def gold_rank(

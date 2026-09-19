@@ -47,24 +47,66 @@ EVIDENCE = ROOT / "annotations" / "evidence.csv"
 # Retrieval depth handed to the cross-encoder. 8 keeps the gate near-perfect
 # (T031: support 0.995 / refute 1.000); 5 is the latency fallback on the 1650.
 TOP_K = int(os.environ.get("MEDAPP_MB_TOP_K", "8"))
+TRANSCRIPT_CONFIG_HASH = os.environ.get("MEDAPP_TRANSCRIPT_CONFIG_HASH") or None
+
+
+def grouped_folds(tids, n_folds: int, seed: int = 13):
+    """Split complete conversations deterministically."""
+    if n_folds < 2 or n_folds > len(tids):
+        raise ValueError("Use between two and the number of conversations folds.")
+    shuffled = sorted(tids)
+    random.Random(seed).shuffle(shuffled)
+    return [shuffled[index::n_folds] for index in range(n_folds)]
+
+
+def transcript_path(
+    transcript_id: str, config_hash: Optional[str] = TRANSCRIPT_CONFIG_HASH
+) -> Path:
+    """Resolve one transcript deterministically.
+
+    Experiments can pin ``MEDAPP_TRANSCRIPT_CONFIG_HASH``. Without a pin, keep
+    the historical large-v3 cache when present, but reject ambiguous fallback
+    matches instead of silently taking the first filename.
+    """
+    if config_hash:
+        matches = sorted(
+            TRANSCRIPTS.glob(f"conversation_{transcript_id}.{config_hash}.*.json")
+        )
+        if not matches:
+            matches = sorted(
+                TRANSCRIPTS.glob(f"conversation_{transcript_id}.{config_hash}.json")
+            )
+        if len(matches) != 1:
+            raise FileNotFoundError(
+                f"Expected one transcript for {transcript_id} with config "
+                f"{config_hash}, found {len(matches)}."
+            )
+        return matches[0]
+
+    preferred = TRANSCRIPTS / f"conversation_{transcript_id}.dc5ba020.json"
+    if preferred.exists():
+        return preferred
+    matches = sorted(TRANSCRIPTS.glob(f"conversation_{transcript_id}.*.json"))
+    if len(matches) != 1:
+        raise FileNotFoundError(
+            f"Expected one unambiguous transcript for {transcript_id}, "
+            f"found {len(matches)}; set MEDAPP_TRANSCRIPT_CONFIG_HASH."
+        )
+    return matches[0]
 
 
 def load_words(transcript_id: str) -> List[Dict]:
     """Word list for a conversation, preferring the large-v3 transcript."""
-    preferred = TRANSCRIPTS / f"conversation_{transcript_id}.dc5ba020.json"
-    path = preferred if preferred.exists() else sorted(
-        TRANSCRIPTS.glob(f"conversation_{transcript_id}.*.json")
-    )[0]
-    return json.loads(path.read_text())["words"]
+    return json.loads(transcript_path(transcript_id).read_text())["words"]
 
 
 def load_transcript(transcript_id: str) -> Dict:
     """Full transcript dict (segments + words), preferring the large-v3 cache."""
-    preferred = TRANSCRIPTS / f"conversation_{transcript_id}.dc5ba020.json"
-    path = preferred if preferred.exists() else sorted(
-        TRANSCRIPTS.glob(f"conversation_{transcript_id}.*.json")
-    )[0]
-    return json.loads(path.read_text())
+    path = transcript_path(transcript_id)
+    transcript = json.loads(path.read_text())
+    transcript["_cache_path"] = str(path)
+    transcript["_cache_config_hash"] = path.name.split(".")[1]
+    return transcript
 
 
 def load_rows() -> List[Dict[str, str]]:
@@ -229,6 +271,7 @@ def build_examples(
     limit: Optional[int] = None,
     retriever: Optional[MiniLMRetriever] = None,
     seed: int = 13,
+    rows: Optional[List[Dict[str, str]]] = None,
 ) -> List[Dict]:
     """Per-question candidate passages with labels and span targets.
 
@@ -244,7 +287,7 @@ def build_examples(
     passages supply additional NOT_MENTIONED negatives.
     """
     rng = random.Random(seed)
-    rows = load_rows()
+    rows = load_rows() if rows is None else list(rows)
     evidence = load_evidence()
     if limit:
         rows = rows[:limit]
@@ -298,6 +341,8 @@ def build_examples(
                 {
                     "question_id": row["question_id"],
                     "transcript_id": tid,
+                    "question_transcript_id": tid,
+                    "passage_transcript_id": tid,
                     "question": row["question"],
                     "question_type": row["question_type"],
                     "passage_index": passage.index,
@@ -315,7 +360,7 @@ def build_examples(
                 }
             )
 
-        # Cross-conversation negatives: definitely not mentioned.
+        # Weak negatives: restrict both sources to the supplied training rows.
         other_tids = [t for t in tids if t != tid]
         for _ in range(n_cross_negatives):
             if not other_tids:
@@ -325,7 +370,9 @@ def build_examples(
             examples.append(
                 {
                     "question_id": row["question_id"],
-                    "transcript_id": other,
+                    "transcript_id": tid,
+                    "question_transcript_id": tid,
+                    "passage_transcript_id": other,
                     "question": row["question"],
                     "question_type": row["question_type"],
                     "passage_index": passage.index,

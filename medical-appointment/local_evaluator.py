@@ -88,6 +88,7 @@ class Statistics:
 
     conversations: int = 0
     failed_conversations: int = 0
+    unsent_conversations: int = 0
     timeouts: int = 0
     aborted: bool = False
 
@@ -188,6 +189,7 @@ class Statistics:
         lines.append(f'  unanswered           {self.errors}')
         lines.append(f'  conversations        {self.conversations}')
         lines.append(f'  failed conversations {self.failed_conversations}')
+        lines.append(f'  unsent conversations {self.unsent_conversations}')
         lines.append(f'  timeouts             {self.timeouts}')
 
         if self.aborted:
@@ -259,30 +261,30 @@ def wait_for_endpoint(url: str, attempts: int = 30) -> bool:
     return False
 
 
-def replay(url: str, verbose: bool) -> Statistics:
+def replay(url: str, verbose: bool, *, conversations=None, on_response=None) -> Statistics:
     """Send every supplied conversation to the endpoint and score the answers."""
     statistics = Statistics()
     session = requests.Session()
     consecutive_timeouts = 0
 
-    conversations = group_questions_by_conversation()
+    conversations = (
+        group_questions_by_conversation() if conversations is None else conversations
+    )
     attempt_budget = len(conversations) * ATTEMPT_BUDGET_SECONDS_PER_CONVERSATION
-    started_attempt = time.time()
+    started_attempt = time.monotonic()
 
-    for audio_filename, rows in conversations:
+    for conversation_index, (audio_filename, rows) in enumerate(conversations):
         # The service stops sending once the whole-attempt budget is gone. The
-        # questions it never sends are scored wrong there; here they are simply
-        # left out, which the note below flags.
-        if time.time() - started_attempt > attempt_budget:
+        # questions it never sends are still scored wrong.
+        if time.monotonic() - started_attempt > attempt_budget:
             statistics.aborted = True
             print(
                 f'  attempt budget of {attempt_budget} seconds is gone before '
                 f'{audio_filename}: the service would stop sending here. The '
-                'questions it never sent are scored wrong there, but left out '
-                'of the numbers below, so this run is not comparable to a '
-                'competition score.',
+                'unsent questions are included as wrong in the score.',
                 file=sys.stderr,
             )
+            _record_unsent(statistics, conversations[conversation_index:])
             break
 
         questions = [row['question'] for row in rows]
@@ -296,6 +298,8 @@ def replay(url: str, verbose: bool) -> Statistics:
         answers, spans, latency_ms, error, timed_out = _ask(
             session, url, payload, len(questions)
         )
+        if on_response is not None:
+            on_response(audio_filename, rows, answers, spans, latency_ms, error)
 
         consecutive_timeouts = consecutive_timeouts + 1 if timed_out else 0
 
@@ -335,13 +339,30 @@ def replay(url: str, verbose: bool) -> Statistics:
             print(
                 f'  {MAX_CONSECUTIVE_TIMEOUTS} timeouts in a row: the service would '
                 'stop sending here. The questions it never sent are scored wrong '
-                'there, but simply left out of the numbers below, so this run '
-                'is not comparable to a competition score.',
+                'there and are included as wrong in the score below.',
                 file=sys.stderr,
             )
+            _record_unsent(statistics, conversations[conversation_index + 1:])
             break
 
     return statistics
+
+
+def _record_unsent(statistics: Statistics, conversations) -> None:
+    """Count conversations the real service would score wrong after abort."""
+    for _, rows in conversations:
+        statistics.unsent_conversations += 1
+        statistics.record_request(
+            question_count=len(rows), latency_ms=None, failed=True
+        )
+        for row in rows:
+            statistics.record(
+                row["question_type"],
+                int(row["label"]),
+                UNANSWERED,
+                gold_evidence(row),
+                None,
+            )
 
 
 def _ask(

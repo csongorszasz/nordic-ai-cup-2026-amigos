@@ -5,6 +5,7 @@ input never includes ``question_type`` (unavailable at evaluation time) and neve
 includes retrieved candidates (L0-L2 are transcript-only).
 """
 
+import os
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .align import text_between
@@ -23,6 +24,11 @@ SYSTEM_PROMPT = (
     "- Do not paraphrase, translate, or add ellipses.\n"
     "- Output ONLY a JSON object, no prose."
 )
+VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
+VARIANTS = (
+    "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
+    "final_statement",
+)
 
 SCHEMA_HINT = (
     'Return JSON exactly like:\n'
@@ -31,18 +37,86 @@ SCHEMA_HINT = (
 )
 
 
+def system_prompt(variant: str) -> str:
+    rules = {
+        "base": "",
+        "full_context": "",
+        "two_positive": "",
+        "no_timestamps": "",
+        "final_statement": (
+            "- If several passages consistently establish the SAME queried fact, "
+            "prefer its final specific statement or confirmation over an earlier "
+            "preliminary mention. Preserve the question's subject, temporal status, "
+            "dose and qualifiers; do not substitute a later statement with a "
+            "different meaning or an unspecific acknowledgement.\n"
+        ),
+        "v1": (
+            "Work evidence-first: for each question, find the exact supporting span in "
+            "the transcript first, and only then decide the answer.\n"
+        ),
+        "v2": (
+            "- evidence_quote must be the SHORTEST contiguous span that fully "
+            "establishes the answer; do not include surrounding context that is not "
+            "needed.\n"
+        ),
+        "v3": (
+            "- If the same fact is stated more than once, quote the occurrence whose "
+            "wording most closely matches the question.\n"
+        ),
+        "scoped": (
+            "- For each yes, include segment_start and segment_end: the exact sXX "
+            "identifiers of the first and last transcript lines containing your quote. "
+            "Cite the occurrence you actually used, not an unrelated restatement.\n"
+            "- Quote only the words carrying the answer; surrounding lines may "
+            "provide context without being included in evidence_quote.\n"
+            "- On no, segment_start and segment_end are null.\n"
+        ),
+    }
+    if variant not in rules:
+        raise ValueError(f"Unknown LLM prompt variant: {variant!r}")
+    prompt = SYSTEM_PROMPT.replace("Rules:\n", "Rules:\n" + rules[variant], 1)
+    return prompt.replace("timestamped transcript", "transcript") if variant == "no_timestamps" else prompt
+
+
+def schema_hint(variant: str) -> str:
+    if variant == "v1":
+        return (
+            'Return JSON exactly like:\n'
+            '{"answers":[{"id":"q01","evidence_quote":"...","answer":"yes"},'
+            '{"id":"q02","evidence_quote":null,"answer":"no"}]}'
+        )
+    if variant == "scoped":
+        return (
+            'Return JSON exactly like:\n'
+            '{"answers":[{"id":"q01","answer":"yes","segment_start":"s02",'
+            '"segment_end":"s03","evidence_quote":"..."},'
+            '{"id":"q02","answer":"no","segment_start":null,'
+            '"segment_end":null,"evidence_quote":null}]}'
+        )
+    return SCHEMA_HINT
+
+
 def qid_for(index: int) -> str:
     """Stable id for the question at ``index`` (0-based) in request order."""
     return f"q{index + 1:02d}"
 
 
-def serialize_transcript(transcript: Dict, max_segments: Optional[int] = None) -> str:
+def few_shot_counts(variant: str) -> Tuple[int, int, int]:
+    return (2, 1, 1) if variant == "two_positive" else (1, 1, 1)
+
+
+def serialize_transcript(
+    transcript: Dict, max_segments: Optional[int] = None, *, timestamps: bool = True
+) -> str:
     """Segment-level lines with stable ids and timestamps."""
     segments = transcript.get("segments", [])
     if max_segments is not None:
         segments = segments[:max_segments]
     return "\n".join(
-        f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
+        (
+            f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
+            if timestamps else f"[s{seg['id']:02d}] {seg['text']}"
+        )
         for seg in segments
     )
 
@@ -53,6 +127,7 @@ def serialize_excerpt(
     end: Optional[float] = None,
     pad: float = 6.0,
     max_segments: int = 8,
+    timestamps: bool = True,
 ) -> str:
     """A short excerpt around a span, or the first few segments."""
     segments = transcript.get("segments", [])
@@ -67,7 +142,10 @@ def serialize_excerpt(
         chosen = segments[:max_segments]
     chosen = chosen[:max_segments]
     return "\n".join(
-        f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
+        (
+            f"[s{seg['id']:02d} {seg['start']:.2f}-{seg['end']:.2f}] {seg['text']}"
+            if timestamps else f"[s{seg['id']:02d}] {seg['text']}"
+        )
         for seg in chosen
     )
 
@@ -79,13 +157,15 @@ def questions_block(questions: Sequence[str]) -> str:
     )
 
 
-def _base_user(transcript: Dict, questions: Sequence[str]) -> str:
+def _base_user(
+    transcript: Dict, questions: Sequence[str], variant: str = VARIANT
+) -> str:
     return (
         "TRANSCRIPT\n"
-        f"{serialize_transcript(transcript)}\n\n"
+        f"{serialize_transcript(transcript, timestamps=variant != 'no_timestamps')}\n\n"
         "QUESTIONS\n"
         f"{questions_block(questions)}\n\n"
-        f"{SCHEMA_HINT}"
+        f"{schema_hint(variant)}"
     )
 
 
@@ -98,14 +178,15 @@ def build_l0_messages(transcript: Dict, questions: Sequence[str]) -> List[Dict]:
 
 
 def build_l1_messages(
-    transcript: Dict, questions: Sequence[str], few_shot: Sequence[Tuple[str, str]] = ()
+    transcript: Dict, questions: Sequence[str], few_shot: Sequence[Tuple[str, str]] = (),
+    variant: str = VARIANT,
 ) -> List[Dict]:
     """Few-shot, single call. ``few_shot`` is a list of (user, assistant) turns."""
-    messages: List[Dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages: List[Dict] = [{"role": "system", "content": system_prompt(variant)}]
     for user, assistant in few_shot:
         messages.append({"role": "user", "content": user})
         messages.append({"role": "assistant", "content": assistant})
-    messages.append({"role": "user", "content": _base_user(transcript, questions)})
+    messages.append({"role": "user", "content": _base_user(transcript, questions, variant)})
     return messages
 
 
@@ -261,31 +342,80 @@ def render_example(
     answer: bool,
     quote: Optional[str],
     evidence_span: Optional[Tuple[float, float]] = None,
+    variant: str = VARIANT,
 ) -> Tuple[str, str]:
     """One few-shot turn pair from an example conversation."""
     start, end = evidence_span if evidence_span else (None, None)
-    excerpt = serialize_excerpt(transcript, start, end)
+    excerpt = (
+        serialize_transcript(transcript)
+        if variant == "full_context" and answer
+        else serialize_excerpt(transcript, start, end, timestamps=variant != "no_timestamps")
+    )
     user = (
         "TRANSCRIPT\n"
         f"{excerpt}\n\n"
         "QUESTIONS\n"
         f"q01: {question}\n\n"
-        f"{SCHEMA_HINT}"
+        f"{schema_hint(variant)}"
     )
     import json
 
-    assistant = json.dumps(
-        {
-            "answers": [
-                {
-                    "id": "q01",
-                    "answer": "yes" if answer else "no",
-                    "evidence_quote": quote if answer else None,
-                }
-            ]
-        }
-    )
+    entry = {
+        "id": "q01",
+        "answer": "yes" if answer else "no",
+        "evidence_quote": quote if answer else None,
+    }
+    if variant == "scoped":
+        selected = [
+            word for word in transcript["words"]
+            if evidence_span is not None
+            and word["end"] > evidence_span[0] and word["start"] < evidence_span[1]
+        ] if answer else []
+        segments = transcript["segments"]
+        entry["segment_start"] = (
+            f"s{segments[selected[0]['seg_idx']]['id']:02d}" if selected else None
+        )
+        entry["segment_end"] = (
+            f"s{segments[selected[-1]['seg_idx']]['id']:02d}" if selected else None
+        )
+    assistant = json.dumps({"answers": [entry]})
     return user, assistant
+
+
+def select_few_shot_rows(
+    rows_by_tid: Dict[str, List[Dict]],
+    transcripts: Dict[str, Dict],
+    evidence: Dict[str, Dict],
+    exclude_tid: str,
+    counts: Tuple[int, int, int] = (1, 1, 1),
+) -> List[Dict]:
+    """Select demonstrations independently of the target's answer."""
+    selected = []
+    used = {exclude_tid}
+    tids = sorted(rows_by_tid)
+    for question_type, count in zip(("positive", "hard_negative", "off_topic"), counts):
+        for _ in range(count):
+            chosen = None
+            for tid in tids:
+                if tid in used or tid not in transcripts:
+                    continue
+                chosen = next(
+                    (
+                        row for row in rows_by_tid[tid]
+                        if row["question_type"] == question_type
+                        and (
+                            question_type != "hard_negative"
+                            or evidence.get(row["question_id"], {}).get("bucket") == "refute"
+                        )
+                    ),
+                    None,
+                )
+                if chosen is not None:
+                    break
+            if chosen is not None:
+                selected.append(chosen)
+                used.add(chosen["transcript_id"])
+    return selected
 
 
 def build_few_shot(
@@ -293,60 +423,35 @@ def build_few_shot(
     transcripts: Dict[str, Dict],
     evidence: Dict[str, Dict],
     exclude_tid: str,
-    counts: Tuple[int, int, int] = (1, 1, 1),
+    counts: Optional[Tuple[int, int, int]] = None,
+    variant: str = VARIANT,
 ) -> List[Tuple[str, str]]:
-    """Balanced LOCO-safe examples: positive, hard-negative refute, off-topic.
-
-    Draws from conversations other than ``exclude_tid`` so the target's answer
-    can never leak into its own prompt.
-    """
-    want_positive, want_refute, want_offtopic = counts
+    """Balanced demonstrations from conversations other than the target."""
     examples: List[Tuple[str, str]] = []
-    used = {exclude_tid}
-    tids = sorted(rows_by_tid)
-
-    def find(question_type: str, require_refute: bool = False) -> Optional[Dict]:
-        for tid in tids:
-            if tid in used or tid not in transcripts:
-                continue
-            for row in rows_by_tid[tid]:
-                if row["question_type"] != question_type:
-                    continue
-                item = evidence.get(row["question_id"], {})
-                if require_refute and item.get("bucket") != "refute":
-                    continue
-                return row
-        return None
-
-    def add(row: Optional[Dict]) -> None:
-        if row is None:
-            return
+    selected = select_few_shot_rows(
+        rows_by_tid, transcripts, evidence, exclude_tid,
+        few_shot_counts(variant) if counts is None else counts,
+    )
+    for row in selected:
         tid = row["transcript_id"]
-        used.add(tid)
         words = transcripts[tid]["words"]
         item = evidence.get(row["question_id"], {})
         if row["question_type"] == "positive":
             span = (float(row["evidence_start"]), float(row["evidence_end"]))
             quote = text_between(words, span[0], span[1])
             examples.append(render_example(
-                transcripts[tid], row["question"], True, quote, span
+                transcripts[tid], row["question"], True, quote, span, variant
             ))
         elif row["question_type"] == "hard_negative":
             span = None
             if item.get("start") and item.get("end"):
                 span = (float(item["start"]), float(item["end"]))
             examples.append(render_example(
-                transcripts[tid], row["question"], False, None, span
+                transcripts[tid], row["question"], False, None, span, variant
             ))
         else:
             examples.append(render_example(
-                transcripts[tid], row["question"], False, None, None
+                transcripts[tid], row["question"], False, None, None, variant
             ))
 
-    for _ in range(want_positive):
-        add(find("positive"))
-    for _ in range(want_refute):
-        add(find("hard_negative", require_refute=True))
-    for _ in range(want_offtopic):
-        add(find("off_topic"))
     return examples

@@ -25,8 +25,12 @@ GRID = [round(0.05 * i, 2) for i in range(20)]  # 0.00 .. 0.95
 
 def predict(record: Dict, tau: float) -> Tuple[bool, Optional[Tuple[float, float]]]:
     p = record.get("p")
-    ok = bool(record.get("guard_ok", True)) and p is not None and p >= tau
-    span = tuple(record["span"]) if (ok and record.get("span")) else None
+    passes = p is not None and (
+        p >= tau if record.get("threshold_inclusive", True) else p > tau
+    )
+    ok = bool(record.get("guard_ok", True)) and passes
+    proposed = record.get("proposed_span", record.get("span"))
+    span = tuple(proposed) if (ok and proposed) else None
     return ok, span
 
 

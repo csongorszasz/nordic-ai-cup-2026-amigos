@@ -5,6 +5,7 @@ token span inside a passage, mapping a predicted token span back to words, and
 the score-aware yes/no rule) are unit-testable without a model.
 """
 
+from collections import deque
 from typing import Dict, List, Optional, Sequence, Tuple
 
 # 3-way classification label order (fixed across training and inference).
@@ -32,6 +33,33 @@ def word_char_spans(passage_words: Sequence[str]) -> Tuple[str, List[Tuple[int, 
 
 def _passage_indices(sequence_ids: Sequence[Optional[int]]) -> List[int]:
     return [i for i, seq in enumerate(sequence_ids) if seq == 1]
+
+
+def best_passage_span(
+    start_logits: Sequence[float],
+    end_logits: Sequence[float],
+    sequence_ids: Sequence[Optional[int]],
+    max_span_tokens: Optional[int] = None,
+) -> Optional[Tuple[int, int]]:
+    """Maximize joint start/end score over ordered, non-padding passage tokens."""
+    if max_span_tokens is not None and max_span_tokens < 1:
+        raise ValueError("max_span_tokens must be positive.")
+    starts = deque()
+    best = None
+    best_score = float("-inf")
+    for end in _passage_indices(sequence_ids):
+        while starts and start_logits[starts[-1]] < start_logits[end]:
+            starts.pop()
+        starts.append(end)
+        if max_span_tokens is not None:
+            while starts and end - starts[0] + 1 > max_span_tokens:
+                starts.popleft()
+        start = starts[0]
+        score = start_logits[start] + end_logits[end]
+        if score > best_score:
+            best_score = score
+            best = (start, end)
+    return best
 
 
 def target_token_span(

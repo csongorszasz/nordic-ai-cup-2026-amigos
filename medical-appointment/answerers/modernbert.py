@@ -143,9 +143,6 @@ def decode_question(
         passage, words, result["offsets"], result["sequence_ids"],
         result["start_index"], result["end_index"],
     )
-    if span is None:
-        span = passage.span()
-
     p_support = float(chosen["p_support"])
     expected_tiou = float(chosen["expected_tiou"])
     info = {
@@ -154,8 +151,14 @@ def decode_question(
         "span": span,
         "mode": mode,
         "tau": threshold,
+        "threshold_inclusive": False,
+        "guard_ok": span is not None,
         "decided_by": "no_support" if info_only else "support",
     }
+    if span is None:
+        logger.warning("Cannot decode evidence for passage %s; answering no.", passage.index)
+        info["decided_by"] = "invalid_span"
+        return False, None, info
 
     if mode == "score_aware":
         if info_only:
@@ -223,9 +226,9 @@ class ModernBertAnswerer:
 
         state = _load()
 
-        if deadline is not None and time.time() > deadline:
+        if deadline is not None and time.monotonic() >= deadline:
             logger.warning("Deadline passed before ModernBERT scoring; guessing.")
-            return [self._wrap(True, None, None, return_info) for _ in questions]
+            return [self._wrap(False, None, None, return_info) for _ in questions]
 
         results = predict_transcript(
             state["model"], state["tokenizer"], state["retriever"],

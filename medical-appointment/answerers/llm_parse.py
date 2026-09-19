@@ -7,10 +7,13 @@ than crash.
 """
 
 import json
+import logging
+import re
 from typing import Dict, List, Optional, Sequence
 
 _YES = {"yes", "y", "true", "1"}
 _NO = {"no", "n", "false", "0"}
+logger = logging.getLogger(__name__)
 
 
 def _strip_fences(text: str) -> str:
@@ -90,7 +93,35 @@ def _as_items(payload) -> List[dict]:
         items = payload
     else:
         items = []
+    if not isinstance(items, list):
+        logger.warning("LLM answers field is not a list.")
+        return []
     return [item for item in items if isinstance(item, dict)]
+
+
+def _complete_prefix(text: str) -> List[dict]:
+    """Keep complete entries when generation stops inside the answers array."""
+    match = re.match(r'^\s*\{\s*"answers"\s*:\s*\[', _strip_fences(text))
+    if match is None:
+        return []
+    remaining = _strip_fences(text)[match.end():].lstrip()
+    decoder = json.JSONDecoder()
+    items = []
+    while remaining.startswith("{"):
+        try:
+            item, end = decoder.raw_decode(remaining)
+        except json.JSONDecodeError:
+            break
+        if not isinstance(item, dict):
+            break
+        items.append(item)
+        remaining = remaining[end:].lstrip()
+        if not remaining.startswith(","):
+            break
+        remaining = remaining[1:].lstrip()
+    if items:
+        logger.warning("Recovered %d complete answers from truncated JSON.", len(items))
+    return items
 
 
 def parse_answers(
@@ -103,16 +134,21 @@ def parse_answers(
     """
     result: Dict[str, Optional[dict]] = {qid: None for qid in expected_ids}
     payload = extract_json(text)
-    if payload is None:
-        return result
+    items = _complete_prefix(text) if payload is None else _as_items(payload)
+    seen = set()
 
-    for item in _as_items(payload):
+    for item in items:
         qid = item.get("id") or item.get("question_id")
         if qid is None:
             continue
         qid = str(qid)
         if qid not in result:
             continue
+        if qid in seen:
+            logger.warning("Duplicate LLM answer id %s; rejecting the ambiguous slot.", qid)
+            result[qid] = None
+            continue
+        seen.add(qid)
         answer = _normalise_answer(item.get("answer"))
         quote = item.get("evidence_quote", item.get("quote"))
         if isinstance(quote, str):
@@ -123,6 +159,14 @@ def parse_answers(
         if candidate is not None:
             candidate = str(candidate).strip() or None
         result[qid] = {"answer": answer, "quote": quote, "candidate": candidate}
+        if "keep" in item:
+            result[qid]["keep"] = item["keep"] is True
+        for key in ("first_word", "last_word"):
+            if key in item:
+                result[qid][key] = item[key]
+        if "segment_start" in item or "segment_end" in item:
+            result[qid]["segment_start"] = item.get("segment_start")
+            result[qid]["segment_end"] = item.get("segment_end")
     return result
 
 

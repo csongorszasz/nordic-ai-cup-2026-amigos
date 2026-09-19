@@ -73,3 +73,15 @@ def test_no_candidates_answers_no():
     answer, span, info = decode_question([], [], FakeModule())
     assert answer is False and span is None
     assert info["decided_by"] == "no_candidates"
+
+
+def test_invalid_span_does_not_fall_back_to_whole_passage():
+    class InvalidModule:
+        def predicted_span_seconds(self, *args):
+            return None
+
+    candidates = [make_candidate(PASSAGE_A, 0.99, LABEL_SUPPORT)]
+    answer, span, info = decode_question(candidates, [], InvalidModule())
+    assert answer is False and span is None
+    assert info["span"] is None
+    assert info["decided_by"] == "invalid_span"
