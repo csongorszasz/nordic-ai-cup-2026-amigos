@@ -233,3 +233,11 @@ def test_rag_candidates_block_and_messages():
     assert "c02 [20.00-23.00] no side effects" in user
     assert '"candidate":"c01"' in user
     assert messages[0]["role"] == "system"
+
+
+def test_multi3_variant_lists_candidate_quotes():
+    transcript = make_transcript("x")
+    questions = ["Was the dose 100 mg?"]
+    messages = build_l1_messages(transcript, questions, variant="multi3")
+    assert "up to THREE" in system_prompt("multi3")
+    assert "evidence_quotes" in messages[-1]["content"]

@@ -176,3 +176,29 @@ def parse_decisions(
     """Pass 1 of L2: id -> answer (or ``None``), no quote required."""
     parsed = parse_answers(text, expected_ids)
     return {qid: (entry or {}).get("answer") for qid, entry in parsed.items()}
+
+
+def parse_quotes(
+    text: str, expected_ids: Sequence[str]
+) -> Dict[str, Optional[dict]]:
+    """Multi-candidate variant: id -> ``{"answer": bool|None, "quotes": [str, ...]}``."""
+    result: Dict[str, Optional[dict]] = {qid: None for qid in expected_ids}
+    payload = extract_json(text)
+    items = _complete_prefix(text) if payload is None else _as_items(payload)
+    seen = set()
+    for item in items:
+        qid = item.get("id") or item.get("question_id")
+        if qid is None:
+            continue
+        qid = str(qid)
+        if qid not in result or qid in seen:
+            continue
+        seen.add(qid)
+        raw = item.get("evidence_quotes", item.get("quotes", item.get("evidence_quote")))
+        quotes: List[str] = []
+        if isinstance(raw, list):
+            quotes = [q.strip() for q in raw if isinstance(q, str) and q.strip()]
+        elif isinstance(raw, str) and raw.strip():
+            quotes = [raw.strip()]
+        result[qid] = {"answer": _normalise_answer(item.get("answer")), "quotes": quotes}
+    return result

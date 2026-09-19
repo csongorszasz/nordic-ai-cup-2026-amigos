@@ -66,3 +66,20 @@ def test_wrong_answer_container_does_not_raise():
 def test_duplicate_id_is_not_silently_overwritten():
     text = '{"answers":[{"id":"q01","answer":"yes"},{"id":"q01","answer":"no"}]}'
     assert parse_answers(text, IDS)["q01"] is None
+
+
+def test_parse_quotes_collects_candidate_lists():
+    from answerers.llm_parse import parse_quotes
+
+    text = ('{"answers":[{"id":"q01","answer":"yes","evidence_quotes":["a b","c d"]},'
+            '{"id":"q02","answer":"no","evidence_quotes":[]}]}')
+    parsed = parse_quotes(text, ["q01", "q02"])
+    assert parsed["q01"] == {"answer": True, "quotes": ["a b", "c d"]}
+    assert parsed["q02"] == {"answer": False, "quotes": []}
+
+
+def test_parse_quotes_accepts_single_string():
+    from answerers.llm_parse import parse_quotes
+
+    parsed = parse_quotes('{"answers":[{"id":"q01","answer":"yes","evidence_quotes":"solo"}]}', ["q01"])
+    assert parsed["q01"]["quotes"] == ["solo"]

@@ -31,7 +31,7 @@ FEWSHOT_QUOTE = os.environ.get("MEDAPP_LLM_FEWSHOT_QUOTE", "gold")
 FEWSHOT_SELECT = os.environ.get("MEDAPP_LLM_FEWSHOT_SELECT", "first")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
-    "final_statement", "audit",
+    "final_statement", "audit", "multi3",
 )
 
 SCHEMA_HINT = (
@@ -77,6 +77,12 @@ def system_prompt(variant: str) -> str:
             "that establishes it. Preserve the question's subject, dose, timing and "
             "qualifiers.\n"
         ),
+        "multi3": (
+            "- For every yes, list up to THREE distinct contiguous quotes from the "
+            "transcript that each independently establish the answer, ordered from "
+            "most to least likely to be the exact supporting evidence. Give one "
+            "quote if only one exists; never invent or paraphrase.\n"
+        ),
         "scoped": (
             "- For each yes, include segment_start and segment_end: the exact sXX "
             "identifiers of the first and last transcript lines containing your quote. "
@@ -106,6 +112,12 @@ def schema_hint(variant: str) -> str:
             '"segment_end":"s03","evidence_quote":"..."},'
             '{"id":"q02","answer":"no","segment_start":null,'
             '"segment_end":null,"evidence_quote":null}]}'
+        )
+    if variant == "multi3":
+        return (
+            'Return JSON exactly like:\n'
+            '{"answers":[{"id":"q01","answer":"yes","evidence_quotes":["...","..."]},'
+            '{"id":"q02","answer":"no","evidence_quotes":[]}]}'
         )
     return SCHEMA_HINT
 

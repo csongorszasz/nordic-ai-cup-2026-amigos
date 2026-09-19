@@ -24,8 +24,8 @@ from benchmark import paired_comparison
 PROJECT_ROOT = Path(__file__).resolve().parent
 
 
-def demonstration_tids(tids):
-    """Every conversation used as a few-shot source under either selection mode."""
+def demonstration_tids(tids, modes=("first", "similar")):
+    """Every conversation used as a few-shot source under the given selection modes."""
     rows_by_tid = defaultdict(list)
     for row in load_rows():
         rows_by_tid[row["transcript_id"]].append(row)
@@ -34,7 +34,7 @@ def demonstration_tids(tids):
     original = llm_prompt.FEWSHOT_SELECT
     demo = set()
     try:
-        for mode in ("first", "similar"):
+        for mode in modes:
             llm_prompt.FEWSHOT_SELECT = mode
             for tid in tids:
                 for row in llm_prompt.select_few_shot_rows(
@@ -74,6 +74,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", type=Path, required=True)
     parser.add_argument("--speaker", type=Path, required=True)
+    parser.add_argument("--demo-modes", default="first,similar",
+                        help="Few-shot selection modes whose sources form the demo set.")
     args = parser.parse_args()
 
     base = json.loads(args.base.read_text())
@@ -82,7 +84,7 @@ def main() -> int:
         raise ValueError("The two runs must cover the same questions.")
 
     tids = sorted({r["transcript_id"] for r in base})
-    demo = demonstration_tids(tids)
+    demo = demonstration_tids(tids, tuple(m.strip() for m in args.demo_modes.split(",") if m.strip()))
     non_demo = set(tids) - demo
     print(f"conversations={len(tids)} demonstration={len(demo)} non-demo={len(non_demo)}")
 

@@ -287,3 +287,38 @@ class HFClient:
         logprobs = token_logprobs(logits, ids)
         text = self._tokenizer.decode(new_tokens, skip_special_tokens=True)
         return text, logprobs, [int(token) for token in ids]
+
+    def score_completion(
+        self, messages: List[Dict], completion: str, *, deadline: Optional[float] = None,
+    ) -> float:
+        """Mean token log-probability of ``completion`` given the chat prompt.
+
+        Teacher-forced forward pass (no generation); used only by the candidate
+        selection diagnostic, never by ``/predict``.
+        """
+        if deadline is not None and time.monotonic() >= deadline:
+            raise TimeoutError("No scoring budget remains.")
+        if not completion or not completion.strip():
+            return float("-inf")
+        import torch
+
+        self._load()
+        prompt = self._tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+            **chat_template_kwargs(),
+        )
+        prompt_ids = self._tokenizer(
+            prompt, add_special_tokens=self.legacy_special_tokens
+        )["input_ids"]
+        completion_ids = self._tokenizer(completion, add_special_tokens=False)["input_ids"]
+        if not completion_ids:
+            return float("-inf")
+        input_ids = torch.tensor([prompt_ids + completion_ids], device=self._device)
+        with torch.no_grad():
+            logits = self._model(input_ids=input_ids).logits[0]
+        start = len(prompt_ids)
+        values = [
+            float(torch.log_softmax(logits[start + i - 1].float(), dim=-1)[token])
+            for i, token in enumerate(completion_ids)
+        ]
+        return float(sum(values) / len(values))
