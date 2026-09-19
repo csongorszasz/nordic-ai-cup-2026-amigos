@@ -97,7 +97,7 @@ TRUNC_MARGIN = 3             # view px: a box this close to a view edge is cut b
 GRID_COLS, GRID_ROWS = (16, 8) if V2_GROUND else (8, 4)       # 240x270 or 480x540 cells
 
 # Six Level-1 centres that tile the frame, visited as a snake.
-SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1620), (1920, 1620), (960, 1620)]
+SWEEP = [(960, 540), (1920, 540), (2880, 540), (2880, 1400), (1920, 1400), (960, 1400)]  # bottom row at 1400: Copenhagen tune 0.349 / check 0.365 vs 1620
 if os.environ.get('DRONE_SWEEP'):   # e.g. "960,540;1920,540;2880,540;1920,540": Level-1 centres, in order
     SWEEP = [tuple(int(v) for v in p.split(',')) for p in os.environ['DRONE_SWEEP'].split(';')]
 
