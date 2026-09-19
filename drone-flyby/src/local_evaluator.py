@@ -421,12 +421,19 @@ def replay(
 def score(
     scene: str,
     predictions: Dict[int, List[dict]],
+    ground_truth: Optional[Dict[int, List[dict]]] = None,
 ) -> Tuple[float, Dict[str, float]]:
-    """Calculate COCO mAP at IoU 0.50, the way the evaluation service does."""
+    """Calculate COCO mAP at IoU 0.50, the way the evaluation service does.
+
+    `ground_truth` ({frame: [{object_id, bbox}]}) scores against other labels than the
+    scene's, e.g. the hand-checked ones of the recorded validation flight."""
     from faster_coco_eval import COCO, COCOeval_faster
 
-    frames = frame_numbers(scene)
-    ground_truth = {frame: load_annotations(frame, scene) for frame in frames}
+    if ground_truth is None:
+        frames = frame_numbers(scene)
+        ground_truth = {frame: load_annotations(frame, scene) for frame in frames}
+    else:
+        frames = sorted(ground_truth)
 
     present_classes = {
         annotation['object_id']

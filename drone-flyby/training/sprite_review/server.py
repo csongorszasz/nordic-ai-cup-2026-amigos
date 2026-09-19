@@ -107,8 +107,9 @@ def flyby_sources():
             'labelled': True}]
     if RECORDED.is_dir():
         coverage = RECORDED / 'coverage.json'  # rewritten by every rebuild: a new version busts browser caches
-        out.append({'name': 'validation_4k', 'label': 'Copenhagen (recorded validation, no labels)',
-                    'frames': sorted(flyby_frames('validation_4k')), 'labelled': False,
+        labelled = (REVIEW / 'labels.json').exists()
+        out.append({'name': 'validation_4k', 'frames': sorted(flyby_frames('validation_4k')), 'labelled': labelled,
+                    'label': 'Copenhagen (recorded validation, ' + ('hand-checked labels, test only)' if labelled else 'no labels)'),
                     'version': int(coverage.stat().st_mtime) if coverage.exists() else 0})
     return out
 
@@ -128,8 +129,15 @@ def flyby_image(source: str, frame: int):
 
 
 @app.get('/api/flyby/labels/{frame}')
-def flyby_labels(frame: int):
-    """Ground-truth boxes of a supplied frame, in 4K source pixels."""
+def flyby_labels(frame: int, source: str = 'helsinki'):
+    """Ground-truth boxes of a frame, in 4K source pixels: the supplied scene's, or for the
+    recorded flight the ones built from the review (training/copenhagen_labels.py)."""
+    if source == 'validation_4k':
+        path = REVIEW / 'labels.json'
+        if not path.exists():
+            return []
+        return [{'class': a['object_id'], 'bbox': a['bbox']}
+                for a in json.loads(path.read_text())['labels'].get(str(frame), [])]
     return [{'class': a['object_id'], 'bbox': a['bbox']} for a in load_annotations(frame)]
 
 

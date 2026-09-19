@@ -141,7 +141,7 @@ async function frameLabels(n) {
   if (!source.labelled) return null;
   if (!labels.has(n)) {
     labels.set(n, []);
-    labels.set(n, await (await fetch(`/api/flyby/labels/${n}`)).json());
+    labels.set(n, await (await fetch(`/api/flyby/labels/${n}?source=${source.name}`)).json());
     dirty = true;
   }
   return labels.get(n);

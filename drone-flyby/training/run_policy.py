@@ -10,8 +10,9 @@ environment variables the server reads (DRONE_CAMERA, DRONE_MODEL, DRONE_CONF, H
     python training/run_policy.py --scene validation_4k --model runs/synth_400/weights/best.pt
     python training/run_policy.py --camera sweep --set H_L0_WEIGHT=4 --name sweep_test
 
-Writes datasets/policy_traces/<name>.json. Helsinki runs are scored as the evaluator does;
-the recorded validation flight has no labels, so its runs are not.
+Writes datasets/policy_traces/<name>.json. Runs are scored as the evaluator does: Helsinki
+against its labels, the recorded validation flight against the hand-checked ones
+(training/copenhagen_labels.py; incomplete, so real objects nobody accepted count as false).
 """
 
 import argparse
@@ -107,10 +108,21 @@ def main():
               f' {took:5.0f} ms' + (f'  REFUSED: {step["refused"]}' if step['refused'] else ''))
 
     result = {}
-    if args.scene != 'validation_4k':
-        mean, per_class = score(args.scene, predictions)
+    truth = None
+    if args.scene == 'validation_4k':   # hand-checked labels, if built (training/copenhagen_labels.py)
+        path = ROOT / 'datasets' / 'copenhagen_test' / 'labels.json'
+        if path.exists():
+            truth = {int(k): v for k, v in json.loads(path.read_text())['labels'].items()}
+    if args.scene != 'validation_4k' or truth:
+        mean, per_class = score(args.scene, predictions, truth)
         result = {'map50': round(mean, 4), 'ap50': {k: round(v, 4) for k, v in per_class.items()}}
-        print(f'COCO mAP@0.50: {mean:.3f}')
+        print(f'COCO mAP@0.50: {mean:.3f}' + ('  (Copenhagen, hand-checked labels)' if truth else ''))
+        print('  ' + ', '.join(f'{k} {v:.2f}' for k, v in sorted(per_class.items(), key=lambda kv: kv[1])))
+        if truth:   # tune on the first half, confirm on the second: the flight is our only test set
+            for half, keep in (('tune', lambda f: f <= 125), ('check', lambda f: f > 125)):
+                part = {f: v for f, v in truth.items() if keep(f)}
+                result[f'map50_{half}'] = round(score(args.scene, predictions, part)[0], 4)
+            print(f"  frames 1-125 (tune) {result['map50_tune']:.3f}, 126-249 (check) {result['map50_check']:.3f}")
 
     model_name = Path(solution.MODEL_PATH).parent.parent.name
     name = args.name or f'{args.scene}_{args.camera}_{model_name}_{datetime.now():%m%d-%H%M}'
