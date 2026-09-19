@@ -15,7 +15,9 @@ clipped, and kept where at least MIN_VISIBLE of it is inside the frame.
 
 note_fixes.json holds what each review note means, by track id: {"status": "accepted" or
 "rejected", "class": the right class, "frames": only these frames' boxes are the object,
-"partial": true when the box covers only part of the object, "boxes_from": take the track's
+"partial": true when the box covers only part of the object, "late": {"from": F, "track": T}: from
+frame F on, the box shape comes from track T (a tall object seen from above near the end of
+its pass no longer has the leaning shape of its reference frame), "boxes_from": take the track's
 boxes from this round's file (e.g. candidates_r2.json) when an earlier round's are loose,
 "why": the note in short}. Reads datasets/copenhagen_test/{candidates_r*,candidates,decisions,note_fixes,manual_boxes}.json, writes labels.json
 ({frame: [{object_id, bbox}]}) next to them.
@@ -127,11 +129,20 @@ def main():
         merged.append({'id': mid, 'class': m['class'], 'ref': m['frame'], 'box': box, 'partial': False,
                        'merged': [i for o in replaced for i in [o['id']] + o['merged']]})
 
+    for o in merged:
+        late = fixes.get(o['id'], {}).get('late')
+        if late:
+            t = candidates[late['track']]
+            o['late'] = (late['from'], object_box(t, steps, t['best_frame']), t['best_frame'])
+
     labels = {}
     for frame in frames:
         out = []
         for o in merged:
-            x1, y1, x2, y2 = move(o['box'], between(steps, o['ref'], frame))
+            box, ref = o['box'], o['ref']
+            if o.get('late') and frame >= o['late'][0]:
+                _, box, ref = o['late']
+            x1, y1, x2, y2 = move(box, between(steps, ref, frame))
             area = (x2 - x1) * (y2 - y1)
             cx1, cy1, cx2, cy2 = max(x1, 0), max(y1, 0), min(x2, W), min(y2, H)
             if cx2 <= cx1 or cy2 <= cy1 or (cx2 - cx1) * (cy2 - cy1) < MIN_VISIBLE * area:
