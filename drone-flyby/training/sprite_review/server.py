@@ -375,9 +375,12 @@ def labels_crop(frame: int, x1: int, y1: int, x2: int, y2: int):
     side = max(160, 3 * max(x2 - x1, y2 - y1))
     cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
     left, top = max(0, cx - side // 2), max(0, cy - side // 2)
-    crop = image[top:top + side, left:left + side].copy()
-    cv2.rectangle(crop, (x1 - left - 3, y1 - top - 3), (x2 - left + 3, y2 - top + 3), (0, 0, 255), 1)
-    crop = cv2.resize(crop, (240, int(240 * crop.shape[0] / max(crop.shape[1], 1))), interpolation=cv2.INTER_CUBIC)
+    crop = image[top:top + side, left:left + side]
+    k = 240 / max(crop.shape[1], 1)   # the box is drawn after scaling, so it stays 3 px wide
+    crop = cv2.resize(crop, (240, int(crop.shape[0] * k)), interpolation=cv2.INTER_CUBIC)
+    corners = [(int((x1 - left) * k) - 4, int((y1 - top) * k) - 4), (int((x2 - left) * k) + 4, int((y2 - top) * k) + 4)]
+    cv2.rectangle(crop, *corners, (0, 0, 0), 5)        # dark outline so it shows on any ground
+    cv2.rectangle(crop, *corners, (255, 0, 255), 3)    # magenta
     return Response(cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes(), media_type='image/jpeg')
 
 

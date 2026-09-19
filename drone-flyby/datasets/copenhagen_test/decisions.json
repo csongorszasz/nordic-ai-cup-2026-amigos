@@ -1008,7 +1008,7 @@
   "at": "2026-09-19T10:21:33"
  },
  "f227_2108_2127": {
-  "status": "note",
+  "status": "rejected",
   "class": null,
   "best_frame": 227,
   "best_box": [
@@ -1017,8 +1017,8 @@
    2156.0,
    2160.0
   ],
-  "note": "it is the large launcher but the labels are placed on half of it instead of fully",
-  "at": "2026-09-19T10:21:53"
+  "note": "removed in the playback page",
+  "at": "2026-09-19T19:59:28"
  },
  "f050_1876_1882": {
   "status": "accepted",
@@ -4375,7 +4375,7 @@
   "at": "2026-09-19T14:43:42"
  },
  "f015_1914_1643": {
-  "status": "accepted",
+  "status": "rejected",
   "class": null,
   "best_frame": 15,
   "best_box": [
@@ -4384,8 +4384,8 @@
    1928.0,
    1655.0
   ],
-  "note": null,
-  "at": "2026-09-19T14:50:23"
+  "note": "removed in the playback page",
+  "at": "2026-09-19T20:04:27"
  },
  "f048_1647_2118": {
   "status": "rejected",
@@ -5062,5 +5062,122 @@
   ],
   "note": null,
   "at": "2026-09-19T16:41:46"
+ },
+ "e046_1494_1107": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 46,
+  "best_box": [
+   1479.0,
+   1091.0,
+   1510.0,
+   1124.0
+  ],
+  "note": null,
+  "at": "2026-09-19T19:54:17"
+ },
+ "e076_2385_0912": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 76,
+  "best_box": [
+   2371.0,
+   894.0,
+   2399.0,
+   930.0
+  ],
+  "note": null,
+  "at": "2026-09-19T19:56:28"
+ },
+ "f138_2854_1883": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 138,
+  "best_box": [
+   2844.0,
+   1877.0,
+   2864.0,
+   1890.0
+  ],
+  "note": null,
+  "at": "2026-09-19T19:57:35"
+ },
+ "e168_2705_1085": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 168,
+  "best_box": [
+   2694.0,
+   1068.0,
+   2717.0,
+   1102.0
+  ],
+  "note": null,
+  "at": "2026-09-19T19:58:23"
+ },
+ "e168_2562_1167": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 168,
+  "best_box": [
+   2547.0,
+   1152.0,
+   2578.0,
+   1183.0
+  ],
+  "note": null,
+  "at": "2026-09-19T19:58:26"
+ },
+ "e196_1897_0823": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 196,
+  "best_box": [
+   1890.0,
+   813.0,
+   1905.0,
+   833.0
+  ],
+  "note": null,
+  "at": "2026-09-19T20:00:02"
+ },
+ "e221_1226_1037": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 221,
+  "best_box": [
+   1217.0,
+   1029.0,
+   1235.0,
+   1046.0
+  ],
+  "note": null,
+  "at": "2026-09-19T20:00:47"
+ },
+ "e235_1139_0287": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 235,
+  "best_box": [
+   1131.0,
+   282.0,
+   1147.0,
+   293.0
+  ],
+  "note": null,
+  "at": "2026-09-19T20:01:29"
+ },
+ "e248_0539_0467": {
+  "status": "rejected",
+  "class": null,
+  "best_frame": 248,
+  "best_box": [
+   523.0,
+   457.0,
+   555.0,
+   478.0
+  ],
+  "note": null,
+  "at": "2026-09-19T20:03:05"
  }
 }
