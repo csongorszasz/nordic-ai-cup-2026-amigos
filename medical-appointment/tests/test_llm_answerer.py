@@ -132,3 +132,14 @@ def test_nonpositive_generation_budget_is_rejected_without_loading_weights():
 
     with pytest.raises(ValueError, match="positive integer"):
         HFClient(max_new_tokens=0)
+
+
+def test_beam_width_is_explicit_and_defaults_to_greedy(monkeypatch):
+    import pytest
+    from answerers.llm_client import HFClient
+
+    monkeypatch.delenv("MEDAPP_LLM_NUM_BEAMS", raising=False)
+    assert HFClient().num_beams == 1
+    assert HFClient(num_beams=2).num_beams == 2
+    with pytest.raises(ValueError, match="positive integer"):
+        HFClient(num_beams=0)

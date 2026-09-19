@@ -48,6 +48,7 @@ class HFClient:
         dtype: Optional[str] = None,
         revision: Optional[str] = None,
         legacy_special_tokens: Optional[bool] = None,
+        num_beams: Optional[int] = None,
     ) -> None:
         self.model_name = model_name or MODEL_NAME
         self.max_new_tokens = MAX_NEW_TOKENS if max_new_tokens is None else max_new_tokens
@@ -55,6 +56,9 @@ class HFClient:
             raise ValueError("max_new_tokens must be a positive integer.")
         self.dtype = dtype or DTYPE
         self.revision = revision or os.environ.get("MEDAPP_LLM_REVISION") or None
+        self.num_beams = int(os.environ.get("MEDAPP_LLM_NUM_BEAMS", "1")) if num_beams is None else num_beams
+        if isinstance(self.num_beams, bool) or not isinstance(self.num_beams, int) or self.num_beams < 1:
+            raise ValueError("num_beams must be a positive integer.")
         self.legacy_special_tokens = (
             os.environ.get("MEDAPP_LLM_LEGACY_SPECIAL_TOKENS", "0") == "1"
             if legacy_special_tokens is None else legacy_special_tokens
@@ -166,6 +170,7 @@ class HFClient:
                 **encoded,
                 max_new_tokens=token_limit,
                 do_sample=False,
+                num_beams=self.num_beams,
                 temperature=None,
                 top_p=None,
                 pad_token_id=self._tokenizer.eos_token_id,

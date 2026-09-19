@@ -843,6 +843,20 @@ overlap-derived word ranges. Reject invalid or out-of-region indices and retain
 baseline evidence; keep the 20-second added-call cap. This tests representation,
 not a new global occurrence preference or label-dependent applicability gate.
 
+- **Outcome:** `local-word-pointer-b6204400` rejected decisively. It returned
+  valid ranges and kept decisions fixed, but full score dropped to **0.7347**.
+  Non-demo delta **-0.072250**, interval **[-0.107292, -0.041332]**.
+  All 194 citations changed. Index validity is not evidence quality.
+
+## Deterministic beam-width smoke
+
+Test beam width 2 rather than greedy decoding with the exact incumbent
+checkpoint, FP16, frozen int8 transcripts, base prompt and response schema.
+First allow only three conversations on one 80 GB GPU. Require memory,
+format and latency headroom before a full comparison; no stochastic seed
+selection and no live change. Beam count is recorded in run metadata and
+defaults to 1 for every existing path.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
