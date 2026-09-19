@@ -115,3 +115,4 @@ datasets/copenhagen_test/*
 !datasets/copenhagen_test/decisions.json
 !datasets/copenhagen_test/note_fixes.json
 !datasets/copenhagen_test/candidates_r*.json
+!datasets/copenhagen_test/manual_boxes.json

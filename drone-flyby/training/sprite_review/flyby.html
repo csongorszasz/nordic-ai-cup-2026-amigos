@@ -30,6 +30,18 @@
          border-radius:6px; font-size:13px; pointer-events:none; font-variant-numeric:tabular-nums; }
   #hud .lv { color:var(--cursor); font-weight:700; }
   #warn { color:#ff9f6b; }
+  #over { cursor:crosshair; }
+  #panel { position:absolute; right:12px; top:12px; width:330px; max-height:calc(100% - 24px); overflow-y:auto;
+           background:rgba(26,32,41,.97); border:1px solid var(--line); border-radius:8px; padding:10px; display:none;
+           z-index:5; }
+  #panel h2 { font-size:13px; margin:6px 0; color:var(--muted); font-weight:600; }
+  #panel .classes { display:flex; flex-wrap:wrap; gap:4px; }
+  #panel .classes button { width:auto; margin:0; padding:3px 7px; font-size:12px; }
+  #panel .classes button.on { border-color:var(--cursor); color:var(--cursor); }
+  #panel .imgs { display:flex; gap:6px; flex-wrap:wrap; }
+  #panel .imgs img { width:150px; height:150px; object-fit:contain; background:#000; border-radius:4px; }
+  #panel .imgs figure { margin:0; font-size:11px; color:var(--muted); text-align:center; }
+  #panel .msg { font-size:12px; color:var(--muted); margin-top:6px; }
 </style>
 </head>
 <body>
@@ -61,6 +73,9 @@
     With a policy flying: the yellow frame is the view it asked for next (red: refused).
     Solid boxes are what it reports for the whole frame (scored), thin dashed ones what the
     detector saw in this view. <kbd>N</kbd> detections on/off. Any move key takes over the camera.<br>
+    <b>Labelling (Copenhagen):</b> drag on the view to draw a box, pick its class next to the
+    Helsinki examples, <kbd>Enter</kbd> saves. Click a label to select it, <kbd>X</kbd> removes it.
+    Every save rebuilds the labels for the whole flight.<br>
     New runs: <code>python training/run_policy.py --scene helsinki --camera hybrid --model runs/&lt;run&gt;/weights/best.pt</code>
   </div>
 </aside>
@@ -69,6 +84,15 @@
     <canvas id="view" width="960" height="540"></canvas>
     <canvas id="over"></canvas>
     <div id="hud"></div>
+  </div>
+  <div id="panel">
+    <div class="imgs"><figure><img id="pDrawn"><figcaption>your box (Copenhagen)</figcaption></figure></div>
+    <h2>Class</h2>
+    <div class="classes" id="pClasses"></div>
+    <h2 id="pRefTitle">Helsinki labels of this class, framed the same way</h2>
+    <div class="imgs" id="pRefs"></div>
+    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pCancel">Cancel (Esc)</button></div>
+    <div class="msg" id="pMsg"></div>
   </div>
 </main>
 <script>
@@ -121,6 +145,93 @@ function takeOver() {
   showTraceInfo();
   dirty = true;
 }
+
+// Hand labelling: boxes drawn here go to /api/flyby/manual (Copenhagen only, test labels).
+let drag = null, drawn = null, drawnClass = null, selected = null, refs = null;
+const canLabel = () => source && source.name === 'validation_4k';
+function toSource(e) {
+  const r = over.getBoundingClientRect(), [x1, y1, x2, y2] = current();
+  return [x1 + (e.clientX - r.left) / r.width * (x2 - x1), y1 + (e.clientY - r.top) / r.height * (y2 - y1)];
+}
+const norm = ([a, b], [c, d]) => [Math.max(Math.min(a, c), 0), Math.max(Math.min(b, d), 0), Math.min(Math.max(a, c), W), Math.min(Math.max(b, d), H)];
+over.addEventListener('mousedown', e => {
+  if (!canLabel() || drawn || e.button !== 0) return;
+  drag = { from: toSource(e), to: toSource(e), sx: e.clientX, sy: e.clientY };
+  e.preventDefault();
+});
+addEventListener('mousemove', e => { if (drag) { drag.to = toSource(e); dirty = true; } });
+addEventListener('mouseup', e => {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  dirty = true;
+  if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) { selectAt(d.from); return; }  // a click
+  const box = norm(d.from, toSource(e));
+  if (box[2] - box[0] < 4 || box[3] - box[1] < 4) return;
+  openPanel(box);
+});
+function selectAt([x, y]) {
+  const hits = (labels.get(frames[index]) || []).filter(b => x >= b.bbox[0] && x <= b.bbox[2] && y >= b.bbox[1] && y <= b.bbox[3]);
+  hits.sort((a, b) => (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1]) - (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1]));
+  selected = hits.length ? hits[0].track : null;
+  $('sNote').textContent = selected ? `selected ${hits[0].class} (${selected}): X removes it from the labels` : '';
+  dirty = true;
+}
+async function openPanel(box) {
+  playing = false;
+  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10) };
+  if (!refs) refs = await (await fetch('/api/flyby/references')).json();
+  $('pDrawn').src = `/review/crop/${drawn.frame}.jpg?box=${drawn.box.join(',')}&side=300`;
+  $('pClasses').innerHTML = refs.classes.map(c => `<button data-c="${c}" style="color:${colour(c)}">${c}</button>`).join('');
+  for (const b of $('pClasses').children) b.onclick = () => pickClass(b.dataset.c);
+  $('pMsg').textContent = `${Math.round(box[2] - box[0])}×${Math.round(box[3] - box[1])} px in the 4K frame · frame ${drawn.frame}`;
+  $('panel').style.display = 'block';
+  pickClass(drawnClass || refs.classes[0]);
+  dirty = true;
+}
+function pickClass(c) {
+  drawnClass = c;
+  for (const b of $('pClasses').children) b.classList.toggle('on', b.dataset.c === c);
+  $('pRefTitle').textContent = `Helsinki labels of ${c}, framed the same way`;
+  $('pRefs').innerHTML = refs.references[c].map(f => {
+    const [a, b, cc, d] = refs.sizes[f];
+    return `<figure><img src="/flyby/refcrop/${f}?side=300"><figcaption>${Math.round(cc - a)}×${Math.round(d - b)} px</figcaption></figure>`;
+  }).join('');
+}
+function closePanel() { drawn = null; $('panel').style.display = 'none'; dirty = true; }
+async function refreshLabels(reply) {
+  labels.clear();
+  const s = sources.find(s => s.name === 'validation_4k');
+  if (s) s.labelled = true;
+  await frameLabels(frames[index]);
+  $('sNote').textContent = reply.labels || '';
+  dirty = true;
+}
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const out = await r.json();
+  if (!r.ok) throw new Error(out.detail || r.status);
+  return out;
+}
+async function saveDrawn() {
+  if (!drawn || !drawnClass) return;
+  $('pMsg').textContent = 'saving and rebuilding the labels…';
+  try {
+    const reply = await post('/api/flyby/manual', { frame: drawn.frame, box: drawn.box, cls: drawnClass });
+    closePanel();
+    await refreshLabels(reply);
+  } catch (err) { $('pMsg').textContent = 'failed: ' + err.message; }
+}
+async function removeSelected() {
+  if (!selected || !confirm(`Remove ${selected} from the Copenhagen labels (the whole flight)?`)) return;
+  try {
+    const reply = await post('/api/flyby/remove', { track: selected });
+    selected = null;
+    await refreshLabels(reply);
+  } catch (err) { $('sNote').textContent = 'remove failed: ' + err.message; }
+}
+$('pSave').onclick = saveDrawn;
+$('pCancel').onclick = closePanel;
 
 function image(i) {
   const n = frames[i];
@@ -222,7 +333,10 @@ function draw() {
     octx.strokeRect(sx, sy, sw, sh);
     if (text) octx.fillText(text, sx, sy - 3 * d);
   };
-  if (showLabels) for (const b of boxes) drawBox(b.bbox, colour(b.class), trace && showPred ? '' : b.class, 1, false);
+  if (showLabels) for (const b of boxes) drawBox(b.bbox, b.track === selected ? '#fff' : colour(b.class),
+                                                 trace && showPred ? '' : b.class, b.track === selected ? 3 : 1, false);
+  if (drag) drawBox(norm(drag.from, drag.to), '#ffd23f', '', 2, true);
+  if (drawn && drawn.frame === frames[index]) drawBox(drawn.box, '#ffd23f', drawnClass || '', 2, false);
   const s = step();
   const reported = s && showPred ? s.reported.filter(p => p.conf >= minConf) : [];
   if (s && showPred) {
@@ -282,6 +396,14 @@ function tick(now) {
 
 addEventListener('keydown', e => {
   if (e.target.tagName === 'SELECT') return;
+  if (drawn) {  // the class panel is open: only its keys
+    if (e.key === 'Enter') saveDrawn();
+    else if (e.key === 'Escape') closePanel();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'x' && selected) { removeSelected(); return; }
+  if (e.key === 'Escape' && selected) { selected = null; $('sNote').textContent = ''; dirty = true; return; }
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if ('wasd'.includes(key) && key.length === 1) { held.add(key); e.preventDefault(); return; }
   if (e.repeat && key !== 'ArrowLeft' && key !== 'ArrowRight') return;
