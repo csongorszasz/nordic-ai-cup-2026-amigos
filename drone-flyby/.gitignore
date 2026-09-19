@@ -86,6 +86,7 @@ datasets/*
 # which the synthetic data generator needs; small, and the only 3D files in git
 !datasets/model_match/
 datasets/model_match/*
+!datasets/model_match/paint_review.json
 !datasets/model_match/_baked/
 training_artifacts/
 runs/

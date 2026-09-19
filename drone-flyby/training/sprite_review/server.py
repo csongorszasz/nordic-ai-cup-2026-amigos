@@ -442,6 +442,77 @@ def models_3d():
     return out
 
 
+# Paint review (paint.html): per class, the real object (Helsinki labels, Copenhagen labels)
+# next to the 3D model three ways: as found, with the paint the training data uses now, and
+# with a proposed new paint. Verdicts and notes go to datasets/model_match/paint_review.json.
+MODEL_SPRITES = ROOT / 'datasets' / 'model_sprites'
+PAINT_REVIEW = MODEL_MATCH / 'paint_review.json'
+app.mount('/model_sprites', StaticFiles(directory=MODEL_SPRITES), name='model_sprites')
+
+
+@app.get('/paint', response_class=HTMLResponse)
+def paint_page():
+    return (Path(__file__).parent / 'paint.html').read_text()
+
+
+def baked_url(cls: str, name: str, suffix: str) -> Optional[str]:
+    path = MODEL_MATCH / '_baked' / f'{cls}_{name}{suffix}.glb'
+    return '/compare/' + path.relative_to(MODEL_MATCH).as_posix() if path.exists() else None
+
+
+@app.get('/api/paint')
+def paint_classes():
+    import random
+    models = {m['key']: m for m in models_3d()}
+    sprites = json.loads((MODEL_SPRITES / 'index.json').read_text()) if (MODEL_SPRITES / 'index.json').exists() else []
+    cph = json.loads((REVIEW / 'labels.json').read_text())['objects'] if (REVIEW / 'labels.json').exists() else []
+    review = json.loads(PAINT_REVIEW.read_text()) if PAINT_REVIEW.exists() else {}
+    helsinki = reference_sprites(8)
+    out = []
+    for cls in OBJECT_CLASSES:
+        match_path = MODELS / cls / 'match.json'
+        fits = json.loads(match_path.read_text()) if match_path.exists() else {}
+        ranked = sorted(fits.items(), key=lambda kv: -kv[1]['mean_iou'])
+        name, fit = next(((n, f) for n, f in ranked if baked_url(cls, n, '')), (None, None))
+        item = {'cls': cls, 'model': name, 'review': review.get(cls)}
+        if name:
+            m = models.get(f'{cls}/{name}', {})
+            used = '_recoloured' if fit.get('paint') == 'recoloured' else ''
+            proposed = '_proposed' if baked_url(cls, name, '_proposed') else ('' if used else '_recoloured')
+            item.update(original=m.get('url'), current=baked_url(cls, name, used),
+                        current_label='recoloured' if used else 'projected from the Helsinki cut-outs',
+                        proposed=baked_url(cls, name, proposed) if proposed != used else None,
+                        proposed_label={'_proposed': 'proposed new paint', '_recoloured':
+                                        'recoloured (model texture shifted to the real colours)',
+                                        '': 'projected'}[proposed],
+                        dropped_parts=m.get('dropped_parts', []), iou=fit['mean_iou'])
+        pool = [e['file'] for e in sprites if e['class'] == cls]
+        item['sprites'] = random.Random(cls).sample(pool, min(8, len(pool)))
+        item['helsinki'] = helsinki[cls]
+        item['copenhagen'] = [{'frame': o['ref'], 'box': o['box']} for o in cph if o['class'] == cls][:8]
+        out.append(item)
+    return out
+
+
+class PaintVerdict(BaseModel):
+    cls: str
+    status: str            # proposed (use it) | current (keep) | note | undecided
+    note: Optional[str] = None
+
+
+@app.post('/api/paint/review')
+def paint_review(v: PaintVerdict):
+    if v.cls not in OBJECT_CLASSES or v.status not in ('proposed', 'current', 'note', 'undecided'):
+        raise HTTPException(400, 'bad class or status')
+    review = json.loads(PAINT_REVIEW.read_text()) if PAINT_REVIEW.exists() else {}
+    if v.status == 'undecided' and not v.note:
+        review.pop(v.cls, None)
+    else:
+        review[v.cls] = {'status': v.status, 'note': v.note or None, 'at': datetime.now().isoformat(timespec='seconds')}
+    write_json(PAINT_REVIEW, review)
+    return {'ok': True}
+
+
 def load_manual() -> dict:
     return json.loads(MANUAL.read_text()) if MANUAL.exists() else {}
 
