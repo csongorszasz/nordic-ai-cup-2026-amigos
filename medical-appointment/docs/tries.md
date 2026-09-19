@@ -730,6 +730,20 @@ is never upgraded. Require dependency, import, single-step gradient/memory,
 and unadapted-versus-adapted comparison gates before spending on full training.
 Primary adapter documentation: `https://huggingface.co/docs/peft/v0.21.0/en/package_reference/lora`.
 
+- **Environment verified:** `lora-env-915fada0`, isolated PEFT 0.21.0 and
+  Accelerate 1.15.0; torch 2.5.1+cu121, transformers 5.17.0 and both ASR
+  packages remain unchanged. Text attention q/v projections were identified
+  from cached tensor headers without loading another inference model.
+- **Data preflight:** causal masking uses the same rendered chat-template
+  prefix as inference and supervises completion tokens only; overlength
+  examples fail rather than truncating evidence. Demonstration-source and
+  held-out conversations are excluded before forming training targets.
+- **Next gate:** one optimizer step on the longest training sequence, BF16
+  E4B, rank 4 / alpha 8 q/v adapters, dropout 0.05, learning rate 1e-4.
+  Require finite loss, nonzero finite adapter gradients, frozen base weights,
+  and measured memory headroom. The pilot remains fixed at two epochs,
+  accumulation 4, and conversation-held-out fold 0 / seed 13.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
