@@ -1540,3 +1540,15 @@ No acoustic-quality result has been established merely by preparing this code.
   arbitrary missing weights. The retry must still load every inference weight
   exactly and verify identical evaluation logits with the checkpoint's original
   augmentation flags before accepting its first acoustic alignment.
+- **Actual CTC feasibility:** `ctc-smoke-inference-6b93504e`, CPU job
+  `25407887`, completed all 30 questions / 17 positives on the three longest
+  conversations. All 17 citations were aligned, with no skips or operational
+  failures. Restoring the checkpoint augmentation flags in evaluation produced
+  **exactly identical logits** (maximum absolute difference 0).
+  The matched-subset composite moved **0.697834 -> 0.698598**, delta
+  **+0.000764**, interval **[-0.010761, +0.008943]**. This is inconclusive,
+  not a new best score. The bounded proposal oracle was only 0.522397 mIoU on
+  this subset, so timing alone is not a near-perfect source-localization result.
+  Peak RSS was 1.79 GiB; the slowest alignment component was 4.60 s.
+  Proceed only to a frozen full-corpus comparison, with no pilot-based tuning
+  or serving changes. CPU component timing is not HTTP acceptance.
