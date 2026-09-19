@@ -105,8 +105,10 @@ def flyby_sources():
     out = [{'name': 'helsinki', 'label': 'Helsinki (training scene, labelled)', 'frames': sorted(flyby_frames('helsinki')),
             'labelled': True}]
     if RECORDED.is_dir():
+        coverage = RECORDED / 'coverage.json'  # rewritten by every rebuild: a new version busts browser caches
         out.append({'name': 'validation_4k', 'label': 'Copenhagen (recorded validation, no labels)',
-                    'frames': sorted(flyby_frames('validation_4k')), 'labelled': False})
+                    'frames': sorted(flyby_frames('validation_4k')), 'labelled': False,
+                    'version': int(coverage.stat().st_mtime) if coverage.exists() else 0})
     return out
 
 

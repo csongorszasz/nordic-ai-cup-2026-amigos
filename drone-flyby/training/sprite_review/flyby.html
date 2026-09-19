@@ -129,7 +129,7 @@ function image(i) {
   if (!images.has(key)) {
     const img = new Image();
     img.onload = () => { dirty = true; };
-    img.src = `/flyby/img/${source.name}/${n}.jpg`;
+    img.src = `/flyby/img/${source.name}/${n}.jpg?v=${source.version || 0}`;
     images.set(key, img);
     if (images.size > 14) images.delete(images.keys().next().value);  // 4K frames: keep a window
   }
