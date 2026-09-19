@@ -124,6 +124,14 @@ realtime comparison before deployment.
 Official validation and the one-shot evaluation remain human-triggered and
 approval-gated. Never promote a camera policy merely because it covers more cells.
 
+`profiles\champion.json` is the versioned development-candidate pointer. It
+records the runtime commit, both checkpoint locations and SHA-256 hashes,
+configuration overrides, and measured accuracy/latency limitations. Model
+binaries and raw experiment outputs remain excluded from Git. Resolve each
+checkpoint relative to its named IDUN experiment (or fetched `runs\idun`
+directory), verify its hash, and use the recorded runtime before serving.
+The profile is not evidence of public endpoint readiness or an official score.
+
 ## About the challenge
 
 The drone films a 3840x2160 sequence at 3 frames per second. You do not get the

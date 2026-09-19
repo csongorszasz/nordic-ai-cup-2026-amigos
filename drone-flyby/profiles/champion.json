@@ -1,0 +1,48 @@
+{
+  "status": "measured-development-incumbent-not-officially-submitted",
+  "experiment": "postprocess-latency-001",
+  "job_id": "25405099",
+  "runtime_commit": "7f38c9135e08d24c8a4fe23b5dc4242e5067facb",
+  "runtime_environment": "env-v2",
+  "artifact_root_kind": "IDUN experiment root or locally fetched runs/idun root",
+  "checkpoint_experiment": "rotation-control-001",
+  "checkpoint_relative_path": "runs/training/rotated/weights/best_ap50.pt",
+  "checkpoint_sha256": "2723e2296df3dc5e6d2582e18130b0c0a3229e448d2d96eb040954d275bdb416",
+  "auxiliary_checkpoint_experiment": "rotation-seed-resolution-001",
+  "auxiliary_checkpoint_relative_path": "runs/training/rotated_seed1/weights/best_ap50.pt",
+  "auxiliary_checkpoint_sha256": "ea246e4f95d233d47654a93b885fad276bfcebc97e78605bd5e69e7fe53f4721",
+  "environment": {
+    "DRONE_FLYBY_DETECTOR_TYPE": "yolo_pair",
+    "DRONE_FLYBY_TRACKER_TYPE": "world_map",
+    "DRONE_FLYBY_POLICY_TYPE": "hold",
+    "DRONE_FLYBY_INFERENCE_IMAGE_SIZE": "3200",
+    "DRONE_FLYBY_INFERENCE_IMAGE_SIZES": "",
+    "DRONE_FLYBY_INFERENCE_HALF": "false",
+    "DRONE_FLYBY_INFERENCE_RECT": "true",
+    "DRONE_FLYBY_DETECTOR_MAX_DET": "300",
+    "DRONE_FLYBY_DETECTOR_NMS_IOU": "0.7",
+    "DRONE_FLYBY_GLOBAL_NMS_IOU_THRESHOLD": "0.45",
+    "DRONE_FLYBY_CONF_L0": "0.001"
+  },
+  "evidence": {
+    "scene": "helsinki",
+    "map50": 0.95465219294918,
+    "frames_accepted": 25,
+    "frames_skipped": 0,
+    "p95_round_trip_ms": 125.466169789433,
+    "actual_tensor_shape": [1, 3, 1824, 3200],
+    "synthetic_101_map50": 0.952265445159327,
+    "synthetic_202_map50": 0.918255831553399,
+    "synthetic_505_map50": 0.917106116619152,
+    "maximum_synthetic_p95_ms": 180.095488205552,
+    "transport_headroom_stress": {
+      "synthetic_505_added_80_ms_map50": 0.917106116619152,
+      "synthetic_505_added_80_ms_skipped": 0,
+      "synthetic_505_added_120_ms_map50": 0.868239935304401,
+      "synthetic_505_added_120_ms_skipped": 5,
+      "scope": "Fixed artificial request-cycle delay, not measured public-ingress latency"
+    },
+    "limitations": "Reference shares training instances; synthetic scenes share training sprites and have been used for development selection. None of these scores estimates official competition performance."
+  },
+  "official_submission_requires_user_approval": true
+}
