@@ -115,6 +115,14 @@ PyTorch threads to `SLURM_CPUS_PER_TASK`. CPU completion never passes the
 GPU-feasibility flag; CPU timings and dtype-dependent predictions do not
 qualify the intended GPU service.
 
+`calibrate_alignment.py --baseline <baseline>/results/benchmark --aligned
+<alignment-results-directory>` provides a model-free CPU diagnostic after
+a complete successful bounded alignment run. It uses the existing offset
+grid with conversation folds, corrects only valid new aligner spans, and
+preserves all incumbent fallbacks. No serving calibration artifact is
+written: aligner model/revision/dtype must remain distinct from the
+original Whisper timing context.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

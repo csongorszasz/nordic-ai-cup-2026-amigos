@@ -1074,6 +1074,23 @@ full-OOF result or deployment is claimed by this implementation alone.
   Do not special-case those conversations or silently clamp all timestamps.
   Repeat the same full CPU comparison once with bounded decoding; retain
   the unfavorable unbounded result and make no score-improvement claim.
+- **Bounded-decoding outcome:** `alignment-cpu-bounded-403abcbb` completed
+  with **zero conversation failures**, all 194 yes spans retimed, all
+  39 word streams finite/in bounds, and all 390 decisions/quotes/anchors
+  preserved. Raw aligned composite **0.7838**, mIoU **0.6413**; matched
+  incumbent 0.8007 / 0.6696. Non-demo score **0.7807**, delta
+  **-0.017114**, interval **[-0.023098, -0.011331]**. The bounds defect
+  is fixed; the raw timing policy is still worse and is not deployed.
+- **Fair calibration diagnostic:** compare independently calibrated
+  aligner times with the already-calibrated incumbent. Use exactly the
+  original 64-pair offset grid and five conversation folds under seeds
+  13 and 37; never tune that grid on this result. Fit only valid aligned
+  training spans, exclude every demo-source conversation, and leave
+  incumbent fallback spans unchanged rather than correcting them twice.
+  Score all 350 non-demo questions, including missed positives and
+  fallbacks. `calibrate_alignment.py` writes diagnostic OOF results only,
+  not an artifact compatible with the current serving calibration loader.
+  CPU float32 results still require GPU parity and HTTP acceptance.
 
 ## ASR stream lifecycle check
 
