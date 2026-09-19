@@ -362,8 +362,12 @@ def place_partner(canvas, anchor, anchor_class, placed, annotations, sprites, mo
     use_model = name in model_sprites and name not in CUTOUTS_ONLY and (name not in sprites or rng.random() < model_share)
     x1, y1, x2, y2 = anchor
     for _ in range(10):
-        if anchor_class == 'hangar':  # within its middle
-            cx, cy = rng.uniform(x1 + 0.2 * (x2 - x1), x2 - 0.2 * (x2 - x1)), rng.uniform(y1 + 0.2 * (y2 - y1), y2 - 0.2 * (y2 - y1))
+        if anchor_class == 'hangar':  # across one of its edges (the mouth), mostly outside, not on the roof
+            w, h, along = x2 - x1, y2 - y1, rng.uniform(0.3, 0.7)
+            side = rng.randrange(4)
+            out = rng.uniform(0.0, 0.25)   # how far past the edge the plane's centre stands, in hangar sizes
+            cx, cy = [(x1 - out * w, y1 + along * h), (x2 + out * w, y1 + along * h),
+                      (x1 + along * w, y1 - out * h), (x1 + along * w, y2 + out * h)][side]
         else:  # centre 0.3-0.8 of the anchor's size away from its centre, any direction
             angle, reach = rng.uniform(0, 2 * math.pi), rng.uniform(0.3, 0.8) * max(x2 - x1, y2 - y1)
             cx, cy = (x1 + x2) / 2 + math.cos(angle) * reach, (y1 + y2) / 2 + math.sin(angle) * reach
@@ -405,8 +409,8 @@ def compose_frame(background: np.ndarray, sprites: dict, rng: random.Random, n_o
     """
     model_sprites = model_sprites or {}
     box_scales = box_scales or {}
-    if ground is not None and not ground.any():
-        ground = None
+    # A mask with no open ground (a city-centre photo) keeps every object off: a frame of
+    # background only, which still teaches what is not an object.
     canvas = grade(background, rng)
     if rng.random() < 0.6:  # the challenge imagery is soft; vary how soft ours is
         canvas = cv2.GaussianBlur(canvas, (0, 0), rng.uniform(0.3, 0.9))
