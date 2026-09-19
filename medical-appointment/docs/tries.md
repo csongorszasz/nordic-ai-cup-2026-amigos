@@ -637,6 +637,16 @@ Chosen serving config: ASR 16.1 s mean / 21.6 s worst + NLI 19.2 s
   only an estimate. No generation failures, but no quality gain to justify
   extra inference or serving integration.
 
+## Preregistered evidence fusion check
+
+Before spending on more model calls, use saved base/v2 outputs to test 18
+interpretable policies: unchanged baseline; endpoint blends and shorter/longer
+selection gated by overlap; earlier/later preference only for disjoint spans.
+Base decisions remain fixed. Choose policies on training conversations and
+evaluate held-out conversations, excluding all demonstration sources, for
+seeds 13 and 37. Require positive paired evidence in both seeds; estimated
+two-call latency is not an HTTP acceptance gate.
+
 ## ASR stream lifecycle check
 
 - Hard termination of an ASR worker can bypass Python temporary-file cleanup.
