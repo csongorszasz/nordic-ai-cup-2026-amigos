@@ -37,8 +37,9 @@ bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15
 Assets are not in git. From the GitHub releases:
 - `drone-data-denmark/copenhagen_validation_4k.zip`: `recordings/validation_4k/` (249 rebuilt 4K frames) +
   `datasets/copenhagen_test/labels.json` (43 hand-checked objects). Unzip inside `drone-flyby/`.
-- `drone_assets_0919.zip` (a release asset if uploaded): the live weights, `sprites/`, `datasets/model_sprites/`
-  (repainted model renders), `backgrounds/helsinki3d_frames/` and `backgrounds/naip/`.
+- `drone-data-denmark/drone_weights_sprites_0919.zip`: the live weights, `sprites/` and `datasets/model_sprites/`
+  (repainted model renders).
+- `drone-data-denmark/drone_backgrounds_0919.zip`: `backgrounds/helsinki3d_frames/` and `backgrounds/naip/`.
 
 ```bash
 python training/run_policy.py --scene validation_4k --camera sweep --lag 1 \
