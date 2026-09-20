@@ -1,0 +1,42 @@
+{
+ "pt34": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 10.8,
+  "mean_colour_error": 26.8,
+  "mean_iou": 0.734,
+  "mesh": "models/mine_roller/pt34/scene.gltf",
+  "offsets": [
+   86.3,
+   84.1,
+   57.3
+  ],
+  "paint": "projected",
+  "per_sprite": [
+   {
+    "colour_error": 27.2,
+    "file": "mine_roller/f001_2.png",
+    "iou": 0.743,
+    "lean": 45,
+    "structure": 0.168,
+    "tilt": 24,
+    "yaw": 310
+   },
+   {
+    "colour_error": 26.4,
+    "file": "mine_roller/f000_2.png",
+    "iou": 0.725,
+    "lean": 45,
+    "structure": 0.089,
+    "tilt": 24,
+    "yaw": 315
+   }
+  ],
+  "tilt": 24.0,
+  "up": "auto"
+ }
+}

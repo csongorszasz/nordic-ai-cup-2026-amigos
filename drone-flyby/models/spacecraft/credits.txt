@@ -1,0 +1,7 @@
+spacecraft - 3D model sources
+
+Star Wars: TIE/in Interceptor [candidate]
+  https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41
+  author:  Daniel
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    Juan's first find; silhouette matches the TIE in the sprites

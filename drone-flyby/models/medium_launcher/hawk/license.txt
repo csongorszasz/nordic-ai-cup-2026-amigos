@@ -1,0 +1,11 @@
+Model Information:
+* title:	Mim-23 Hawk SAM air defence system (game-ready)
+* source:	https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4
+* author:	Dominik Biały (https://sketchfab.com/crazyyuan)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Mim-23 Hawk SAM air defence system (game-ready)" (https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4) by Dominik Biały (https://sketchfab.com/crazyyuan) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

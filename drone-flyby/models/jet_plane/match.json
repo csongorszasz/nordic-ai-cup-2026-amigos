@@ -1,0 +1,97 @@
+{
+ "a7": {
+  "dropped_parts": [],
+  "gains": [
+   1.603,
+   1.603,
+   1.603
+  ],
+  "length_m": 12.9,
+  "mean_colour_error": 24.1,
+  "mean_iou": 0.845,
+  "mesh": "models/jet_plane/a7/A7_GearDown.glb",
+  "offsets": [
+   47.2,
+   44.2,
+   37.2
+  ],
+  "paint": "edited",
+  "per_sprite": [
+   {
+    "colour_error": 23.8,
+    "file": "jet_plane/f024_1.png",
+    "iou": 0.852,
+    "lean": 45,
+    "structure": 0.588,
+    "tilt": 16,
+    "yaw": 55
+   },
+   {
+    "colour_error": 22.0,
+    "file": "jet_plane/f023_1.png",
+    "iou": 0.839,
+    "lean": 0,
+    "structure": 0.621,
+    "tilt": 16,
+    "yaw": 60
+   },
+   {
+    "colour_error": 23.4,
+    "file": "jet_plane/f022_2.png",
+    "iou": 0.851,
+    "lean": 0,
+    "structure": 0.59,
+    "tilt": 8,
+    "yaw": 55
+   },
+   {
+    "colour_error": 23.4,
+    "file": "jet_plane/f021_2.png",
+    "iou": 0.839,
+    "lean": 0,
+    "structure": 0.577,
+    "tilt": 24,
+    "yaw": 60
+   },
+   {
+    "colour_error": 25.1,
+    "file": "jet_plane/f020_2.png",
+    "iou": 0.856,
+    "lean": 0,
+    "structure": 0.562,
+    "tilt": 8,
+    "yaw": 55
+   },
+   {
+    "colour_error": 23.9,
+    "file": "jet_plane/f019_2.png",
+    "iou": 0.836,
+    "lean": 0,
+    "structure": 0.574,
+    "tilt": 24,
+    "yaw": 60
+   },
+   {
+    "colour_error": 25.5,
+    "file": "jet_plane/f018_2.png",
+    "iou": 0.844,
+    "lean": 45,
+    "structure": 0.542,
+    "tilt": 16,
+    "yaw": 55
+   },
+   {
+    "colour_error": 25.9,
+    "file": "jet_plane/f017_2.png",
+    "iou": 0.842,
+    "lean": 0,
+    "structure": 0.52,
+    "tilt": 24,
+    "yaw": 55
+   }
+  ],
+  "tilt": 16.0,
+  "up": "auto",
+  "edits": "no more see-through fuselage (faces drawn from both sides); mid grey, dark grey tail"
+ }
+}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copenhagen labels check</title>
+<style>
+  :root { --bg: #111; --card: #1c1c1c; --text: #ddd; --dim: #888; --ok: #2e7d32; --bad: #c62828; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px system-ui, sans-serif; }
+  header { position: sticky; top: 0; background: #000c; padding: 10px 16px; display: flex; gap: 16px; align-items: center; z-index: 1; }
+  header b { font-size: 16px; }
+  main { padding: 16px; }
+  h2 { margin: 24px 0 8px; font-size: 15px; color: #fff; }
+  .grid { display: flex; flex-wrap: wrap; gap: 12px; }
+  .card { background: var(--card); border-radius: 6px; padding: 8px; border: 2px solid transparent; }
+  .card.ok { border-color: var(--ok); opacity: .55; }
+  .card .meta { color: var(--dim); font-size: 12px; margin-bottom: 6px; }
+  .views { display: flex; gap: 4px; }
+  .views figure { margin: 0; }
+  .views img { width: 240px; display: block; background: #000; }
+  .views figcaption { color: var(--dim); font-size: 11px; text-align: center; }
+  .buttons { display: flex; gap: 8px; margin-top: 6px; }
+  button { border: 0; border-radius: 4px; padding: 5px 12px; color: #fff; cursor: pointer; }
+  .b-ok { background: var(--ok); } .b-bad { background: var(--bad); }
+  a { color: #8ab4f8; }
+</style>
+</head>
+<body>
+<header>
+  <b>Copenhagen labels</b>
+  <span id="count"></span>
+  <label><input type="checkbox" id="hideOk"> hide checked</label>
+  <a href="/flyby">flight page</a>
+</header>
+<main id="main">loading…</main>
+<script>
+const $ = id => document.getElementById(id);
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+let checked = new Set(store.get('labelsChecked') || []);
+let objects = [];
+
+function crop(v) {
+  const [x1, y1, x2, y2] = v.box;
+  return `/api/labels/crop?frame=${v.frame}&x1=${x1}&y1=${y1}&x2=${x2}&y2=${y2}`;
+}
+
+function render() {
+  const hide = $('hideOk').checked;
+  $('count').textContent = `${objects.length} objects · ${objects.filter(o => checked.has(o.id)).length} checked`;
+  const byClass = {};
+  for (const o of objects) (byClass[o.class] ||= []).push(o);
+  $('main').innerHTML = Object.entries(byClass).map(([cls, list]) => `
+    <h2>${cls} · ${list.length}</h2>
+    <div class="grid">${list.filter(o => !(hide && checked.has(o.id))).map(o => `
+      <div class="card ${checked.has(o.id) ? 'ok' : ''}" id="c-${o.id}">
+        <div class="meta">${o.id} · frames ${o.first}–${o.last} (${o.frames})</div>
+        <div class="views">${o.views.map(v => `<figure><img loading="lazy" src="${crop(v)}"><figcaption>frame ${v.frame}</figcaption></figure>`).join('')}</div>
+        <div class="buttons">
+          <button class="b-ok" onclick="toggle('${o.id}')">${checked.has(o.id) ? 'unmark' : 'OK'}</button>
+          <button class="b-bad" onclick="removeObj('${o.id}', '${cls}')">Remove (false positive)</button>
+        </div>
+      </div>`).join('')}</div>`).join('');
+}
+
+function toggle(id) {
+  checked.has(id) ? checked.delete(id) : checked.add(id);
+  store.set('labelsChecked', [...checked]);
+  render();
+}
+
+async function removeObj(id, cls) {
+  if (!confirm(`Remove ${cls} ${id} from the labels?`)) return;
+  const r = await fetch('/api/flyby/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ track: id }) });
+  if (!r.ok) { alert('remove failed: ' + await r.text()); return; }
+  await load();
+}
+
+async function load() {
+  objects = await (await fetch('/api/labels/objects')).json();
+  render();
+}
+$('hideOk').onchange = render;
+load();
+</script>
+</body>
+</html>

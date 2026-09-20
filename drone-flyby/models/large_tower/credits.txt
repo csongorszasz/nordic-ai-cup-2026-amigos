@@ -1,0 +1,13 @@
+large_tower - 3D model sources
+
+Old Wooden Watchtower (House 3) [candidate]
+  https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499
+  author:  Blenderust
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    wooden watchtower; scale to the measured 13.9 x 12.6 m footprint
+
+Old wooden watchtower (low poly) [candidate]
+  https://www.cgtrader.com/free-3d-models/exterior/other/old-wooden-watchtower-low-poly
+  author:  ?
+  licence: CGTrader free - CHECK the licence line on the page - check the page
+  note:    Juan: closer to the large_tower sprites than the Sketchfab watchtower; scale to 13.9 x 12.6 m

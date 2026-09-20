@@ -1,0 +1,103 @@
+{
+ "atat": {
+  "close_gaps": 0,
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 5.7,
+  "mean_colour_error": 14.2,
+  "mean_iou": 0.779,
+  "mesh": "models/ta-ta/atat/AT-AT.obj",
+  "offsets": [
+   154.0,
+   139.3,
+   128.9
+  ],
+  "paint": "projected",
+  "per_sprite": [
+   {
+    "colour_error": 15.6,
+    "file": "ta-ta/f002_9.png",
+    "iou": 0.78,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 85
+   },
+   {
+    "colour_error": 14.9,
+    "file": "ta-ta/f006_11.png",
+    "iou": 0.72,
+    "lean": 45,
+    "structure": 0.009,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 14.5,
+    "file": "ta-ta/f009_10.png",
+    "iou": 0.755,
+    "lean": 45,
+    "structure": 0.0,
+    "tilt": 16,
+    "yaw": 260
+   },
+   {
+    "colour_error": 13.1,
+    "file": "ta-ta/f012_9.png",
+    "iou": 0.839,
+    "lean": 315,
+    "structure": 0.051,
+    "tilt": 24,
+    "yaw": 90
+   },
+   {
+    "colour_error": 15.1,
+    "file": "ta-ta/f003_10.png",
+    "iou": 0.791,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 90
+   },
+   {
+    "colour_error": 14.8,
+    "file": "ta-ta/f004_10.png",
+    "iou": 0.783,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 85
+   },
+   {
+    "colour_error": 13.4,
+    "file": "ta-ta/f011_9.png",
+    "iou": 0.732,
+    "lean": 45,
+    "structure": 0.09,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 11.9,
+    "file": "ta-ta/f013_8.png",
+    "iou": 0.83,
+    "lean": 315,
+    "structure": 0.167,
+    "tilt": 24,
+    "yaw": 90
+   }
+  ],
+  "tilt": 24.0,
+  "tilts": [
+   0,
+   8,
+   16,
+   24
+  ],
+  "up": "y"
+ }
+}

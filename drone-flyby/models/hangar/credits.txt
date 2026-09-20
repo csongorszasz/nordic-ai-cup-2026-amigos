@@ -1,0 +1,13 @@
+hangar - 3D model sources
+
+Hangar [candidate]
+  https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05
+  author:  Vitor Augusto
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    check against the measured 38.9 x 25.0 m and the dark curved roof in the sprites
+
+NATO aircraft shelter v2 [candidate]
+  https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2
+  author:  ?
+  licence: CGTrader free - CHECK the licence line on the page (Royalty Free vs Editorial Uses Only) - check the page
+  note:    hardened aircraft shelter, arched roof: matches the dark curved roof in the sprites better than a generic hangar. Scale to 38.9 x 25.0 m

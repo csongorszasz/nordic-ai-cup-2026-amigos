@@ -79,3 +79,44 @@ cython_debug/
 .vscode
 .devcontainer
 .jupyter
+
+# Generated training data, models and recorded/downloaded data
+datasets/*
+# ...except the fitted models painted with the real colours (render_models.export_painted),
+# which the synthetic data generator needs; small, and the only 3D files in git
+!datasets/model_match/
+datasets/model_match/*
+!datasets/model_match/paint_review.json
+!datasets/model_match/proposals.json
+!datasets/model_match/_baked/
+training_artifacts/
+runs/
+*.pt
+runs_train.log
+recordings/
+sprites/
+.downloads/
+backgrounds/
+
+# 3D models: keep credits.txt, not the meshes
+models/**/*.glb
+models/**/*.gltf
+models/**/*.obj
+models/**/*.fbx
+models/**/*.blend
+models/**/*.bin
+models/**/*.mtl
+models/**/textures/
+# Recoloured model copies (recolour_models.py): made on demand, unused by the data by default
+datasets/model_match/_baked/*_recoloured.glb
+
+# Hand review of the recorded Copenhagen flight: test set only, never training data. Kept in git
+# so the review work is not lost; the candidates it refers to can be regenerated.
+!datasets/copenhagen_test/
+datasets/copenhagen_test/*
+!datasets/copenhagen_test/decisions.json
+!datasets/copenhagen_test/note_fixes.json
+!datasets/copenhagen_test/candidates_r*.json
+!datasets/copenhagen_test/manual_boxes.json
+overnight/
+logs/

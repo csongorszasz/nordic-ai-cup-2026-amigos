@@ -1,0 +1,106 @@
+{
+ "mi28n": {
+  "close_gaps": 0,
+  "dropped_parts": [
+   "rotor_Body"
+  ],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 18.9,
+  "mean_colour_error": 39.4,
+  "mean_iou": 0.546,
+  "mesh": "models/helicopter/mi28n/scene.gltf",
+  "offsets": [
+   89.7,
+   104.3,
+   75.0
+  ],
+  "paint": "projected",
+  "per_sprite": [
+   {
+    "colour_error": 45.5,
+    "file": "helicopter/f015_7.png",
+    "iou": 0.597,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 32.5,
+    "file": "helicopter/f017_7.png",
+    "iou": 0.366,
+    "lean": 315,
+    "structure": 0.082,
+    "tilt": 24,
+    "yaw": 115
+   },
+   {
+    "colour_error": 45.5,
+    "file": "helicopter/f014_7.png",
+    "iou": 0.599,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 45.1,
+    "file": "helicopter/f012_7.png",
+    "iou": 0.623,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 45.8,
+    "file": "helicopter/f009_8.png",
+    "iou": 0.639,
+    "lean": 315,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 27.4,
+    "file": "helicopter/f016_7.png",
+    "iou": 0.455,
+    "lean": 225,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 90
+   },
+   {
+    "colour_error": 45.3,
+    "file": "helicopter/f008_9.png",
+    "iou": 0.66,
+    "lean": 315,
+    "structure": 0.005,
+    "tilt": 24,
+    "yaw": 270
+   },
+   {
+    "colour_error": 27.7,
+    "file": "helicopter/f013_6.png",
+    "iou": 0.43,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 85
+   }
+  ],
+  "thicken": 1.0,
+  "tilt": 24.0,
+  "tilts": [
+   0,
+   8,
+   16,
+   24
+  ],
+  "up": "-z"
+ }
+}

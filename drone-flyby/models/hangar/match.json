@@ -1,0 +1,64 @@
+{
+ "nato_shelter": {
+  "close_gaps": 0,
+  "dropped_parts": [
+   "Cube.032",
+   "Lamps",
+   "Exterieur DOOR"
+  ],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 31.61,
+  "mean_colour_error": 5.4,
+  "mean_iou": 0.93,
+  "mesh": "models/hangar/nato_shelter/NATO_Shelter_V2.glb",
+  "offsets": [
+   0.5,
+   1.4,
+   -2.2
+  ],
+  "per_sprite": [
+   {
+    "colour_error": 5.5,
+    "file": "hangar/f024_5.png",
+    "iou": 0.928,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 185
+   },
+   {
+    "colour_error": 5.3,
+    "file": "hangar/f023_6.png",
+    "iou": 0.93,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 5
+   },
+   {
+    "colour_error": 5.3,
+    "file": "hangar/f022_7.png",
+    "iou": 0.931,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 5
+   }
+  ],
+  "thicken": 1.0,
+  "tilt": 24.0,
+  "tilts": [
+   0,
+   8,
+   16,
+   24
+  ],
+  "up": "auto",
+  "paint": "edited",
+  "edits": "door leaves and posts removed (8 low parts beyond the end of the body)"
+ }
+}

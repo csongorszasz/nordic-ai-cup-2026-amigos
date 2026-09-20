@@ -1,0 +1,19 @@
+large_launcher - 3D model sources
+
+MIM-104 Patriot Surface-To-Air Missile (SAM) [candidate]
+  https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb
+  author:  Muhamad Mirza Arrafi
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    downloadable stand-in for the view-only Patriot Juan found; scale to 31.3 x 23.1 m
+
+MIM-104 Patriot [rejected]
+  https://sketchfab.com/3d-models/mim-104-patriot-5aa6d27d22274a7aac54ed7cc0eee7c7
+  author:  SpatialNeglect
+  licence: Standard - Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
+  note:    VIEW-ONLY on Sketchfab (isDownloadable=false), so the mesh cannot be obtained
+
+MIM-104 Patriot Air Defense System [candidate]
+  https://sketchfab.com/3d-models/mim-104-patriot-air-defense-system-977f1f08a2014da99138a3364b7a56cd
+  author:  Chenzoss
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    Juan's pick; downloadable CC-BY, 120k faces (heavy but fine for offline rendering). Scale to 31.3 x 23.1 m

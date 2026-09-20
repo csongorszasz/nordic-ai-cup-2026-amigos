@@ -1,0 +1,11 @@
+Model Information:
+* title:	P-51 Mustang
+* source:	https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529
+* author:	an.s055163 (https://sketchfab.com/an.s055163)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "P-51 Mustang" (https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529) by an.s055163 (https://sketchfab.com/an.s055163) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

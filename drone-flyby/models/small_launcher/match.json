@@ -1,0 +1,97 @@
+{
+ "rapier": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 2.6,
+  "mean_colour_error": 10.1,
+  "mean_iou": 0.847,
+  "mesh": "models/small_launcher/rapier/scene.gltf",
+  "offsets": [
+   167.8,
+   176.3,
+   132.6
+  ],
+  "paint": "edited",
+  "per_sprite": [
+   {
+    "colour_error": 9.2,
+    "file": "small_launcher/f023_4.png",
+    "iou": 0.849,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 0,
+    "yaw": 265
+   },
+   {
+    "colour_error": 11.2,
+    "file": "small_launcher/f024_3.png",
+    "iou": 0.854,
+    "lean": 270,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 100
+   },
+   {
+    "colour_error": 8.1,
+    "file": "small_launcher/f022_5.png",
+    "iou": 0.875,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 0,
+    "yaw": 270
+   },
+   {
+    "colour_error": 10.5,
+    "file": "small_launcher/f021_5.png",
+    "iou": 0.887,
+    "lean": 90,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 275
+   },
+   {
+    "colour_error": 10.9,
+    "file": "small_launcher/f017_5.png",
+    "iou": 0.814,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 0,
+    "yaw": 335
+   },
+   {
+    "colour_error": 10.5,
+    "file": "small_launcher/f019_5.png",
+    "iou": 0.845,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 0,
+    "yaw": 290
+   },
+   {
+    "colour_error": 9.8,
+    "file": "small_launcher/f020_5.png",
+    "iou": 0.83,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 16,
+    "yaw": 335
+   },
+   {
+    "colour_error": 10.4,
+    "file": "small_launcher/f014_5.png",
+    "iou": 0.821,
+    "lean": 180,
+    "structure": 0.0,
+    "tilt": 8,
+    "yaw": 190
+   }
+  ],
+  "tilt": 4.0,
+  "up": "auto",
+  "edits": "launcher body (the centre) much darker, missiles and the disc under it a little darker"
+ }
+}
