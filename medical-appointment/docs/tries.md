@@ -1668,3 +1668,26 @@ prompt remains unchanged. The next gate is the actual IDUN reconstruction of
 every recorded incumbent prompt hash before comparing model outputs. Neither
 the new prompt nor the alternative model has a measured result in this round.
 No performance gain or serving change is claimed.
+
+- **Exact-input gate:** `prompt-round-freeze-bf75822a`, CPU job `25408324`,
+  reconstructed **all 39 recorded control prompt hashes** and reproduced every
+  qualified response / **0.8007415037739252**. Development contains 14
+  conversations / 140 questions / 68 positives; 21 conversations are reserved
+  for this round's confirmation, with four demonstration sources excluded.
+  The development control score is **0.826465**, not a new full-corpus result.
+- The generated reference-hidden packet was reviewed across development
+  conversations 23, 6, 64, 47, 5, 66 and 42. Several low/disjoint citations are
+  already semantically adequate in context: starting penicillin, pantoprazole
+  with its reflux antecedent, no treatment change, and repeated patient
+  preferences. The mouth-infection example distinguishes a patient report from
+  a clinician's possible-not-confirmed assessment; it does not justify a
+  universal diagnostic-certainty or always-clinician rule.
+  High-IoU findings, patient reports, and negative controls remain regression
+  cases, not reasons to impose a new citation length.
+- **Resource gate:** the first 192 GB FP32 CPU feasibility request,
+  `prompt-gemma-cpu-smoke-09956baa` / `25408343`, was cancelled before inference
+  because SLURM projected a start after the competition deadline.
+  The lower-memory BF16 feasibility run uses the same exact messages and
+  explicitly records its precision change. Any subsequent prompt comparison
+  needs a BF16 same-runtime base control; it cannot be described as a matched
+  FP16 GPU reproduction or HTTP latency validation.
