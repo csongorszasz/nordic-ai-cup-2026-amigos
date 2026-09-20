@@ -224,9 +224,16 @@ credit.
 
 This post-pilot extension is not a preregistered winner or a new best service.
 Its +0.053125 delta is concentrated in one citation, the three-conversation
-interval includes zero, and the Gemma reference remains stronger. The
-unchanged pair is advancing to the full development cohort; no new medical
-wording or confirmation feedback is used.
+interval includes zero, and the Gemma reference remains stronger.
+
+**The full development comparison rejected that pilot signal.** On all 140
+questions / 68 positives, Qwen base scored **0.699274** versus **0.695272**
+for `claim`; mIoU was **0.517837 versus 0.515929**, with **136/140 versus
+135/140** correct answers. The paired delta was **-0.004002**, interval
+**[-0.031444, +0.023915]**. Disjoint cases improved, but high/low-tIoU slices
+regressed and grounding failures rose from one to two. The matched-cohort
+Gemma reference was **0.826465**. Every execution shard and failed output was
+retained. No confirmation run or further case-driven wording change was made.
 
 ## 7. Dataset and evaluation findings
 
@@ -304,6 +311,7 @@ transcript-matched comparison with the 0.8007 control.
 | Exact prompt-input freeze | `prompt-round-freeze-bf75822a` |
 | Complete first prompt pilot | `prompt-qwen4b-pilot-e6075a85` |
 | Answer-first mechanism control | `prompt-answer-first-control-0a25be46` |
+| Complete prompt development aggregate | `prompt-development-merge-aa6532be` |
 
 Pulled run artifacts live under `results\idun_runs\<run-id>\artifacts`.
 They, model weights, transcripts, and captures are gitignored. New substantial

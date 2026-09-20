@@ -70,8 +70,13 @@ answer-first convention improved that small-model pilot from **0.702600 to
 changed citations are semantically valid, but the gain is concentrated in one
 annotated citation and the interval includes zero. The qualified Gemma
 reference is still stronger at **0.888534** on these same 30 questions.
-The unchanged answer-first pair is advancing to the complete development
-cohort; no new qualified service score or confirmation result is established.
+The unchanged pair subsequently failed on the complete development cohort:
+**0.695272 versus 0.699274** on all 140 questions, delta **-0.004002** with
+interval **[-0.031444, +0.023915]**. Disjoint cases improved while high/low-tIoU
+slices regressed, and failed citations increased from one to two. The qualified
+Gemma reference remained **0.826465** on those same questions. Reject the
+small-model candidate; confirmation remains unopened and no new qualified
+service score is established.
 
 **Reference agreement is not always semantic correctness.** CSV references
 `sample_63_yes_q02` and `sample_64_yes_q02` point to the opening greeting

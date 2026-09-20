@@ -1771,3 +1771,47 @@ labels, prompt definitions, scores, and failures remain unchanged in the ledger.
   shards, one active at a time. This is not a new data split or a smaller score
   denominator. Every shard must be merged, with identical model/runtime/prompt
   hashes and all failures retained, before choosing a prompt for confirmation.
+
+### Complete prompt development comparison: pilot gain did not persist
+
+The fixed shards `prompt-dev-shard0-bdaff406` and
+`prompt-dev-shard1-0da1baec` covered every development conversation with
+identical model/runtime/prompt/source hashes. Model-free aggregation
+`prompt-development-merge-aa6532be` retained all **140 questions / 68
+positives**, including every failed citation:
+
+| Arm | Composite | mIoU | Correct answers | Grounding failures |
+| --- | --- | --- | --- | --- |
+| Qwen4B base | 0.699274 | 0.517837 | 136/140 | 1 |
+| Qwen4B answer-first claim | 0.695272 | 0.515929 | 135/140 | 2 |
+| Qualified Gemma reference, different model/runtime | 0.826465 | 0.710776 | 140/140 | 0 |
+
+The paired claim-minus-base delta is **-0.004002**, interval
+**[-0.031444, +0.023915]**. Raw, uncorrected scores also regress
+**0.695871 -> 0.693681**. Reject this candidate for the small model; do not
+open confirmation, select a favorable shard, or keep tuning this development
+set to rescue the earlier three-conversation gain.
+
+The fixed difficulty slices explain the trade-off: disjoint-case mean tIoU
+improves **0.022786 -> 0.074006**, but high-tIoU cases decline
+**0.663656 -> 0.647382** and low-tIoU cases decline
+**0.245827 -> 0.170076**, including an extra missed positive.
+All 53 hard negatives and 19 off-topic questions remain correct.
+
+All 12 changed citations were checked in the full dialogue independently of
+the reference locations. Explicit vaccination completion and the examiner's
+no-sores statement are better sources; several changed benign/coating/plan
+quotes are valid alternatives despite different reference overlap. However,
+the claim prompt also adds unrelated dialogue to an appointment quote,
+substitutes a patient diet report for a clinician's good-self-care assessment,
+and omits a word in the urine-test quote, causing strict grounding to fail.
+The staff-manager citation becomes more relevant than the base's unrelated
+cholesterol quote, but still omits its confirming reply. These distinctions
+must not be reduced to "every lost IoU is a semantic error".
+
+No new prompt wording is derived from these failures. The full-size Gemma
+prompt comparison remains resource-constrained: two pre-existing medical GPU
+services are still present, and scheduler-only 56/64 GB one-hour CPU inquiries
+project starts after the competition deadline. The cached, historically
+validated E4B checkpoint contains about **29.79 GiB of FP32 parameters**;
+a 48 GB FP32 CPU feasibility inquiry also projected a late start.
