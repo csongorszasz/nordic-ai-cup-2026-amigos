@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_33_yes_q06",
+    "transcript_id": "sample_33",
+    "question": "The visit is a follow-up on allergic rhinitis, correct?",
+    "bucket": "support",
+    "quote": "This is your follow-up for allergic rhinitis.",
+    "reason": "Visit is explicitly identified as allergic rhinitis follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q01",
+    "transcript_id": "sample_33",
+    "question": "Does the doctor plan to refer the patient to an allergy specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No referral or allergy specialist is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q02",
+    "transcript_id": "sample_33",
+    "question": "Were daily doses made mandatory going forward?",
+    "bucket": "refute",
+    "quote": "The plan is to continue it as needed.",
+    "reason": "Asserted mandatory daily doses vs actual as-needed use.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_off_topic_q01",
+    "transcript_id": "sample_33",
+    "question": "Is there any talk about the patient's recent purchase of a vehicle?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No vehicle purchase is discussed, only room plants.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q02",
+    "transcript_id": "sample_33",
+    "question": "Is the patient free of symptoms at the moment?",
+    "bucket": "support",
+    "quote": "I do not have any symptoms right now.",
+    "reason": "Patient states absence of current symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q04",
+    "transcript_id": "sample_33",
+    "question": "Did the antihistamine work well?",
+    "bucket": "support",
+    "quote": "The antihistamine is having a good effect.",
+    "reason": "Antihistamine is explicitly described as having good effect.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q03",
+    "transcript_id": "sample_33",
+    "question": "Has the medication helped the patient?",
+    "bucket": "support",
+    "quote": "It has helped.",
+    "reason": "Medication is confirmed to have helped.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q05",
+    "transcript_id": "sample_33",
+    "question": "Are the findings unremarkable?",
+    "bucket": "support",
+    "quote": "The examination I have done is normal.",
+    "reason": "Examination is explicitly described as normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q01",
+    "transcript_id": "sample_33",
+    "question": "Should the patient carry on with the treatment as needed?",
+    "bucket": "support",
+    "quote": "The plan is to continue it as needed.",
+    "reason": "Plan is explicitly to continue treatment as needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q03",
+    "transcript_id": "sample_33",
+    "question": "Was anything abnormal picked up at the examination?",
+    "bucket": "refute",
+    "quote": "Nothing abnormal was found on examination.",
+    "reason": "Asserted abnormal findings vs actual nothing abnormal found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  }
+]

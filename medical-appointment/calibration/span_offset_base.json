@@ -1,0 +1,10 @@
+{
+  "method": "constant-boundary-offsets",
+  "start_offset_s": 0.2,
+  "end_offset_s": 0.0,
+  "asr_config_hash": "e75a7f6e",
+  "model": "google/gemma-4-26b-a4b-it",
+  "revision": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
+  "variant": "base",
+  "source_records_sha256": "dd9e708b1be158ffbea8f77c6818c7e81cc39edd42c6a7774e57522d274b0b9f"
+}

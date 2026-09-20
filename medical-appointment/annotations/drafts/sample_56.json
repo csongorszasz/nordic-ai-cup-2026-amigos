@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_56_yes_q01",
+    "transcript_id": "sample_56",
+    "question": "Has the cause of the tiredness remained unexplained?",
+    "bucket": "support",
+    "quote": "We have not identified a specific cause.",
+    "reason": "Doctor states no specific cause identified for tiredness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_off_topic_q01",
+    "transcript_id": "sample_56",
+    "question": "Was the doctor asking about the patient's upcoming movie night?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a movie night occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q02",
+    "transcript_id": "sample_56",
+    "question": "Has iron treatment been started for the tiredness?",
+    "bucket": "refute",
+    "quote": "I am not starting anything further today.",
+    "reason": "Asserted iron started vs actual nothing started.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q02",
+    "transcript_id": "sample_56",
+    "question": "Did the COVID-19 test come back negative?",
+    "bucket": "support",
+    "quote": "your coronavirus test was negative.",
+    "reason": "Coronavirus (COVID-19) test stated negative.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q04",
+    "transcript_id": "sample_56",
+    "question": "Was the patient's thyroid function found to be reduced?",
+    "bucket": "refute",
+    "quote": "Your thyroid tests are normal.",
+    "reason": "Asserted reduced thyroid function vs actual normal tests.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q04",
+    "transcript_id": "sample_56",
+    "question": "The patient's thyroid function was checked, wasn't it?",
+    "bucket": "support",
+    "quote": "Your thyroid tests are normal.",
+    "reason": "Thyroid function explicitly tested with normal result.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q01",
+    "transcript_id": "sample_56",
+    "question": "Is the patient complaining mainly of chest pain?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Chest pain never mentioned; complaint is tiredness.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q03",
+    "transcript_id": "sample_56",
+    "question": "Will treatment for the fatigue begin straight away?",
+    "bucket": "refute",
+    "quote": "I am not starting anything further today.",
+    "reason": "Asserted treatment begins vs actual nothing further needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q03",
+    "transcript_id": "sample_56",
+    "question": "Will further measures be held off for the time being?",
+    "bucket": "support",
+    "quote": "For the moment we observe,",
+    "reason": "Doctor states plan is observation for the moment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_off_topic_q02",
+    "transcript_id": "sample_56",
+    "question": "Are the speakers discussing the weather?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the weather occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  }
+]

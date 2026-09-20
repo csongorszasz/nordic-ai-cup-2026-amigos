@@ -1,0 +1,343 @@
+"""Prompt builders for L0/L1/L2 (no model)."""
+
+from answerers.llm_prompt import (
+    build_few_shot,
+    build_l0_messages,
+    build_l1_messages,
+    build_l2_cite_messages,
+    build_l2_decide_messages,
+    qid_for,
+    serialize_transcript,
+    render_example,
+    system_prompt,
+)
+
+
+def make_transcript(tid):
+    segments = [
+        {"id": 0, "start": 0.0, "end": 1.4, "text": f"{tid} one"},
+        {"id": 1, "start": 1.5, "end": 2.9, "text": f"{tid} dose is 100 mg"},
+        {"id": 2, "start": 3.0, "end": 4.0, "text": f"{tid} three"},
+    ]
+    words = [
+        {"word": " " + token, "start": 0.1 * i, "end": 0.1 + 0.1 * i}
+        for i, token in enumerate("a b c d e f".split())
+    ]
+    return {"segments": segments, "words": words}
+
+
+def test_qid_and_serialize():
+    assert qid_for(0) == "q01"
+    assert qid_for(9) == "q10"
+    transcript = make_transcript("x")
+    text = serialize_transcript(transcript)
+    assert "[s00 0.00-1.40] x one" in text
+    assert text.count("\n") == 2
+
+
+def test_speaker_tags_only_render_when_present():
+    transcript = make_transcript("a")
+    plain = serialize_transcript(transcript)
+    assert "doctor" not in plain and "patient" not in plain
+    transcript["segments"][0]["speaker"] = "doctor"
+    transcript["segments"][1]["speaker"] = "patient"
+    tagged = serialize_transcript(transcript)
+    assert "[s00 0.00-1.40] doctor a one" in tagged
+    assert "[s01 1.50-2.90] patient a dose is 100 mg" in tagged
+    assert "[s02 3.00-4.00] a three" in tagged
+
+
+def test_l0_messages_contain_transcript_and_questions():
+    messages = build_l0_messages(make_transcript("x"), ["Q one?", "Q two?"])
+    assert messages[0]["role"] == "system"
+    assert "TRANSCRIPT" in messages[1]["content"]
+    assert "q01: Q one?" in messages[1]["content"]
+    assert "q02: Q two?" in messages[1]["content"]
+
+
+def test_l1_inserts_few_shot_turns():
+    few_shot = [("U1", "A1"), ("U2", "A2")]
+    messages = build_l1_messages(make_transcript("x"), ["Q?"], few_shot)
+    assert len(messages) == 1 + 2 * 2 + 1
+    assert messages[1] == {"role": "user", "content": "U1"}
+    assert messages[2] == {"role": "assistant", "content": "A1"}
+
+
+def test_l2_builders():
+    decide = build_l2_decide_messages(make_transcript("x"), ["Q?"])
+    assert '"answer":"yes"' in decide[-1]["content"]
+    cite = build_l2_cite_messages(make_transcript("x"), [("q01", "Q?")])
+    assert "already been answered YES" in cite[-1]["content"]
+    assert "q01: Q?" in cite[-1]["content"]
+
+
+def test_full_context_changes_only_positive_demonstration_visibility():
+    transcript = {
+        "segments": [
+            {"id": index, "start": float(index), "end": index + 0.8, "text": f"line {index}"}
+            for index in range(15)
+        ],
+        "words": [],
+    }
+    base, target = render_example(transcript, "Q?", True, "line 12", (12.0, 12.8), "base")
+    full, full_target = render_example(
+        transcript, "Q?", True, "line 12", (12.0, 12.8), "full_context"
+    )
+    assert "[s00 " not in base and "[s00 " in full
+    assert "[s14 " in full
+    assert full_target == target
+    negative, _ = render_example(transcript, "Q?", False, None, (12.0, 12.8), "full_context")
+    assert "[s00 " not in negative
+
+
+def test_timestamp_ablation_preserves_segment_ids_text_and_targets():
+    transcript = make_transcript("x")
+    messages = build_l1_messages(transcript, ["Was the dose 100 mg?"], variant="no_timestamps")
+    assert "[s01] x dose is 100 mg" in messages[-1]["content"]
+    assert "1.50-2.90" not in messages[-1]["content"]
+    assert "timestamped transcript" not in messages[0]["content"]
+    base_user, base_answer = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "base")
+    user, answer = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "no_timestamps")
+    assert "[s01]" in user and "1.50-2.90" not in user
+    assert base_answer == answer
+
+
+def test_final_statement_rule_preserves_the_actual_question_and_schema():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="final_statement")
+    assert changed[-1] == base[-1]
+    assert "SAME queried fact" in system_prompt("final_statement")
+    assert "temporal status" in changed[0]["content"]
+
+
+def test_audit_rule_preserves_the_actual_question_and_schema():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="audit")
+    assert changed[-1] == base[-1]
+    assert "clinical record reviewed for an audit" in system_prompt("audit")
+    assert "clinician's final statement" in changed[0]["content"]
+
+
+def test_complete_rule_requires_full_sentence_and_pair():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="complete")
+    assert changed[-1] == base[-1]
+    assert "COMPLETE clause or sentence" in system_prompt("complete")
+    assert "immediately preceding question" in changed[0]["content"]
+    assert changed[0]["content"] != base[0]["content"]
+
+
+def test_v3_rule_prefers_matching_occurrence():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="v3")
+    assert changed[-1] == base[-1]
+    assert "wording most closely matches the question" in system_prompt("v3")
+
+
+def test_every_declared_variant_has_a_system_rule():
+    from answerers.llm_prompt import VARIANTS
+
+    for variant in VARIANTS:
+        assert system_prompt(variant)
+
+
+def test_reason_rule_adds_reason_before_answer():
+    transcript = make_transcript("x")
+    questions = ["Was the original dose 100 mg?"]
+    base = build_l1_messages(transcript, questions, variant="base")
+    changed = build_l1_messages(transcript, questions, variant="reason")
+    assert changed[-1] != base[-1]
+    assert "reason" in changed[-1]["content"]
+    assert "at most 20 words" in system_prompt("reason")
+    _, assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "reason")
+    assert assistant.index('"reason"') < assistant.index('"answer"')
+    assert '"evidence_quote"' in assistant
+
+
+def test_v1_rule_is_evidence_first_and_reorders_schema():
+    transcript = make_transcript("x")
+    changed = build_l1_messages(transcript, ["Q?"], variant="v1")
+    assert "evidence-first" in system_prompt("v1")
+    user = changed[-1]["content"]
+    assert user.index('"evidence_quote"') < user.index('"answer"')
+
+
+def test_v1_demo_json_orders_evidence_before_answer():
+    transcript = make_transcript("x")
+    _, base_assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "base")
+    assert base_assistant.index('"answer"') < base_assistant.index('"evidence_quote"')
+    _, v1_assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "v1")
+    assert v1_assistant.index('"evidence_quote"') < v1_assistant.index('"answer"')
+
+
+def test_v1_reason_rule_and_schema_order():
+    transcript = make_transcript("x")
+    changed = build_l1_messages(transcript, ["Q?"], variant="v1_reason")
+    assert "evidence-first" in system_prompt("v1_reason")
+    assert "reason" in system_prompt("v1_reason")
+    user = changed[-1]["content"]
+    assert user.index('"reason"') < user.index('"evidence_quote"') < user.index('"answer"')
+    _, assistant = render_example(transcript, "Q?", True, "dose", (1.5, 2.9), "v1_reason")
+    assert assistant.index('"reason"') < assistant.index('"evidence_quote"')
+    assert assistant.index('"evidence_quote"') < assistant.index('"answer"')
+
+
+def _sentence_words():
+    return [
+        {"word": " First", "start": 0.0, "end": 0.3, "seg_idx": 0},
+        {"word": " clause.", "start": 0.3, "end": 0.8, "seg_idx": 0},
+        {"word": " Second", "start": 0.9, "end": 1.2, "seg_idx": 0},
+        {"word": " clause", "start": 1.2, "end": 1.6, "seg_idx": 0},
+        {"word": " here.", "start": 1.6, "end": 2.0, "seg_idx": 0},
+    ]
+
+
+def test_demo_quote_extent_modes():
+    from answerers import llm_prompt
+
+    words = _sentence_words()
+    span = (0.35, 0.7)
+    assert llm_prompt.demo_quote(words, span, "gold") == "clause."
+    assert llm_prompt.demo_quote(words, span, "clause") == "First clause."
+    assert llm_prompt.demo_quote(words, span, "turn") == "First clause. Second clause here."
+
+
+def test_similar_selection_picks_the_matching_question(monkeypatch):
+    from answerers import llm_prompt
+
+    rows_by_tid = {
+        "s0": [{"question_id": "t", "transcript_id": "s0", "question_type": "positive",
+                "question": "What was the dose?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+        "s1": [{"question_id": "p1", "transcript_id": "s1", "question_type": "positive",
+                "question": "Did the patient attend for asthma?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+        "s2": [{"question_id": "p2", "transcript_id": "s2", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "1.0", "evidence_end": "2.0"}],
+    }
+    transcripts = {tid: make_transcript(tid) for tid in rows_by_tid}
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "first")
+    first = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "s0", (1, 0, 0))
+    assert first[0]["transcript_id"] == "s1"
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "similar")
+    similar = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "s0", (1, 0, 0))
+    assert similar[0]["transcript_id"] == "s2"
+
+
+def test_occurrence_selection_prefers_repeated_fact(monkeypatch):
+    from answerers import llm_prompt
+
+    def make(single):
+        segments = [{"id": 0, "start": 0.0, "end": 1.0, "text": "the dose is 100 mg"}]
+        if not single:
+            segments.append({"id": 1, "start": 1.0, "end": 2.0, "text": "take 100 mg daily"})
+        segments.append({"id": 2, "start": 5.0, "end": 6.0, "text": "unrelated chatter"})
+        words = [
+            {"word": " the", "start": 0.0, "end": 0.2},
+            {"word": " dose", "start": 0.2, "end": 0.4},
+            {"word": " is", "start": 0.4, "end": 0.6},
+            {"word": " 100", "start": 0.6, "end": 0.8},
+            {"word": " mg", "start": 0.8, "end": 1.0},
+        ]
+        return {"segments": segments, "words": words}
+
+    rows_by_tid = {
+        "s0": [{"question_id": "p0", "transcript_id": "s0", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "0.0", "evidence_end": "1.0"}],
+        "s1": [{"question_id": "p1", "transcript_id": "s1", "question_type": "positive",
+                "question": "Was the dose 100 mg?", "evidence_start": "0.0", "evidence_end": "1.0"}],
+    }
+    transcripts = {"s0": make(True), "s1": make(False)}
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "first")
+    first = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "target", (1, 0, 0))
+    assert first[0]["transcript_id"] == "s0"
+    monkeypatch.setattr(llm_prompt, "FEWSHOT_SELECT", "occurrence")
+    occurrence = llm_prompt.select_few_shot_rows(rows_by_tid, transcripts, {}, "target", (1, 0, 0))
+    assert occurrence[0]["transcript_id"] == "s1"
+
+
+def test_build_few_shot_balanced_and_loco_safe():
+    rows_by_tid = {
+        "s1": [{
+            "question_id": "q_s1", "transcript_id": "s1",
+            "question_type": "positive", "question": "Was the dose 100 mg?",
+            "evidence_start": "1.5", "evidence_end": "2.9",
+        }],
+        "s2": [{
+            "question_id": "q_s2", "transcript_id": "s2",
+            "question_type": "hard_negative", "question": "Was the dose 200 mg?",
+            "evidence_start": "", "evidence_end": "",
+        }],
+        "s3": [{
+            "question_id": "q_s3", "transcript_id": "s3",
+            "question_type": "off_topic", "question": "Did they cook?",
+            "evidence_start": "", "evidence_end": "",
+        }],
+    }
+    transcripts = {tid: make_transcript(tid) for tid in rows_by_tid}
+    evidence = {"q_s2": {"bucket": "refute", "start": "1.5", "end": "2.9"}}
+
+    few_shot = build_few_shot(rows_by_tid, transcripts, evidence, exclude_tid="s0")
+    assert len(few_shot) == 3
+    assistants = [assistant for _, assistant in few_shot]
+    assert any('"answer": "yes"' in a for a in assistants)
+    assert sum('"answer": "no"' in a for a in assistants) == 2
+
+    # Excluding s1 drops the only positive example -> 2 turns remain.
+    fewer = build_few_shot(rows_by_tid, transcripts, evidence, exclude_tid="s1")
+    assert len(fewer) == 2
+
+    rows_by_tid["s4"] = [{**rows_by_tid["s1"][0], "question_id": "q_s4", "transcript_id": "s4"}]
+    transcripts["s4"] = make_transcript("s4")
+    more = build_few_shot(
+        rows_by_tid, transcripts, evidence, exclude_tid="s0", variant="two_positive"
+    )
+    assert len(more) == 4
+    assert sum('"answer": "yes"' in assistant for _, assistant in more) == 2
+    assert sum('"answer": "no"' in assistant for _, assistant in more) == 2
+
+
+from answerers.llm_prompt import (
+    build_rag_messages,
+    candidate_ids,
+    rag_candidates_block,
+)
+
+
+class _Passage:
+    def __init__(self, start, end, text):
+        self.start, self.end, self.text = start, end, text
+
+
+def test_rag_candidates_block_and_messages():
+    candidates = [
+        [_Passage(100.0, 105.0, "the dose is 100 mg")],
+        [_Passage(20.0, 23.0, "no side effects")],
+    ]
+    questions = ["Was the dose 100 mg?", "Any side effects?"]
+    block = rag_candidates_block(questions, candidates)
+    assert "q01: Was the dose 100 mg?" in block
+    assert "c01 [100.00-105.00] the dose is 100 mg" in block
+    # Ids are globally unique, not reset per question.
+    assert "c02 [20.00-23.00] no side effects" in block
+    assert candidate_ids(candidates) == {"c01": (0, 0), "c02": (1, 0)}
+
+    messages = build_rag_messages(questions, candidates)
+    user = messages[-1]["content"]
+    assert "c02 [20.00-23.00] no side effects" in user
+    assert '"candidate":"c01"' in user
+    assert messages[0]["role"] == "system"
+
+
+def test_multi3_variant_lists_candidate_quotes():
+    transcript = make_transcript("x")
+    questions = ["Was the dose 100 mg?"]
+    messages = build_l1_messages(transcript, questions, variant="multi3")
+    assert "up to THREE" in system_prompt("multi3")
+    assert "evidence_quotes" in messages[-1]["content"]

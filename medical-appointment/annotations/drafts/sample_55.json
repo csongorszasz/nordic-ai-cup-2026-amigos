@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_55_yes_q02",
+    "transcript_id": "sample_55",
+    "question": "Does the plan include routine follow-up?",
+    "bucket": "support",
+    "quote": "routine follow-up as usual",
+    "reason": "Plan stated as routine follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q01",
+    "transcript_id": "sample_55",
+    "question": "Does the plan include an urgent referral to a kidney specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Urgent kidney referral never mentioned; plan is routine follow-up.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_off_topic_q01",
+    "transcript_id": "sample_55",
+    "question": "Does the conversation indicate the patient was thinking about joining a hiking club?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a hiking club occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_yes_q03",
+    "transcript_id": "sample_55",
+    "question": "Will the current treatment be continued?",
+    "bucket": "support",
+    "quote": "continue your current treatment exactly as it is",
+    "reason": "Doctor instructs to continue current treatment unchanged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_yes_q01",
+    "transcript_id": "sample_55",
+    "question": "Did the HbA1c come out at 43 mmol/mol?",
+    "bucket": "support",
+    "quote": "your long-term sugar value is 43 millimoles per mole",
+    "reason": "Long-term sugar (HbA1c) stated as 43.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q05",
+    "transcript_id": "sample_55",
+    "question": "Did the tests show albuminuria?",
+    "bucket": "refute",
+    "quote": "there is no albumin in your urine",
+    "reason": "Asserted albuminuria vs actual no albumin in urine.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q04",
+    "transcript_id": "sample_55",
+    "question": "Is the HbA1c reported as 53 mmol/mol?",
+    "bucket": "refute",
+    "quote": "your long-term sugar value is 43 millimoles per mole",
+    "reason": "Asserted 53 vs actual 43 mmol/mol.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q02",
+    "transcript_id": "sample_55",
+    "question": "Was the creatinine found to be raised?",
+    "bucket": "refute",
+    "quote": "your creatinine is normal",
+    "reason": "Asserted raised creatinine vs actual normal creatinine.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q03",
+    "transcript_id": "sample_55",
+    "question": "Has the patient reported tiredness and thirst?",
+    "bucket": "refute",
+    "quote": "No. Nothing that I have noticed.",
+    "reason": "Asserted tiredness and thirst reported vs actual denial of symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_off_topic_q02",
+    "transcript_id": "sample_55",
+    "question": "Does the patient mention having a preference for tea?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of tea preference occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  }
+]

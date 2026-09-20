@@ -570,3 +570,9 @@ Things that quietly cost people points:
 - **Bodies are megabytes, not kilobytes.** If you put a proxy in front of your
   server, check its request size limit before the attempt rather than after.
 - **You get one evaluation attempt.** Validate first, as often as you like.
+
+## Reproducing the evaluation build
+
+The exact configuration submitted to the evaluation (Gemma-4 26B-A4B + turbo
+int8 + `+0.2 s` calibration), how to serve it, and what it scores is in
+[`docs/reproduce-eval.md`](docs/reproduce-eval.md).

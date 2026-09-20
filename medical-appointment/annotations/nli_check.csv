@@ -1,0 +1,321 @@
+question_id,question_type,bucket,entailment,verdict,question,quote
+sample_4_yes_q03,positive,support,0.459,ok,Did the patient attend for an annual asthma follow-up?,"So, this is your annual follow-up. It is, for the asthma."
+sample_4_yes_q07,positive,support,0.001,WEAK,Is the heart examination without abnormal findings?,Nothing abnormal to report.
+sample_4_yes_q06,positive,support,0.011,WEAK,Was the patient listened to with a stethoscope?,"Let me listen to your chest and your heart, and then we will talk. Go ahead. Breathe normally for me. And again. Is it alright? Your chest and heart both sound normal."
+sample_4_yes_q05,positive,support,0.079,WEAK,Were the lungs found to be normal on auscultation?,Your chest and heart both sound normal. Nothing abnormal to report.
+sample_4_yes_q02,positive,support,0.001,WEAK,Are the patient's asthma findings stable at this visit?,This is what a stable annual check looks like.
+sample_4_hard_no_q01,hard_negative,refute,0.0,ok,Should the asthma medication dose be increased?,No changes. You carry on exactly as you are.
+sample_4_yes_q01,positive,support,0.982,ok,Will the current treatment continue unchanged?,what happens with my treatment? No changes. You carry on exactly as you are. Nothing
+sample_4_yes_q04,positive,support,0.779,ok,Does the visit concern asthma?,"It is, for the asthma."
+sample_4_hard_no_q02,hard_negative,refute,0.0,ok,Has an irregular heart rhythm been found?,Your chest and heart both sound normal.
+sample_5_yes_q01,positive,support,0.935,ok,Does the patient take pantoprazole for reflux?,And then the anti-inflammatory gave me reflux on top. Which is why you are on pantoprazole for that.
+sample_5_hard_no_q02,hard_negative,refute,0.0,ok,Did the back pain begin after surgery for a lumbar disc prolapse?,"the cervical disc prolapse, operated in 2017"
+sample_5_hard_no_q01,hard_negative,refute,0.0,ok,Have the pains in the hands been attributed to gout?,Osteoarthritis is what is suspected there
+sample_5_yes_q05,positive,support,0.993,ok,Is the patient still in pain despite regular Ibumetin and Panodil?,pain has just carried on regardless. Despite taking the ibumetin and the panadil regularly?
+sample_5_yes_q02,positive,support,0.021,WEAK,Will the NSAID treatment be continued under cover of a proton pump inhibitor?,"For the pain, you continue the anti-inflammatory with the stomach protection alongside it."
+sample_5_yes_q06,positive,support,0.989,ok,Did the patient undergo surgery for a cervical disc prolapse in 2017?,"cervical disc prolapse, operated in 2017."
+sample_5_yes_q03,positive,support,0.991,ok,Was muscle tension found in the neck and shoulders?,i can feel muscle tension in your neck and shoulders that
+sample_5_yes_q04,positive,support,0.996,ok,Are the menopausal symptoms treated with Activelle?,"the menopausal symptoms, which you are taking Activel for."
+sample_6_yes_q03,positive,support,0.005,WEAK,Was the patient's voice noted to sound congested?,You do sound congested.
+sample_6_hard_no_q02,hard_negative,refute,0.0,ok,Should the fungal infection be treated with Brentan gel?,"And fluconazole, 50 milligrams, for seven days, for the mouth."
+sample_6_yes_q04,positive,support,0.691,ok,Are four daily doses of one million IU of penicillin planned?,"For the sinuses, penicillin. One million international units, four times daily, for seven days."
+sample_6_yes_q05,positive,support,0.002,WEAK,Does the patient also have a fungal infection in the mouth?,"And fluconazole, 50 milligrams, for seven days, for the mouth."
+sample_6_yes_q07,positive,support,0.352,ok,Did the patient ask for penicillin?,I want penicillin for it.
+sample_6_yes_q01,positive,support,0.95,ok,Will the patient take Fluconazole 50 mg?,"And fluconazole, 50 milligrams, for seven days, for the mouth."
+sample_6_hard_no_q01,hard_negative,refute,0.0,ok,Does the patient want to avoid antibiotics?,I want penicillin for it.
+sample_6_yes_q02,positive,support,0.994,ok,Is the patient complaining of sinus symptoms?,"My sinuses. Blocked, aching, the whole business."
+sample_6_yes_q06,positive,support,0.912,ok,Has penicillin been prescribed for seven days?,"penicillin. One million international units, four times daily, for seven days."
+sample_10_hard_no_q01,hard_negative,refute,0.0,ok,Has the doctor found the condition to be unstable?,I would describe this as a stable situation.
+sample_10_hard_no_q04,hard_negative,refute,0.0,ok,Did the patient report new breathing symptoms?,Any new symptoms? No. Nothing new.
+sample_10_yes_q01,positive,support,0.815,ok,Does the patient need continued treatment?,You do need to continue the treatment you
+sample_10_hard_no_q05,hard_negative,refute,0.0,ok,Is the stomach acid medication being discontinued?,Dimista and Esomeprazole for the stomach acid. Both renewed.
+sample_10_hard_no_q03,hard_negative,refute,0.004,ok,Were abnormal sounds heard over the lungs?,Nothing abnormal on listening.
+sample_10_yes_q02,positive,support,0.992,ok,Were the lungs and heart normal on auscultation?,Your lungs and and your heart both sound normal. Nothing abnormal on listening.
+sample_10_yes_q03,positive,support,0.004,WEAK,"Are the patient's complaints unchanged, with nothing new reported?",No. Nothing new.
+sample_17_yes_q03,positive,support,0.039,WEAK,Is the medicine to be taken after a meal?,You take it after a meal.
+sample_17_hard_no_q06,hard_negative,refute,0.0,ok,Has the patient been told that the condition needs no treatment?,And it is one that needs treating.
+sample_17_yes_q02,positive,support,0.872,ok,Should the daily dose be 100 mg?,100 mg daily for
+sample_17_hard_no_q05,hard_negative,refute,0.0,ok,Were bacteria identified in the sample?,The swab shows yeast fungi.
+sample_17_hard_no_q03,hard_negative,refute,0.039,ok,Did the swab come from the throat?,You are here for the answer on the swab from your mouth.
+sample_17_hard_no_q02,hard_negative,refute,0.0,ok,Was the prescribed dose 200 mg daily?,Sporanox. 100 mg daily for 2 weeks.
+sample_17_hard_no_q01,hard_negative,refute,0.007,ok,"The treatment is planned to run for six weeks, right?",100 mg daily for 2 weeks
+sample_17_hard_no_q04,hard_negative,refute,0.0,ok,Should the tablets be taken on an empty stomach?,Always after food.
+sample_17_yes_q01,positive,support,0.247,WEAK,Will the treatment last two weeks?,After a meal every day for 2 weeks.
+sample_18_yes_q04,positive,support,0.993,ok,Should kidney function be monitored?,we should monitor your blood pressure and your kidney function.
+sample_18_yes_q02,positive,support,0.983,ok,Did the patient ask for a renewal of the Ibumetin prescription?,I need my ibumetin renewed.
+sample_18_yes_q01,positive,support,0.007,WEAK,Has the Ibumetin prescription been issued?,Yes. The prescription is created.
+sample_18_yes_q07,positive,support,0.972,ok,Is the patient also taking Pantoprazole?,"And you are still taking pantoprazole alongside it? Yes, every day with it. Good."
+sample_18_hard_no_q01,hard_negative,refute,0.0,ok,Were liver values the focus of the planned blood tests?,"We check kidneys, cholesterol, and blood sugar."
+sample_18_hard_no_q02,hard_negative,refute,0.0,ok,Should the blood pressure readings be taken at the clinic instead of at home?,I would like you to measure your blood pressure at home over three days.
+sample_18_yes_q06,positive,support,0.173,WEAK,Will the blood tests include cholesterol and blood sugar?,"We check kidneys, cholesterol, and blood sugar."
+sample_18_yes_q03,positive,support,0.353,ok,Does the doctor consider the NSAID use long-standing and high?,You have used anti-inflammatory painkillers heavily and for a long time.
+sample_18_yes_q05,positive,support,0.996,ok,Was blood pressure to be measured at home over three days?,I would like you to measure your blood pressure at home over three days. I
+sample_19_yes_q04,positive,support,0.99,ok,Is the patient still being treated for asthma?,I am still being treated for asthma and
+sample_19_hard_no_q03,hard_negative,refute,0.001,ok,Does the doctor describe the medication as unstable and in need of change?,Your medication is stable.
+sample_19_hard_no_q01,hard_negative,refute,0.001,ok,"Alongside asthma, is the patient treated for diabetes?",I am still being treated for asthma and for reflux.
+sample_19_yes_q01,positive,support,0.649,ok,Were three prescriptions renewed in total?,"Activel, Aromir, and Isomeprazole. All three renewed."
+sample_19_yes_q02,positive,support,0.982,ok,Has Esomeprazole been renewed as well?,"Activel, Aromir, and Isomeprazole. All three renewed."
+sample_19_yes_q03,positive,support,0.97,ok,Is Airomir among the renewed medicines?,"Activel, Aromir, and Isomeprazole. All three renewed."
+sample_19_hard_no_q04,hard_negative,refute,0.0,ok,Were the prescriptions stopped rather than renewed?,All three renewed.
+sample_19_hard_no_q02,hard_negative,refute,0.027,ok,Was Pantoprazole the acid-reducing drug that was renewed?,The Isomeprazole is the one for the reflux
+sample_20_yes_q01,positive,support,0.004,WEAK,Was Ibumetin renewed as well?,"I am creating prescriptions for both PAMEL and ibumedin now,"
+sample_20_hard_no_q01,hard_negative,refute,0.012,ok,Did the patient ask for morphine to be renewed?,PAMOL and IBUMETIN.
+sample_20_hard_no_q02,hard_negative,refute,0.0,ok,Does the pain affect the lower back alone?,"It is a general, widespread sort of pain, spread around the body rather than in one place."
+sample_20_yes_q05,positive,support,0.075,WEAK,Is Pamol one of the medicines requested?,I am creating prescriptions for both PAMEL and
+sample_20_yes_q02,positive,support,0.976,ok,Has the pain problem been described as stable?,"Then we are looking at a stable pain problem,"
+sample_20_yes_q04,positive,support,0.957,ok,Does the patient still need pain relief?,a continued need for pain relief.
+sample_20_yes_q03,positive,support,0.019,WEAK,Were both prescriptions issued?,I am creating prescriptions for both PAMEL
+sample_23_yes_q03,positive,support,0.979,ok,Was a skin wart found under the right breast?,"The one under your right breast is a skin wart,"
+sample_23_yes_q05,positive,support,0.004,WEAK,Has the patient been informed about the risk of scarring and infection?,there will be a scar where each one is removed and there is a risk of infection afterwards you
+sample_23_yes_q02,positive,support,0.002,WEAK,Does the patient want the skin changes removed?,I would still rather have them off than keep catching them understood
+sample_23_hard_no_q01,hard_negative,refute,0.0,ok,Has the patient been told that the procedure carries no risk of scarring?,there will be a scar where each one is removed
+sample_23_yes_q04,positive,support,0.975,ok,Is an appointment for the removal going to be arranged?,then the appointment for removal is the plan good
+sample_23_yes_q06,positive,support,0.001,WEAK,Do the changes on the abdomen and lower leg resemble seborrheic keratoses?,They look like seborrheic keratoses.
+sample_23_yes_q01,positive,support,0.994,ok,Were the skin changes judged to be benign?,My assessment is that these are benign skin changes.
+sample_23_hard_no_q02,hard_negative,refute,0.002,ok,Are the elements on the abdomen about 2 cm across?,The others on your abdomen and lower leg are 0.6 cm
+sample_33_yes_q06,positive,support,0.963,ok,"The visit is a follow-up on allergic rhinitis, correct?",This is your follow-up for allergic rhinitis. Yes.
+sample_33_hard_no_q02,hard_negative,refute,0.001,ok,Were daily doses made mandatory going forward?,The plan is to continue it as needed.
+sample_33_yes_q02,positive,support,0.991,ok,Is the patient free of symptoms at the moment?,I do not have any symptoms right now. No symptoms at all at the moment?
+sample_33_yes_q04,positive,support,0.967,ok,Did the antihistamine work well?,The antihistamine is having a good effect.
+sample_33_yes_q03,positive,support,0.662,ok,Has the medication helped the patient?,So the The medicine is genuinely working? Yes.
+sample_33_yes_q05,positive,support,0.93,ok,Are the findings unremarkable?,The examination I have done is normal. Normal in all of it? Yes. Nothing abnormal was found on examination.
+sample_33_yes_q01,positive,support,0.916,ok,Should the patient carry on with the treatment as needed?,The plan is to continue it as needed.
+sample_33_hard_no_q03,hard_negative,refute,0.963,SUSPICIOUS_entails,Was anything abnormal picked up at the examination?,Nothing abnormal was found on examination.
+sample_37_yes_q05,positive,support,0.995,ok,Is the skin intact?,The skin is intact.
+sample_37_hard_no_q01,hard_negative,refute,0.0,ok,Was erythema migrans seen around the bite?,There is no erythema migrans.
+sample_37_hard_no_q03,hard_negative,refute,0.0,ok,Is the risk of Borrelia considered high?,The risk of Borrelia here is low.
+sample_37_yes_q03,positive,support,0.981,ok,Was erythema migrans absent?,There is no erythema migrans.
+sample_37_yes_q04,positive,support,0.988,ok,Are redness and swelling absent?,No redness at all. Any swelling? No swelling either.
+sample_37_yes_q06,positive,support,0.822,ok,"The plan involves no treatment, right?",No treatment is needed.
+sample_37_hard_no_q02,hard_negative,refute,0.0,ok,Has the bite area become red and swollen?,"Intact skin. No redness, no swelling, and no rash at the site."
+sample_37_yes_q01,positive,support,0.028,WEAK,Did the patient get a tick bite?,A tick bite.
+sample_37_yes_q02,positive,support,0.008,WEAK,Has the patient been told simply to keep an eye on the area?,Then what is the plan? Observation.
+sample_39_yes_q02,positive,support,0.953,ok,Does the patient have pain in the lower back?,Pain in my lower back.
+sample_39_yes_q04,positive,support,0.162,WEAK,Was reduced mobility found during the examination?,"Your movement is also reduced when you bend and turn. Yes, it feels stiff. Putting"
+sample_39_yes_q03,positive,support,0.909,ok,Were painkillers part of the treatment plan?,"For treatment, I recommend pain relief and"
+sample_39_hard_no_q01,hard_negative,refute,0.0,ok,Does the pain radiate down the leg?,"No, it stays in the lower back."
+sample_39_yes_q01,positive,support,0.979,ok,"The pain was assessed as nonspecific musculoskeletal pain, right?","this is nonspecific muscle and joint pain in the back, without radiation."
+sample_39_hard_no_q03,hard_negative,refute,0.0,ok,Did the doctor conclude that the pain came from a herniated disc?,"this is nonspecific muscle and joint pain in the back, without radiation."
+sample_39_hard_no_q02,hard_negative,refute,0.0,ok,Was the patient's mobility completely unaffected?,Your movement is also reduced when you bend and turn.
+sample_42_yes_q02,positive,support,0.011,WEAK,Was the blood pressure measured at 135/88?,Your blood pressure is 135 over 88.
+sample_42_yes_q07,positive,support,0.03,WEAK,Did the doctor assess the patient as slightly overweight?,It puts you in the mildly overweight range.
+sample_42_yes_q06,positive,support,0.992,ok,Were exercise recommendations also part of the plan?,The plan is advice on diet and on exercise.
+sample_42_yes_q05,positive,support,0.545,ok,Does the patient have a BMI of 28?,Your body mass index is 28.
+sample_42_yes_q03,positive,support,0.613,ok,Has the patient been given advice about diet?,The plan is advice on diet and
+sample_42_hard_no_q02,hard_negative,refute,0.0,ok,Did the doctor consider the patient severely obese?,It puts you in the mildly overweight range.
+sample_42_yes_q01,positive,support,0.018,WEAK,Is the patient feeling well?,feel perfectly well.
+sample_42_yes_q04,positive,support,0.986,ok,"The visit was a preventive health check, correct?",This is your preventive health check today.
+sample_42_hard_no_q01,hard_negative,refute,0.011,ok,Was the blood pressure 155/98?,Your blood pressure is 135 over 88.
+sample_43_yes_q02,positive,support,0.936,ok,Does the patient have a sore throat?,My throat has been really sore.
+sample_43_hard_no_q03,hard_negative,refute,0.0,ok,Is the infection thought to be bacterial?,My assessment is that this is a viral infection.
+sample_43_yes_q05,positive,support,0.984,ok,Did the examination find no pus in the throat?,I also looked at your throat and there was no pus.
+sample_43_yes_q04,positive,support,0.001,WEAK,Was the strep test negative?,It was negative.
+sample_43_yes_q01,positive,support,0.985,ok,Is the infection considered to be viral?,My assessment is that this is a viral infection.
+sample_43_hard_no_q01,hard_negative,refute,0.0,ok,Does the patient describe abdominal pain as the main problem?,My throat has been really sore.
+sample_43_hard_no_q02,hard_negative,refute,0.0,ok,Were the tonsils covered in coatings?,there was no pus.
+sample_43_yes_q03,positive,support,0.003,WEAK,Has the doctor decided against antibiotics?,"The plan is no antibiotics, because they do not work against a virus."
+sample_43_hard_no_q04,hard_negative,refute,0.001,ok,Did the doctor see pus in the throat?,there was no pus.
+sample_47_yes_q03,positive,support,0.409,ok,Has penicillin treatment been started?,"I am starting you on penicillin treatment. Penicillin. Starting from today? Yes, from today."
+sample_47_hard_no_q04,hard_negative,refute,0.0,ok,Is the patient able to swallow without any discomfort?,it hurts when I swallow
+sample_47_hard_no_q03,hard_negative,refute,0.001,ok,Did the doctor prescribe erythromycin?,I am starting you on penicillin treatment.
+sample_47_hard_no_q05,hard_negative,refute,0.096,ok,Was the patient told to manage with symptom relief only?,I am starting you on penicillin treatment.
+sample_47_yes_q01,positive,support,0.989,ok,Were coatings seen on the tonsils?,Your tonsils are red and there is coating on them.
+sample_47_hard_no_q06,hard_negative,refute,0.36,SUSPICIOUS_entails,Has the throat problem been assessed as a viral infection?,My assessment is tonsillitis.
+sample_47_yes_q02,positive,support,0.986,ok,Does the patient have a sore throat?,My throat. It is really sore and it hurts when I swallow.
+sample_47_hard_no_q02,hard_negative,refute,0.0,ok,Were the tonsils pale and free of coatings?,Your tonsils are red and there is coating on them.
+sample_48_hard_no_q02,hard_negative,refute,0.0,ok,Does the doctor attribute the fatigue to a thyroid disorder?,there is no hormonal cause for the tiredness
+sample_48_yes_q03,positive,support,0.98,ok,Was the TSH normal?,"The first was your thyroid-stimulating hormone, the thyroid. I had wondered about that one. It came back normal."
+sample_48_yes_q06,positive,support,0.982,ok,Did the glucose test come back normal too?,"Your glucose, which is your blood sugar. That was normal as well."
+sample_48_yes_q05,positive,support,0.001,WEAK,Were both blood tests within normal limits?,That was normal as well. Both normal.
+sample_48_hard_no_q01,hard_negative,refute,0.0,ok,Is the tiredness described as brief and occasional?,it has been going on and on
+sample_48_yes_q04,positive,support,0.643,ok,Has the patient been left without any specific treatment?,No specific treatment is needed on the basis of these results.
+sample_48_yes_q02,positive,support,0.99,ok,Is the patient's tiredness persistent?,"You came about tiredness. Yes, it has been going on and on. It simply does not lift. Persistent fatigue."
+sample_48_yes_q07,positive,support,0.003,WEAK,Does the doctor rule out an endocrine cause?,My assessment is that there is no hormonal cause for the tiredness.
+sample_48_yes_q01,positive,support,0.99,ok,"The thyroid test gave a normal result, right?","The first was your thyroid-stimulating hormone, the thyroid. I had wondered about that one. It came back normal."
+sample_50_yes_q04,positive,support,0.708,ok,Are further tests needed before the diagnosis can be settled?,Further tests have been arranged to settle it. And those will tell us for certain? That is why they are being done. Nothing changes for you until we have them.
+sample_50_hard_no_q01,hard_negative,refute,0.001,ok,Does the fasting blood sugar lie at 5.0 mmol/L?,Your fasting blood sugar was 7.0 millimoles per liter.
+sample_50_yes_q01,positive,support,0.063,WEAK,"The HbA1c came out at 47 mmol/mol, right?",Your long-term sugar value was 47 millimoles per mole.
+sample_50_yes_q03,positive,support,0.299,WEAK,Was the patient's BMI recorded as 29?,Your body mass index is 29.
+sample_50_hard_no_q03,hard_negative,refute,0.001,ok,Has metformin treatment been started at this visit?,Nothing changes for you until we have them.
+sample_50_yes_q05,positive,support,0.895,ok,Is the patient free of any symptoms at this visit?,"I feel completely normal. No symptoms,"
+sample_50_yes_q02,positive,support,0.823,ok,Does the patient have a fasting blood sugar of 7.0 mmol/L?,Your fasting blood sugar was 7.0 millimoles per liter.
+sample_50_hard_no_q02,hard_negative,refute,0.0,ok,Were the results enough to confirm type 2 diabetes already?,It is not confirmed. It is a suspicion.
+sample_52_yes_q02,positive,support,0.012,WEAK,Did the doctor plan continued follow-up?,The plan is continued support and follow-up. Why
+sample_52_hard_no_q06,hard_negative,refute,0.0,ok,Has the patient been discharged from any further follow-up?,The plan is continued support and follow-up.
+sample_52_yes_q03,positive,support,0.031,WEAK,Was the patient seen as engaged during the consultation?,"From what you describe, you seem engaged and motivated."
+sample_52_hard_no_q04,hard_negative,refute,0.013,ok,Is the patient's grasp of the treatment considered inadequate?,you have a good understanding of your illness and your treatment
+sample_52_hard_no_q02,hard_negative,refute,0.001,ok,Was the patient found to be poorly motivated?,you seem engaged and motivated
+sample_52_yes_q01,positive,support,0.929,ok,"The patient understands the treatment well, right?",My assessment is that you have a good understanding of your illness and your treatment.
+sample_52_hard_no_q03,hard_negative,refute,0.0,ok,Were the classes the patient attended about hypertension?,I attended the diabetes education course.
+sample_52_hard_no_q01,hard_negative,refute,0.0,ok,Did the patient skip the diabetes education?,I attended the diabetes education course.
+sample_54_hard_no_q02,hard_negative,refute,0.0,ok,Is the blood pressure elevated?,Your blood pressure is normal.
+sample_54_yes_q04,positive,support,0.983,ok,Was the foot examination normal?,Your feet are normal. The examination is fine.
+sample_54_hard_no_q04,hard_negative,refute,0.0,ok,Was the patient given a pneumococcal vaccination?,I have had my flu vaccination.
+sample_54_hard_no_q01,hard_negative,refute,0.0,ok,Has the diabetes become unstable?,your diabetes looks stable
+sample_54_yes_q03,positive,support,0.998,ok,Has the patient received a flu vaccination?,"Well, I have had my flu vaccination."
+sample_54_yes_q02,positive,support,0.979,ok,Did the plan include continued monitoring?,the plan is continued monitoring with
+sample_54_hard_no_q03,hard_negative,refute,0.0,ok,Does the plan involve a check-up only every second year?,with your annual check as usual
+sample_54_yes_q01,positive,support,0.002,WEAK,Does the doctor regard the diabetes as stable?,overall your diabetes looks stable there
+sample_55_yes_q02,positive,support,0.116,WEAK,Does the plan include routine follow-up?,routine follow-up as usual routine
+sample_55_yes_q03,positive,support,0.938,ok,Will the current treatment be continued?,continue your current treatment exactly as it is and
+sample_55_yes_q01,positive,support,0.01,WEAK,Did the HbA1c come out at 43 mmol/mol?,your long-term sugar value is 43 millimoles per mole is
+sample_55_hard_no_q05,hard_negative,refute,0.0,ok,Did the tests show albuminuria?,there is no albumin in your urine
+sample_55_hard_no_q04,hard_negative,refute,0.0,ok,Is the HbA1c reported as 53 mmol/mol?,your long-term sugar value is 43 millimoles per mole
+sample_55_hard_no_q02,hard_negative,refute,0.0,ok,Was the creatinine found to be raised?,your creatinine is normal
+sample_55_hard_no_q03,hard_negative,refute,0.001,ok,Has the patient reported tiredness and thirst?,No. Nothing that I have noticed.
+sample_56_yes_q01,positive,support,0.007,WEAK,Has the cause of the tiredness remained unexplained?,We have not identified a specific cause.
+sample_56_hard_no_q02,hard_negative,refute,0.0,ok,Has iron treatment been started for the tiredness?,I am not starting anything further today.
+sample_56_yes_q02,positive,support,0.968,ok,Did the COVID-19 test come back negative?,your coronavirus test was negative.
+sample_56_hard_no_q04,hard_negative,refute,0.0,ok,Was the patient's thyroid function found to be reduced?,Your thyroid tests are normal.
+sample_56_yes_q04,positive,support,0.988,ok,"The patient's thyroid function was checked, wasn't it?",Your thyroid tests are normal.
+sample_56_hard_no_q03,hard_negative,refute,0.0,ok,Will treatment for the fatigue begin straight away?,I am not starting anything further today.
+sample_56_yes_q03,positive,support,0.991,ok,Will further measures be held off for the time being?,"For the moment we observe, I am not starting anything further today."
+sample_57_yes_q05,positive,support,0.988,ok,Will the patient continue on the current medication?,You continue your lifestyle exactly as you are and you continue your current medication.
+sample_57_yes_q07,positive,support,0.964,ok,Is the diabetes considered stable?,My assessment is that your diabetes is stable and
+sample_57_yes_q04,positive,support,0.002,WEAK,Has the patient kept up the lifestyle changes?,I have kept it up. I really have.
+sample_57_yes_q03,positive,support,0.033,WEAK,Was it concluded that no changes to treatment are needed?,You continue your lifestyle exactly as you are and you continue your current medication.
+sample_57_yes_q06,positive,support,0.072,WEAK,Does the patient feel stable?,how have you been feeling? Honestly? Stable.
+sample_57_yes_q01,positive,support,0.019,WEAK,Should the patient carry on with the same lifestyle?,You continue your lifestyle exactly as you are and
+sample_57_hard_no_q01,hard_negative,refute,0.0,ok,Was the patient advised to stop the current medication?,you continue your current medication
+sample_57_hard_no_q02,hard_negative,refute,0.002,ok,Will the diabetes now be treated with insulin?,you continue your current medication
+sample_57_yes_q02,positive,support,0.993,ok,"The patient stays on the medicine already in use, correct?",continue your current medication.
+sample_63_hard_no_q01,hard_negative,refute,0.0,ok,Have complications of the diabetes been identified?,with no complications
+sample_63_hard_no_q02,hard_negative,refute,0.0,ok,Is the treatment being changed to a new medication?,to continue your current treatment
+sample_63_hard_no_q03,hard_negative,refute,0.001,ok,Did the blood tests show impaired kidney function?,Your kidney function is normal
+sample_63_yes_q01,positive,support,0.997,ok,Was the diabetes control judged to be good?,My assessment is good diabetes control with no complications.
+sample_63_yes_q02,positive,support,0.001,WEAK,"The lipid profile came back normal, didn't it?","Good morning,"
+sample_63_yes_q03,positive,support,0.146,WEAK,Was the HbA1c measured at 41 mmol/mol?,Your hemoglobin A1c is 41 millimoles per mole.
+sample_63_yes_q05,positive,support,0.987,ok,Are annual check-ups planned to continue?,So the plan is to continue your current treatment and see you again for the yearly check.
+sample_63_yes_q04,positive,support,0.286,WEAK,Did the patient report no new symptoms?,"No, I am not sure there is anything. No new symptoms."
+sample_64_yes_q04,positive,support,0.01,WEAK,Is dry skin the reason for this consultation?,The skin on them has become very dry and
+sample_64_yes_q01,positive,support,0.241,WEAK,Was the condition assessed as xerosis?,The condition is called xerosis.
+sample_64_hard_no_q01,hard_negative,refute,0.001,ok,Did the doctor prescribe an antifungal cream?,I will prescribe a moisturizing cream
+sample_64_yes_q03,positive,support,0.99,ok,"A moisturizing cream was prescribed, wasn't it?",I will prescribe a moisturizing cream for you.
+sample_64_hard_no_q03,hard_negative,refute,0.0,ok,Were open sores found on the feet?,There are no sores
+sample_64_hard_no_q02,hard_negative,refute,0.0,ok,Does the patient complain of dryness on the hands?,"No, just the feet"
+sample_64_hard_no_q05,hard_negative,refute,0.0,ok,Was the skin problem assessed as eczema?,The condition is called xerosis
+sample_64_yes_q02,positive,support,0.015,WEAK,Did the examination rule out any wounds?,Good afternoon.
+sample_66_hard_no_q02,hard_negative,refute,0.0,ok,Was the patient given a pneumococcal vaccination?,I am here for the influenza vaccination
+sample_66_yes_q03,positive,support,0.91,ok,Was the vaccination given as part of diabetes care?,I am here for the influenza vaccination as part of my diabetes care.
+sample_66_hard_no_q01,hard_negative,refute,0.001,ok,Did a local reaction develop at the injection site?,I can see no reaction at all
+sample_66_yes_q04,positive,support,0.996,ok,"The diabetes status was described as stable, wasn't it?",diabetes status is stable stable
+sample_66_hard_no_q03,hard_negative,refute,0.0,ok,Was the patient's diabetes found to be unstable?,your diabetes status is stable
+sample_66_hard_no_q05,hard_negative,refute,0.0,ok,Has follow-up been discontinued going forward?,we continue with follow-up as planned
+sample_66_hard_no_q04,hard_negative,refute,0.0,ok,Did the doctor decide to adjust the diabetes medication?,there are no changes to make today
+sample_66_yes_q02,positive,support,0.002,WEAK,Is the patient free of any reaction after the injection?,"Perfectly fine, thank you. Nothing out of the ordinary."
+sample_66_yes_q01,positive,support,0.044,WEAK,Will the treatment continue without changes?,so I take it there is nothing that needs adjusting nothing at all there are no changes to make today and
+sample_67_yes_q02,positive,support,0.001,WEAK,"The doctor described the diabetes as stable, right?","Taken together, your diabetes is stable,"
+sample_67_yes_q05,positive,support,0.971,ok,Will the treatment be continued unchanged?,We continue your treatment unchanged and
+sample_67_yes_q04,positive,support,0.589,ok,Is the patient's self-care considered good?,with good self-care on your part.
+sample_67_hard_no_q01,hard_negative,refute,0.0,ok,Is the diabetes described as poorly controlled?,your diabetes is stable
+sample_67_yes_q01,positive,support,0.343,ok,Does the patient say they are doing well?,"Good, honestly. I feel well."
+sample_67_yes_q06,positive,support,0.972,ok,Is the patient sticking to the diet and lifestyle advice?,I have kept to the diet and the lifestyle side of things.
+sample_67_yes_q07,positive,support,0.952,ok,Has the weight remained stable?,Your weight is stable.
+sample_67_yes_q03,positive,support,0.956,ok,Was the HbA1c 43 mmol/mol?,Your hemoglobin A1c is 43 millimoles per mole.
+sample_69_yes_q02,positive,support,0.217,WEAK,Does the patient feel well?,"Well, actually, I feel fine."
+sample_69_yes_q01,positive,support,0.96,ok,Was the blood pressure normal?,"Your blood pressure is normal,"
+sample_69_yes_q03,positive,support,0.978,ok,Is the foot status normal?,your foot status is normal.
+sample_69_yes_q04,positive,support,0.932,ok,Will the regular check-ups be continued?,The plan is to continue your checkups and
+sample_69_yes_q06,positive,support,0.911,ok,"The diabetes was judged to be stable, right?",your diabetes is stable with
+sample_69_yes_q05,positive,support,0.97,ok,Are there no signs of complications?,no signs of complications.
+sample_69_hard_no_q01,hard_negative,refute,0.0,ok,Were wounds discovered on the feet?,There is nothing abnormal there
+sample_69_hard_no_q03,hard_negative,refute,0.0,ok,Have early complications of the diabetes been detected?,with no signs of complications
+sample_70_yes_q04,positive,support,0.002,WEAK,"The vaccination went as planned, didn't it?",Then I can say that there were no side effects today.
+sample_70_yes_q06,positive,support,0.983,ok,Was the vaccine actually given?,"That is the vaccination given,"
+sample_70_yes_q01,positive,support,0.922,ok,Were no further measures decided on?,No extra measures from my side.
+sample_70_yes_q05,positive,support,0.992,ok,Is this vaccination something the patient receives annually?,"You are here for your yearly influenza vaccination, is that correct? Yes, the annual one."
+sample_70_hard_no_q01,hard_negative,refute,0.0,ok,Was the vaccination postponed to a later date?,It was given as planned
+sample_70_yes_q02,positive,support,0.929,ok,Can the patient leave without any additional treatment?,No extra measures from my side. So I just go home? Exactly. Nothing more follows from today's visit.
+sample_70_yes_q03,positive,support,0.001,WEAK,Is the patient free of side effects after the vaccine?,Then I can say that there were no side effects today.
+sample_70_hard_no_q02,hard_negative,refute,0.0,ok,Is the patient asked to come back in a week for a second dose?,nothing further is needed
+sample_71_yes_q03,positive,support,0.132,WEAK,Did the creatinine come back normal?,Your creatinine is normal.
+sample_71_hard_no_q03,hard_negative,refute,0.001,ok,Is the LDL cholesterol 4.2 mmol/L?,Your LDL cholesterol is 2.2 mmol per liter.
+sample_71_yes_q04,positive,support,0.932,ok,Was the HbA1c 42 mmol/mol?,Your hemoglobin A1c is 42 millimoles per mole. And
+sample_71_hard_no_q01,hard_negative,refute,0.093,ok,Did the creatinine turn out to be elevated?,Your creatinine is normal.
+sample_71_yes_q05,positive,support,0.99,ok,Are there no signs of complications?,there are no signs of complications no
+sample_71_yes_q01,positive,support,0.984,ok,Is the LDL cholesterol 2.2 mmol/L?,Your LDL cholesterol is 2.2 mmol per liter.
+sample_71_yes_q02,positive,support,0.991,ok,"The diabetes was described as stable, right?",my assessment is that your diabetes is stable and
+sample_75_yes_q01,positive,support,0.007,WEAK,Does the patient deny any known exposure to COVID-19?,"No, none that I know of."
+sample_75_yes_q02,positive,support,0.004,WEAK,Is the patient also feeling tired?,I have been tired.
+sample_75_hard_no_q05,hard_negative,refute,0.001,ok,Is a bacterial infection thought to be the most likely cause?,most likely a viral upper respiratory infection
+sample_75_yes_q04,positive,support,0.989,ok,Were rest and fluids recommended?,The plan is rest and plenty of fluids.
+sample_75_hard_no_q02,hard_negative,refute,0.001,ok,Did the patient report a known exposure to COVID-19?,"No, none that I know of."
+sample_75_hard_no_q03,hard_negative,refute,0.0,ok,Will the patient be starting a course of antibiotics?,No antibiotics are needed
+sample_75_yes_q03,positive,support,0.994,ok,Has the patient had a sore throat for a few days?,"A sore throat, and I have been tired. A few days now. A few days of sore throat and tiredness."
+sample_75_hard_no_q04,hard_negative,refute,0.001,ok,Was the patient found to have a fever?,you have no fever
+sample_75_hard_no_q01,hard_negative,refute,0.001,ok,Did the throat examination reveal pronounced swelling with pus?,"slightly red, just mild redness at the back"
+sample_77_yes_q02,positive,support,0.988,ok,Did the patient receive a tetanus vaccination?,I have also given you a tetanus vaccination today.
+sample_77_hard_no_q01,hard_negative,refute,0.0,ok,Did the infection appear only two days after the injury?,I pricked it on a thorn about two weeks ago
+sample_77_yes_q03,positive,support,0.504,ok,Was the infection judged to follow a penetrating trauma?,"The thorn broke the skin, and the infection came after that. An"
+sample_77_yes_q07,positive,support,0.011,WEAK,Have about two weeks passed since the injury?,"two weeks ago, and"
+sample_77_yes_q04,positive,support,0.138,WEAK,Did the trouble start after the patient pricked themselves on a thorn?,"I pricked it on a thorn about two weeks ago, and now I think it has become infected."
+sample_77_hard_no_q02,hard_negative,refute,0.001,ok,Was a foreign body found in the toe?,There is no foreign body left in the toe.
+sample_77_yes_q06,positive,support,0.978,ok,"The patient was treated with penicillin, correct?",We are treating it with penicillin.
+sample_77_yes_q05,positive,support,0.964,ok,Is a foreign body ruled out?,There is no foreign body left in the toe.
+sample_77_yes_q01,positive,support,0.0,WEAK,Does the patient have an infection in the big toe?,"The thorn broke the skin, and the infection came after that. An"
+sample_79_yes_q02,positive,support,0.03,WEAK,Is chondromalacia patellae suspected on clinical grounds?,"I suspect a condition called chondromalacia patelli,"
+sample_79_hard_no_q03,hard_negative,refute,0.0,ok,Has the patient been referred to a physiotherapist instead of further procedures?,I am going to refer you for an arthroscopy.
+sample_79_yes_q05,positive,support,0.981,ok,Do the pains come and go rather than being constant?,"I keep getting pain behind my right kneecap, and it keeps coming back."
+sample_79_hard_no_q04,hard_negative,refute,0.171,ok,Does the pain sit on the back of the thigh?,pain behind my right kneecap
+sample_79_yes_q03,positive,support,0.903,ok,Does the patient have pain behind the kneecap?,"I keep getting pain behind my right kneecap,"
+sample_79_yes_q01,positive,support,0.276,WEAK,Did the patient show up in person for the consultation?,"Louise, come in. Good to see you."
+sample_79_hard_no_q02,hard_negative,refute,0.0,ok,Was the diagnosis of chondromalacia patellae confirmed by an MRI scan?,"this is a clinical suspicion at this stage, not something confirmed."
+sample_79_hard_no_q01,hard_negative,refute,0.0,ok,Are the knee pains constant throughout the day?,It comes and goes.
+sample_79_yes_q04,positive,support,0.001,WEAK,Was the suspicion reached without imaging?,"From what you describe, I suspect a condition called chondromalacia patelli,"
+sample_81_yes_q02,positive,support,0.985,ok,Is a viral cause thought to be the most likely explanation?,My assessment is that this is most likely a viral gastroenteritis.
+sample_81_hard_no_q02,hard_negative,refute,0.0,ok,Has the patient been given antibiotics for the illness?,Keeping your fluids up matters more than anything I could write on a prescription.
+sample_81_yes_q03,positive,support,0.01,WEAK,Did the patient receive advice about fluid intake?,I want to give you instead is advice on fluid intake and
+sample_81_yes_q01,positive,support,0.155,WEAK,Does the patient describe symptoms of gastroenteritis?,All the usual gastroenteritis symptoms.
+sample_81_yes_q04,positive,support,0.956,ok,Was gastroenteritis the diagnosis arrived at?,My assessment is that this is most likely a viral gastroenteritis.
+sample_81_hard_no_q03,hard_negative,refute,0.0,ok,Was the patient told to restrict fluid intake?,Keeping your fluids up
+sample_81_hard_no_q05,hard_negative,refute,0.003,ok,Was a bacterial cause considered the most likely one?,most likely a viral gastroenteritis
+sample_82_hard_no_q02,hard_negative,refute,0.0,ok,Was the growth suspected to be a basal cell carcinoma?,my suspicion is is molluscum contagiosum.
+sample_82_hard_no_q01,hard_negative,refute,0.0,ok,Were seven small lesions counted in the area?,I can see three small lesions
+sample_82_hard_no_q03,hard_negative,refute,0.0,ok,Has a cream been prescribed as the treatment?,I will treat them with freezing.
+sample_82_hard_no_q04,hard_negative,refute,0.0,ok,Will the lesions be removed surgically?,I will treat them with freezing.
+sample_82_yes_q03,positive,support,0.009,WEAK,"The lesions will be treated with freezing, right?",I will treat them with freezing.
+sample_82_yes_q01,positive,support,0.078,WEAK,Do the elements resemble molluscs?,my suspicion is is molluscum contagiosum.
+sample_82_yes_q02,positive,support,0.002,WEAK,Has the patient noticed a wart-like growth?,It looks a bit like a wart. is
+sample_82_yes_q04,positive,support,0.971,ok,Were three small lesions seen in the same area of the thorax?,I can see three small lesions all in the same area on the chest wall so
+sample_84_hard_no_q01,hard_negative,refute,0.0,ok,Is the check-up being done because the patient has symptoms from the heart?,What we are doing today is a preventive health check because of the family disposition you described.
+sample_84_hard_no_q02,hard_negative,refute,0.0,ok,Does the patient say that exercise is something they rarely do?,I train regularly.
+sample_84_yes_q02,positive,support,0.971,ok,Was it the patient's grandfather who died of a heart attack?,"My grandfather on my father's side died of a heart attack,"
+sample_84_yes_q04,positive,support,0.488,ok,Does the patient exercise regularly?,I train regularly.
+sample_84_yes_q06,positive,support,0.956,ok,Will both blood tests and an ECG be carried out?,"I will take blood samples, and I will record an electrocardiogram, which is a tracing of the heart's electrical activity."
+sample_84_yes_q05,positive,support,0.003,WEAK,Was the blood pressure measured at 138 over 83?,I have measured it at 138 over 83.
+sample_84_yes_q01,positive,support,0.839,ok,Does the patient report cardiovascular disease in the family?,"So, there is cardiovascular disease in your family? Yes."
+sample_84_yes_q03,positive,support,0.966,ok,Did that grandfather die at the age of 52?,"My grandfather on my father's side died of a heart attack, and he was only 52. too."
+sample_84_yes_q07,positive,support,0.996,ok,Is the patient otherwise healthy and living a healthy life?,"I am healthy, as far as I know. No illnesses at all. I eat well and I look after myself. And exercise? exercise? I train regularly."
+sample_86_yes_q01,positive,support,0.959,ok,Is the patient free of fever?,No fever.
+sample_86_hard_no_q03,hard_negative,refute,0.0,ok,Is the tenderness in the area described as severe?,there is slight tenderness there.
+sample_86_hard_no_q01,hard_negative,refute,0.0,ok,Has surgery been scheduled to remove the swelling?,We wait and see how it develops.
+sample_86_hard_no_q05,hard_negative,refute,0.0,ok,Were both testicles found to be enlarged and abnormal?,The testicles themselves feel normal to me on both sides.
+sample_86_hard_no_q04,hard_negative,refute,0.001,ok,Did the patient have a fever when he came in?,No fever.
+sample_86_yes_q03,positive,support,0.018,WEAK,"Both testicles felt normal at the examination, correct?",The testicles themselves feel normal to me on both sides.
+sample_86_hard_no_q02,hard_negative,refute,0.001,ok,Does the doctor suspect a testicular torsion?,What I suspect is a spermatocele
+sample_86_hard_no_q06,hard_negative,refute,0.001,ok,Was the swelling located on the left side of the scrotum?,a small swelling around the epididymis on the right
+sample_86_yes_q02,positive,support,0.984,ok,Was a small swelling found around the epididymis?,"I can feel a small swelling around the epididymis on the right,"
+sample_90_yes_q04,positive,support,0.001,WEAK,Does the doctor consider the change harmless?,change looks harmless.
+sample_90_hard_no_q01,hard_negative,refute,0.0,ok,Did the doctor find the change suspicious?,the change looks harmless.
+sample_90_yes_q03,positive,support,0.005,WEAK,Did the patient notice a new mole?,"I have got a new mole on my thigh,"
+sample_90_hard_no_q03,hard_negative,refute,0.0,ok,Is the new mole sitting on the back?,a new mole on my thigh
+sample_90_yes_q01,positive,support,0.043,WEAK,Was a photo sent in for assessment?,"You sent a photograph through to us,"
+sample_90_yes_q05,positive,support,0.0,WEAK,Has the doctor reviewed the photograph?,I have looked at the photograph carefully.
+sample_90_hard_no_q02,hard_negative,refute,0.0,ok,Does the patient describe the mole as small and unchanged?,it is quite large.
+sample_90_yes_q02,positive,support,0.981,ok,Is the mole located on the thigh?,"I have got a new mole on my thigh,"
+sample_92_hard_no_q02,hard_negative,refute,0.001,ok,Has the result of the urine analysis already come back?,We are waiting for that answer.
+sample_92_hard_no_q03,hard_negative,refute,0.0,ok,Is the pulse recorded as 92?,your pulse is 62.
+sample_92_yes_q03,positive,support,0.001,WEAK,Has a urine sample been sent off for albumin/creatinine ratio analysis?,I'm sending a urine sample for analysis.
+sample_92_yes_q02,positive,support,0.07,WEAK,Does the patient work as a staff manager in a retail chain?,work is still the staff manager role in the retail chain? Yes.
+sample_92_hard_no_q04,hard_negative,refute,0.0,ok,Are the patient's exercise habits limited to less than an hour a week?,I train maybe eight to ten hours a week.
+sample_92_yes_q01,positive,support,0.122,WEAK,Did the patient ask to have his cholesterol level checked?,"My cholesterol, I think. I would like the level checked. Of"
+sample_92_yes_q04,positive,support,0.628,ok,Was the previous LDL value 3.9?,My LDL was 3.9.
+sample_92_hard_no_q01,hard_negative,refute,0.002,ok,Was the blood pressure measured at 160/95?,Your blood pressure is 135 over 86
+sample_95_hard_no_q05,hard_negative,refute,0.01,ok,Does the plan involve a check every third month from now on?,You are given an appointment for the annual check.
+sample_95_hard_no_q03,hard_negative,refute,0.454,SUSPICIOUS_entails,Have the results of the blood tests already been gone through?,We have taken your blood test today
+sample_95_yes_q02,positive,support,0.973,ok,Were blood tests taken at this visit?,We have taken your blood test today as
+sample_95_yes_q03,positive,support,0.674,ok,Has the patient been free of side effects?,any side effects at all? None.
+sample_95_hard_no_q04,hard_negative,refute,0.001,ok,Was the follow-up handled by telephone?,I am here for the follow-up.
+sample_95_yes_q01,positive,support,0.977,ok,"The treatment is considered well tolerated, right?",can say the treatment is well tolerated.
+sample_95_hard_no_q02,hard_negative,refute,0.0,ok,Is the treatment being stopped because it is poorly tolerated?,the treatment is well tolerated.
+sample_95_hard_no_q01,hard_negative,refute,0.0,ok,Did the patient report muscle pain as a side effect?,None. Nothing I have noticed.

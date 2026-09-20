@@ -1,0 +1,43 @@
+{
+  "audio_filename": "conversation_sample_17.mp3",
+  "model": "fixture",
+  "language": "en",
+  "language_probability": 1.0,
+  "duration": 3.5,
+  "duration_after_vad": 3.5,
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 1.3,
+      "text": "The patient has asthma.",
+      "avg_logprob": -0.2,
+      "no_speech_prob": 0.01,
+      "compression_ratio": 1.0,
+      "temperature": 0.0
+    },
+    {
+      "id": 1,
+      "start": 1.5,
+      "end": 3.5,
+      "text": "Take 100 mg daily for 2 weeks.",
+      "avg_logprob": -0.2,
+      "no_speech_prob": 0.01,
+      "compression_ratio": 1.0,
+      "temperature": 0.0
+    }
+  ],
+  "words": [
+    {"start": 0.0, "end": 0.2, "word": " The", "probability": 1.0, "seg_idx": 0},
+    {"start": 0.2, "end": 0.6, "word": " patient", "probability": 1.0, "seg_idx": 0},
+    {"start": 0.6, "end": 0.9, "word": " has", "probability": 1.0, "seg_idx": 0},
+    {"start": 0.9, "end": 1.3, "word": " asthma.", "probability": 1.0, "seg_idx": 0},
+    {"start": 1.5, "end": 1.8, "word": " Take", "probability": 1.0, "seg_idx": 1},
+    {"start": 1.8, "end": 2.1, "word": " 100", "probability": 1.0, "seg_idx": 1},
+    {"start": 2.1, "end": 2.4, "word": " mg", "probability": 1.0, "seg_idx": 1},
+    {"start": 2.4, "end": 2.7, "word": " daily", "probability": 1.0, "seg_idx": 1},
+    {"start": 2.7, "end": 2.9, "word": " for", "probability": 1.0, "seg_idx": 1},
+    {"start": 2.9, "end": 3.1, "word": " 2", "probability": 1.0, "seg_idx": 1},
+    {"start": 3.1, "end": 3.5, "word": " weeks.", "probability": 1.0, "seg_idx": 1}
+  ]
+}

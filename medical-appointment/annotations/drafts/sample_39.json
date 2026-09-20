@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_39_yes_q02",
+    "transcript_id": "sample_39",
+    "question": "Does the patient have pain in the lower back?",
+    "bucket": "support",
+    "quote": "Pain in my lower back.",
+    "reason": "Patient directly reports lower back pain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q04",
+    "transcript_id": "sample_39",
+    "question": "Has the patient been referred for surgery?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No surgery or surgical referral is mentioned, only pain relief and exercise.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_off_topic_q02",
+    "transcript_id": "sample_39",
+    "question": "Is the patient discussing their pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_off_topic_q01",
+    "transcript_id": "sample_39",
+    "question": "At any point does the patient express interest in learning digital photography techniques?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No photography interest is expressed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q04",
+    "transcript_id": "sample_39",
+    "question": "Was reduced mobility found during the examination?",
+    "bucket": "support",
+    "quote": "Your movement is also reduced when you bend and turn.",
+    "reason": "Reduced movement on bending and turning is explicitly found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q03",
+    "transcript_id": "sample_39",
+    "question": "Were painkillers part of the treatment plan?",
+    "bucket": "support",
+    "quote": "Painkillers and exercises.",
+    "reason": "Treatment summary confirmed to include painkillers.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q01",
+    "transcript_id": "sample_39",
+    "question": "Does the pain radiate down the leg?",
+    "bucket": "refute",
+    "quote": "No, it stays in the lower back.",
+    "reason": "Asserted radiation down leg vs actual stays in lower back.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q01",
+    "transcript_id": "sample_39",
+    "question": "The pain was assessed as nonspecific musculoskeletal pain, right?",
+    "bucket": "support",
+    "quote": "this is nonspecific muscle and joint pain in the back, without radiation.",
+    "reason": "Assessment is explicitly nonspecific muscle and joint pain without radiation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q03",
+    "transcript_id": "sample_39",
+    "question": "Did the doctor conclude that the pain came from a herniated disc?",
+    "bucket": "refute",
+    "quote": "this is nonspecific muscle and joint pain in the back, without radiation.",
+    "reason": "Asserted herniated disc vs actual nonspecific muscle and joint pain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q02",
+    "transcript_id": "sample_39",
+    "question": "Was the patient's mobility completely unaffected?",
+    "bucket": "refute",
+    "quote": "Your movement is also reduced when you bend and turn.",
+    "reason": "Asserted mobility unaffected vs actual reduced movement.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  }
+]

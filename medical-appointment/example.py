@@ -1,62 +1,127 @@
-"""The baseline. This is the file to replace.
+"""The model behind ``/predict``.
 
-It answers ``True`` to everything and points at nothing, which scores the floor
-and nothing more. It is here to prove the plumbing — that the audio arrives
-intact and that your server speaks the protocol — not to compete.
+Transcribe once per conversation with local ASR (word timestamps kept), then
+hand the questions to the answerer selected by ``MEDAPP_ANSWERER`` (see
+``answerers/``). The default is the frozen NLI pipeline; a task-trained
+cross-encoder can be A/B'd behind the same contract. Nothing here calls a cloud
+API.
 
-Note how weak that floor now is. Answering yes to everything still gets half
-the questions right, but it finds none of the evidence, and evidence is the
-larger half of the score. The sketch under the dummy model shows where a real
-system goes.
+``predict`` never raises: one exception would score all ten of a conversation's
+questions wrong, so every failure falls back to a well-formed guess.
 """
 
 import logging
-from typing import Optional, Tuple
+import multiprocessing
+import os
+import time
+from typing import List, Optional
 
+import asr
+from answerers import Answerer, get_answerer
+from answerers.base import normalize_answer
+from capture import maybe_capture
 from dtos import ASRQuestionRequestDto, ASRQuestionResponseDto
-from utils import Span, audio_duration_seconds, decode_audio
+from utils import decode_audio, validate_response
 
 logger = logging.getLogger(__name__)
 
+# Leave a margin under the 60 s request budget: stop answering new questions and
+# return guesses once this much wall-clock has elapsed.
+DEADLINE_S = float(os.environ.get("MEDAPP_DEADLINE_S", "50"))
+USE_WORKER = os.environ.get("MEDAPP_INFERENCE_WORKER", "0") == "1"
+_worker = None
 
-### CALL YOUR CUSTOM MODEL VIA THIS FUNCTION ###
 
-def predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
-    """Answer every question about one conversation.
+def warm_models() -> None:
+    asr.warm_up()
+    answerer = get_answerer()
+    warm_up = getattr(answerer, "warm_up", None)
+    if warm_up is not None:
+        warm_up()
 
-    The whole conversation and all of its questions arrive together, so the
-    expensive half — transcription — is paid once here and shared by every
-    answer below.
-    """
+
+def get_worker():
+    global _worker
+    if _worker is None:
+        import atexit
+        from inference_worker import InferenceWorker
+
+        _worker = InferenceWorker()
+        atexit.register(_worker.close)
+    return _worker
+
+
+def predict(
+    request: ASRQuestionRequestDto, *, answerer: Optional[Answerer] = None
+) -> ASRQuestionResponseDto:
+    """Answer every question about one conversation. Never raises."""
+    started = time.monotonic()
+    try:
+        if USE_WORKER and answerer is None:
+            payload = get_worker().predict(
+                request.model_dump(), deadline=started + DEADLINE_S
+            )
+            response = (
+                ASRQuestionResponseDto.model_validate(payload)
+                if payload is not None else _fallback(len(request.questions))
+            )
+        else:
+            response = _predict(request, answerer=answerer, deadline=started + DEADLINE_S)
+        validate_response(response, len(request.questions))
+    except Exception:
+        logger.exception(
+            "predict failed for %s; returning guesses.", request.audio_filename
+        )
+        response = _fallback(len(request.questions))
+
+    maybe_capture(request, response, time.monotonic() - started)
+    return response
+
+
+def _predict(
+    request: ASRQuestionRequestDto, *, answerer: Optional[Answerer] = None,
+    deadline: Optional[float] = None,
+) -> ASRQuestionResponseDto:
+    started = time.monotonic()
+    deadline = min(deadline, started + DEADLINE_S) if deadline is not None else started + DEADLINE_S
+    if started >= deadline:
+        logger.warning("Request deadline expired before transcription.")
+        return _fallback(len(request.questions))
     audio_bytes = decode_audio(request.audio_base64)
 
-    duration = audio_duration_seconds(audio_bytes)
-    logger.info(
-        '%s (%.1f s, %.1f MB): %d questions',
-        request.audio_filename,
-        duration if duration is not None else float('nan'),
-        len(audio_bytes) / 1e6,
-        len(request.questions),
-    )
+    try:
+        transcript = asr.transcribe_bytes(audio_bytes, request.audio_filename)
+    except Exception:
+        logger.exception(
+            "Transcription failed for %s; returning guesses.", request.audio_filename
+        )
+        return _fallback(len(request.questions))
 
-    # Never let this raise. An exception means no response, and no response
-    # means every question about this conversation is scored wrong — ten marks,
-    # not one. A guess is worth half a mark on average; an error is worth
-    # nothing.
-    answers = []
-    evidence_start = []
-    evidence_end = []
+    answers: List[bool] = []
+    evidence_start: List[Optional[float]] = []
+    evidence_end: List[Optional[float]] = []
 
-    for question in request.questions:
-        try:
-            answer, span = answer_question(
-                audio_bytes, request.audio_filename, question
-            )
-        except Exception:
-            logger.exception('Falling back to a guess for: %s', question)
-            answer, span = True, None
+    try:
+        answerer = answerer if answerer is not None else get_answerer()
+        results = answerer.answer_all(
+            request.questions, transcript, deadline=deadline
+        )
+    except Exception:
+        logger.exception(
+            "Answering failed for %s; returning guesses.", request.audio_filename
+        )
+        return _fallback(len(request.questions))
 
-        answers.append(answer)
+    # Be defensive about the contract: the service scores by position and a
+    # wrong-length response loses every question about the conversation.
+    for question_index in range(len(request.questions)):
+        entry = results[question_index] if question_index < len(results) else None
+        is_true, span = normalize_answer(
+            entry, duration=transcript.get("duration"),
+            context=f"{request.audio_filename} question {question_index}",
+        )
+
+        answers.append(bool(is_true))
         evidence_start.append(span[0] if span is not None else None)
         evidence_end.append(span[1] if span is not None else None)
 
@@ -67,57 +132,25 @@ def predict(request: ASRQuestionRequestDto) -> ASRQuestionResponseDto:
     )
 
 
-### DUMMY MODEL ###
+def _fallback(count: int) -> ASRQuestionResponseDto:
+    """A well-formed guess when the expensive half fails outright."""
+    return ASRQuestionResponseDto(
+        answers=[False] * count,
+        evidence_start=[None] * count,
+        evidence_end=[None] * count,
+    )
 
-def answer_question(
-    audio_bytes: bytes,
-    audio_filename: str,
-    question: str,
-) -> Tuple[bool, Optional[Span]]:
-    """Always says yes, and never says where.
 
-    Both splits are exactly balanced between yes and no, so the answer half of
-    this scores 0.500: every ``positive`` question right, every
-    ``hard_negative`` and ``off_topic`` question wrong. The evidence half scores
-    0.000, because ``None`` means "nothing to point at" and every annotated yes
-    question is therefore missed. Run ``local_evaluator.py`` and read the
-    per-type breakdown and the evidence block — that shape is the problem you
-    are solving.
-
-    Replace this. The shape of a real answer is roughly:
-
-        def predict(request):
-            # The expensive half, paid once per request rather than once per
-            # question. Ten questions share this transcript.
-            segments = transcribe(decode_audio(request.audio_base64))
-
-            answers, starts, ends = [], [], []
-
-            for question in request.questions:
-                answer, span = answer_from_transcript(segments, question)
-                answers.append(answer)
-                starts.append(span[0] if span else None)
-                ends.append(span[1] if span else None)
-
-            return ASRQuestionResponseDto(
-                answers=answers, evidence_start=starts, evidence_end=ends,
-            )
-
-    where ``transcribe`` is a local ASR model **that returns timestamps** — the
-    span you send back is the start and end of the segment you read the answer
-    off, so word- or segment-level timing is not an optional extra here. Both
-    halves must run without calling a cloud API; see the Rules section of the
-    README.
-
-    Two things to watch while you work:
-
-    Return the passage, not the clip. A span covering the whole conversation
-    overlaps every annotation and scores a temporal IoU near zero against all
-    of them.
-
-    Watch the ``hard_negative`` questions. They are near-misses on dose, drug
-    and entity — "0.15 mg" against a transcript that says "0.3 mg" — so
-    anything that answers from topical overlap alone stays at the floor no
-    matter how good the transcript is.
-    """
-    return True, None
+if (
+    os.environ.get("MEDAPP_SKIP_WARMUP") != "1"
+    and multiprocessing.current_process().name == "MainProcess"
+):
+    try:
+        if USE_WORKER:
+            get_worker().warm_up()
+        else:
+            warm_models()
+    except Exception:
+        logger.exception("Model warm-up failed.")
+        if os.environ.get("MEDAPP_REQUIRE_WARMUP", "0") == "1":
+            raise
