@@ -1568,3 +1568,27 @@ No acoustic-quality result has been established merely by preparing this code.
   correction, not label-based span tuning. Re-run the fixed full comparison
   before drawing a final conclusion about the acoustic arm; retain all three
   opaque-code fallbacks and every scoring denominator.
+- **Compound-complete outcome:** `ctc-full-compounds-8f14e387`, CPU job
+  `25408004`, aligned 191 citations with three explicit `A1c` fallbacks and
+  no operational failures. All 172 previously aligned spans were exactly
+  unchanged; 19 additional citations became eligible. Full composite was
+  **0.796676**, mIoU **0.662837**, versus **0.800742 / 0.669612**.
+  Demo-disjoint delta was **-0.004522**, interval **[-0.009956, +0.000271]**.
+  Reject the direct timing replacement. The expanded proposal oracle remained
+  only **0.688711 mIoU**; this source-preserving timing family is not a route
+  to near-perfect localization by itself.
+
+### Final small acoustic endpoint-source check
+
+`calibrate_endpoint_sources.py` freezes exactly four policies: incumbent,
+CTC end only, CTC start only, or both CTC endpoints. No extra offsets, blend
+weights, or per-question thresholds are fitted. Each policy refers to the
+same frozen source-word occurrence; non-overlapping clock estimates keep the
+incumbent instead of creating a long enclosing hull.
+
+Choose the global policy using only each outer fold's training conversations,
+exclude all demonstration sources, and score all 350 non-demo questions under
+seeds 13 and 37. Ties favor the incumbent, and every ineligible/missed-positive
+case remains scored. This is one model-free endpoint attribution check, not
+another aligner or a wider offset sweep. If no reliable held-out gain emerges,
+close this timing family and return to the source/extent problem.

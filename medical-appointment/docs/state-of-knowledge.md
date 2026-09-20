@@ -49,6 +49,15 @@ Every demo-disjoint paired interval was negative. Reject these policies;
 CPU feasibility and correct likelihood computation did not imply useful
 reference localization.
 
+Conditional CTC timing also failed as a direct replacement: **0.796676**
+composite / **0.662837 mIoU** on all 390 questions, with 191 citations aligned
+and three explicit unsupported-code fallbacks. The 172 previously eligible
+citations were unchanged after repairing split-compound normalization.
+All decisions stayed fixed. Its bounded local endpoint proposal oracle is
+only **0.688711 mIoU**, not an achieved gain or a global dataset ceiling.
+The next bounded check separates start/end clock contributions with grouped
+training-only policy selection; it does not justify more alignment-model sweeps.
+
 **Reference agreement is not always semantic correctness.** CSV references
 `sample_63_yes_q02` and `sample_64_yes_q02` point to the opening greeting
 instead of the later medical fact in both immutable, audio-matched full-v3 and

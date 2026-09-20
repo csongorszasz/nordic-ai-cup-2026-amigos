@@ -286,6 +286,14 @@ as complete conversations finish. Only the final `summary.json` certifies
 full requested coverage. CPU timings and separate-run latency sums never
 qualify deployment; `api.py`, `dtos.py`, and the active service remain unchanged.
 
+After a complete fixed-recipe CTC run, `calibrate_endpoint_sources.py
+--baseline <frozen-baseline> --aligned <ctc-results>` runs a model-free CPU
+check. It chooses only which clock supplies each endpoint, with four fixed
+policies and no new offsets. Policy fitting is training-fold-only, with all
+demo-source conversations excluded and two grouped seeds. It refuses stale
+inputs, changed anchors, incomplete comparisons, and modified fallback spans.
+Non-overlapping clocks retain the incumbent; no serving artifact is written.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
