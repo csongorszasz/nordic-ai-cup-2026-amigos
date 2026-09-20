@@ -172,6 +172,50 @@ only when its tune half beats 0.636; anything better overall but not on tune is 
 Offline still ranks big differences correctly (0.55 vs 0.64 is real). It cannot separate
 0.64 from 0.66 -- 43 objects over 13 classes is too small a test for that.
 
+## The held-out flight did not rank models either. It anti-ranked them.
+
+`training/holdout_scene.py` builds a 200-frame flight on 17 NAIP tiles from areas no training
+run has seen (`fetch_backgrounds.py --holdout`), with **240 objects over all 16 classes** --
+5.6x the Copenhagen sample, labels exact by construction, and the first test set containing
+condor, jammer and spacecraft at all. It was built to end the guessing. It did not.
+
+| | held-out mAP | live validation |
+|---|---|---|
+| allbg last | **0.340** | 0.4926 |
+| bigbg epoch15 | 0.333 | 0.4953 |
+| dk epoch15 | 0.329 | -- |
+| live model | 0.327 | **0.5171** |
+| cutouts last | 0.316 | -- |
+
+For the three models with both numbers the two orderings are **exactly inverted**. The whole
+spread is 0.024, and per class the four agree within +/-0.03 on 14 of 16 classes. So the set
+does not separate these models, and where it appears to, it points the wrong way.
+
+Why: it measures generalisation to unseen *backgrounds* within our own pipeline. Every
+candidate was trained on our pasted objects and is tested on our pasted objects, so the part
+that actually differs live -- the organisers' renderer -- is not in the test at all. Unseen
+backgrounds turn out not to be what separates these models.
+
+Worth keeping anyway for the one thing it does measure honestly: the three classes Copenhagen
+has none of come out at condor 0.36-0.40, jammer 0.22-0.25, spacecraft 0.32-0.36. Mediocre but
+not broken, which matches Helsinki (0.87/0.74/0.90) and confirms the 1255 phantom jammers are a
+background problem, not a dead class.
+
+## Bigger models are worse, and it is not close
+
+yolo11m and yolo11l on the same 400-frame recipe, scored on the tune half against the live
+model's 0.636:
+
+| | tune | overall |
+|---|---|---|
+| l11 epoch15 | 0.612 | 0.625 |
+| m11 epoch15 | 0.594 | 0.604 |
+| m11 last | 0.592 | 0.598 |
+| l11 last | 0.588 | 0.604 |
+
+Both sit below the 11s incumbent on the half we are allowed to choose on, before any question
+of whether they fit the VM's 183 ms budget. Closed.
+
 ## A quarter of what we report is for classes that are not there
 
 Counting every box the live model reports over the 249 Copenhagen frames:

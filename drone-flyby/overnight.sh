@@ -24,7 +24,7 @@ echo "=== started $(date -Is) ==="
 
 # Every yolo11s run of this push, including the three launched after the ground-mask finding
 # (trimsng, ctrl, dkplus) and the live model itself, which should come back at 0.640.
-RUNS_GLOB='synth400_11s_*'
+RUNS_GLOB='synth[0-9]*_11[slmx]_*'   # every size and frame count: 11s/11m/11l, 400/700/800 frames
 
 score_one() {   # $1 run, $2 epoch tag
   local run=$1 e=$2
