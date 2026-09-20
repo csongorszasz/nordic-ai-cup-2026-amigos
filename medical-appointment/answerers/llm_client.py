@@ -9,6 +9,7 @@ responses for tests and offline prompt inspection.
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,11 @@ class HFClient:
             self._tokenizer = AutoProcessor.from_pretrained(
                 self.model_name, revision=self.revision, local_files_only=True
             ).tokenizer
+
+        template_path = os.environ.get("MEDAPP_LLM_CHAT_TEMPLATE")
+        if template_path:
+            self._tokenizer.chat_template = Path(template_path).read_text(encoding="utf-8")
+            logger.info("Using chat template from %s", template_path)
 
         if self.dtype not in ("float16", "bfloat16", "float32"):
             raise ValueError(f"Unsupported LLM dtype: {self.dtype}")
