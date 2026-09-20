@@ -20,7 +20,7 @@ REVISION = "22aad52d435eb6dbaf354bdad9b0da84ce7d6156"
 PACKAGES = {"num2words": "0.5.14", "docopt": "0.6.2"}
 INFERENCE_AUGMENTATION = {"apply_spec_augment": False, "mask_time_prob": 0.0, "mask_feature_prob": 0.0}
 RECIPE = {
-    "version": 1, "model": MODEL, "revision": REVISION,
+    "version": 2, "model": MODEL, "revision": REVISION,
     "sampling_rate": 16000, "conv_kernel": [10, 3, 3, 3, 3, 2, 2],
     "conv_stride": [5, 2, 2, 2, 2, 2, 2],
     "context_words_each_side": 8, "max_crop_s": 30.0,
@@ -30,6 +30,7 @@ RECIPE = {
     "max_abs_number": "1000000000",
     "inference_augmentation": INFERENCE_AUGMENTATION,
     "eval_augmentation_equivalence_atol": 1e-5,
+    "alphabetic_compound_fragments": True,
 }
 _NUMBER = re.compile(r"[+-]?(?:(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d+)?|\.\d+)")
 _UNITS = {
@@ -141,8 +142,9 @@ def encode_words(words, vocabulary, number_renderer, *, word_offset=0):
             rule = "quantity_unit"
         elif not text:
             spoken, rule = "", "punctuation_only"
-        elif re.fullmatch(r"[A-Za-z]+(?:['-][A-Za-z]+)*", text):
-            spoken, rule = text, "letters"
+        elif re.fullmatch(r"-?[A-Za-z]+(?:['-][A-Za-z]+)*-?", text):
+            spoken = text.strip("-")
+            rule = "compound_fragment" if spoken != text else "letters"
         else:
             raise NormalizationError(index, original)
         previous_quantity = quantity

@@ -1552,3 +1552,19 @@ No acoustic-quality result has been established merely by preparing this code.
   Peak RSS was 1.79 GiB; the slowest alignment component was 4.60 s.
   Proceed only to a frozen full-corpus comparison, with no pilot-based tuning
   or serving changes. CPU component timing is not HTTP acceptance.
+- **First full CTC comparison:** `conditional-ctc-full-8fba4c5f`, CPU job
+  `25407903`, retained all 390 questions and every decision. Primary composite
+  was **0.796772** versus **0.800742**, mIoU **0.662997** versus **0.669612**.
+  The demo-disjoint delta was **-0.004220**, interval
+  **[-0.009414, +0.000405]**. Reject this as a replacement.
+  All 172 eligible citations aligned without operational failures; 22 kept
+  the incumbent. The proposal oracle was **0.686891 mIoU**, not near-perfect
+  localization or an achieved gain.
+- Of those 22 eligibility fallbacks, **19 were ordinary hyphenated word
+  fragments** (`-up`, `-inflammatory`, `-term`, etc.) produced by the existing
+  ASR word segmentation; three contained the opaque medical code `A1c`.
+  Recipe v2 repairs alphabetic compound fragments while preserving their
+  original word owners and retaining numeric minus signs. This is a coverage
+  correction, not label-based span tuning. Re-run the fixed full comparison
+  before drawing a final conclusion about the acoustic arm; retain all three
+  opaque-code fallbacks and every scoring denominator.

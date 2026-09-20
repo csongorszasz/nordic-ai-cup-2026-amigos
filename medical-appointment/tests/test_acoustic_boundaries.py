@@ -71,6 +71,20 @@ def test_contractions_and_punctuation_preserve_positions_without_fake_words():
     assert VOCAB["'"] in encoded["targets"]
 
 
+def test_split_compounds_keep_their_owners_without_dropping_numeric_minus_signs():
+    source = words(["follow", "-up.", "anti", "-inflammatory", "long-", "term", "-2"])
+    encoded = encode_words(source, VOCAB, NUMBERS.__getitem__)
+    assert [entry["spoken"] for entry in encoded["normalizations"]] == [
+        "FOLLOW", "UP", "ANTI", "INFLAMMATORY", "LONG", "TERM", "MINUS TWO",
+    ]
+    assert encoded["normalizations"][1]["rule"] == "compound_fragment"
+    assert encoded["normalizations"][3]["word_index"] == 3
+    assert encoded["normalizations"][-1]["rule"] == "number"
+    assert {owner for owner in encoded["owners"] if owner is not None} == set(range(7))
+    with pytest.raises(NormalizationError):
+        encode_words(words(["-", "2"]), VOCAB, NUMBERS.__getitem__)
+
+
 @pytest.mark.parametrize("text", ["HbA1c", "120/80", "1,5", "100mg", "one/two", "r\u00e9gl\u00e9", "1000000000"])
 def test_unsupported_spoken_forms_are_explicit_skips_not_deleted(text):
     with pytest.raises(NormalizationError) as caught:
