@@ -1691,3 +1691,28 @@ No performance gain or serving change is claimed.
   explicitly records its precision change. Any subsequent prompt comparison
   needs a BF16 same-runtime base control; it cannot be described as a matched
   FP16 GPU reproduction or HTTP latency validation.
+- **Gemma CPU feasibility:** `prompt-gemma-bf16-smoke-7fa1236f`, CPU job
+  `25408354`, generated 64 tokens from the 2,063-token frozen prompt in
+  **254.90 s**. Load/warm-up took **370.69 s** and peak RSS was **45.57 GiB**.
+  The intentionally partial JSON is not a scored answer set. Scheduler-only
+  lower-memory FP32 and newer-CPU inquiries also projected starts after the
+  deadline; those inquiries created no runnable model allocations.
+- **Practical non-Gemma control:** pin
+  `Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554`.
+  Its official card specifies non-thinking-only operation; the smaller model
+  is a CPU-resource choice, not a claim that it is the latest or strongest
+  model. `cache-qwen3-4b-prompt-67d7ede7` prepared 10 safe inference files,
+  **8,060,896,487 bytes**, within the declared 9 GB ceiling and user quota.
+- **Qwen CPU feasibility:** `prompt-qwen4b-cpu-smoke-e2548077`, CPU job
+  `25408397`, generated 64 tokens from the same conversation in **32.25 s**,
+  using FP32, 16 CPU cores, native template tokenization and explicit thinking
+  disabled. Load/warm-up was **24.06 s**, peak RSS **23.12 GiB**. This is
+  feasibility only, not a model score or an end-to-end latency result.
+
+The next fixed pilot compares `base`, `v1`, and `v1_claim` on the three
+predeclared development conversations with all questions included. Reports
+partition cases using the qualified baseline's fixed low/high/disjoint bands,
+never a candidate's outcome. Reference-hidden change packets expose both
+answers/citations and the full dialogue for semantic review; they do not expose
+the annotation coordinates. No changes to prompt definitions were made in
+response to feasibility timing or partial generations.

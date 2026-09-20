@@ -9,7 +9,8 @@ from answerers.llm_client import StubClient
 from answerers.llm_prompt import build_l1_messages
 from prepare_prompt_round import prompt_hash, round_split
 from probe_prompt_round import (
-    definition_hash, records_for, run_variants, selected_tids, validate_confirmation, validate_inputs,
+    definition_hash, localization_strata, records_for, run_variants, selected_tids, semantic_changes,
+    validate_confirmation, validate_inputs,
 )
 
 
@@ -148,3 +149,35 @@ def test_confirmation_requires_frozen_development_and_explicit_semantic_review()
     ):
         with pytest.raises(ValueError, match="Confirmation"):
             validate_confirmation(changed, development, manifest, signature, source)
+
+
+def test_metric_strata_are_fixed_by_the_qualified_control_not_the_candidate():
+    reference = [
+        {**ROW, "question_id": "good", "span": [0.2, 1.2]},
+        {**ROW, "question_id": "disjoint", "span": [3.0, 4.0]},
+    ]
+    candidate = [
+        {**reference[0], "span": [3.0, 4.0]},
+        {**reference[1], "span": [0.2, 1.2]},
+    ]
+    report = localization_strata(reference, reference, candidate)
+    assert set(report) == {"high_tiou", "disjoint"}
+    assert report["high_tiou"]["mean_tiou_delta"] == -1.0
+    assert report["disjoint"]["mean_tiou_delta"] == 1.0
+    assert sum(entry["candidate"]["questions"] for entry in report.values()) == 2
+
+
+def test_semantic_change_packet_hides_reference_coordinates_and_retains_negative_flips():
+    control = [{**ROW, "span": [0.2, 1.2]}]
+    candidate = [{**ROW, "answer": False, "prediction": 0, "span": None, "quote": None}]
+    packet = semantic_changes(control, candidate)
+    assert packet["reference_spans_hidden"] is True
+    assert len(packet["cases"]) == 1
+    case = packet["cases"][0]
+    assert not ({"gold", "label", "question_type", "tiou"} & case.keys())
+    assert case["candidate"] == {"answer": False, "span": None, "quote": None}
+    assert semantic_changes(control, control)["cases"] == []
+    with pytest.raises(ValueError, match="unique question"):
+        semantic_changes(control, [])
+    with pytest.raises(ValueError, match="different questions"):
+        semantic_changes(control, [{**candidate[0], "gold": [4.0, 5.0]}])

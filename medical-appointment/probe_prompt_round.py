@@ -14,11 +14,13 @@ from pathlib import Path
 from answerers.boundaries import adjusted_span
 from answerers.llm import LLMAnswerer
 from answerers.llm_client import DEVICE, HFClient
-from answerers.llm_prompt import build_l1_messages, reformat_frozen_demonstrations, schema_hint, system_prompt
+from answerers.llm_prompt import (
+    build_l1_messages, reformat_frozen_demonstrations, schema_hint, serialize_transcript, system_prompt,
+)
 from audit_localization import exact_score
 from benchmark import RecordingClient, paired_comparison, write_json
 from benchmark_alignment import baseline_prediction, load_inputs
-from prepare_prompt_round import prompt_hash, round_split
+from prepare_prompt_round import prompt_hash, round_split, stratum
 
 
 ARMS = ("base", "v1", "v1_claim")
@@ -110,6 +112,64 @@ def records_for(group, answers, duration):
             "decided_by": info.get("decided_by", "unknown"),
         })
     return records
+
+
+def matched_analysis_rows(reference, control, candidate):
+    maps = [{row["question_id"]: row for row in rows} for rows in (reference, control, candidate)]
+    if (
+        any(len(mapping) != len(rows) for mapping, rows in zip(maps, (reference, control, candidate)))
+        or not maps[0].keys() == maps[1].keys() == maps[2].keys()
+    ):
+        raise ValueError("Prompt diagnostics require identical complete unique question sets.")
+    triples = []
+    for qid, row in maps[0].items():
+        base, proposed = maps[1][qid], maps[2][qid]
+        if any(row[key] != other[key] for other in (base, proposed) for key in (
+            "transcript_id", "question", "question_type", "label", "gold",
+        )):
+            raise ValueError("Prompt diagnostics cannot compare different questions or references.")
+        triples.append((row, base, proposed))
+    return triples
+
+
+def localization_strata(reference, control, candidate):
+    groups = defaultdict(list)
+    for original, base, proposed in matched_analysis_rows(reference, control, candidate):
+        groups[stratum(original)].append((base, proposed))
+    results = {}
+    for name, pairs in groups.items():
+        base_score = exact_score([base for base, _ in pairs])
+        candidate_score = exact_score([proposed for _, proposed in pairs])
+        results[name] = {
+            "control": base_score, "candidate": candidate_score,
+            "composite_delta": candidate_score["score"] - base_score["score"],
+            "mean_tiou_delta": candidate_score["mean_tiou"] - base_score["mean_tiou"],
+            "decision_changes": sum(base["answer"] != proposed["answer"] for base, proposed in pairs),
+            "citation_changes": sum(base["span"] != proposed["span"] for base, proposed in pairs),
+        }
+    return results
+
+
+def semantic_changes(control, candidate):
+    cases = []
+    for _, base, proposed in matched_analysis_rows(control, control, candidate):
+        if all(base[key] == proposed[key] for key in ("answer", "span", "quote")):
+            continue
+        cases.append({
+            "question_id": base["question_id"], "transcript_id": base["transcript_id"],
+            "question": base["question"],
+            "control": {key: base[key] for key in ("answer", "span", "quote")},
+            "candidate": {key: proposed[key] for key in ("answer", "span", "quote")},
+        })
+    return {
+        "reference_spans_hidden": True, "cases": cases,
+        "review_criteria": [
+            "The answer is supported by this conversation, including polarity and temporal status.",
+            "The citation preserves every requested attribute without importing unrelated claims.",
+            "A valid alternative occurrence is not a semantic failure just because the annotation differs.",
+            "Do not select a shorter or later citation solely because it would match a reference interval.",
+        ],
+    }
 
 
 def run_variants(grouped, transcripts, frozen, tids, client, variants, output, budget_s):
@@ -269,12 +329,19 @@ def main():
         control = results["base"]["records"]
         qualified = [baseline_prediction(row) for tid in tids for row in grouped[tid]]
         report["qualified_reference"] = exact_score(qualified)
+        report["strata_definition"] = "Fixed from the qualified reference predictions; not used in inference or per-question routing."
+        for tid in tids:
+            path = args.output / "semantic_transcripts" / f"{tid}.txt"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(serialize_transcript(transcripts[tid]), encoding="utf-8")
         for variant, value in results.items():
             report["variants"][variant] = {
                 **{key: item for key, item in value.items() if key != "records"},
                 "paired_same_runtime_control": paired_comparison(control, value["records"]),
                 "paired_qualified_reference_runtime_not_matched": paired_comparison(qualified, value["records"]),
+                "qualified_baseline_strata": localization_strata(qualified, control, value["records"]),
             }
+            write_json(args.output / f"{variant}_semantic_changes.json", semantic_changes(control, value["records"]))
         report["complete"] = True
     report["peak_rss_mb"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
     write_json(args.output / "summary.json", report)

@@ -329,6 +329,19 @@ matching model/runtime/pipeline hashes, and an explicit completed semantic
 review. It evaluates only the control and that frozen candidate. This gate
 does not make a repeatedly inspected corpus a virgin holdout.
 
+Each scored phase reports fixed qualified-baseline difficulty strata, including
+low/high tIoU and disjoint cases, alongside aggregate paired results.
+`<variant>_semantic_changes.json` omits reference intervals and lists only
+changed answers/citations; `semantic_transcripts` supplies the matching full
+dialogues. Review semantic support before choosing a development winner.
+Neither strata nor review labels are available to the inference rule.
+
+The CPU-feasible alternate checkpoint for this round is
+`Qwen/Qwen3-4B-Instruct-2507@cdbee75f17c01a7cc42f958dc650907174af0554`,
+with `--dtype float32 --device cpu --tokenization template --disable-thinking`.
+Use the same round artifacts and prompt arms. A small-model prompt gain must
+not be presented as a demonstrated gain for the larger Gemma service.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
