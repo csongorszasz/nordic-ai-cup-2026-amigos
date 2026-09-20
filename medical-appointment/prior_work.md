@@ -235,6 +235,14 @@ regressed and grounding failures rose from one to two. The matched-cohort
 Gemma reference was **0.826465**. Every execution shard and failed output was
 retained. No confirmation run or further case-driven wording change was made.
 
+The identical rules were then tested on the cached, historically validated
+**Gemma E4B** model in a separate BF16 CPU pilot. Base and claim produced
+exactly the same 30 decisions and intervals: **0.806218 composite /
+0.677029 mIoU**, **30/30 correct**, zero grounding failures. This is not a
+new best: the 26B reference is **0.888534 on those same 30 questions**.
+The unchanged E4B pair is being checked across the full development cohort;
+no confirmation or deployment is justified by the pilot tie.
+
 ## 7. Dataset and evaluation findings
 
 - The qualified baseline has 21 disjoint positive citations, 17 separated from
@@ -312,6 +320,7 @@ transcript-matched comparison with the 0.8007 control.
 | Complete first prompt pilot | `prompt-qwen4b-pilot-e6075a85` |
 | Answer-first mechanism control | `prompt-answer-first-control-0a25be46` |
 | Complete prompt development aggregate | `prompt-development-merge-aa6532be` |
+| Same-rule E4B pilot | `prompt-e4b-pilot-0c39284d` |
 
 Pulled run artifacts live under `results\idun_runs\<run-id>\artifacts`.
 They, model weights, transcripts, and captures are gitignored. New substantial

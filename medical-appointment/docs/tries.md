@@ -1815,3 +1815,27 @@ services are still present, and scheduler-only 56/64 GB one-hour CPU inquiries
 project starts after the competition deadline. The cached, historically
 validated E4B checkpoint contains about **29.79 GiB of FP32 parameters**;
 a 48 GB FP32 CPU feasibility inquiry also projected a late start.
+
+### Same frozen rules on the historically validated E4B model
+
+The cached `google/gemma-4-e4b-it` checkpoint at
+`ee0ef6023621cff504d758262d4e04895a5af4a2` was tested in BF16 on an admitted
+16-core / 32 GB CPU allocation. The prompt text, demonstration content,
+target transcripts, and data partitions were not retuned after the Qwen result.
+
+- **Feasibility:** `prompt-e4b-cpu-smoke-c2d7de3b`, job `25409454`,
+  generated 64 tokens from 2,059 prompt tokens in **52.28 s**, with
+  **131.43 s** load/warm-up and **10.47 GiB** peak RSS. Partial JSON is
+  feasibility evidence only.
+- **Complete pilot:** `prompt-e4b-pilot-0c39284d`, job `25409466`, gave an
+  **exact tie** between base and claim on all 30 decisions and intervals:
+  **0.806218 composite / 0.677029 mIoU**, **30/30 correct**, no grounding
+  failures. One quote differed only by whitespace. The qualified 26B
+  reference is **0.888534** on those same questions; the pilot's 0.8062
+  must not be compared with the full-corpus 0.8007.
+
+The pilot has no low-tIoU examples and only one disjoint example. To cover
+the declared strata without changing rules, complete the unchanged pair over
+all 14 development conversations, using the same two fixed execution shards.
+The tie is not a positive signal, a confirmation result, or permission to
+deploy. There is no new prompt sweep or selection from partial outputs.
