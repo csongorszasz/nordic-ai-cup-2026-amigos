@@ -1,3 +1,66 @@
+# Reproduce
+
+## Best Drone Flyby submission
+
+Use the final selected **`allbg_e25`** model: YOLO11s, epoch 25, trained on
+400 synthetic 4K frames and exported to OpenVINO INT8. This supersedes the older
+baseline and `neighbours` examples; see the final decision in
+[drone-flyby/STATUS.md](drone-flyby/STATUS.md).
+
+> [!IMPORTANT]
+> Obtain the complete `epoch25_int8_openvino_model` directory (XML, BIN and
+> `metadata.yaml`) from the team and place it at the `MODEL` path below.
+> As of September 20, 2026, these final weights are not committed or included in
+> the published model bundles: `drone_weights_sprites_0919.zip` contains the older
+> `neighbours` epoch-15 model, and `training/fetch_data.sh` fetches an older baseline.
+
+**Serve locally.** Use Linux/WSL with Docker, starting at this repository's root
+(not the organisers' template). No GPU is required for this CPU serving image.
+
+```bash
+cd drone-flyby
+MODEL=runs/synth400_11s_allbg_0919-2339/weights/epoch25_int8_openvino_model
+test -s "$MODEL/metadata.yaml" || { echo "Obtain the final allbg_e25 export first." >&2; exit 1; }
+mkdir -p serve_weights
+tar -cf - Dockerfile.cpu requirements.txt src serve_weights | docker build -f Dockerfile.cpu -t drone-repro - &&
+docker run --rm -p 127.0.0.1:9053:9053 \
+  --mount "type=bind,src=$PWD/$MODEL,dst=/app/weights/allbg_e25_openvino_model,readonly" \
+  -e DRONE_MODEL=/app/weights/allbg_e25_openvino_model \
+  -e DRONE_STACK=solution -e DRONE_CAMERA=sweep \
+  -e DRONE_SMALL_IMGSZ=1280 -e V2_TRUNC=1 -e DRONE_MEMORY_LEAD=0.1 \
+  drone-repro
+```
+
+The endpoint is `http://localhost:9053/predict`; `http://localhost:9053/api`
+reports the active stack. For public-VM deployment, use
+[deploy_vm.sh](drone-flyby/deploy_vm.sh) with the same model and settings.
+
+**Replay and score locally.** Stop the server with Ctrl+C, then continue in the
+same terminal. This needs an authenticated GitHub CLI and `unzip`; the recorded
+Copenhagen scene and hand-checked labels are a roughly 790 MB download.
+
+```bash
+mkdir -p .downloads
+gh release download drone-data-denmark -R csongorszasz/nordic-ai-cup-2026-amigos \
+  -p copenhagen_validation_4k.zip -D .downloads --skip-existing &&
+unzip -n .downloads/copenhagen_validation_4k.zip -d . &&
+docker run --rm --mount "type=bind,src=$PWD,dst=/work" -w /work drone-repro \
+  python training/run_policy.py --scene validation_4k --camera sweep --lag 1 \
+  --model "$MODEL" --set DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
+```
+
+This prints offline mAP@0.50 and saves a trace under `datasets/policy_traces/`.
+It does not reproduce live request timing or the organisers' revised labels, so
+do not expect the exact leaderboard score.
+
+**Retraining:** [the IDUN guide](drone-flyby/idun/README.md) covers the synthetic-data
+and YOLO training workflow; [PROVENANCE.md](PROVENANCE.md) lists required assets.
+Exact retraining also requires the original run configuration, dataset seed and
+INT8 calibration inputs from the team. Recorded validation frames and
+`training/copenhagen_train.py` were not used to train the submitted model.
+
+---
+
 # Nordic AI Cup 2026
 
 Welcome to the **Nordic AI Cup**, hosted by [Ambolt AI](https://ambolt.io/). Previously held as the Danish national competition, the event now spans the whole of the Nordics, with a partner organization in each participating country.  
