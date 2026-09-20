@@ -143,3 +143,15 @@ def test_beam_width_is_explicit_and_defaults_to_greedy(monkeypatch):
     assert HFClient(num_beams=2).num_beams == 2
     with pytest.raises(ValueError, match="positive integer"):
         HFClient(num_beams=0)
+
+
+def test_thinking_is_opt_in_and_an_explicit_false_survives():
+    import pytest
+    from answerers.llm_client import HFClient
+
+    assert HFClient(num_beams=1).chat_template_options() == {}
+    assert HFClient(num_beams=1, enable_thinking=False).chat_template_options() == {"enable_thinking": False}
+    assert HFClient(num_beams=1, enable_thinking=True).chat_template_options() == {"enable_thinking": True}
+    for invalid in ("0", 0, 1):
+        with pytest.raises(ValueError, match="boolean"):
+            HFClient(num_beams=1, enable_thinking=invalid)

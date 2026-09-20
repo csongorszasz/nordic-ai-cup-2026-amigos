@@ -49,6 +49,7 @@ class HFClient:
         revision: Optional[str] = None,
         legacy_special_tokens: Optional[bool] = None,
         num_beams: Optional[int] = None,
+        enable_thinking: Optional[bool] = None,
     ) -> None:
         self.model_name = model_name or MODEL_NAME
         self.max_new_tokens = MAX_NEW_TOKENS if max_new_tokens is None else max_new_tokens
@@ -59,6 +60,9 @@ class HFClient:
         self.num_beams = int(os.environ.get("MEDAPP_LLM_NUM_BEAMS", "1")) if num_beams is None else num_beams
         if isinstance(self.num_beams, bool) or not isinstance(self.num_beams, int) or self.num_beams < 1:
             raise ValueError("num_beams must be a positive integer.")
+        if enable_thinking is not None and not isinstance(enable_thinking, bool):
+            raise ValueError("enable_thinking must be a boolean or None.")
+        self.enable_thinking = enable_thinking
         self.legacy_special_tokens = (
             os.environ.get("MEDAPP_LLM_LEGACY_SPECIAL_TOKENS", "0") == "1"
             if legacy_special_tokens is None else legacy_special_tokens
@@ -67,6 +71,10 @@ class HFClient:
         self._tokenizer = None
         self._device = "cpu"
         self._warmed = False
+        self.last_generation = None
+
+    def chat_template_options(self):
+        return {} if self.enable_thinking is None else {"enable_thinking": self.enable_thinking}
 
     def _load(self) -> None:
         if self._model is not None:
@@ -140,6 +148,7 @@ class HFClient:
         self, messages: List[Dict], max_new_tokens: Optional[int] = None,
         *, deadline: Optional[float] = None,
     ) -> str:
+        self.last_generation = None
         if deadline is not None and time.monotonic() >= deadline:
             raise TimeoutError("No generation budget remains.")
         token_limit = self.max_new_tokens if max_new_tokens is None else max_new_tokens
@@ -150,7 +159,8 @@ class HFClient:
 
         self._load()
         prompt = self._tokenizer.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True,
+            **self.chat_template_options(),
         )
         encoded = self._tokenizer(
             prompt, return_tensors="pt", add_special_tokens=self.legacy_special_tokens
@@ -165,6 +175,7 @@ class HFClient:
             if time.monotonic() >= deadline:
                 raise TimeoutError("No generation budget remains after tokenization.")
             criteria.append(Deadline())
+        started = time.monotonic()
         with torch.no_grad():
             output = self._model.generate(
                 **encoded,
@@ -177,4 +188,10 @@ class HFClient:
                 stopping_criteria=criteria,
             )
         new_tokens = output[0][encoded["input_ids"].shape[1]:]
+        self.last_generation = {
+            "prompt_tokens": int(encoded["input_ids"].shape[1]),
+            "completion_tokens": int(new_tokens.numel()),
+            "generation_s": time.monotonic() - started,
+            "hit_token_limit": int(new_tokens.numel()) >= token_limit,
+        }
         return self._tokenizer.decode(new_tokens, skip_special_tokens=True)

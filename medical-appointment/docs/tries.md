@@ -1592,3 +1592,79 @@ seeds 13 and 37. Ties favor the incumbent, and every ineligible/missed-positive
 case remains scored. This is one model-free endpoint attribution check, not
 another aligner or a wider offset sweep. If no reliable held-out gain emerges,
 close this timing family and return to the source/extent problem.
+
+- **Endpoint check outcome:** `endpoint-source-cv-1eace62d`, CPU job
+  `25408045`, scored all 350 non-demo questions under both grouped seeds.
+  Seed 13 scored **0.797665**, delta **-0.000177**, interval
+  **[-0.004739, +0.003898]**. Seed 37 scored **0.796693**, delta
+  **-0.001149**, interval **[-0.005090, +0.002357]**. Both compare with
+  **0.797842** on the same cohort. No reliable gain; close the timing family.
+
+## Prompt-focused round: semantically grounded, not label chasing
+
+The user redirected work to general prompt tuning using low/high tIoU and
+disjoint training cases, while keeping answers and citations semantically
+valid even when a reference area is questionable. No weight training or
+additional acoustic sweep is part of this round.
+
+Read-only review of `medical-dominic-add-ngrok@0137594` found existing trials
+for clinician authority, complete sentences, similar/occurrence demonstrations,
+multiple quotes, explicit reasons and thinking. The complete tested prompt
+arms did not establish a better qualified configuration. Evidence-first v1's
+30-question result is promising but cannot be compared directly with the
+390-question incumbent. The newer v1_reason server is not itself a validation
+result. Do not repeat prior arms unchanged or promote an oracle-selected
+disjoint subset as a whole-corpus improvement.
+
+`prepare_prompt_round.py` freezes development and confirmation conversations,
+excludes every demonstration-source conversation, and reconstructs the exact
+incumbent messages against their recorded hashes. Its semantic-review packet
+shows only development cases, current answers/citations, and the transcript;
+reference spans are hidden. The corpus was used before, so this confirmation
+split is not claimed to be a virgin holdout.
+
+The prompt round permits at most two new candidates before confirmation.
+Keep exact demonstrations, target transcripts and decoding fixed within a
+comparison. A non-Gemma control is in scope on IDUN under unchanged resource
+limits; the already cached Qwen3.8-27B trial needs a genuinely matched transcript
+and prompt comparison rather than cross-run score assumptions.
+
+### Development semantic review and bounded prompt candidates
+
+While the local command runner was unavailable, read-only file tools allowed
+a manual review of development conversations 23, 56, 64, 67, 70 and 92.
+Metric-based case selection was separate from checking the question and
+dialogue; this manual review is not claimed to be blinded.
+
+- **Genuine status mismatch:** the vaccination-completion question in
+  `sample_70_yes_q06` cited an intention although the dialogue later explicitly
+  confirms completion. Its annual-vaccination question cited an interrogative
+  rather than the available confirmation.
+- **Unnecessary extent:** `sample_67_yes_q05` asks about unchanged treatment,
+  but its citation also includes a separate regular-checkup claim. A clause
+  can preserve the requested meaning without copying the entire sentence.
+- **Valid disjoint alternatives:** the patient's removal preference and the
+  appointment plan in sample 23 are stated more than once. Earlier citations
+  genuinely support the broad questions. Do not teach a universal latest- or
+  clinician-occurrence rule merely to imitate the selected reference.
+- **Protect complete requested meaning:** sample 23's high-IoU risk citation
+  retains both scarring and infection. Sample 56's high-IoU result/no-treatment
+  citations preserve negation and status. Sample 92's longer urine-analysis
+  citation includes the requested albumin/creatinine qualifier; trimming that
+  qualifier solely to match the shorter reference would be counterproductive.
+- **Do not imitate label errors:** sample 64's no-sores citation is supported
+  by the examination dialogue despite the unrelated greeting reference (#16).
+
+The bounded candidates are `v1` with consistent evidence-before-answer
+demonstrations, and `v1_claim`, which adds general claim/status/qualifier/scope
+rules. Neither changes the `base` text/default, teaches sample-specific phrases,
+or imposes shortest/latest/full-sentence/always-clinician preferences.
+An explicit optional thinking switch is prepared for the non-Gemma control;
+unset behavior remains unchanged and literal `False` is preserved.
+
+The local runner recovered after the interruption. Targeted prompt, parser,
+answerer, input-freeze, and confirmation-gate checks passed; the default base
+prompt remains unchanged. The next gate is the actual IDUN reconstruction of
+every recorded incumbent prompt hash before comparing model outputs. Neither
+the new prompt nor the alternative model has a measured result in this round.
+No performance gain or serving change is claimed.

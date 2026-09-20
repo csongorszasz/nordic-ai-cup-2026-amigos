@@ -1,6 +1,11 @@
 """Prompt builders for L0/L1/L2 (no model)."""
 
+import json
+
+import pytest
+
 from answerers.llm_prompt import (
+    SYSTEM_PROMPT,
     build_few_shot,
     build_l0_messages,
     build_l1_messages,
@@ -9,6 +14,8 @@ from answerers.llm_prompt import (
     qid_for,
     serialize_transcript,
     render_example,
+    reformat_frozen_demonstrations,
+    schema_hint,
     system_prompt,
 )
 
@@ -98,6 +105,39 @@ def test_final_statement_rule_preserves_the_actual_question_and_schema():
     assert changed[-1] == base[-1]
     assert "SAME queried fact" in system_prompt("final_statement")
     assert "temporal status" in changed[0]["content"]
+
+
+@pytest.mark.parametrize("variant", ["v1", "v1_claim"])
+@pytest.mark.parametrize("answer", [False, True])
+def test_evidence_first_demonstrations_match_schema_without_changing_content(variant, answer):
+    transcript = make_transcript("x")
+    base = render_example(transcript, "Was the dose stated?", answer, "dose" if answer else None, (1.5, 2.9), "base")
+    changed = render_example(transcript, "Was the dose stated?", answer, "dose" if answer else None, (1.5, 2.9), variant)
+    assert json.loads(base[1]) == json.loads(changed[1])
+    assert base[1].index('"answer"') < base[1].index('"evidence_quote"')
+    assert changed[1].index('"evidence_quote"') < changed[1].index('"answer"')
+    assert changed[0].endswith(schema_hint(variant))
+    assert reformat_frozen_demonstrations([base], variant) == [changed]
+    assert reformat_frozen_demonstrations([base], "base") == [base]
+
+
+def test_claim_prompt_is_general_and_leaves_the_control_unchanged():
+    assert system_prompt("base") == SYSTEM_PROMPT
+    prompt = system_prompt("v1_claim")
+    assert "polarity" in prompt and "clinical status" in prompt
+    assert "not an always-clinician preference" in prompt
+    assert "confirmation of completion" in prompt
+    assert "line boundaries are not citation boundaries" in prompt
+    assert "do not cut away relevant qualifiers" in prompt
+    assert "SHORTEST" not in prompt
+    assert not any(value in prompt for value in ("sample_", "vaccine", "skin", "albumin", "100 mg", "0.8007"))
+
+
+def test_frozen_demo_reformatting_rejects_unverified_shapes():
+    with pytest.raises(ValueError, match="incumbent schema"):
+        reformat_frozen_demonstrations([("changed", '{"answers":[]}')], "v1")
+    with pytest.raises(ValueError, match="declared variants"):
+        reformat_frozen_demonstrations([], "v2")
 
 
 def test_build_few_shot_balanced_and_loco_safe():

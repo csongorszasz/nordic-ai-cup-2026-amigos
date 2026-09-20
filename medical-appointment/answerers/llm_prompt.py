@@ -27,7 +27,12 @@ SYSTEM_PROMPT = (
 VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
-    "final_statement",
+    "final_statement", "v1_claim",
+)
+EVIDENCE_FIRST_VARIANTS = ("v1", "v1_claim")
+EVIDENCE_FIRST_RULE = (
+    "Work evidence-first: for each question, find the exact supporting span in "
+    "the transcript first, and only then decide the answer.\n"
 )
 
 SCHEMA_HINT = (
@@ -50,9 +55,28 @@ def system_prompt(variant: str) -> str:
             "dose and qualifiers; do not substitute a later statement with a "
             "different meaning or an unspecific acknowledgement.\n"
         ),
-        "v1": (
-            "Work evidence-first: for each question, find the exact supporting span in "
-            "the transcript first, and only then decide the answer.\n"
+        "v1": EVIDENCE_FIRST_RULE,
+        "v1_claim": EVIDENCE_FIRST_RULE + (
+            "- Match the exact claim, including its subject, quantities, polarity "
+            "and clinical status. A related topic alone does not establish it.\n"
+            "- Distinguish a patient's report or wish from a clinician's finding, "
+            "recommendation or action. Use the speaker and statement appropriate "
+            "to the question, not an always-clinician preference.\n"
+            "- When asked whether something happened, prefer an explicit result "
+            "or confirmation of completion over an earlier plan when that "
+            "confirmation is available. An unanswered question is not a "
+            "confirmation. Check for corrections or changes of decision.\n"
+            "- Cite one occurrence that directly establishes the requested claim. "
+            "Do not prefer an occurrence solely because it is first or last, or "
+            "because its wording resembles the question.\n"
+            "- Keep every requested fact and necessary qualifier, but omit "
+            "additional advice, measurements or other claims not needed for this "
+            "question. A complete meaning can be a clause inside a longer "
+            "sentence; transcript line boundaries are not citation boundaries.\n"
+            "- Surrounding dialogue may resolve a pronoun or short reply without "
+            "being quoted. Include more dialogue when it is needed to establish "
+            "a requested attribute; do not cut away relevant qualifiers merely "
+            "to make the quote shorter.\n"
         ),
         "v2": (
             "- evidence_quote must be the SHORTEST contiguous span that fully "
@@ -79,7 +103,7 @@ def system_prompt(variant: str) -> str:
 
 
 def schema_hint(variant: str) -> str:
-    if variant == "v1":
+    if variant in EVIDENCE_FIRST_VARIANTS:
         return (
             'Return JSON exactly like:\n'
             '{"answers":[{"id":"q01","evidence_quote":"...","answer":"yes"},'
@@ -94,6 +118,56 @@ def schema_hint(variant: str) -> str:
             '"segment_end":null,"evidence_quote":null}]}'
         )
     return SCHEMA_HINT
+
+
+def example_answer_entry(qid, answer, quote, variant):
+    if variant in EVIDENCE_FIRST_VARIANTS:
+        return {
+            "id": qid, "evidence_quote": quote if answer else None,
+            "answer": "yes" if answer else "no",
+        }
+    return {
+        "id": qid, "answer": "yes" if answer else "no",
+        "evidence_quote": quote if answer else None,
+    }
+
+
+def reformat_frozen_demonstrations(examples, variant):
+    """Change only the output-order convention of already verified examples."""
+    if variant == "base":
+        return list(examples)
+    if variant not in EVIDENCE_FIRST_VARIANTS:
+        raise ValueError("Frozen prompt-round demonstrations support only the declared variants.")
+    import json
+
+    changed = []
+    for user, assistant in examples:
+        if not user.endswith(SCHEMA_HINT):
+            raise ValueError("The frozen demonstration does not have the incumbent schema.")
+        payload = json.loads(assistant)
+        if (
+            not isinstance(payload, dict) or set(payload) != {"answers"}
+            or not isinstance(payload["answers"], list) or len(payload["answers"]) != 1
+        ):
+            raise ValueError("Expected one unchanged incumbent demonstration answer.")
+        entry = payload["answers"][0]
+        if (
+            not isinstance(entry, dict) or set(entry) != {"id", "answer", "evidence_quote"}
+            or not isinstance(entry["id"], str) or not entry["id"]
+            or entry["answer"] not in ("yes", "no")
+            or (entry["answer"] == "no" and entry["evidence_quote"] is not None)
+            or (entry["answer"] == "yes" and (
+                not isinstance(entry["evidence_quote"], str) or not entry["evidence_quote"]
+            ))
+        ):
+            raise ValueError("The frozen demonstration answer shape changed.")
+        changed.append((
+            user[:-len(SCHEMA_HINT)] + schema_hint(variant),
+            json.dumps({"answers": [example_answer_entry(
+                entry["id"], entry["answer"] == "yes", entry["evidence_quote"], variant,
+            )]}),
+        ))
+    return changed
 
 
 def qid_for(index: int) -> str:
@@ -360,11 +434,7 @@ def render_example(
     )
     import json
 
-    entry = {
-        "id": "q01",
-        "answer": "yes" if answer else "no",
-        "evidence_quote": quote if answer else None,
-    }
+    entry = example_answer_entry("q01", answer, quote, variant)
     if variant == "scoped":
         selected = [
             word for word in transcript["words"]

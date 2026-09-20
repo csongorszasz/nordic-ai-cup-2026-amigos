@@ -294,6 +294,41 @@ demo-source conversations excluded and two grouped seeds. It refuses stale
 inputs, changed anchors, incomplete comparisons, and modified fallback spans.
 Non-overlapping clocks retain the incumbent; no serving artifact is written.
 
+### Prompt-round preparation
+
+Run `prepare_prompt_round.py --baseline <frozen-run>/results/benchmark
+--qualified <release-run>/results/http_benchmark --demo-root <frozen-run>`
+through the CPU runner. It must reproduce the entire qualified score and
+every recorded baseline prompt hash before producing a round manifest.
+The control deliberately retains its historical large-v3 demonstration text
+while target conversations use the frozen turbo transcripts; silently
+replacing the demonstrations would not be a prompt-only comparison.
+
+The first two seed-13 conversation folds are development; the remaining three
+are confirmation, with all demonstration-source conversations excluded.
+`review_cases.json` and `review_transcripts` expose development inputs only,
+with reference intervals hidden for a separate semantic-support review.
+Freeze the selected prompt after development; do not use confirmation outcomes
+to keep tuning. No official attempt, model inference, or serving modification
+is performed by preparation.
+
+`probe_prompt_round.py` consumes that frozen round via `--round`, with explicit
+`--model`, `--revision`, `--dtype`, `--device`, and `--tokenization`. CPU probes
+are offline quality experiments on IDUN, not serving-latency evidence. Begin
+with `--phase feasibility`; it runs a bounded 64-token completion and records
+real load/generation timing without interpreting a partial answer as a score.
+`--disable-thinking` passes an actual boolean false to compatible model
+templates; leaving it unset preserves the incumbent's template behavior.
+
+The allowed prompt arms are `base`, `v1`, and `v1_claim`. Evidence-first arms
+reorder only the verified examples' schema and answer keys; their questions,
+text, quotes, and source conversations stay fixed. Pilot/development phases
+report both raw and fixed-offset scores against a same-runtime control.
+Confirmation requires a saved selection with the development-summary hash,
+matching model/runtime/pipeline hashes, and an explicit completed semantic
+review. It evaluates only the control and that frozen candidate. This gate
+does not make a repeatedly inspected corpus a virgin holdout.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
