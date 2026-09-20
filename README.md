@@ -1,8 +1,14 @@
-# Reproduce
+# Reproduce submissions
 
-## Best Drone Flyby submission
+## 1. Survival Simulator
 
-Use the final selected **`allbg_e25`** model: YOLO11s, epoch 25, trained on
+Follow the [Survival Simulator reproducibility guide](survival-simulator/README.md#policy-used-for-the-evaluation-submission)
+for the exact submitted policy descriptor, frozen source archive, serving commands,
+and matched-seed local reproduction.
+
+## 2. Drone Flyby
+
+Use the final selected `**allbg_e25**` model: YOLO11s, epoch 25, trained on
 400 synthetic 4K frames and exported to OpenVINO INT8. This supersedes the older
 baseline and `neighbours` examples; see the final decision in
 [drone-flyby/STATUS.md](drone-flyby/STATUS.md).
@@ -49,7 +55,7 @@ docker run --rm --mount "type=bind,src=$PWD,dst=/work" -w /work drone-repro \
   --model "$MODEL" --set DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
 ```
 
-This prints offline mAP@0.50 and saves a trace under `datasets/policy_traces/`.
+This prints offline [mAP@0.50](mailto:mAP@0.50) and saves a trace under `datasets/policy_traces/`.
 It does not reproduce live request timing or the organisers' revised labels, so
 do not expect the exact leaderboard score.
 
@@ -58,6 +64,10 @@ and YOLO training workflow; [PROVENANCE.md](PROVENANCE.md) lists required assets
 Exact retraining also requires the original run configuration, dataset seed and
 INT8 calibration inputs from the team. Recorded validation frames and
 `training/copenhagen_train.py` were not used to train the submitted model.
+
+## 3. Medical Appointment
+
+Reproducibility guide to be added.
 
 ---
 
@@ -70,13 +80,14 @@ Visit the [Nordic AI Cup Website](https://nordicaicup.com)
 The Nordic AI Cup begins on **Thursday, September 17 at 10:00 CEST (UTC+2)** and ends on **Sunday, September 20 at 16:00 CEST (UTC+2)**
 
 
-| Country | Partner |
-| --- | --- |
-| 🇸🇪 Sweden | [Wallenberg AI, Autonomous Systems and Software Program (WASP)](https://wasp-sweden.org/) |
+| Country      | Partner                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| 🇸🇪 Sweden  | [Wallenberg AI, Autonomous Systems and Software Program (WASP)](https://wasp-sweden.org/)                                       |
 | 🇩🇰 Denmark | [Danish Data Science Academy (DDSA)](https://ddsa.dk/) · [Pioneer Centre for Artificial Intelligence](https://www.aicentre.dk/) |
-| 🇫🇮 Finland | [Finnish Center for Artificial Intelligence (FCAI)](https://fcai.fi/) |
-| 🇳🇴 Norway | [Norwegian Artificial Intelligence Research Consortium (NORA)](https://www.nora.ai/) |
-| 🇮🇸 Iceland | [Center for Analysis and Design of Intelligent Agents (CADIA)](https://cadia.is/) |
+| 🇫🇮 Finland | [Finnish Center for Artificial Intelligence (FCAI)](https://fcai.fi/)                                                           |
+| 🇳🇴 Norway  | [Norwegian Artificial Intelligence Research Consortium (NORA)](https://www.nora.ai/)                                            |
+| 🇮🇸 Iceland | [Center for Analysis and Design of Intelligent Agents (CADIA)](https://cadia.is/)                                               |
+
 
 In this repository, you will find all the information needed to participate in the event. Please read this in full before proceeding to the use cases, and please make sure to read the full description of every use case. You will be granted points for every use case that you provide a submission for and a total score will be calculated based on the individual submissions. <br> <br>
 
@@ -97,7 +108,7 @@ Come hang out and talk to other competitors of the event on our Discord server. 
 
 
 
-
+&nbsp;
 
 <h2>Getting started</h2>
 You can check the individual template and find the requirements for the different API endpoints. These have to be exactly the same for the evaluation service to work. Inside each use case's "dtos.py" you can find information on the request and response DTOs, describing the input and output requirements for your API.
@@ -117,26 +128,26 @@ We use a ranking system inspired by the <a href="https://en.wikipedia.org/wiki/L
 
 The full point system is as follows:
 
-1) 25 points
-2) 18 points
-3) 15 points
-4) 12 points
-5) 10 points
-6) 8 points
-7) 6 points
-8) 4 points
-9) 2 points
-10) 1 point
-11) $>$ 1 point
+1. 25 points
+2. 18 points
+3. 15 points
+4. 12 points
+5. 10 points
+6. 8 points
+7. 6 points
+8. 4 points
+9. 2 points
+10. 1 point
+11. $&gt;$ 1 point
 
 Rank 11-end are awarded points in the range from 1 to 0. 
-
 
 The total score is simply the sum of your individual scores.<br>
 
 This format also means that you can lose points / be overtaken by other teams during the week if they submit a model that is better than yours. 
 
 <h3>Deadline for submission</h3>
+
 <!-- The deadline for submission is: MONTH DAY, 2026 at XX.XX TODO: UPDATE! -->
 
 The deadline for submission is: **September 20, 2026 at 16:00 CEST (UTC+2)**
@@ -148,12 +159,11 @@ Upon completion of the contest, the top 5 highest-ranking teams will be asked to
 You can sign up to <a href="https://azure.microsoft.com/da-dk/free/students/">Azure for Students</a>, where you will get free credits that you can use to create a virtual machine. We expect you all to be able to do this, since the competition is only for students. Alternatively, you can also deploy your submission locally (This requires a public IP). <br> 
 The following contains the necessary links for creating a virtual machine: <br> <br>
 
-* <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal">Creating a linux virtual machine</a> <br>
-* <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/linux/use-remote-desktop">Install and configure xrdp to use Remote Desktop</a> <br>
-* <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/windows/nsg-quickstart-portal#create-an-inbound-security-rule">Create an inbound security Rule</a> (This ensures that the API endpoints can be accessed when submitting)<br> <br>
+- <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal">Creating a linux virtual machine</a> <br>
+- <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/linux/use-remote-desktop">Install and configure xrdp to use Remote Desktop</a> <br>
+- <a href="https://docs.microsoft.com/en-us/azure/virtual-machines/windows/nsg-quickstart-portal#create-an-inbound-security-rule">Create an inbound security Rule</a> (This ensures that the API endpoints can be accessed when submitting)<br> <br>
 
 <b>Please make sure to get a server up and running early in the competition, and make sure to get connection to the evaluation service as quickly as possible, so if you have any server related issues, we can catch them early and not close to deadline!</b>
-
 
 <h2>Frequently Asked Questions</h2>
 
