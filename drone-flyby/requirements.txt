@@ -12,3 +12,7 @@ requests>=2.31            # [2.34.2]
 # Only needed by local_evaluator.py. It is the same scorer the competition
 # uses, and the same version range.
 faster-coco-eval>=1.7.2,<2  # [1.7.2]
+
+# Needed by src/core/tracker.py (Hungarian matching) and the test suite.
+scipy>=1.11                 # [1.18.1]
+pytest>=8                   # [9.1.1]

@@ -1,0 +1,11 @@
+Model Information:
+* title:	Rapier Missle Launcher
+* source:	https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b
+* author:	Revada (https://sketchfab.com/revada)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Rapier Missle Launcher" (https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b) by Revada (https://sketchfab.com/revada) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -1,0 +1,11 @@
+Model Information:
+* title:	Yak-9
+* source:	https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684
+* author:	Starpovich (https://sketchfab.com/Starpovich)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Yak-9" (https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684) by Starpovich (https://sketchfab.com/Starpovich) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

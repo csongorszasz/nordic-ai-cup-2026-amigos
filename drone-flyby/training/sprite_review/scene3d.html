@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic Scene 3D</title>
+<style>
+  :root { --bg:#10141a; --panel:#1a2029; --line:#2c3440; --text:#e6e9ee; --muted:#8b95a3; --accent:#5aa9ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif;
+         display:flex; height:100vh; overflow:hidden; }
+  aside { width:260px; flex:none; background:var(--panel); border-right:1px solid var(--line);
+          padding:12px; overflow-y:auto; }
+  aside a { color:var(--accent); text-decoration:none; }
+  h1 { font-size:16px; margin:10px 0 8px; }
+  select, button { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+                   border-radius:6px; padding:6px; font:inherit; margin-bottom:6px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .row { display:flex; gap:6px; } .row button { flex:1; }
+  #list div { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; cursor:pointer; }
+  #list div:hover { background:var(--bg); }
+  #list i { width:10px; height:10px; border-radius:2px; flex:none; }
+  #list span { color:var(--muted); margin-left:auto; font-size:12px; }
+  .help { color:var(--muted); font-size:12px; line-height:1.6; margin-top:12px; }
+  kbd { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; }
+  #synth { width:100%; border-radius:6px; margin-top:6px; cursor:zoom-in; display:block; }
+  main { flex:1; position:relative; min-width:0; }
+  #view { position:absolute; inset:0; }
+  #labels { position:absolute; inset:0; pointer-events:none; }
+  .tag { font:600 12px system-ui, sans-serif; color:#fff; padding:1px 6px; border-radius:4px;
+         white-space:nowrap; transform:translateY(-10px); text-shadow:0 1px 2px #000; }
+  #status { position:absolute; left:12px; top:10px; background:rgba(16,20,26,.8); padding:6px 10px;
+            border-radius:6px; color:var(--muted); font-size:12px; pointer-events:none; }
+  #big { position:fixed; inset:0; background:rgba(0,0,0,.9); display:none; z-index:10; cursor:zoom-out; overflow:auto; }
+  #big img { width:100%; display:block; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<aside>
+  <a href="/viewer3d">&larr; model viewer</a>
+  <h1>Synthetic scene in 3D</h1>
+  <select id="scene"></select>
+  <div class="row"><button id="drone">Drone view</button><button id="top">Overview</button></div>
+  <div class="row"><button id="boxes">Boxes: on</button><button id="tags">Labels: on</button></div>
+  <div id="list"></div>
+  <div class="help">
+    Drag to look. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> fly, <kbd>Space</kbd>/<kbd>Shift</kbd>
+    up/down, scroll changes speed (shown top left). <kbd>V</kbd> drone view, <kbd>B</kbd> boxes,
+    <kbd>L</kbd> labels. Click an object in the list to fly to it.<br>
+    The 2D synthetic frame this scene was built from:
+  </div>
+  <img id="synth" alt="2D synthetic frame">
+</aside>
+<main>
+  <div id="view"></div>
+  <div id="labels"></div>
+  <div id="status">loading…</div>
+</main>
+<div id="big"><img alt=""></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const $ = id => document.getElementById(id);
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+// On a software renderer (the laptop's GPU is flaky, so Chrome may run on SwiftShader) draw at
+// half resolution: the CPU cost is per pixel.
+const gl = renderer.getContext(), info = gl.getExtension('WEBGL_debug_renderer_info');
+const software = /swiftshader|llvmpipe|software/i.test(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '');
+renderer.setPixelRatio(software ? 0.5 : 1);
+view.appendChild(renderer.domElement);
+const labels = new CSS2DRenderer({ element: $('labels') });
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xaec6d8);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 6000);
+camera.rotation.order = 'YXZ';
+const world = new THREE.Group();
+scene.add(world);
+const loader = new GLTFLoader();
+const clock = new THREE.Clock();
+let data = null, marks = [], showBoxes = true, showTags = true, speed = 40;
+let dirty = true;  // redraw only when something changed
+const redraw = () => { dirty = true; };
+
+// One colour per class, spread round the hue circle.
+const CLASSES = ['condor','hangar','helicopter','jammer','jet_plane','large_launcher','large_tower','medium_launcher',
+                 'medium_plane','mine_roller','small_launcher','small_plane','small_tower','spacecraft','ta-ta','tank'];
+const colour = cls => new THREE.Color().setHSL((CLASSES.indexOf(cls) * 0.618) % 1, 0.85, 0.55);
+
+// Photogrammetry and the baked model textures already carry their lighting: show them unlit.
+function unlit(root) {
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const old = Array.isArray(o.material) ? o.material[0] : o.material;
+    o.material = new THREE.MeshBasicMaterial({ map: old.map || null, color: old.map ? 0xffffff : old.color,
+                                               side: THREE.DoubleSide });
+  });
+  return root;
+}
+
+function resize() {
+  const { clientWidth: w, clientHeight: h } = view;
+  renderer.setSize(w, h); labels.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+// Z-up metres (scene3d.py) -> three.js Y-up: (x, y, z) -> (x, z, -y).
+const TO_Y_UP = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+
+function droneView() {
+  const c = data.camera, p = c.pose;
+  const pose = new THREE.Matrix4().set(...p[0], ...p[1], ...p[2], ...p[3]);
+  const m = TO_Y_UP.clone().multiply(pose);
+  const q = new THREE.Quaternion(), s = new THREE.Vector3();
+  m.decompose(camera.position, q, s);
+  camera.quaternion.copy(q);
+  camera.rotation.setFromQuaternion(q, 'YXZ');
+  camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(c.hfov / 2)) * c.height / c.width));
+  camera.updateProjectionMatrix();
+}
+
+function lookFrom(position, target) {
+  camera.position.copy(position);
+  camera.lookAt(target);
+  camera.rotation.setFromQuaternion(camera.quaternion, 'YXZ');
+}
+
+function overview() {
+  camera.fov = 50; camera.updateProjectionMatrix();
+  const c = new THREE.Vector3();
+  marks.forEach(m => c.add(m.centre)); if (marks.length) c.divideScalar(marks.length);
+  lookFrom(c.clone().add(new THREE.Vector3(0, 700, 1)), c);
+}
+
+function flyTo(mark) {
+  const size = Math.max(mark.size, 8);
+  const dir = new THREE.Vector3().subVectors(camera.position, mark.centre).setY(0).normalize();
+  if (!isFinite(dir.x)) dir.set(0, 0, 1);
+  lookFrom(mark.centre.clone().addScaledVector(dir, size * 2.2).add(new THREE.Vector3(0, size * 1.6, 0)), mark.centre);
+}
+
+const cache = new Map();
+async function model(url) {
+  if (!cache.has(url)) cache.set(url, loader.loadAsync(url).then(g => unlit(g.scene)));
+  return (await cache.get(url)).clone();
+}
+
+async function load(name) {
+  world.clear(); marks = []; $('list').innerHTML = '';
+  $('status').textContent = `loading ${name}…`;
+  data = await (await fetch(`/scene3d_data/${name}/scene.json`)).json();
+  $('synth').src = data.synth; $('big').querySelector('img').src = data.synth;
+  droneView();
+
+  // Objects first (small), the city after (~100 MB).
+  const counts = {};
+  await Promise.all(data.objects.map(async (o, i) => {
+    const obj = await model(o.url);
+    obj.scale.setScalar(o.length_m);             // painted models: longest horizontal side = 1
+    obj.rotation.y = THREE.MathUtils.degToRad(o.heading);
+    obj.position.fromArray(o.position);
+    world.add(obj);
+    obj.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(obj).expandByScalar(0.6);
+    const col = colour(o.class);
+    const helper = new THREE.Box3Helper(box, col);
+    helper.material.depthTest = false; helper.renderOrder = 10;   // visible through trees
+    world.add(helper);
+    const tag = document.createElement('div');
+    tag.className = 'tag'; tag.textContent = o.class; tag.style.background = `#${col.getHexString()}cc`;
+    const label = new CSS2DObject(tag);
+    label.position.set((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2);
+    world.add(label);
+    const centre = box.getCenter(new THREE.Vector3());
+    marks.push({ o, helper, label, centre, size: box.getSize(new THREE.Vector3()).length(), i });
+    counts[o.class] = (counts[o.class] || 0) + 1;
+  }));
+  marks.sort((a, b) => a.o.class.localeCompare(b.o.class) || a.i - b.i);
+  for (const m of marks) {
+    const row = document.createElement('div');
+    row.innerHTML = `<i style="background:#${colour(m.o.class).getHexString()}"></i>${m.o.class}<span>${m.o.length_m.toFixed(1)} m</span>`;
+    row.onclick = () => flyTo(m);
+    $('list').appendChild(row);
+  }
+  applyToggles();
+  redraw();
+  $('status').textContent = `${data.objects.length} objects; loading the city mesh…`;
+  const city = await loader.loadAsync(data.city, e => {
+    if (e.total) $('status').textContent = `${data.objects.length} objects; city mesh ${Math.round(100 * e.loaded / e.total)}%`;
+  });
+  world.add(unlit(city.scene));
+  redraw();
+  $('status').textContent = `${data.frame}: ${data.objects.length} objects, speed ${Math.round(speed)} m/s${software ? ' (software rendering)' : ''}`;
+}
+
+function applyToggles() {
+  for (const m of marks) { m.helper.visible = showBoxes; m.label.visible = showTags; }
+  $('boxes').textContent = `Boxes: ${showBoxes ? 'on' : 'off'}`;
+  $('tags').textContent = `Labels: ${showTags ? 'on' : 'off'}`;
+  redraw();
+}
+
+// Fly controls: drag to look, WASD/QE to move.
+const keys = new Set();
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') e.preventDefault();
+  keys.add(e.code);
+  if (e.code === 'KeyV') droneView();
+  if (e.code === 'KeyB') { showBoxes = !showBoxes; applyToggles(); }
+  if (e.code === 'KeyL') { showTags = !showTags; applyToggles(); }
+});
+addEventListener('keyup', e => keys.delete(e.code));
+let drag = null;
+view.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; view.setPointerCapture(e.pointerId); });
+view.addEventListener('pointerup', () => { drag = null; });
+view.addEventListener('pointermove', e => {
+  if (!drag) return;
+  camera.rotation.y -= (e.clientX - drag.x) * 0.004;
+  camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x - (e.clientY - drag.y) * 0.004, -1.55, 1.55);
+  drag = { x: e.clientX, y: e.clientY };
+});
+view.addEventListener('wheel', e => {
+  speed = THREE.MathUtils.clamp(speed * (e.deltaY < 0 ? 1.2 : 1 / 1.2), 2, 800); e.preventDefault();
+  if (data) $('status').textContent = `${data.frame}: ${data.objects.length} objects, speed ${Math.round(speed)} m/s${software ? ' (software rendering)' : ''}`;
+},
+                      { passive: false });
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (!dirty && !keys.size) return;
+  dirty = false;
+  const v = speed * dt;
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  if (keys.has('KeyW')) camera.position.addScaledVector(forward, v);
+  if (keys.has('KeyS')) camera.position.addScaledVector(forward, -v);
+  if (keys.has('KeyD')) camera.position.addScaledVector(right, v);
+  if (keys.has('KeyA')) camera.position.addScaledVector(right, -v);
+  if (keys.has('Space') || keys.has('KeyE')) camera.position.y += v;
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyQ')) camera.position.y -= v;
+  renderer.render(scene, camera);
+  labels.render(scene, camera);
+}
+for (const type of ['pointermove', 'pointerdown', 'wheel', 'keydown', 'click', 'resize']) addEventListener(type, redraw);
+THREE.DefaultLoadingManager.onLoad = redraw;
+
+$('drone').onclick = droneView;
+$('top').onclick = overview;
+$('boxes').onclick = () => { showBoxes = !showBoxes; applyToggles(); };
+$('tags').onclick = () => { showTags = !showTags; applyToggles(); };
+$('synth').onclick = () => { $('big').style.display = 'block'; };
+$('big').onclick = () => { $('big').style.display = 'none'; };
+$('scene').onchange = e => load(e.target.value).catch(fail);
+
+resize();
+animate();
+const names = await (await fetch('/api/scenes')).json();
+$('scene').innerHTML = names.map(n => `<option>${n}</option>`).join('');
+const fail = e => { console.error(e); $('status').textContent = `failed: ${e.message || e}`; $('status').style.color = '#ff7070'; };
+renderer.domElement.addEventListener('webglcontextlost', () => fail('the GPU dropped the WebGL context (out of GPU memory?)'));
+if (names.length) load(names[0]).catch(fail); else $('status').textContent = 'no scenes yet: run training/scene3d.py';
+</script>
+</body>
+</html>

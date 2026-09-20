@@ -1,8 +1,17 @@
 __pycache__/
 .venv/
-/survival-simulator/benchmark-results/**/.*.tmp
-/survival-simulator/benchmark-results/**/.*.pending
-/survival-simulator/benchmark-results/**/.*.png
-/survival-simulator/benchmark-results/**/*.pending.png
+/survival-simulator/benchmark-results/
 /survival-simulator/training-results/
 /survival-simulator/plans/
+
+# Large local artifacts from the drone-flyby weekend: too big for git, regenerable.
+# Held-out synthetic test flights (synth_dataset.py / holdout_scene.py), ~6.5 GB.
+/drone-flyby/data/holdout/
+/drone-flyby/data/woodland/
+# Post-deadline sim-to-real experiment: YOLO crops cut from the recorded Copenhagen
+# flight (training/copenhagen_train.py). Built after our single evaluation attempt
+# was already spent, never served, and not part of the submitted model. Kept out of
+# git so it cannot be mistaken for training data behind the submission.
+/drone-flyby/copenhagen_train/
+/drone-flyby/labelreplay/
+/copenhagen_update_*.zip

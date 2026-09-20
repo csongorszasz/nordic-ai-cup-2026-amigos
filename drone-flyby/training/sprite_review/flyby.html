@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Playback</title>
+<style>
+  :root { --bg:#10141a; --panel:#1a2029; --line:#2c3440; --text:#e6e9ee; --muted:#8b95a3; --accent:#5aa9ff; --cursor:#ffd23f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif;
+         display:flex; height:100vh; overflow:hidden; }
+  aside { width:270px; flex:none; background:var(--panel); border-right:1px solid var(--line);
+          padding:12px; overflow-y:auto; }
+  aside a { color:var(--accent); text-decoration:none; }
+  h1 { font-size:16px; margin:10px 0 8px; }
+  select, button { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+                   border-radius:6px; padding:6px; font:inherit; margin-bottom:6px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  input[type=range] { width:100%; }
+  .row { display:flex; gap:6px; } .row button { flex:1; }
+  .stat { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; padding:2px 0; }
+  .stat b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+  .help { color:var(--muted); font-size:12px; line-height:1.8; margin-top:12px; }
+  kbd { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; }
+  #mini { width:100%; border-radius:6px; margin-top:8px; display:block; background:#000; }
+  main { flex:1; position:relative; min-width:0; display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; }
+  #stage canvas { position:absolute; inset:0; width:100%; height:100%; }
+  #hud { position:absolute; left:12px; top:10px; background:rgba(16,20,26,.8); padding:6px 10px;
+         border-radius:6px; font-size:13px; pointer-events:none; font-variant-numeric:tabular-nums; }
+  #hud .lv { color:var(--cursor); font-weight:700; }
+  #warn { color:#ff9f6b; }
+  #over { cursor:crosshair; }
+  #panel { position:absolute; right:12px; top:12px; width:330px; max-height:calc(100% - 24px); overflow-y:auto;
+           background:rgba(26,32,41,.97); border:1px solid var(--line); border-radius:8px; padding:10px; display:none;
+           z-index:5; }
+  #panel h2 { font-size:13px; margin:6px 0; color:var(--muted); font-weight:600; }
+  #panel .classes { display:flex; flex-wrap:wrap; gap:4px; }
+  #panel .classes button { width:auto; margin:0; padding:3px 7px; font-size:12px; }
+  #panel .classes button.on { border-color:var(--cursor); color:var(--cursor); }
+  #panel .imgs { display:flex; gap:6px; flex-wrap:wrap; }
+  #panel .imgs img { width:150px; height:150px; object-fit:contain; background:#000; border-radius:4px; }
+  #panel .imgs figure { margin:0; font-size:11px; color:var(--muted); text-align:center; }
+  #panel .msg { font-size:12px; color:var(--muted); margin-top:6px; }
+</style>
+</head>
+<body>
+<aside>
+  <a href="/">&larr; sprite review</a> · <a href="/scene3d">3D scene</a>
+  <h1>Flight playback</h1>
+  <select id="source"></select>
+  <select id="drive" title="Who flies the camera"></select>
+  <div id="traceInfo" class="stat" style="display:none"></div>
+  <input type="range" id="scrub" min="0" max="0" value="0">
+  <div class="row"><button id="play">Play</button><button id="slower">&minus;</button><button id="faster">+</button></div>
+  <div class="stat">Frame <b id="sFrame">-</b></div>
+  <div class="stat">Speed <b id="sSpeed">-</b></div>
+  <div class="stat">Level <b id="sLevel">0</b></div>
+  <div class="stat">View centre <b id="sCentre">-</b></div>
+  <div class="stat">Labels <b id="sLabels">-</b></div>
+  <div class="stat" id="predRow" style="display:none">Detections <b id="sPred">-</b></div>
+  <div class="stat" id="confRow" style="display:none">Min confidence <b id="sConf">0.25</b></div>
+  <input type="range" id="conf" min="0" max="0.9" step="0.05" value="0.25" style="display:none">
+  <div id="sNote" class="stat" style="color:#ff9f6b"></div>
+  <canvas id="mini" width="384" height="216"></canvas>
+  <div class="help">
+    The big view is what the drone receives: always 960&times;540.<br>
+    <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move the yellow frame (at level 2: pan)<br>
+    <kbd>Shift</kbd> zoom into the yellow frame<br>
+    <kbd>Space</kbd> up one level (2 &rarr; 1 &rarr; 0, as the evaluator allows)<br>
+    <kbd>P</kbd> play / pause &nbsp;·&nbsp; <kbd>[</kbd> <kbd>]</kbd> speed<br>
+    <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step a frame &nbsp;·&nbsp; <kbd>B</kbd> labels on/off<br>
+    With a policy flying: the yellow frame is the view it asked for next (red: refused).
+    Solid boxes are what it reports for the whole frame (scored), thin dashed ones what the
+    detector saw in this view. <kbd>N</kbd> detections on/off. Any move key takes over the camera.<br>
+    <b>Labelling (Copenhagen):</b> drag on the view to draw a box, pick its class next to the
+    Helsinki examples, <kbd>Enter</kbd> saves. Click a label to select it, <kbd>X</kbd> removes it.
+    Every save rebuilds the labels for the whole flight.
+    Pulsing magenta boxes (and dots on the minimap) are detector tracks nobody has reviewed yet
+    (<kbd>C</kbd> shows/hides them, <kbd>Tab</kbd> opens the next one): click one to accept it (<kbd>Enter</kbd>, fix the class first if needed) or reject it (<kbd>R</kbd>).<br>
+    New runs: <code>python training/run_policy.py --scene helsinki --camera hybrid --model runs/&lt;run&gt;/weights/best.pt</code>
+  </div>
+</aside>
+<main>
+  <div id="stage">
+    <canvas id="view" width="960" height="540"></canvas>
+    <canvas id="over"></canvas>
+    <div id="hud"></div>
+  </div>
+  <div id="panel">
+    <div class="imgs"><figure><img id="pDrawn"><figcaption id="pDrawnCap">your box (Copenhagen)</figcaption></figure></div>
+    <div id="pAlso" class="classes" style="margin-top:6px"></div>
+    <h2>Class</h2>
+    <div class="classes" id="pClasses"></div>
+    <h2 id="pRefTitle">Helsinki labels of this class, framed the same way</h2>
+    <div class="imgs" id="pRefs"></div>
+    <div class="row" style="margin-top:8px"><button id="pSave">Save (Enter)</button><button id="pReject">Not an object (R)</button><button id="pRemove">Remove label (X)</button><button id="pCancel">Cancel (Esc)</button></div>
+    <div class="msg" id="pMsg"></div>
+  </div>
+</main>
+<script>
+const W = 3840, H = 2160;
+const SIZE = { 0: [3840, 2160], 1: [1920, 1080], 2: [960, 540] };  // source region per level
+const FPS = 3;                     // playback at 1x: the evaluator's 3 frames a second
+const SPEEDS = [0.25, 0.5, 1, 2, 4, 8];
+const PAN_PER_SECOND = 0.6;        // of the region being moved, per second a key is held
+
+const $ = id => document.getElementById(id);
+const view = $('view'), vctx = view.getContext('2d');
+const over = $('over'), octx = over.getContext('2d');
+const mini = $('mini'), mctx = mini.getContext('2d');
+vctx.imageSmoothingQuality = 'high';
+
+let sources = [], source = null, frames = [], index = 0;
+let playing = false, speed = 1, showLabels = true;
+let traces = [], trace = null, showPred = true, minConf = 0.25;
+let level = 0;
+const centre = { 1: [1920, 1080], 2: [1920, 1080] };   // centre of the level-1 and level-2 regions
+let cursor = [1920, 1080];                                // yellow frame, one level down
+const images = new Map(), labels = new Map(), held = new Set();
+let dirty = true, lastTick = performance.now(), frameClock = 0;
+
+const colour = name => `hsl(${[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)} 85% 60%)`;
+const clampCentre = (c, [w, h], box = [0, 0, W, H]) => [
+  Math.min(Math.max(c[0], box[0] + w / 2), box[2] - w / 2),
+  Math.min(Math.max(c[1], box[1] + h / 2), box[3] - h / 2)];
+const regionOf = (c, [w, h]) => [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2];
+const step = () => trace && trace.steps[index];
+const current = () => trace ? step().region : level === 0 ? regionOf([1920, 1080], SIZE[0]) : regionOf(centre[level], SIZE[level]);
+// The yellow frame: where manual zooming goes, or the view the policy asked for next.
+function target() {
+  if (!trace) return level < 2 ? { box: regionOf(cursor, SIZE[level + 1]) } : null;
+  const s = step();
+  if (!s.next) return null;
+  const [l, x, y] = s.next;
+  return { box: regionOf([x, y], SIZE[l]), refused: !!s.refused };
+}
+// A move key while a policy flies: continue by hand from the policy's current view.
+function takeOver() {
+  if (!trace) return;
+  const s = step();
+  level = s.level;
+  if (level > 0) centre[level] = s.center.slice();
+  if (level === 2) centre[1] = clampCentre(s.center, SIZE[1]);  // where Q goes back up to
+  cursor = level === 0 ? [1920, 1080] : level === 1 ? clampCentre(s.center, SIZE[2], s.region) : cursor;
+  trace = null;
+  $('drive').value = '';
+  showTraceInfo();
+  dirty = true;
+}
+
+// Hand labelling: boxes drawn here go to /api/flyby/manual (Copenhagen only, test labels).
+let drag = null, drawn = null, drawnClass = null, selected = null, refs = null;
+const candidates = new Map();   // frame -> undecided detector tracks with their box there
+let showCands = true;
+async function frameCandidates(n) {
+  if (!canLabel() || !showCands) return [];
+  if (!candidates.has(n)) {
+    candidates.set(n, []);
+    candidates.set(n, await (await fetch(`/api/flyby/candidates/${n}`)).json());
+    dirty = true;
+  }
+  return candidates.get(n);
+}
+const area = b => (b[2] - b[0]) * (b[3] - b[1]);
+const inside = ([x, y], b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];
+const canLabel = () => source && source.name === 'validation_4k';
+function toSource(e) {
+  const r = over.getBoundingClientRect(), [x1, y1, x2, y2] = current();
+  return [x1 + (e.clientX - r.left) / r.width * (x2 - x1), y1 + (e.clientY - r.top) / r.height * (y2 - y1)];
+}
+const norm = ([a, b], [c, d]) => [Math.max(Math.min(a, c), 0), Math.max(Math.min(b, d), 0), Math.min(Math.max(a, c), W), Math.min(Math.max(b, d), H)];
+over.addEventListener('mousedown', e => {
+  if (!canLabel() || drawn || e.button !== 0) return;
+  drag = { from: toSource(e), to: toSource(e), sx: e.clientX, sy: e.clientY };
+  e.preventDefault();
+});
+addEventListener('mousemove', e => { if (drag) { drag.to = toSource(e); dirty = true; } });
+addEventListener('mouseup', e => {
+  if (!drag) return;
+  const d = drag;
+  drag = null;
+  dirty = true;
+  if (Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) { selectAt(d.from); return; }  // a click
+  const box = norm(d.from, toSource(e));
+  if (box[2] - box[0] < 4 || box[3] - box[1] < 4) return;
+  openPanel(box);
+});
+function selectAt([x, y]) {
+  // A candidate under the click opens it for review; otherwise a label gets selected.
+  const cands = (showCands && candidates.get(frames[index]) || []).filter(c => inside([x, y], c.bbox));
+  if (cands.length) { cands.sort((a, b) => area(a.bbox) - area(b.bbox)); openPanel(cands[0].bbox, cands[0]); return; }
+  const hits = (labels.get(frames[index]) || []).filter(b => inside([x, y], b.bbox));
+  hits.sort((a, b) => area(a.bbox) - area(b.bbox));
+  selected = hits.length ? hits[0].track : null;
+  if (hits.length) openPanel(hits[0].bbox, null, hits[0], hits);
+  dirty = true;
+}
+async function openPanel(box, candidate = null, label = null, overlapping = []) {
+  playing = false;
+  drawn = { frame: frames[index], box: box.map(v => Math.round(v * 10) / 10), candidate, label };
+  selected = label ? label.track : null;
+  $('pReject').style.display = candidate ? '' : 'none';
+  $('pRemove').style.display = label ? '' : 'none';
+  $('pSave').textContent = label ? 'Save class (Enter)' : candidate ? 'Accept (Enter)' : 'Save (Enter)';
+  $('pDrawnCap').textContent = label ? `label ${label.track}` : candidate ? 'detector track (not reviewed)' : 'your box (Copenhagen)';
+  // Other labels under the same click (e.g. two boxes on one object): switch between them.
+  $('pAlso').innerHTML = overlapping.length > 1 ? 'Also here: ' + overlapping.map((o, i) =>
+    `<button data-i="${i}" class="${o === label ? 'on' : ''}" style="color:${colour(o.class)}">${o.class} ${Math.round(o.bbox[2] - o.bbox[0])}×${Math.round(o.bbox[3] - o.bbox[1])}</button>`).join('') : '';
+  for (const b of $('pAlso').querySelectorAll('button')) b.onclick = () => { const o = overlapping[+b.dataset.i]; openPanel(o.bbox, null, o, overlapping); };
+  if (!refs) refs = await (await fetch('/api/flyby/references')).json();
+  $('pDrawn').src = `/review/crop/${drawn.frame}.jpg?box=${drawn.box.join(',')}&side=300`;
+  $('pClasses').innerHTML = refs.classes.map(c => `<button data-c="${c}" style="color:${colour(c)}">${c}</button>`).join('');
+  for (const b of $('pClasses').children) b.onclick = () => pickClass(b.dataset.c);
+  $('pMsg').textContent = `${Math.round(box[2] - box[0])}×${Math.round(box[3] - box[1])} px in the 4K frame · frame ${drawn.frame}` +
+    (label ? ' · a reviewed object, carried through the whole flight' : '') +
+    (candidate ? ` · detector track ${candidate.id}, score ${candidate.score.toFixed(2)}: Enter accepts the whole track` : '');
+  $('panel').style.display = 'block';
+  pickClass(label ? label.class : candidate ? candidate.class : drawnClass || refs.classes[0]);
+  dirty = true;
+}
+function pickClass(c) {
+  drawnClass = c;
+  for (const b of $('pClasses').children) b.classList.toggle('on', b.dataset.c === c);
+  $('pRefTitle').textContent = `Helsinki labels of ${c}, framed the same way`;
+  $('pRefs').innerHTML = refs.references[c].map(f => {
+    const [a, b, cc, d] = refs.sizes[f];
+    return `<figure><img src="/flyby/refcrop/${f}?side=300"><figcaption>${Math.round(cc - a)}×${Math.round(d - b)} px</figcaption></figure>`;
+  }).join('');
+}
+function closePanel() { drawn = null; selected = null; $('panel').style.display = 'none'; dirty = true; }
+async function refreshLabels(reply) {
+  labels.clear();
+  const s = sources.find(s => s.name === 'validation_4k');
+  if (s) s.labelled = true;
+  await frameLabels(frames[index]);
+  $('sNote').textContent = reply.labels || '';
+  dirty = true;
+}
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const out = await r.json();
+  if (!r.ok) throw new Error(out.detail || r.status);
+  return out;
+}
+async function decide(status) {
+  const c = drawn.candidate;
+  await post('/api/review/decide', { id: c.id, status, cls: status === 'accepted' && drawnClass !== c.class ? drawnClass : null,
+                                     best_frame: c.best_frame, best_box: c.best_box });
+  for (const list of candidates.values()) { const i = list.findIndex(x => x.id === c.id); if (i >= 0) list.splice(i, 1); }
+}
+async function rejectDrawn() {
+  if (!drawn || !drawn.candidate) return;
+  try { await decide('rejected'); closePanel(); $("sNote").textContent = "rejected"; }
+  catch (err) { $('pMsg').textContent = 'failed: ' + err.message; }
+}
+async function saveDrawn() {
+  if (!drawn || !drawnClass) return;
+  $('pMsg').textContent = 'saving and rebuilding the labels…';
+  try {
+    let reply;
+    if (drawn.label) {
+      if (drawnClass === drawn.label.class) { closePanel(); return; }
+      reply = await post('/api/flyby/relabel', { track: drawn.label.track, cls: drawnClass });
+    } else if (drawn.candidate) { await decide('accepted'); reply = await post('/api/flyby/rebuild', {}); }
+    else reply = await post('/api/flyby/manual', { frame: drawn.frame, box: drawn.box, cls: drawnClass });
+    closePanel();
+    await refreshLabels(reply);
+  } catch (err) { $('pMsg').textContent = 'failed: ' + err.message; }
+}
+async function removeSelected() {
+  if (!selected || !confirm(`Remove ${selected} from the Copenhagen labels (the whole flight)?`)) return;
+  try {
+    const reply = await post('/api/flyby/remove', { track: selected });
+    closePanel();
+    await refreshLabels(reply);
+  } catch (err) { $('sNote').textContent = 'remove failed: ' + err.message; }
+}
+$('pSave').onclick = saveDrawn;
+$('pReject').onclick = rejectDrawn;
+$('pRemove').onclick = removeSelected;
+$('pCancel').onclick = closePanel;
+
+function image(i) {
+  const n = frames[i];
+  if (n === undefined) return null;
+  const key = `${source.name}/${n}`;
+  if (!images.has(key)) {
+    const img = new Image();
+    img.onload = () => { dirty = true; };
+    img.src = `/flyby/img/${source.name}/${n}.jpg?v=${source.version || 0}`;
+    images.set(key, img);
+    if (images.size > 14) images.delete(images.keys().next().value);  // 4K frames: keep a window
+  }
+  return images.get(key);
+}
+const ready = img => img && img.complete && img.naturalWidth > 0;
+
+async function frameLabels(n) {
+  if (!source.labelled) return null;
+  if (!labels.has(n)) {
+    labels.set(n, []);
+    labels.set(n, await (await fetch(`/api/flyby/labels/${n}?source=${source.name}`)).json());
+    dirty = true;
+  }
+  return labels.get(n);
+}
+
+function setIndex(i) {
+  index = (i + frames.length) % frames.length;
+  $('scrub').value = index;
+  for (let k = 1; k <= 4; k++) image((index + k) % frames.length);  // preload ahead
+  frameLabels(frames[index]);
+  frameCandidates(frames[index]);
+  dirty = true;
+}
+
+function zoomIn() {
+  takeOver();
+  if (level === 2) return;
+  level += 1;
+  centre[level] = cursor.slice();
+  if (level === 1) cursor = clampCentre(centre[1], SIZE[2], current());
+  dirty = true;
+}
+// One level up, as the evaluator allows: Level 2 can only go back to 1, Level 1 to 0.
+function zoomOut() {
+  takeOver();
+  if (level === 0) return;
+  cursor = centre[level].slice();
+  level -= 1;
+  if (level === 0) cursor = clampCentre(centre[1], SIZE[1]);
+  dirty = true;
+}
+
+function move(dt) {
+  let dx = (held.has('d') ? 1 : 0) - (held.has('a') ? 1 : 0);
+  let dy = (held.has('s') ? 1 : 0) - (held.has('w') ? 1 : 0);
+  if (!dx && !dy) return;
+  takeOver();
+  if (level === 2) {  // nothing below: pan the view itself
+    const step = SIZE[2][0] * PAN_PER_SECOND * dt;
+    centre[2] = clampCentre([centre[2][0] + dx * step, centre[2][1] + dy * step], SIZE[2]);
+  } else {
+    const size = SIZE[level + 1], step = SIZE[level][0] * PAN_PER_SECOND * dt;
+    cursor = clampCentre([cursor[0] + dx * step, cursor[1] + dy * step], size, current());
+  }
+  dirty = true;
+}
+
+function fit() {
+  const main = document.querySelector('main').getBoundingClientRect();
+  const scale = Math.min((main.width - 24) / 960, (main.height - 24) / 540);
+  const w = Math.floor(960 * scale), h = Math.floor(540 * scale);
+  const stage = $('stage');
+  stage.style.width = w + 'px'; stage.style.height = h + 'px';
+  over.width = w * devicePixelRatio; over.height = h * devicePixelRatio;
+  dirty = true;
+}
+
+function draw() {
+  const img = image(index);
+  const region = current();
+  const [x1, y1, x2, y2] = region;
+  const scale = 960 / (x2 - x1);                       // source px -> transmitted px
+  if (ready(img)) vctx.drawImage(img, x1, y1, x2 - x1, y2 - y1, 0, 0, 960, 540);
+  else { vctx.fillStyle = '#000'; vctx.fillRect(0, 0, 960, 540); }
+
+  // Overlay at screen resolution: labels and the yellow frame.
+  const k = over.width / 960;
+  const toScreen = ([a, b, c, d]) => [(a - x1) * scale * k, (b - y1) * scale * k, (c - a) * scale * k, (d - b) * scale * k];
+  octx.clearRect(0, 0, over.width, over.height);
+  const boxes = labels.get(frames[index]) || [];
+  const d = devicePixelRatio;
+  octx.font = `${Math.round(11 * d)}px system-ui`;
+  const drawBox = (bbox, col, text, width, dash) => {
+    const [sx, sy, sw, sh] = toScreen(bbox);
+    if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) return;
+    octx.strokeStyle = octx.fillStyle = col;
+    octx.lineWidth = width * d;
+    octx.setLineDash(dash ? [3 * d, 3 * d] : []);
+    octx.strokeRect(sx, sy, sw, sh);
+    if (text) octx.fillText(text, sx, sy - 3 * d);
+  };
+  if (showLabels) for (const b of boxes) drawBox(b.bbox, b.track === selected ? '#fff' : colour(b.class),
+                                                 trace && showPred ? '' : b.class, b.track === selected ? 3 : 1, false);
+  // Unreviewed detector tracks: magenta, pulsing, on a dark halo, with a ring around small ones,
+  // so they stand out from the labels at any zoom.
+  const pending = canLabel() && showCands && !trace ? (candidates.get(frames[index]) || []).filter(c => !drawn || drawn.candidate !== c) : [];
+  const pulse = 0.55 + 0.45 * Math.abs(Math.sin(performance.now() / 350));
+  for (const c of pending) {
+    const [sx, sy, sw, sh] = toScreen(c.bbox);
+    if (sx + sw < 0 || sy + sh < 0 || sx > over.width || sy > over.height) continue;
+    octx.setLineDash([]);
+    octx.lineWidth = 6 * d; octx.strokeStyle = 'rgba(0,0,0,0.6)'; octx.strokeRect(sx, sy, sw, sh);
+    octx.lineWidth = 3 * d; octx.strokeStyle = `rgba(255,43,214,${pulse})`; octx.strokeRect(sx, sy, sw, sh);
+    const r = Math.max(Math.hypot(sw, sh) * 0.75, 28 * d);
+    octx.beginPath(); octx.arc(sx + sw / 2, sy + sh / 2, r, 0, 2 * Math.PI);
+    octx.lineWidth = 2 * d; octx.strokeStyle = `rgba(255,43,214,${pulse * 0.8})`; octx.stroke();
+    const text = `? ${c.class}`;
+    octx.font = `bold ${Math.round(12 * d)}px system-ui`;
+    const tw = octx.measureText(text).width;
+    octx.fillStyle = 'rgba(0,0,0,0.75)'; octx.fillRect(sx, sy - 17 * d, tw + 8 * d, 15 * d);
+    octx.fillStyle = '#ff2bd6'; octx.fillText(text, sx + 4 * d, sy - 5 * d);
+    octx.font = `${Math.round(11 * d)}px system-ui`;
+  }
+  if (pending.length) dirty = true;  // keep the pulse going
+  if (drag) drawBox(norm(drag.from, drag.to), '#ffd23f', '', 2, true);
+  if (drawn && drawn.frame === frames[index]) drawBox(drawn.box, '#ffd23f', drawnClass || '', 2, false);
+  const s = step();
+  const reported = s && showPred ? s.reported.filter(p => p.conf >= minConf) : [];
+  if (s && showPred) {
+    for (const p of s.seen.filter(p => p.conf >= minConf)) drawBox(p.bbox, colour(p.class), '', 1, true);
+    for (const p of reported) drawBox(p.bbox, colour(p.class), `${p.class} ${p.conf.toFixed(2)}`, 2.5, false);
+  }
+  const t = target();
+  if (t) {
+    const [sx, sy, sw, sh] = toScreen(t.box);
+    octx.strokeStyle = t.refused ? '#ff4d4d' : getComputedStyle(document.body).getPropertyValue('--cursor');
+    octx.lineWidth = 2 * d;
+    octx.setLineDash([8 * d, 5 * d]);
+    octx.strokeRect(sx, sy, sw, sh);
+    octx.setLineDash([]);
+  }
+
+  // Minimap: the whole frame, the current region and the yellow frame.
+  if (ready(img)) mctx.drawImage(img, 0, 0, W, H, 0, 0, mini.width, mini.height);
+  const m = mini.width / W;
+  mctx.lineWidth = 1.5;
+  mctx.strokeStyle = '#fff';
+  const lv = trace ? s.level : level;
+  if (lv > 0) mctx.strokeRect(x1 * m, y1 * m, (x2 - x1) * m, (y2 - y1) * m);
+  for (const c of pending) {  // where the unreviewed tracks are in the whole frame
+    const [a, b, cc, e] = c.bbox;
+    mctx.fillStyle = '#ff2bd6';
+    mctx.beginPath(); mctx.arc((a + cc) / 2 * m, (b + e) / 2 * m, 4, 0, 2 * Math.PI); mctx.fill();
+  }
+  if (t) {
+    const [a, b, c, e] = t.box;
+    mctx.strokeStyle = t.refused ? '#ff4d4d' : getComputedStyle(document.body).getPropertyValue('--cursor');
+    mctx.strokeRect(a * m, b * m, (c - a) * m, (e - b) * m);
+  }
+
+  const visible = boxes.filter(b => b.bbox[2] > x1 && b.bbox[0] < x2 && b.bbox[3] > y1 && b.bbox[1] < y2).length;
+  const c = [(x1 + x2) / 2, (y1 + y2) / 2];
+  $('sFrame').textContent = `${frames[index]} (${index + 1}/${frames.length})`;
+  $('sSpeed').textContent = `${speed}x · ${playing ? 'playing' : 'paused'}`;
+  $('sLevel').textContent = `${lv} · ${SIZE[lv].join('×')} source`;
+  $('sPred').textContent = s ? `${s.seen.length} in view · ${reported.length} reported · ${s.ms} ms` : '';
+  $('sNote').textContent = s && s.refused ? `camera move refused: ${s.refused}` : '';
+  $('sCentre').textContent = `${Math.round(c[0])}, ${Math.round(c[1])}`;
+  $('sLabels').textContent = source.labelled ? `${visible} in view / ${boxes.length}` : 'none (unlabelled)';
+  $('play').textContent = playing ? 'Pause' : 'Play';
+  $('hud').innerHTML = (trace ? `${trace.camera} · ` : '') + `<span class="lv">L${lv}</span> · frame ${frames[index]} · ${speed}x ${playing ? '▶' : '❚❚'}` +
+    (lv === 0 || lv === 2 ? '' : ` · shrunk ${SIZE[lv][0] / 960}×`) + (lv === 0 ? ' · shrunk 4×' : '') + (ready(img) ? '' : ' · <span id="warn">loading…</span>') +
+    (pending.length ? ` · <span style="color:#ff2bd6;font-weight:bold">${pending.length} to review (Tab)</span>` : '');
+}
+
+function tick(now) {
+  const dt = Math.min((now - lastTick) / 1000, 0.1);
+  lastTick = now;
+  move(dt);
+  if (playing) {
+    frameClock += dt * FPS * speed;
+    // Only advance onto a frame that has arrived, so playback never flashes black.
+    while (frameClock >= 1 && ready(image((index + 1) % frames.length))) { frameClock -= 1; setIndex(index + 1); }
+    frameClock = Math.min(frameClock, 1);
+  }
+  if (dirty) { dirty = false; draw(); }
+  requestAnimationFrame(tick);
+}
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  if (drawn) {  // the class panel is open: only its keys
+    if (e.key === 'Enter') saveDrawn();
+    else if (e.key.toLowerCase() === 'r') rejectDrawn();
+    else if (e.key.toLowerCase() === 'x' && drawn.label) removeSelected();
+    else if (e.key === 'Escape') closePanel();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'x' && selected) { removeSelected(); return; }
+  if (e.key === 'Escape' && selected) { selected = null; $('sNote').textContent = ''; dirty = true; return; }
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if ('wasd'.includes(key) && key.length === 1) { held.add(key); e.preventDefault(); return; }
+  if (e.repeat && key !== 'ArrowLeft' && key !== 'ArrowRight') return;
+  if (key === 'Shift') zoomIn();
+  else if (key === ' ') { zoomOut(); e.preventDefault(); }
+  else if (key === 'p') { playing = !playing; dirty = true; }
+  else if (key === '[') { speed = SPEEDS[Math.max(SPEEDS.indexOf(speed) - 1, 0)]; dirty = true; }
+  else if (key === ']') { speed = SPEEDS[Math.min(SPEEDS.indexOf(speed) + 1, SPEEDS.length - 1)]; dirty = true; }
+  else if (key === 'ArrowRight') setIndex(index + 1);
+  else if (key === 'ArrowLeft') setIndex(index - 1);
+  else if (key === 'b') { showLabels = !showLabels; dirty = true; }
+  else if (key === 'n') { showPred = !showPred; dirty = true; }
+  else if (key === 'c') { showCands = !showCands; frameCandidates(frames[index]); dirty = true; }
+  else if (key === 'Tab' && canLabel()) {  // open the next unreviewed track of this frame
+    e.preventDefault();
+    const next = (candidates.get(frames[index]) || [])[0];
+    if (next) openPanel(next.bbox, next);
+  }
+});
+addEventListener('keyup', e => held.delete(e.key.toLowerCase()));
+addEventListener('blur', () => held.clear());
+addEventListener('resize', fit);
+
+$('play').onclick = () => { playing = !playing; dirty = true; };
+$('slower').onclick = () => { speed = SPEEDS[Math.max(SPEEDS.indexOf(speed) - 1, 0)]; dirty = true; };
+$('faster').onclick = () => { speed = SPEEDS[Math.min(SPEEDS.indexOf(speed) + 1, SPEEDS.length - 1)]; dirty = true; };
+$('scrub').oninput = e => setIndex(+e.target.value);
+$('source').onchange = e => pick(e.target.value);
+$('drive').onchange = e => fly(e.target.value);
+$('conf').oninput = e => { minConf = +e.target.value; $('sConf').textContent = minConf.toFixed(2); dirty = true; };
+for (const el of document.querySelectorAll('button, input')) el.addEventListener('keydown', e => e.key === ' ' && e.preventDefault());
+
+function pick(name) {
+  source = sources.find(s => s.name === name);
+  frames = source.frames;
+  images.clear(); labels.clear(); candidates.clear();
+  $('scrub').max = frames.length - 1;
+  level = 0; cursor = [1920, 1080]; trace = null;
+  const mine = traces.filter(t => t.scene === name);
+  $('drive').innerHTML = '<option value="">You fly the camera (manual)</option>' + mine.map(t =>
+    `<option value="${t.name}">${t.camera} · ${t.model.split('/').slice(-3, -2)[0] || t.model}` +
+    `${t.map50 !== undefined ? ' · mAP ' + t.map50.toFixed(3) : ''} · ${t.created.slice(5, 16).replace('T', ' ')}</option>`).join('');
+  showTraceInfo();
+  setIndex(0);
+}
+
+async function fly(name) {
+  if (!name) { takeOver(); trace = null; showTraceInfo(); dirty = true; return; }
+  trace = await (await fetch(`/api/flyby/trace/${encodeURIComponent(name)}`)).json();
+  // Steps follow the frames the policy was sent; line them up with the source's frames.
+  const byFrame = new Map(trace.steps.map(s => [s.frame, s]));
+  trace.steps = frames.map(f => byFrame.get(f) || { frame: f, level: 0, center: [1920, 1080], region: [0, 0, W, H],
+                                                     seen: [], reported: [], next: null, refused: null, ms: 0 });
+  showTraceInfo();
+  dirty = true;
+}
+
+function showTraceInfo() {
+  const on = !!trace;
+  for (const id of ['predRow', 'confRow', 'conf']) $(id).style.display = on ? '' : 'none';
+  $('traceInfo').style.display = on ? '' : 'none';
+  if (on) $('traceInfo').innerHTML = `Levels L0/L1/L2 <b>${[0, 1, 2].map(l => trace.levels[l] || 0).join(' / ')}` +
+    `${trace.refused ? ' · ' + trace.refused + ' refused' : ''}</b>`;
+}
+
+(async () => {
+  sources = await (await fetch('/api/flyby/sources')).json();
+  traces = await (await fetch('/api/flyby/traces')).json();
+  $('source').innerHTML = sources.map(s => `<option value="${s.name}">${s.label} · ${s.frames.length}</option>`).join('');
+  fit();
+  // #trace=<name> opens a policy run straight away.
+  const wanted = new URLSearchParams(location.hash.slice(1)).get('trace');
+  const run = traces.find(t => t.name === wanted);
+  pick(run ? run.scene : sources[0].name);
+  $('source').value = source.name;
+  if (run) { $('drive').value = run.name; await fly(run.name); }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

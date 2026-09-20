@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sprite Review</title>
+<style>
+  :root { --bg:#16181c; --panel:#1f2228; --line:#2e323a; --text:#e6e6e6; --muted:#8a8f99;
+          --ok:#3fb950; --bad:#f85149; --manual:#58a6ff; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px system-ui, sans-serif; background:var(--bg); color:var(--text); display:flex; height:100vh; overflow:hidden; }
+  aside { width:230px; border-right:1px solid var(--line); overflow:auto; padding:10px; flex:none; }
+  aside h1 { font-size:15px; margin:4px 0 10px; }
+  .cls { display:flex; justify-content:space-between; padding:6px 8px; border-radius:6px; cursor:pointer; }
+  .cls:hover { background:var(--panel); } .cls.active { background:#2b3140; }
+  .cls small { color:var(--muted); }
+  .legend { margin-top:14px; color:var(--muted); font-size:12px; line-height:1.7; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:middle; }
+  main { flex:1; display:flex; flex-direction:column; min-width:0; }
+  .toolbar { padding:8px 12px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; }
+  .grid { flex:1; overflow:auto; padding:12px; display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr)); gap:10px; align-content:start; }
+  .tile { background:var(--panel); border:3px solid #444; border-radius:8px; padding:4px; cursor:pointer; }
+  .tile.sel { outline:2px solid white; }
+  .tile.accepted { border-color:var(--ok); } .tile.rejected { border-color:var(--bad); opacity:.55; }
+  .tile.manual { border-color:var(--manual); } .tile.flag { border-color:var(--warn); }
+  .tile canvas { width:100%; aspect-ratio:1; image-rendering:pixelated; display:block;
+    background:repeating-conic-gradient(#555 0 25%, #777 0 50%) 0 0/12px 12px; border-radius:4px; }
+  .tile div { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .editor { width:680px; border-left:1px solid var(--line); padding:12px; overflow:auto; flex:none; display:flex; flex-direction:column; gap:10px; }
+  .editor canvas { image-rendering:pixelated; background:#000; border-radius:6px; cursor:crosshair; align-self:center; }
+  .info { color:var(--muted); }
+  .btns { display:flex; flex-wrap:wrap; gap:6px; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button:hover { border-color:#666; } .mode { color:#ffd33d; font-size:12px; margin-left:6px; } kbd { font-size:11px; color:var(--muted); margin-left:4px; }
+  .help { color:var(--muted); font-size:12px; line-height:1.6; }
+  .status { font-weight:600; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Sprite review</h1>
+  <div id="classes"></div>
+  <div id="compare" class="legend" hidden>
+    <div style="color:var(--text); margin-bottom:4px">Model renders vs real</div>
+    <div id="compare-links"></div>
+  </div>
+  <div class="legend">
+    <a href="/viewer3d" class="cls" style="color:var(--manual); text-decoration:none">3D model viewer</a>
+  </div>
+  <div class="legend">
+    <div><span class="dot" style="background:#444"></span>not reviewed</div>
+    <div><span class="dot" style="background:var(--warn)"></span>flagged (CUT / SUSPECT)</div>
+    <div><span class="dot" style="background:var(--ok)"></span>accepted</div>
+    <div><span class="dot" style="background:var(--manual)"></span>redrawn by hand</div>
+    <div><span class="dot" style="background:var(--bad)"></span>rejected</div>
+  </div>
+</aside>
+<main>
+  <div class="toolbar">
+    <label><input type="checkbox" id="onlyOpen"> only not reviewed</label>
+    <span class="info" id="summary"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<section class="editor">
+  <div><span class="status" id="title">Pick a sprite</span> <span class="info" id="meta"></span></div>
+  <canvas id="canvas" width="640" height="640"></canvas>
+  <div class="btns">
+    <button id="bAccept">Accept<kbd>A</kbd></button>
+    <button id="bReject">Reject<kbd>R</kbd></button>
+    <button id="bDraw">Draw outline<kbd>D</kbd></button>
+    <button id="bSavePoly">Save outline<kbd>Enter</kbd></button>
+    <button id="bAddPoly">Add to mask<kbd>+</kbd></button><span id="mode" class="mode"></span>
+    <button id="bCutPoly">Cut from mask<kbd>-</kbd></button>
+    <button id="bUndo">Undo point<kbd>⌫</kbd></button>
+    <button id="bReset">Reset to auto<kbd>U</kbd></button>
+    <button id="bMask">Toggle mask<kbd>M</kbd></button>
+    <button id="bPrev">◀<kbd>←</kbd></button>
+    <button id="bNext">▶<kbd>→</kbd></button>
+  </div>
+  <div class="help">
+    Magenta = current cut-out. Yellow dashed = ground-truth box.<br>
+    <b>Draw outline</b>: click around the object, then Enter (or click the first point) to save. Esc cancels.<br>
+    Accept / Reject jump to the next sprite.
+  </div>
+</section>
+<script>
+let items = [], cls = null, current = null, showMask = true, drawing = false, points = [], drawMode = 'replace';
+const $ = id => document.getElementById(id);
+const canvas = $('canvas'), ctx = canvas.getContext('2d');
+let cropImg = null, maskCanvas = null, scale = 1;
+
+function isFlag(it) { return it.truncated || it.suspect; }
+function tileClass(it) { return it.status !== 'auto' ? it.status : (isFlag(it) ? 'flag' : ''); }
+function visible() {
+  return items.filter(i => i.class === cls && (!$('onlyOpen').checked || i.status === 'auto'));
+}
+
+async function load() {
+  items = await (await fetch('/api/items')).json();
+  const classes = [...new Set(items.map(i => i.class))].sort();
+  if (!cls) cls = classes[0];
+  $('classes').innerHTML = classes.map(c => {
+    const all = items.filter(i => i.class === c), done = all.filter(i => i.status !== 'auto').length;
+    const flags = all.filter(i => i.status === 'auto' && isFlag(i)).length;
+    return `<div class="cls ${c === cls ? 'active' : ''}" data-c="${c}"><span>${c}</span><small>${done}/${all.length}${flags ? ' ⚑' + flags : ''}</small></div>`;
+  }).join('');
+  document.querySelectorAll('.cls').forEach(el => el.onclick = () => { cls = el.dataset.c; current = null; load(); });
+  const total = items.length, done = items.filter(i => i.status !== 'auto').length;
+  $('summary').textContent = `${done} / ${total} reviewed · ${items.filter(i => i.status === 'rejected').length} rejected · ${items.filter(i => i.status === 'manual').length} redrawn`;
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = $('grid'); grid.innerHTML = '';
+  for (const it of visible()) {
+    const t = document.createElement('div');
+    t.className = `tile ${tileClass(it)} ${current && current.file === it.file ? 'sel' : ''}`;
+    const c = document.createElement('canvas'); c.width = c.height = 96;
+    const img = new Image(); img.src = `/img/sprite/${it.file}?t=${Date.now()}`;
+    img.onload = () => { const g = c.getContext('2d'), s = 96 / Math.max(img.width, img.height);
+      g.imageSmoothingEnabled = false; g.drawImage(img, (96 - img.width * s) / 2, (96 - img.height * s) / 2, img.width * s, img.height * s); };
+    const [x1, y1, x2, y2] = it.bbox;
+    const lab = document.createElement('div');
+    lab.textContent = `f${it.frame} · ${x2 - x1}×${y2 - y1}${it.truncated ? ' · CUT' : ''}${it.suspect ? ' · SUSPECT' : ''}`;
+    t.append(c, lab); t.onclick = () => open(it); grid.append(t);
+  }
+}
+
+async function open(it) {
+  current = it; drawing = false; points = [];
+  const [x1, y1, x2, y2] = it.bbox;
+  $('title').textContent = `${it.class} · frame ${it.frame}`;
+  $('meta').textContent = `${x2 - x1}×${y2 - y1}px · fill ${it.fill} · ${it.status}${it.truncated ? ' · CUT' : ''}${it.suspect ? ' · SUSPECT' : ''}`;
+  cropImg = await loadImg(`/img/crop/${it.file}`);
+  const sprite = await loadImg(`/img/sprite/${it.file}?t=${Date.now()}`);
+  // Magenta overlay built from the sprite's alpha channel.
+  maskCanvas = document.createElement('canvas'); maskCanvas.width = sprite.width; maskCanvas.height = sprite.height;
+  const m = maskCanvas.getContext('2d'); m.drawImage(sprite, 0, 0);
+  const d = m.getImageData(0, 0, sprite.width, sprite.height);
+  for (let i = 0; i < d.data.length; i += 4) { const a = d.data[i + 3]; d.data[i] = 255; d.data[i + 1] = 0; d.data[i + 2] = 255; d.data[i + 3] = a ? 110 : 0; }
+  m.putImageData(d, 0, 0);
+  const [cx1, cy1, cx2, cy2] = it.crop;
+  scale = Math.min(640 / (cx2 - cx1), 640 / (cy2 - cy1));
+  canvas.width = Math.round((cx2 - cx1) * scale); canvas.height = Math.round((cy2 - cy1) * scale);
+  draw(); renderGrid();
+}
+
+function loadImg(src) { return new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = src; }); }
+const toCanvas = (x, y) => [(x - current.crop[0]) * scale, (y - current.crop[1]) * scale];
+
+function draw() {
+  if (!current) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
+  const [x1, y1, x2, y2] = current.bbox;
+  if (showMask && (!drawing || drawMode !== 'replace')) {
+    const [px, py] = toCanvas(x1, y1);
+    ctx.drawImage(maskCanvas, px, py, (x2 - x1) * scale, (y2 - y1) * scale);
+  }
+  ctx.setLineDash([6, 4]); ctx.strokeStyle = '#ffd33d'; ctx.lineWidth = 1;
+  const [bx, by] = toCanvas(x1, y1); ctx.strokeRect(bx, by, (x2 - x1) * scale, (y2 - y1) * scale);
+  ctx.setLineDash([]);
+  if (points.length) {
+    const colour = { replace: '#00ff88', add: '#00ff88', subtract: '#ff4d4d' }[drawMode];   // green adds, red cuts
+    ctx.strokeStyle = colour; ctx.fillStyle = colour; ctx.lineWidth = 2; ctx.beginPath();
+    points.forEach(([x, y], i) => { const [cx, cy] = toCanvas(x, y); i ? ctx.lineTo(cx, cy) : ctx.moveTo(cx, cy); });
+    ctx.stroke();
+    points.forEach(([x, y]) => { const [cx, cy] = toCanvas(x, y); ctx.fillRect(cx - 3, cy - 3, 6, 6); });
+  }
+}
+
+canvas.addEventListener('click', ev => {
+  if (!current || !drawing) return;
+  const r = canvas.getBoundingClientRect();
+  const x = current.crop[0] + (ev.clientX - r.left) * (canvas.width / r.width) / scale;
+  const y = current.crop[1] + (ev.clientY - r.top) * (canvas.height / r.height) / scale;
+  if (points.length >= 3) {
+    const [fx, fy] = toCanvas(...points[0]), [cx, cy] = toCanvas(x, y);
+    if (Math.hypot(fx - cx, fy - cy) < 10) return savePolygon();
+  }
+  points.push([+x.toFixed(2), +y.toFixed(2)]); draw();
+});
+
+async function save(status, polygon = null, mode = 'replace') {
+  if (!current) return;
+  const res = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file: current.file, status, polygon, mode }) });
+  if (!res.ok) { alert(await res.text()); return; }
+  $('mode').textContent = '';
+  const file = current.file; await load();
+  const it = items.find(i => i.file === file);
+  if (status === 'accepted' || status === 'rejected') step(1, it); else open(it);
+}
+function savePolygon(mode = drawMode) { if (points.length < 3) return; drawing = false; save('manual', points, mode); }
+function startDraw(mode) {   // each button draws in its own mode: replace the mask, add to it or cut from it
+  if (!current) return;
+  drawMode = mode; drawing = true; points = [];
+  $('mode').textContent = { replace: 'drawing a new outline', add: 'drawing a region to ADD', subtract: 'drawing a region to CUT' }[mode];
+  draw();
+}
+function step(dir, from = current) {
+  const list = items.filter(i => i.class === cls);
+  const idx = list.findIndex(i => i.file === (from && from.file));
+  const next = list[idx + dir]; if (next) open(next); else { current = from; renderGrid(); }
+}
+
+$('bAccept').onclick = () => save('accepted');
+$('bReject').onclick = () => save('rejected');
+$('bDraw').onclick = () => startDraw('replace');
+$('bSavePoly').onclick = () => (drawing ? savePolygon() : startDraw('replace'));
+$('bAddPoly').onclick = () => (drawing && drawMode === 'add' ? savePolygon() : startDraw('add'));
+$('bCutPoly').onclick = () => (drawing && drawMode === 'subtract' ? savePolygon() : startDraw('subtract'));
+$('bUndo').onclick = () => { points.pop(); draw(); };
+$('bReset').onclick = () => save('auto');
+$('bMask').onclick = () => { showMask = !showMask; draw(); };
+$('bPrev').onclick = () => step(-1);
+$('bNext').onclick = () => step(1);
+$('onlyOpen').onchange = renderGrid;
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  const k = ev.key;
+  if (k === 'a' || k === 'A') save('accepted');
+  else if (k === 'r' || k === 'R') save('rejected');
+  else if (k === 'd' || k === 'D') $('bDraw').onclick();
+  else if (k === 'Enter') savePolygon();
+  else if (k === '+') (drawing && drawMode === 'add' ? savePolygon() : startDraw('add'));
+  else if (k === '-') (drawing && drawMode === 'subtract' ? savePolygon() : startDraw('subtract'));
+  else if (k === 'Backspace') { ev.preventDefault(); $('bUndo').onclick(); }
+  else if (k === 'Escape') { drawing = false; points = []; $('mode').textContent = ''; draw(); }
+  else if (k === 'u' || k === 'U') save('auto');
+  else if (k === 'm' || k === 'M') $('bMask').onclick();
+  else if (k === 'ArrowRight') step(1);
+  else if (k === 'ArrowLeft') step(-1);
+});
+load();
+
+// Links to real-vs-render pages written by training/compare_render.py.
+fetch('/api/compare').then(r => r.json()).then(classes => {
+  if (!classes.length) return;
+  const box = document.getElementById('compare-links');
+  for (const c of classes) {
+    const a = document.createElement('a');
+    a.href = `/compare/${c}_compare/`; a.textContent = c; a.className = 'cls';
+    a.style.color = 'var(--manual)'; a.style.textDecoration = 'none';
+    box.appendChild(a);
+  }
+  document.getElementById('compare').hidden = false;
+});
+</script>
+</body>
+</html>

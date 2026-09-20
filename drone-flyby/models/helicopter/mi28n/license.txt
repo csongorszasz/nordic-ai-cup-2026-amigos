@@ -1,0 +1,11 @@
+Model Information:
+* title:	Mi-28N Havoc
+* source:	https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68
+* author:	Rukh3D (https://sketchfab.com/rukh3d)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Mi-28N Havoc" (https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68) by Rukh3D (https://sketchfab.com/rukh3d) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
