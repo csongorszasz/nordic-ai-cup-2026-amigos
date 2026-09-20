@@ -67,7 +67,23 @@ INT8 calibration inputs from the team. Recorded validation frames and
 
 ## 3. Medical Appointment
 
-Reproducibility guide to be added.
+Follow the [Medical Appointment reproducibility guide](medical-appointment/docs/reproduce-eval.md)
+for the exact submitted build, pinned model revision, environment setup, serving,
+and local scoring commands. Run its commands from `medical-appointment`.
+
+The submitted configuration uses **Gemma-4 26B-A4B**
+(`google/gemma-4-26b-a4b-it`) over **Whisper `large-v3-turbo` INT8** transcripts,
+with the base prompt, three LOCO-safe demonstrations, and
+`calibration/span_offset_base.json` (+0.2 s to evidence starts; ends unchanged).
+The recorded scores are **0.779 official evaluation**, **0.770 validation**,
+and **0.8007 local HTTP acceptance**.
+
+> [!IMPORTANT]
+> Use one exclusive **80 GB GPU** (the submitted build used approximately 65 GB
+> VRAM). Cache the pinned Gemma weights, turbo ASR model, and all 39 training
+> transcripts before starting offline inference.
+> `idun/setup_env.sh` alone does not prepare all of these prerequisites; follow
+> the full runbook rather than the baseline quickstart.
 
 ---
 
