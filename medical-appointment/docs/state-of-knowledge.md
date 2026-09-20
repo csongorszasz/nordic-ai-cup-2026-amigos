@@ -1,9 +1,10 @@
 # State of knowledge
 
-Consolidated findings for the medical-appointment case, updated with the
-2026-09-19 implementation audit.
+Consolidated findings for the medical-appointment case, updated through the
+September 20, 2026 prompt pilot.
 Detail lives in `docs/tries.md` (experiments), `docs/adr/` (decisions),
 `docs/next-steps.md` (plan) and `docs/local-serving.md` (runbook).
+`prior_work.md` is the cross-experiment handoff summary.
 
 ## The task and the score
 
@@ -23,7 +24,7 @@ contract and shared ASR:
   → ModernBERT cross-encoder (3-way + token span + expected-tIoU) → answer +
   span`.
 - `llm`: whole-transcript local instruction model, training-only demonstrations,
-  and word-aligned evidence quotes. The observed active IDUN service is
+  and word-aligned evidence quotes. The qualified local release uses
   **26B/base + turbo int8**. The **0.744 official validation was E4B**, not
   a verified score for the current 26B process.
 
@@ -55,8 +56,22 @@ and three explicit unsupported-code fallbacks. The 172 previously eligible
 citations were unchanged after repairing split-compound normalization.
 All decisions stayed fixed. Its bounded local endpoint proposal oracle is
 only **0.688711 mIoU**, not an achieved gain or a global dataset ceiling.
-The next bounded check separates start/end clock contributions with grouped
-training-only policy selection; it does not justify more alignment-model sweeps.
+The final grouped start/end-source check also failed: composites
+**0.797665 / 0.796693** under two seeds versus **0.797842** on the same
+350-question cohort. This timing family is closed; more alignment-model
+sweeps are not justified by these results.
+
+The current prompt round preserves exact control messages and separates
+development from confirmation. On the 30-question Qwen4B CPU pilot,
+evidence-first output introduced plainly contradictory yes answers, so its
+small point gain was rejected. Reusing the same claim rules with the original
+answer-first convention improved that small-model pilot from **0.702600 to
+0.755725**, with all 30 decisions correct and no grounding failures. Both
+changed citations are semantically valid, but the gain is concentrated in one
+annotated citation and the interval includes zero. The qualified Gemma
+reference is still stronger at **0.888534** on these same 30 questions.
+The unchanged answer-first pair is advancing to the complete development
+cohort; no new qualified service score or confirmation result is established.
 
 **Reference agreement is not always semantic correctness.** CSV references
 `sample_63_yes_q02` and `sample_64_yes_q02` point to the opening greeting
