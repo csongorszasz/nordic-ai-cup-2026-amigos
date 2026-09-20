@@ -3,9 +3,13 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from threading import Event
+from unittest.mock import patch
 
 import torch
 
+from idun.watch_checkpoints import monitor, snapshot_latest
+from src.benchmarking.config import read_json
 from src.policies.config import ExperimentConfig, ModelConfig
 from src.policies.networks import PolicyNetwork
 from src.training.artifacts import (
@@ -58,6 +62,95 @@ class CheckpointTests(unittest.TestCase):
             save_checkpoint(path, self.network, self.config)
             with self.assertRaisesRegex(ValueError, "non-finite"):
                 load_checkpoint(path)
+
+
+class CheckpointSnapshotTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.run_path = self.root / "training"
+        self.run_path.mkdir()
+        self.output = self.root / "evaluation"
+        self.config = ExperimentConfig(model=ModelConfig(hidden_size=32, entity_size=8))
+        self.network = PolicyNetwork(self.config.model)
+
+    def publish(self, update):
+        checkpoint = self.run_path / "checkpoint.pt"
+        digest = save_checkpoint(checkpoint, self.network, self.config, training_state={"next_update": update})
+        write_json(self.run_path / "policy.json", {
+            "policy": "neural", "checkpoint": str(checkpoint),
+            "checkpoint_sha256": digest, "device": "cuda",
+        })
+        return digest
+
+    def test_snapshot_stays_fixed_and_uses_cpu_when_training_advances(self):
+        digest = self.publish(3)
+        snapshot = snapshot_latest(self.run_path, self.output)
+        self.assertEqual(snapshot["update"], 3)
+        frozen = Path(snapshot["path"])
+        descriptor = read_json(frozen / "policy.json")
+        self.assertEqual(descriptor["device"], "cpu")
+        self.assertEqual(Path(descriptor["checkpoint"]), frozen / "checkpoint.pt")
+        self.assertEqual(snapshot_latest(self.run_path, self.output), snapshot)
+        self.assertIsNone(snapshot_latest(self.run_path, self.output, digest))
+        self.publish(4)
+        loaded = load_checkpoint(frozen / "checkpoint.pt", expected_sha256=digest)
+        self.assertEqual(loaded.training_state["next_update"], 3)
+        self.assertEqual(snapshot_latest(self.run_path, self.output, digest)["update"], 4)
+
+    def test_incomplete_or_mixed_generations_are_retried_without_publication(self):
+        self.assertIsNone(snapshot_latest(self.run_path, self.output))
+        self.publish(1)
+        old_descriptor = read_json(self.run_path / "policy.json")
+        self.publish(2)
+        new_descriptor = read_json(self.run_path / "policy.json")
+        write_json(self.run_path / "policy.json", old_descriptor)
+        self.assertIsNone(snapshot_latest(self.run_path, self.output))
+        self.assertEqual(list((self.output / "snapshots").iterdir()), [])
+        write_json(self.run_path / "policy.json", new_descriptor)
+        self.assertEqual(snapshot_latest(self.run_path, self.output)["update"], 2)
+
+    def test_capture_continues_while_evaluation_is_busy_and_drains_on_exit(self):
+        self.publish(1)
+        evaluating = Event()
+        release = Event()
+        checks = []
+
+        def job_active(job_id):
+            checks.append(job_id)
+            if len(checks) == 2:
+                self.assertTrue(evaluating.wait(5))
+                self.publish(2)
+            if len(checks) == 3:
+                release.set()
+                return False
+            return True
+
+        def evaluate(snapshot, output, reference):
+            if snapshot["update"] == 1:
+                evaluating.set()
+                self.assertTrue(release.wait(5))
+            return {"mean_score": snapshot["update"] * 10}
+
+        with patch("idun.watch_checkpoints.training_active", side_effect=job_active), \
+                patch("idun.watch_checkpoints.evaluate_snapshot", side_effect=evaluate):
+            status = monitor(self.run_path, self.output, self.root / "reference", 123,
+                             poll_seconds=0, scheduler_seconds=0)
+        self.assertEqual(status["state"], "complete")
+        self.assertEqual(status["missing_updates"], [])
+        self.assertEqual(set(status["updates"]), {"1", "2"})
+        self.assertTrue(all(record["state"] == "complete" for record in status["updates"].values()))
+
+    def test_failed_evaluation_is_recorded_and_not_resubmitted_on_restart(self):
+        self.publish(1)
+        with patch("idun.watch_checkpoints.training_active", return_value=False), \
+                patch("idun.watch_checkpoints.evaluate_snapshot", side_effect=RuntimeError("benchmark failed")) as evaluate:
+            status = monitor(self.run_path, self.output, self.root / "reference", 123, poll_seconds=0)
+            self.assertEqual(status["state"], "finished_with_errors")
+            self.assertEqual(status["updates"]["1"]["state"], "failed")
+            monitor(self.run_path, self.output, self.root / "reference", 123, poll_seconds=0)
+            self.assertEqual(evaluate.call_count, 1)
 
 
 class TrainingRunTests(unittest.TestCase):

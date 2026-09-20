@@ -25,6 +25,7 @@ from src.policies.networks import PolicyNetwork, PolicyOutput
 from src.training.env import EnvironmentAdapter
 from src.training.seeds import training_seeds
 from src.training.workers import EnvironmentPool
+from src.training.teacher import resolve_teacher
 from src.utils.DTOs import ActionRequest, StepResponse
 
 
@@ -209,6 +210,7 @@ class RolloutCollector:
         self._environment_factory = environment_factory or EnvironmentAdapter
         self._pool_factory = pool_factory or EnvironmentPool
         self._teacher_factory = teacher_factory or build_policy
+        self.teacher_settings = resolve_teacher(config)
         self._stack: ExitStack | None = None
         self.pool = None
         self.environment = None
@@ -222,6 +224,7 @@ class RolloutCollector:
             for index in range(self.workers)
         ]
         self.seed_index = self.frame_count = self.rollout_count = self.completed_episodes = 0
+        self.native_tick_count = 0
         self._resuming = state is not None
         if state is not None:
             self._restore_state(state)
@@ -244,6 +247,13 @@ class RolloutCollector:
             if type(value) is not int or value < 0:
                 raise ValueError(f"Invalid collector counter: {name}.")
             setattr(self, name, value)
+        self.native_tick_count = state.get("native_tick_count", self.frame_count + self.seed_index)
+        if type(self.native_tick_count) is not int or self.native_tick_count < 0:
+            raise ValueError("Invalid native tick counter.")
+        if state.get("action_repeat", 1) != self.config.resources.action_repeat:
+            raise ValueError("Resume cannot change action_repeat.")
+        if state.get("teacher", self.teacher_settings.provenance) != self.teacher_settings.provenance:
+            raise ValueError("Resume teacher provenance changed.")
         for name, generators in (
             ("policy_rng_states", self.policy_generators),
             ("teacher_rng_states", self.teacher_generators),
@@ -261,6 +271,9 @@ class RolloutCollector:
             "seed": self.config.seed, "workers": self.workers,
             "seed_index": self.seed_index, "frame_count": self.frame_count,
             "rollout_count": self.rollout_count, "completed_episodes": self.completed_episodes,
+            "native_tick_count": self.native_tick_count,
+            "action_repeat": self.config.resources.action_repeat,
+            "teacher": self.teacher_settings.provenance,
             "policy_rng_device": str(self.device),
             "policy_rng_states": [rng.get_state().cpu().clone() for rng in self.policy_generators],
             "teacher_rng_states": [rng.get_state().cpu().clone() for rng in self.teacher_generators],
@@ -291,7 +304,8 @@ class RolloutCollector:
         self.episode_steps[index] = 0
         self.episode_starts[index] = True
         self.done[index] = False
-        teacher = self._teacher_factory(seed, self.config.heuristic)
+        self.native_tick_count += 1  # The adapter performs exactly one bootstrap tick.
+        teacher = self._teacher_factory(seed, self.teacher_settings.heuristic)
         if index == len(self.teachers):
             self.teachers.append(teacher)
         else:
@@ -359,6 +373,7 @@ class RolloutCollector:
 
     def collect(
         self, steps: int, *, policy_version: int, teacher_probability: float = 0.0,
+        label_teacher: bool = True,
     ) -> Rollout:
         if self._stack is None:
             raise RuntimeError("Open the collector as a context manager before collection.")
@@ -368,6 +383,8 @@ class RolloutCollector:
             raise ValueError("The frozen rollout policy version must be a nonnegative update index.")
         if not math.isfinite(teacher_probability) or not 0 <= teacher_probability <= 1:
             raise ValueError("teacher_probability must lie in [0, 1].")
+        if teacher_probability and not label_teacher:
+            raise ValueError("Teacher execution requires teacher labels.")
         started = time.perf_counter()
         trajectories: list[list[RolloutFrame]] = [[] for _ in range(self.workers)]
         peak_tokens = agent_actions = 0
@@ -382,7 +399,9 @@ class RolloutCollector:
                     batch_actions = []
                     for index, observation in enumerate(self.observations):
                         memory = self.memories[index]
-                        features = encode_step(observation, memory.previous_actions)
+                        features = encode_step(observation, memory.previous_actions,
+                                               public_context=self.network.config.public_context,
+                                               peer_context=self.network.config.peer_context)
                         peak_tokens = max(
                             peak_tokens, feature_tokens(features, self.config.resources.max_tokens),
                         )
@@ -403,8 +422,8 @@ class RolloutCollector:
                             action.agent_id: action for action in validate_actions(
                                 self.teachers[index].act(observation), features.agent_ids,
                             )
-                        }
-                        teacher_actions = [teacher_by_id[agent_id] for agent_id in features.agent_ids]
+                        } if label_teacher else {}
+                        teacher_actions = [teacher_by_id[agent_id] for agent_id in features.agent_ids] if label_teacher else []
                         if tuple(action.agent_id for action in sample.actions) != features.agent_ids:
                             raise ValueError("Sampled actions must cover every living ID in observation order.")
                         teacher_mask = torch.rand(
@@ -441,6 +460,7 @@ class RolloutCollector:
                         ))
                         self.memories[index].commit(features.agent_ids, next_hidden, list(actions))
                         self.frame_count += 1
+                        self.native_tick_count += transition.native_ticks
                         agent_actions += len(features.agent_ids)
                         self.episode_returns[index] += reward
                         self.episode_steps[index] += 1
@@ -462,7 +482,9 @@ class RolloutCollector:
                         last_values.append(0.0)
                         continue
                     memory = self.memories[index]
-                    features = encode_step(observation, memory.previous_actions)
+                    features = encode_step(observation, memory.previous_actions,
+                                           public_context=self.network.config.public_context,
+                                           peer_context=self.network.config.peer_context)
                     feature_tokens(features, self.config.resources.max_tokens)
                     hidden = memory.prepare(features.agent_ids, self.network.config.hidden_size, self.device)
                     output = self.network(
@@ -482,5 +504,6 @@ class RolloutCollector:
                 "peak_frame_tokens": peak_tokens,
                 "completed_episodes": self.completed_episodes - completed_before,
                 "collection_seconds": time.perf_counter() - started,
+                "native_ticks_total": self.native_tick_count,
             },
         )

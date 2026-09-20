@@ -24,6 +24,11 @@ from src.utils.DTOs import ActionRequest, StepResponse
 
 
 ACTION_VERSION = "bounded-v1"
+VECTOR_ACTION_VERSION = "bc-vector-angles-v2"
+
+
+def model_action_version(config) -> str:
+    return VECTOR_ACTION_VERSION if config.angle_head == "vector_bc" else ACTION_VERSION
 
 
 class _ActionOutput(Protocol):
@@ -112,6 +117,8 @@ def sample_actions(
 ) -> ActionSample:
     """Draw detached collection latents; deterministic calls do not consume RNG."""
     validate_step(step)
+    if getattr(output, "angle_vectors", None) is not None and not deterministic:
+        raise ValueError("The vector BC head supports deterministic inference only; stochastic collection is not validated.")
     std = _parameters(output, len(step.agent_status))
     mean = output.mean
     if deterministic:
@@ -151,18 +158,11 @@ def sample_actions(
     return ActionSample(actions, latent, spawn, eligible, log_prob, entropy)
 
 
-def imitation_loss(
-    output: _ActionOutput, step: StepResponse, teacher_actions: Sequence[ActionRequest],
-) -> Tensor:
-    """Mean distance MSE, circular angle losses, and conditionally eligible BCE.
-
-Teacher actions are matched by identity. Stationary teachers have no travel
-direction target, but their turn still matters. A zero movement limit has no
-controllable distance target. Reproduction eligibility uses teacher execution,
-not the learner's predicted movement.
-"""
+def imitation_targets(
+    step: StepResponse, teacher_actions: Sequence[ActionRequest],
+) -> tuple[list[list[float]], list[bool]]:
+    """Public-observation targets; eligibility follows the teacher's executed action."""
     validate_step(step)
-    _parameters(output, len(step.agent_status))
     teachers = validate_actions(teacher_actions, [agent.agent_id for agent in step.agent_status])
     by_id = {action.agent_id: action for action in teachers}
     targets, eligibility = [], []
@@ -180,16 +180,36 @@ not the learner's predicted movement.
             float(teacher.move_distance > 0), float(limit > 0),
         ])
         eligibility.append(eligible)
+    return targets, eligibility
+
+
+def imitation_components(output: _ActionOutput, target: Tensor, eligible: Tensor) -> Tensor:
+    """Per-agent distance, circular travel/turn, and masked reproduction losses."""
+    distance = (output.mean[:, 0].sigmoid() - target[:, 0]).square() * target[:, 5]
+    vectors = getattr(output, "angle_vectors", None)
+    if vectors is None:
+        angles = math.pi * output.mean[:, 1:].tanh()
+        travel = (1 - torch.cos(angles[:, 0] - target[:, 1])) * target[:, 4]
+        turn = 1 - torch.cos(angles[:, 1] - target[:, 2])
+    else:
+        units = torch.stack((target[:, 1:3].cos(), target[:, 1:3].sin()), dim=-1)
+        angular = 0.5 * (vectors - units).square().sum(-1)
+        travel, turn = angular[:, 0] * target[:, 4], angular[:, 1]
+    spawn = F.binary_cross_entropy_with_logits(output.spawn_logits, target[:, 3], reduction="none")
+    return torch.stack((distance, travel, turn, torch.where(eligible, spawn, torch.zeros_like(spawn))), dim=1)
+
+
+def imitation_loss(
+    output: _ActionOutput, step: StepResponse, teacher_actions: Sequence[ActionRequest],
+) -> Tensor:
+    """Mean per-agent distance MSE, circular angles, and eligible reproduction BCE."""
+    _parameters(output, len(step.agent_status))
+    targets, eligibility = imitation_targets(step, teacher_actions)
     if not targets:
         return output.mean.sum() + output.spawn_logits.sum()
     target = output.mean.new_tensor(targets)
     eligible = torch.tensor(eligibility, dtype=torch.bool, device=output.mean.device)
-    distance = (output.mean[:, 0].sigmoid() - target[:, 0]).square() * target[:, 5]
-    angles = math.pi * output.mean[:, 1:].tanh()
-    travel = (1 - torch.cos(angles[:, 0] - target[:, 1])) * target[:, 4]
-    turn = 1 - torch.cos(angles[:, 1] - target[:, 2])
-    spawn = F.binary_cross_entropy_with_logits(output.spawn_logits, target[:, 3], reduction="none")
-    loss = (distance + travel + turn + torch.where(eligible, spawn, torch.zeros_like(spawn))).mean()
+    loss = imitation_components(output, target, eligible).sum(1).mean()
     if not torch.isfinite(loss).item():
         raise ValueError("Imitation loss is non-finite.")
     return loss

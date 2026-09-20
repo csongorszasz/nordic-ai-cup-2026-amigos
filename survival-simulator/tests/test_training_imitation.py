@@ -179,9 +179,8 @@ class ImitationDatasetTests(unittest.TestCase):
         self.assertEqual(dagger_schedule(config, 0, previous_round=2), (0.0, 2))
         baseline = make_config("imitation", imitation={"teacher_probability": 0})
         self.assertEqual(dagger_schedule(baseline, 0), (0.0, 0))
-        impossible = make_config("imitation", updates=2, imitation={"dagger_rounds": 2})
         with self.assertRaisesRegex(ValueError, "updates"):
-            dagger_schedule(impossible, 0)
+            make_config("imitation", updates=2, imitation={"dagger_rounds": 2})
 
 
 class ImitationUpdateTests(unittest.TestCase):

@@ -20,7 +20,10 @@ Probability = Annotated[float, Field(ge=0, le=1)]
 
 
 class HeuristicConfig(Settings):
-    backend: Literal["scalar", "vectorized", "hierarchical"] = "scalar"
+    backend: Literal["scalar", "vectorized", "hierarchical", "turnaway"] = "scalar"
+    escape_strategy: Literal[
+        "direct", "direct_wall_aware", "predictive_wall_aware",
+    ] = "predictive_wall_aware"
     food_weight: float = Field(default=2.0, ge=0)
     danger_weight: float = Field(default=5.0, ge=0)
     wall_weight: float = Field(default=4.0, ge=0)
@@ -75,6 +78,20 @@ class ModelConfig(Settings):
     team_context: bool = True
     critic: Literal["team", "local"] = "team"
     entity_chunk_size: PositiveInt = 4096
+    public_context: bool = False
+    peer_context: bool = False
+    angle_head: Literal["bounded", "vector_bc"] = "bounded"
+    log_std_min: float = -5.0
+    log_std_max: float = 2.0
+    initial_log_std: float = -0.5
+
+    @model_validator(mode="after")
+    def variance_bounds(self):
+        if self.peer_context and not self.public_context:
+            raise ValueError("peer_context requires public_context=True.")
+        if not self.log_std_min < self.initial_log_std < self.log_std_max:
+            raise ValueError("Require log_std_min < initial_log_std < log_std_max.")
+        return self
 
 
 class OptimizerConfig(Settings):
@@ -93,6 +110,7 @@ class PPOConfig(Settings):
     epochs: PositiveInt = 4
     sequence_length: PositiveInt = 32
     normalize_value: bool = True
+    actor_divisor: PositiveFloat = 5.0
 
 
 class ImitationConfig(Settings):
@@ -135,10 +153,35 @@ class ResourceConfig(Settings):
     device: Literal["cpu", "cuda", "auto"] = "cpu"
     workers: int = Field(default=1, ge=1, le=32, strict=True)
     torch_threads: PositiveInt = 1
-    max_vram_mb: int = Field(default=6144, ge=256, le=8192, strict=True)
+    max_vram_mb: int = Field(default=6144, ge=256, strict=True)
     max_tokens: PositiveInt = 32768
     worker_timeout_seconds: PositiveFloat = 180.0
     action_repeat: int = Field(default=1, ge=1, le=10, strict=True)
+
+
+class TeacherConfig(Settings):
+    path: str = Field(min_length=1)
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class EvaluationConfig(Settings):
+    enabled: bool = False
+    every_updates: PositiveInt = 5
+    suite: Literal["quick", "standard"] = "quick"
+    repeats: PositiveInt = 1
+    max_pending: PositiveInt = 4
+    max_snapshot_mb: PositiveInt = 64
+    max_storage_mb: PositiveInt = 1024
+    episode_timeout_seconds: PositiveFloat = 3600.0
+    max_attempts: PositiveInt = 1
+
+
+class RunBudget(Settings):
+    kind: Literal["diagnostic", "extended"] = "diagnostic"
+    max_updates: PositiveInt
+    max_native_ticks: PositiveInt
+    max_evaluation_episodes: PositiveInt
+    host_memory_mb: PositiveInt
 
 
 class ExperimentConfig(Settings):
@@ -156,17 +199,30 @@ class ExperimentConfig(Settings):
     search: SearchConfig = Field(default_factory=SearchConfig)
     resources: ResourceConfig = Field(default_factory=ResourceConfig)
     checkpoint: str | None = None
+    teacher: TeacherConfig | None = None
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    budget: RunBudget | None = None
 
     @model_validator(mode="after")
     def compatible(self):
         if self.mode in ("imitation", "ppo") and self.policy != "neural":
             raise ValueError("Learning modes require policy='neural'.")
+        if self.mode == "ppo" and self.model.angle_head != "bounded":
+            raise ValueError("The vector BC angle head has no validated stochastic PPO codec.")
         if self.mode == "search" and self.policy != "heuristic":
             raise ValueError("Search mode requires policy='heuristic'.")
         if self.mode == "profile" and self.policy != "heuristic":
             raise ValueError("The reference-collection profiler requires policy='heuristic'.")
         if self.ppo.sequence_length > self.rollout_steps and self.mode == "ppo":
             raise ValueError("PPO sequence_length cannot exceed rollout_steps.")
+        if self.teacher is not None and self.heuristic != HeuristicConfig():
+            raise ValueError("Use the pinned teacher descriptor, not conflicting inline heuristic settings.")
+        if self.evaluation.enabled and self.mode not in ("imitation", "ppo"):
+            raise ValueError("Scheduled policy evaluation requires a learning mode.")
+        if self.evaluation.enabled and self.resources.action_repeat != 1:
+            raise ValueError("Scheduled evaluation/serving requires action_repeat=1.")
+        if self.mode == "imitation" and self.imitation.dagger_rounds >= self.updates:
+            raise ValueError("DAgger requires updates >= dagger_rounds + 1.")
         return self
 
 

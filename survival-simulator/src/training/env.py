@@ -20,6 +20,11 @@ class EnvTransition:
     observation: StepResponse
     reward: float
     terminated: bool
+    native_ticks: int = 1
+
+    def __post_init__(self):
+        if type(self.native_ticks) is not int or self.native_ticks < 1:
+            raise ValueError("An environment transition must record its positive native tick count.")
 
 
 class TrainingSimulationCore(SimulationCore):
@@ -137,6 +142,7 @@ class EnvironmentAdapter:
         self._expected_ids: tuple[int, ...] = ()
         self._initialization_seconds = 0.0
         self._simulation_seconds = 0.0
+        self._last_native_ticks = 0
 
     @property
     def observation(self) -> StepResponse:
@@ -196,7 +202,7 @@ class EnvironmentAdapter:
         if not math.isfinite(reward):
             raise ValueError("Simulator score delta is non-finite.")
         self._remember(response)
-        return EnvTransition(response, reward, self._done)
+        return EnvTransition(response, reward, self._done, self._last_native_ticks)
 
     def _tick(
         self, actions: list[tuple[int, ActionRequest]], *, repeats: int,
@@ -207,6 +213,7 @@ class EnvironmentAdapter:
         # retried using the previous observation; only a fresh reset is safe.
         self._needs_reset = True
         started = time.perf_counter()
+        self._last_native_ticks = 0
         try:
             state = None
             repeated = actions
@@ -223,6 +230,7 @@ class EnvironmentAdapter:
                     training_step(repeated, observe_agents=final)
                     if callable(training_step) else self._simulation.step(repeated)
                 )
+                self._last_native_ticks += 1
                 if state["num_agents"] == 0 or state["sim_time"] > self.settings.time_limit:
                     break
                 if repeat == 0 and any(action.spawn_agent for _, action in repeated):

@@ -255,6 +255,7 @@ def train_ppo(
                     advantage, target = targets[id(frame)]
                     actor, kl, clipped = clipped_policy_objective(
                         log_prob, frame.old_log_prob.to(device), advantage, config.ppo.clip_ratio,
+                        actor_divisor=config.ppo.actor_divisor,
                     )
                     critic = scaled_value_loss(value, target, value_scale)
                     entropy_term = entropy.mean()
@@ -304,5 +305,5 @@ def train_ppo(
         "raw_return_mean": float(raw_returns.mean()), "raw_return_std": float(raw_returns.std(unbiased=False)),
         "raw_reward_sum": sum(frame.reward for frame in frames),
         "value_error_scale": value_scale, "teacher_weight": teacher_weight,
-        "actor_divisor": ACTOR_DIVISOR,
+        "actor_divisor": config.ppo.actor_divisor,
     }

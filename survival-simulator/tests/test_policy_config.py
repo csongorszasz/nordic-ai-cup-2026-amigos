@@ -13,6 +13,29 @@ class PolicyConfigTests(unittest.TestCase):
         self.assertEqual(options.heuristic.backend, "hierarchical")
         self.assertIsNone(options.checkpoint)
 
+    def test_escape_strategy_is_strict_and_predictive_by_default(self):
+        self.assertEqual(ExperimentConfig().heuristic.escape_strategy, "predictive_wall_aware")
+        for strategy in ("direct", "direct_wall_aware", "predictive_wall_aware"):
+            config = ExperimentConfig.model_validate({"heuristic": {"escape_strategy": strategy}})
+            self.assertEqual(config.heuristic.escape_strategy, strategy)
+        with self.assertRaises(ValidationError):
+            ExperimentConfig.model_validate({"heuristic": {"escape_strategy": "unknown"}})
+
+    def test_turnaway_runtime_configs_only_change_escape_strategy(self):
+        configs = {}
+        for name in ("direct", "wall-aware", "predictive"):
+            path = PROJECT_ROOT / "configs" / f"controller-turnaway-{name}.json"
+            configs[name] = RuntimeConfig.model_validate(read_json(path))
+            self.assertEqual(configs[name].heuristic.backend, "hierarchical")
+        self.assertEqual(configs["direct"].heuristic.escape_strategy, "direct")
+        self.assertEqual(configs["wall-aware"].heuristic.escape_strategy, "direct_wall_aware")
+        self.assertEqual(configs["predictive"].heuristic.escape_strategy, "predictive_wall_aware")
+        base = configs["predictive"].model_dump(mode="json")
+        for name, config in configs.items():
+            candidate = config.model_dump(mode="json")
+            candidate["heuristic"]["escape_strategy"] = "predictive_wall_aware"
+            self.assertEqual(candidate, base, name)
+
     def test_nested_architecture_and_parameter_overrides(self):
         original = ExperimentConfig()
         changed = apply_overrides(original, [

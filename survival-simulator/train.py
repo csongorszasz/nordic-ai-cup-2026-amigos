@@ -26,6 +26,9 @@ def parser() -> argparse.ArgumentParser:
     cli.add_argument("--output", type=Path, required=True, help="New run directory; never overwritten.")
     cli.add_argument("--set", action="append", default=[], help="Typed dotted override: model.memory=none")
     cli.add_argument("--resume", type=Path, help="Resume optimizer/RNG/update state from a checkpoint.")
+    cli.add_argument("--preflight", action="store_true", help="Write a run plan without simulation or training.")
+    cli.add_argument("--evidence", type=Path, help="Hyperparameter rationale/evidence JSON for preflight.")
+    cli.add_argument("--run-plan", type=Path, help="Previously reviewed preflight JSON, required for learning.")
     return cli
 
 
@@ -178,7 +181,7 @@ def run_profile(config: ExperimentConfig, run: TrainingRun) -> dict:
         observations = pool.reset([next(seeds) for _ in range(workers)]) if pool else [adapter.reset(next(seeds))]
         initialization = time.perf_counter() - started
         policy_seconds = encoding_seconds = 0.0
-        peak_tokens = transitions = episodes = 0
+        peak_tokens = transitions = native_transitions = episodes = 0
         stepping_started = time.perf_counter()
         for _ in range(config.rollout_steps):
             t0 = time.perf_counter()
@@ -191,6 +194,7 @@ def run_profile(config: ExperimentConfig, run: TrainingRun) -> dict:
             results = pool.step(actions) if pool else [adapter.step(actions[0])]
             observations = [result.observation for result in results]
             transitions += workers
+            native_transitions += sum(result.native_ticks for result in results)
             for index, result in enumerate(results):
                 if result.terminated:
                     episodes += 1
@@ -202,11 +206,11 @@ def run_profile(config: ExperimentConfig, run: TrainingRun) -> dict:
     result = {
         "mode": "profile", "workers": workers, "transitions": transitions,
         "action_repeat": config.resources.action_repeat,
-        "native_transitions": transitions * config.resources.action_repeat,
+        "native_transitions": native_transitions,
         "initialization_seconds": initialization, "collection_seconds": stepping,
         "transitions_per_second": transitions / stepping,
         "native_transitions_per_second": (
-            transitions * config.resources.action_repeat / stepping
+            native_transitions / stepping
         ),
         "policy_seconds": policy_seconds, "encoding_seconds": encoding_seconds,
         "mean_policy_batch_ms": 1000 * policy_seconds / transitions,
@@ -227,6 +231,7 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
         load_checkpoint, restore_rng, save_checkpoint, verify_resume_provenance,
     )
     from src.training.learner import run_learning
+    from src.training.evaluation import initialize_schedule, publish_snapshot, check_capacity
 
     device = config.resources.device
     if device == "auto":
@@ -234,6 +239,13 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
     if device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA was requested but is unavailable. Choose resources.device=cpu explicitly.")
     torch.set_num_threads(config.resources.torch_threads)
+    allocated_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 1))
+    if config.resources.workers + config.resources.torch_threads > allocated_cpus:
+        raise ValueError("Reviewed environment workers plus learner threads exceed the CPU allocation.")
+    if config.budget and "SLURM_MEM_PER_NODE" in os.environ:
+        allocated_memory = int(os.environ["SLURM_MEM_PER_NODE"])
+        if allocated_memory and config.budget.host_memory_mb > allocated_memory:
+            raise ValueError("The reviewed host-memory budget exceeds the SLURM allocation.")
     if device == "cuda":
         total = torch.cuda.get_device_properties(0).total_memory
         limit = config.resources.max_vram_mb * 1024**2
@@ -251,6 +263,19 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
     optimizer = torch.optim.Adam(network.parameters(), lr=config.optimizer.learning_rate)
     state = None
     start_update = 0
+    prior_native_ticks = 0
+    lineage = None
+    if loaded is not None:
+        recorded_ticks = loaded.training_state.get(
+            "native_ticks_total", loaded.training_state.get("collector", {}).get("native_tick_count"),
+        )
+        if recorded_ticks is None:
+            raise ValueError("Checkpoint lacks actual native-step accounting; cannot claim matched-compute lineage.")
+        prior_native_ticks = int(recorded_ticks) + loaded.training_state.get("prior_native_ticks", 0)
+        lineage = {"kind": "resume" if resume else "warm_start", "checkpoint_sha256": loaded.sha256,
+                   "prior_native_ticks": prior_native_ticks,
+                   "resume_update": loaded.training_state.get("next_update", 0),
+                   "parent_run": str(source.resolve().parent)}
     if resume is not None:
         if loaded.optimizer_state is None:
             raise ValueError("The checkpoint has no optimizer state for resume.")
@@ -268,9 +293,15 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
         "event": "learner_start", "device": device, "parameters": sum(p.numel() for p in network.parameters()),
         "start_update": start_update, "source": str(source) if source else None,
         "resume": resume is not None, "worlds_restart_on_resume": resume is not None,
+        "gpu_name": torch.cuda.get_device_name(0) if device == "cuda" else None,
+        "gpu_total_mb": torch.cuda.get_device_properties(0).total_memory // 1024**2 if device == "cuda" else None,
     })
 
     def checkpoint(training_state: dict):
+        # Publish due inference weights first: a durable resume checkpoint must
+        # never refer to a scheduled update whose weights were already lost.
+        if schedule is not None:
+            publish_snapshot(run.path, network, config, training_state, schedule)
         target = run.path / "checkpoint.pt"
         digest = save_checkpoint(target, network, config, optimizer, training_state)
         descriptor = RuntimeConfig(
@@ -278,6 +309,24 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
             checkpoint_sha256=digest, device="cpu",
         )
         write_json(run.path / "policy.json", descriptor.model_dump(mode="json"))
+
+    schedule = None
+    if config.evaluation.enabled:
+        schedule = initialize_schedule(run.path, config, run.manifest, lineage=lineage)
+        initial = {
+            "next_update": start_update,
+            "native_ticks_total": state.get("native_ticks_total", 0) if state else 0,
+            "prior_native_ticks": state.get("prior_native_ticks", 0) if state else prior_native_ticks,
+            "optimizer_steps": state.get("optimizer_steps", 0) if state else 0,
+        }
+        if start_update == 0:
+            publish_snapshot(run.path, network, config, initial, schedule)
+        check_capacity(run.path, config)
+
+    def update_callback(training_state: dict):
+        if schedule is not None:
+            if training_state["next_update"] < config.updates:
+                check_capacity(run.path, config)
 
     def emit(event: dict):
         run.emit(event)
@@ -288,6 +337,7 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
         config, network, optimizer, emit=emit, checkpoint=checkpoint,
         start_update=start_update, training_state=state,
         dataset_callback=lambda dataset: write_json_gzip(run.path / "dataset.json.gz", dataset),
+        update_callback=update_callback, prior_native_ticks=prior_native_ticks,
     )
     if device == "cuda":
         result["peak_cuda_allocated_mb"] = torch.cuda.max_memory_allocated() / 1024**2
@@ -298,13 +348,23 @@ def run_neural(config: ExperimentConfig, run: TrainingRun, resume: Path | None =
             "selection_required": "Compare full-horizon native scores and the real HTTP path."}
 
 
-def execute(config: ExperimentConfig, output: Path, resume: Path | None = None) -> int:
+def execute(
+    config: ExperimentConfig, output: Path, resume: Path | None = None, *, run_plan: Path | None = None,
+) -> int:
     if resume is not None and config.mode not in ("imitation", "ppo"):
         raise ValueError("--resume is only valid for learning modes.")
     if resume is not None and config.checkpoint is not None:
         raise ValueError("Choose --resume or a warm-start checkpoint, not both.")
+    plan = None
+    if config.mode in ("imitation", "ppo"):
+        from src.training.preflight import verify_run_plan
+        if run_plan is None:
+            raise ValueError("Learning requires --run-plan from a reviewed --preflight; no run was started.")
+        plan = verify_run_plan(run_plan, config, resume=resume)
     recorded_config = config.model_copy(update={"checkpoint": str(resume.resolve())}) if resume else config
     run = TrainingRun(output, recorded_config)
+    if plan is not None:
+        write_json(run.path / "run-plan.json", plan)
     try:
         if config.mode == "search":
             result = run_search(config, run)
@@ -317,6 +377,11 @@ def execute(config: ExperimentConfig, output: Path, resume: Path | None = None) 
         run.finish("interrupted", {"error": "Interrupted; completed checkpoint updates are preserved."})
         return 130
     except Exception as exc:
+        from src.training.evaluation import EvaluationBackpressure
+        if isinstance(exc, EvaluationBackpressure):
+            run.finish("paused", {"reason": str(exc), "resume_requires_user_launch": True})
+            print(str(exc), file=sys.stderr)
+            return 3
         # Record the training boundary failure and propagate it; never manufacture a result.
         run.finish("failed", {"error_type": type(exc).__name__, "error": str(exc),
                               "traceback": traceback.format_exc()})
@@ -329,7 +394,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         config = load_experiment(args.config, args.set)
-        return execute(config, args.output, args.resume)
+        if args.preflight:
+            from src.training.preflight import build_run_plan
+            from src.benchmarking.config import read_json
+            if args.evidence is None or args.run_plan is not None:
+                raise ValueError("--preflight requires --evidence and cannot launch --run-plan.")
+            plan = build_run_plan(config, read_json(args.evidence), resume=args.resume)
+            args.output.mkdir(parents=True, exist_ok=False)
+            write_json(args.output / "run-plan.json", plan)
+            write_json(args.output / "resolved-config.json", config.model_dump(mode="json"))
+            print(f"Plan {plan['plan_id']}: {plan['accounting']}. Nothing was launched.")
+            return 0
+        if args.evidence is not None:
+            raise ValueError("--evidence belongs to --preflight, not a launch.")
+        return execute(config, args.output, args.resume, run_plan=args.run_plan)
     except (OSError, ValueError, ImportError) as exc:
         print(f"Training failed: {exc}", file=sys.stderr)
         return 1

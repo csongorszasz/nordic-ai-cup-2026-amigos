@@ -42,6 +42,42 @@ benchmark factory ----- policies/runtime ----- serving/session + /predict
 | Existing `benchmarking/` | Full-horizon score measurements and paired comparisons | Training reward changes |
 | `serving/session.py`, `agent_server.py` | Serialization, retry handling, explicitly scoped state | Automatic model fallback or concurrent-game inference |
 
+## Rule-only turnaway policy
+
+`configs/controller-turnaway-rules.json` selects `heuristic.backend=turnaway`.
+This backend uses no heuristic tuning fields. Each agent takes the first applicable rule:
+
+1. Spawn without moving or turning whenever the engine permits it. Spawning has
+    exclusive priority, even during danger; there are no age, reserve, role, or population gates.
+2. Retreat from the nearest sensed predator at the currently permitted movement limit,
+    turning to face its last observed position from the chosen destination. "Opposite"
+    refers to the predator's observed bearing, not its own heading. There is no danger-distance cutoff.
+3. Walk toward the nearest sensed fruit, capped at its distance and adjusted for terrain.
+4. Approach a random point around the nearest sensed tree. The sampling disk is one
+    available walking step in radius, adjusted for terrain; there is no fixed patch radius.
+5. Walk in a uniformly random direction otherwise, facing the direction of movement.
+
+All movement checks the swept path against observed walls, including the engine's
+body-size buffer at corners. Blocked paths try wall-derived tangents or outward normals
+without reversing the intended direction, then shorten the original move if necessary.
+Unobserved walls and future predator motion cannot be guaranteed safe from the public DTO.
+Random exploration is seeded, resettable, and independent of input agent ordering.
+
+The remaining numbers are game mechanics and geometry, not strategy settings:
+reproduction eligibility, movement costs and limits, terrain multipliers, the reference
+agent body radius, and angles defining a circle. Aggressive spawning can leave a parent
+nearly out of energy; that is intentional under this priority order, not a claim of better score.
+
+Run from `survival-simulator`:
+
+```powershell
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-rules.json --suite quick --output .\benchmark-results\turnaway-rules-quick
+```
+
+The teacher-anchored learning presets pin `configs\controller-turnaway-wall-aware.json`
+by hash. Inline teacher overrides are rejected when a descriptor is pinned. The simple
+TurnAway policy remains a benchmark ablation, not a substitute for the requested teacher.
+
 ## Contracts that isolate bugs
 
 Movement is body-relative **before** turning. Energy is charged before terrain and collision effects.
@@ -59,6 +95,19 @@ five because `SimulationCore` supports other initial populations.
 Features are versioned, finite, and permutation-insensitive. Memory is keyed by agent ID,
 cleared for departed agents, and initialized for births. Previous-action features always
 describe what was actually executed, including teacher/learner mixtures.
+
+The opt-in `structured-public-v2` feature schema adds public score, log agent identity,
+and stable within-team identity rank. A synthetic symmetry fixture demonstrates that the
+old inputs can be identical for agents receiving different teacher actions; the new inputs
+distinguish them without depending on list order. Score history can be learned through
+recurrence. This does not guarantee exact cloning of a geometric assignment algorithm.
+Legacy `structured-v1` weights retain their original input shape. Changing the feature
+flag is an architecture change, not a compatible checkpoint override.
+
+Action log-standard-deviation bounds/initial value and the PPO actor divisor are named
+configuration settings. Defaults preserve legacy behavior; `actor_divisor=5` scales the
+summed actor surrogate against the initial team size, not current population. This is a
+MAPPO-style factorized surrogate, not JointPPO's clipped joint likelihood ratio.
 
 The critic receives one native team reward per tick. Agent death ends that agent's recurrent
 sequence, not the team's value target. Extinction/horizon termination does not bootstrap;
@@ -81,6 +130,9 @@ events, and summary. Learning also writes `checkpoint.pt`, its checksum/version 
 and a benchmark-compatible `policy.json`. Keep the sidecar with the weights.
 Imitation also exports the bounded teacher/learner replay as `dataset.json.gz`;
 the weights-only-safe replay inside the checkpoint is the authoritative resume state.
+Periodic evaluation uses separate slim immutable snapshots, published with a ready manifest.
+An independent evaluator owns episodes and learning curves; the optimizer never does.
+`evaluation.max_pending` applies backpressure rather than dropping checkpoints.
 Checkpoint paths in descriptors are relative to the use-case working directory.
 `--resume` restores learning state and targets the configured total update count, but
 restarts reference worlds; it does not promise an exact Pygame-state continuation.
@@ -88,7 +140,9 @@ restarts reference worlds; it does not promise an exact Pygame-state continuatio
 Training worlds exclude `standard` and `holdout`. The training adapter skips rendering
 surface work while preserving the reference render RNG stream. `resources.action_repeat`
 can suppress intermediate agent observations for explicit macro-action experiments;
-reproduction is applied only on the first repeated tick. Use standard for development, freeze a
+reproduction is applied only on the first repeated tick. The reviewed learning pipeline
+requires `action_repeat=1` until equivalent serving semantics exist; actual native ticks,
+including reset/bootstrap work, are recorded. Use standard for development, freeze a
 candidate, then use holdout without further tuning. Score uncertainty is over worlds,
 not agents or ticks. Windows results do not certify Linux/evaluator equivalence.
 Training completion and low imitation loss are not evidence that a model should replace

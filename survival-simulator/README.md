@@ -152,6 +152,30 @@ You should see a stream of `Score | Agents alive | Time` lines, ending with a `G
 # Testing locally
 To test the simulation locally you can run [local_playground.py](local_playground.py). This can be used to get an idea of how the simulation works. It is recommended to use this file for any potential training with "verbose" set to False to run simulations faster.
 
+Run a rendered game from `survival-simulator` with the appropriate environment active:
+
+```powershell
+python local_playground.py --config .\training-results\ppo-gru-full\policy.json --seed 1 --fps 60
+python local_playground.py --config .\configs\controller-turnaway-rules.json --seed 1
+```
+
+Use the exported runtime `policy.json`, not the training experiment config. Neural
+policies require the training dependencies, the referenced checkpoint, and its
+`checkpoint.pt.json` sidecar. Checkpoint paths resolve from the working directory,
+as they do in benchmarks. Close the window or press Escape to stop.
+
+Omit `--config` for the original random policy. `--seed` controls both world and
+policy randomness; omitting it generates a random seed. `--fps` caps playback speed
+without changing simulation time steps. For a short check without a window:
+
+```powershell
+python local_playground.py --config .\training-results\ppo-gru-full\policy.json --seed 1 --headless --max-steps 10
+```
+
+The step cap includes the initial empty-action tick. It is a diagnostic run, not
+a complete benchmark result. The existing `local_simulation(verbose=False)` call
+remains supported.
+
 ## Comparing policies
 
 The benchmark evaluates **local Python policies** against the existing random policy
@@ -336,6 +360,10 @@ Remove-Item Env:BENCHMARK_INTEGRATION
 
 ## Developing a policy
 
+For the current **BC convergence** work, see `docs\bc-convergence.md`: immutable complete
+teacher demonstrations, offline optimizer steps, current-weight recurrent validation,
+and copying/score gates. It does not advance to DAgger or PPO merely because a budget ends.
+
 The primary submission candidate is now the **stateful hierarchical controller**:
 shared teammate-relative scene reconstruction, distinct fruit/tree assignments,
 patch camping, facing-aware predator escape, and population/trait-aware breeding.
@@ -343,6 +371,38 @@ The older scalar/vectorized action lattice remains available as an oracle and ab
 Imitation/DAgger and recurrent PPO are experimental challengers and must beat the
 controller on native score and the real HTTP budget before selection. See
 `docs\policy-architecture.md` for component boundaries and decision rationale.
+
+### TurnAway escape ablations
+
+The hierarchical policy supports three predator escape strategies while keeping its
+foraging, scouting, team assignments, and population logic identical:
+
+| Configuration | Escape behavior |
+| --- | --- |
+| `configs\controller-turnaway-direct.json` | Move directly opposite the nearest observed predator, even when that route crosses a wall. Turn to face the escape heading. |
+| `configs\controller-turnaway-wall-aware.json` | Start with direct-away movement, then try ±60°, ±90°, and reverse alternatives when the path is blocked. Turn to face the selected escape heading. |
+| `configs\controller-turnaway-predictive.json` | Predict the predator two ticks ahead, select a wall-aware separation/cover route, and turn to keep the predator visible. This is the default in `configs\controller.json`. |
+
+Run quick matched-seed comparisons from `survival-simulator`:
+
+```powershell
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-direct.json --label turnaway-direct --suite quick --output .\benchmark-results\turnaway-direct-quick
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-wall-aware.json --label turnaway-wall-aware --suite quick --output .\benchmark-results\turnaway-wall-aware-quick
+python benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-turnaway-predictive.json --label turnaway-predictive --suite quick --output .\benchmark-results\turnaway-predictive-quick
+python benchmark.py compare --reference .\benchmark-results\turnaway-direct-quick --candidate .\benchmark-results\turnaway-wall-aware-quick --candidate .\benchmark-results\turnaway-predictive-quick --output .\benchmark-results\turnaway-quick-comparison
+```
+
+Use `--suite standard` with new output directory names after the quick runs complete.
+To exercise one strategy through the local HTTP server, select its JSON before startup:
+
+```powershell
+$env:SURVIVAL_POLICY_CONFIG = ".\configs\controller-turnaway-direct.json"
+$env:SURVIVAL_SINGLE_STREAM = "1"
+python .\agent_server.py
+```
+
+In another terminal, run `python .\simulation_server.py`. Stop the server before
+changing strategies because the configuration is loaded once at startup.
 
 Run all commands below from `survival-simulator`, using the existing virtual environment.
 Controller inference and ordinary benchmarks only need `requirements.txt`. Training/search
@@ -360,15 +420,47 @@ python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/
 python -m pip install -r requirements-training.txt
 ```
 
-Experiments use strict JSON configurations and typed overrides, not edits to Python:
+Experiments use strict JSON configurations and typed overrides, not edits to Python.
+**All real runs are user-launched.** The assistant may implement and run synthetic checks
+or regenerate saved plots, but must not launch training, simulator evaluation, or cluster jobs.
+The BC/PPO presets are small **provisional diagnostic plans**, not proven best parameters.
 
 ```powershell
-python train.py --config .\configs\profile.json --output .\training-results\profile-1
-python train.py --config .\configs\profile.json --set resources.workers=2 --output .\training-results\profile-2
-python train.py --config .\configs\search.json --output .\training-results\controller-search
-python train.py --config .\configs\imitation-gru.json --output .\training-results\imitation
-python train.py --config .\configs\ppo-gru.json --set checkpoint=training-results\imitation\checkpoint.pt --output .\training-results\ppo
+# Pure preflight: no simulation, optimizer, GPU initialization or job submission.
+python train.py --config .\configs\imitation-gru.json --preflight --evidence .\configs\evidence-diagnostic.json --output .\plans\bc
+# User reviews the resolved settings/evidence/budgets, then launches:
+python train.py --config .\configs\imitation-gru.json --run-plan .\plans\bc\run-plan.json --output .\training-results\bc
+# Separate user-launched evaluator; --once drains currently published requests only.
+python -m idun.watch_checkpoints --run .\training-results\bc --once
+# This command reads saved results only and never runs an episode.
+python -m src.training.progress --run .\training-results\bc
 ```
+
+The required imitation/DAgger teacher is **`configs\controller-turnaway-wall-aware.json`**,
+identified by its descriptor and source hashes. Change the teacher only as a deliberate
+new experiment. The current BC preset uses teacher-only collection; enable DAgger explicitly
+with `--set imitation.dagger_rounds=1` in both preflight and launch commands.
+
+Use `configs\ppo-gru.json` for a teacher-free scratch control. For warm-start PPO, add
+`--set checkpoint=training-results\bc\checkpoint.pt` to both commands and deliberately choose
+whether to use decaying `ppo.imitation_weight`. Learning-rate/batch/architecture overrides
+must be repeated identically at launch; any change invalidates the plan.
+Extended runs require exact effective values and hashed measured-pilot evidence in every
+parameter group. Existing citations/defaults are hypotheses, not proof of optimality.
+
+Evaluation snapshots are published initially, every five completed collect/fit updates,
+and at the final update by default. The user-launched evaluator measures complete native
+episodes on the fixed development suite and refreshes `progress\learning-curve.png`,
+the native-tick view, CSV, JSONL, and `status.json`. Teacher mean and world-seed spread are
+shown; losses and partial-rollout rewards are not substituted for scores. Evaluation lag,
+failures, and missing points are explicit. Holdout is reserved for frozen final candidates.
+Install `requirements-benchmark.txt` on the evaluator for plots.
+
+If the pending queue fills, the trainer preserves its completed-update checkpoint and
+pauses with exit code 3. Drain that run's queue before resuming. Each episode is attempted
+once by default; explicit `python -m src.training.evaluation retry --run ... --update N
+--reason "..."` is permitted only if the reviewed `evaluation.max_attempts` and episode
+budget reserved another attempt. It does not silently create extra work.
 
 For example, `--set model.encoder=attention`, `--set model.memory=none`,
 `--set optimizer.learning_rate=0.0001`, and `--set resources.device=cpu` change supported
@@ -383,10 +475,17 @@ Use `--resume .\training-results\ppo\checkpoint.pt` with a **new** output direct
 resume optimizer/RNG/update state. `updates` is the target total, not an additional count.
 Resume restarts the reference worlds; it does not serialize Pygame or promise exact
 mid-episode continuation. A warm-start `checkpoint` loads weights without optimizer state.
-Keep `checkpoint.pt.json` alongside the weights for checksum/schema validation.
+Keep `checkpoint.pt.json` alongside the weights for checksum/schema validation. Generate
+a new preflight with the same `--resume` source before launching the resumed run.
 Resume also requires the original `manifest.json` and matching simulator, runtime,
 PyTorch, and seed-generation/suite provenance. Use a warm start when intentionally
 changing those; resuming must not silently change the training-world sequence.
+Teacher/cadence/evaluation compatibility is also checked. Historical curve points retain
+their update numbers; warm-start collection costs are included in native-tick accounting.
+
+IDUN A100/H100 training may use explicitly reviewed budgets above 8 GB; the application
+checks actual device memory and allocated CPUs instead of silently choosing larger batches.
+See `docs\pipeline-overview.md` for the staged flow and `idun\HANDOFF.md` for manual launch.
 
 Compare exported policies through the existing benchmark:
 

@@ -12,10 +12,23 @@ from src.utils.DTOs import ActionRequest, ObservationResponse, StepResponse
 
 
 FEATURE_VERSION = "structured-v1"
+PUBLIC_FEATURE_VERSION = "structured-public-v2"
+PEER_FEATURE_VERSION = "structured-public-peer-v3"
+FEATURE_VERSIONS = (FEATURE_VERSION, PUBLIC_FEATURE_VERSION, PEER_FEATURE_VERSION)
 ENTITY_TYPES = ("Fruit", "Tree", "Predator", "Agent", "Edge")
 BIOMES = tuple(BIOME_MOVEMENT)
 SCALAR_DIM = 22
+PUBLIC_SCALAR_DIM = SCALAR_DIM + 3
 ENTITY_DIM = 10
+PEER_ENERGY_UNAVAILABLE = -1.0
+
+
+def feature_version(public_context: bool, peer_context: bool = False) -> str:
+    if peer_context:
+        if not public_context:
+            raise ValueError("peer_context requires public_context=True.")
+        return PEER_FEATURE_VERSION
+    return PUBLIC_FEATURE_VERSION if public_context else FEATURE_VERSION
 
 
 @dataclass(frozen=True)
@@ -37,6 +50,16 @@ class FeatureBatch:
     entities: np.ndarray
     entity_types: np.ndarray
     entity_owners: np.ndarray
+    feature_version: str | None = None
+
+    def __post_init__(self):
+        # Untagged legacy callers can distinguish v1/v2 by width, never peer-v3.
+        if self.feature_version is None:
+            public = (
+                isinstance(self.scalars, np.ndarray) and self.scalars.ndim == 2
+                and self.scalars.shape[1] == PUBLIC_SCALAR_DIM
+            )
+            object.__setattr__(self, "feature_version", feature_version(public))
 
 
 def finite_number(value: object, field: str) -> float:
@@ -126,11 +149,21 @@ def parse_entities(agent: ObservationResponse) -> tuple[Entity, ...]:
 
 def encode_step(
     step: StepResponse, previous_actions: Mapping[int, ActionRequest] | None = None, *,
-    validate: bool = True,
+    validate: bool = True, public_context: bool = False, peer_context: bool = False,
 ) -> FeatureBatch:
+    """Encode public DTOs without changing body-frame geometry or row coverage.
+
+    Peer-v3 uses Agent columns 8/9 for energy/max_energy and log1p(observed ID).
+    Energy is -1 when that ID is absent from this response (stale/dead/unknown),
+    or its current energy is nonpositive. The observed identity is always kept;
+    unavailable status is never replaced by a healthy default or cached status.
+    """
+    schema = feature_version(public_context, peer_context)
     if validate:
         validate_step(step)
     previous_actions = previous_actions or {}
+    peers = {agent.agent_id: agent for agent in step.agent_status} if peer_context else {}
+    ranks = {agent_id: index for index, agent_id in enumerate(sorted(a.agent_id for a in step.agent_status))}
     scalars, features, types, owners = [], [], [], []
     for index, agent in enumerate(step.agent_status):
         previous = previous_actions.get(agent.agent_id)
@@ -140,12 +173,16 @@ def encode_step(
              math.cos(previous.turn_angle), float(previous.spawn_agent)]
             if previous is not None else [0.0, 0.0, 1.0, 0.0, 1.0, 0.0]
         )
+        public = [
+            math.log1p(agent.agent_id), step.score / 3000.0,
+            ranks[agent.agent_id] / max(1, len(ranks) - 1),
+        ] if public_context else []
         scalars.append([
             agent.energy / 500.0, agent.energy / agent.max_energy, agent.age / 120.0,
             agent.speed / 20.0, agent.sprint_speed / 40.0, agent.hearing_radius / 100.0,
             agent.vision_range / 400.0, agent.vision_angle / math.pi,
             agent.max_energy / 1000.0, step.sim_time / 3000.0, math.log1p(step.n_agents) / 5.0,
-            *(float(agent.biome == biome) for biome in BIOMES), *history,
+            *(float(agent.biome == biome) for biome in BIOMES), *public, *history,
         ])
         for entity in parse_entities(agent):
             if entity.segment is not None:
@@ -158,14 +195,24 @@ def encode_step(
                        math.sin(entity.rel_dir) if entity.rel_dir is not None else 0.0,
                        math.cos(entity.rel_dir) if entity.rel_dir is not None else 0.0,
                        float(entity.rel_dir is not None), 0, 0]
+                if peer_context and entity.kind == "Agent" and entity.agent_id is not None:
+                    peer = peers.get(entity.agent_id)
+                    row[8:] = [
+                        peer.energy / peer.max_energy
+                        if peer is not None and peer.energy > 0 else PEER_ENERGY_UNAVAILABLE,
+                        math.log1p(entity.agent_id),
+                    ]
             features.append(row)
             types.append(ENTITY_TYPES.index(entity.kind))
             owners.append(index)
-    scalar_array = np.asarray(scalars, dtype=np.float32).reshape(-1, SCALAR_DIM)
+    scalar_array = np.asarray(scalars, dtype=np.float32).reshape(
+        -1, PUBLIC_SCALAR_DIM if public_context else SCALAR_DIM,
+    )
     entity_array = np.asarray(features, dtype=np.float32).reshape(-1, ENTITY_DIM)
     if not np.isfinite(scalar_array).all() or not np.isfinite(entity_array).all():
         raise ValueError("Encoded features contain non-finite or overflowing values.")
     return FeatureBatch(
         tuple(agent.agent_id for agent in step.agent_status), scalar_array, entity_array,
         np.asarray(types, dtype=np.int64), np.asarray(owners, dtype=np.int64),
+        feature_version=schema,
     )
