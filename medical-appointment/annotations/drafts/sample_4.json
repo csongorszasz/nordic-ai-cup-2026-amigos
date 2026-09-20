@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_4_yes_q03",
+    "transcript_id": "sample_4",
+    "question": "Did the patient attend for an annual asthma follow-up?",
+    "bucket": "support",
+    "quote": "this is your annual follow-up. It is, for the asthma.",
+    "reason": "Transcript states the visit is the annual follow-up for asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q07",
+    "transcript_id": "sample_4",
+    "question": "Is the heart examination without abnormal findings?",
+    "bucket": "support",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Doctor reports chest and heart sound normal with nothing abnormal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q06",
+    "transcript_id": "sample_4",
+    "question": "Was the patient listened to with a stethoscope?",
+    "bucket": "support",
+    "quote": "Let me listen to your chest and your heart",
+    "reason": "Doctor listening to chest and heart entails stethoscope examination.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q05",
+    "transcript_id": "sample_4",
+    "question": "Were the lungs found to be normal on auscultation?",
+    "bucket": "support",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Chest sounding normal entails lungs normal on auscultation.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q02",
+    "transcript_id": "sample_4",
+    "question": "Are the patient's asthma findings stable at this visit?",
+    "bucket": "support",
+    "quote": "This is what a stable annual check looks like.",
+    "reason": "Doctor explicitly describes the check as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_hard_no_q01",
+    "transcript_id": "sample_4",
+    "question": "Should the asthma medication dose be increased?",
+    "bucket": "refute",
+    "quote": "No changes. You carry on exactly as you are.",
+    "reason": "Asserted dose increase vs actual continue unchanged with nothing to adjust.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q01",
+    "transcript_id": "sample_4",
+    "question": "Will the current treatment continue unchanged?",
+    "bucket": "support",
+    "quote": "No changes. You carry on exactly as you are.",
+    "reason": "Doctor states treatment continues unchanged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q04",
+    "transcript_id": "sample_4",
+    "question": "Does the visit concern asthma?",
+    "bucket": "support",
+    "quote": "It is, for the asthma.",
+    "reason": "Patient confirms the visit is for asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_off_topic_q01",
+    "transcript_id": "sample_4",
+    "question": "Is there any discussion about cooking?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of cooking anywhere in the visit.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_hard_no_q02",
+    "transcript_id": "sample_4",
+    "question": "Has an irregular heart rhythm been found?",
+    "bucket": "refute",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Asserted irregular rhythm vs actual heart sounds normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  }
+]

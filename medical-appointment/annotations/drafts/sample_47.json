@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_47_yes_q03",
+    "transcript_id": "sample_47",
+    "question": "Has penicillin treatment been started?",
+    "bucket": "support",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Doctor explicitly states starting penicillin treatment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q04",
+    "transcript_id": "sample_47",
+    "question": "Is the patient able to swallow without any discomfort?",
+    "bucket": "refute",
+    "quote": "it hurts when I swallow",
+    "reason": "Asserted painless swallowing vs actual pain on swallowing.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q03",
+    "transcript_id": "sample_47",
+    "question": "Did the doctor prescribe erythromycin?",
+    "bucket": "refute",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Asserted erythromycin vs actual penicillin prescribed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q01",
+    "transcript_id": "sample_47",
+    "question": "Does the patient complain of hoarseness as the main symptom?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Hoarseness never mentioned; presenting complaint is sore throat.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q05",
+    "transcript_id": "sample_47",
+    "question": "Was the patient told to manage with symptom relief only?",
+    "bucket": "refute",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Asserted symptom relief only vs actual penicillin treatment started.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_off_topic_q01",
+    "transcript_id": "sample_47",
+    "question": "Does the conversation indicate the patient discussed their desire to learn digital photography techniques?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Digital photography never discussed in the conversation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_yes_q01",
+    "transcript_id": "sample_47",
+    "question": "Were coatings seen on the tonsils?",
+    "bucket": "support",
+    "quote": "there is coating on them",
+    "reason": "Doctor observes coating on the tonsils.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q06",
+    "transcript_id": "sample_47",
+    "question": "Has the throat problem been assessed as a viral infection?",
+    "bucket": "refute",
+    "quote": "My assessment is tonsillitis.",
+    "reason": "Asserted viral infection vs actual assessment of tonsillitis.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_yes_q02",
+    "transcript_id": "sample_47",
+    "question": "Does the patient have a sore throat?",
+    "bucket": "support",
+    "quote": "A sore throat and pain on swallowing.",
+    "reason": "Doctor restates the patient sore-throat complaint.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q02",
+    "transcript_id": "sample_47",
+    "question": "Were the tonsils pale and free of coatings?",
+    "bucket": "refute",
+    "quote": "Your tonsils are red and there is coating on them.",
+    "reason": "Asserted pale and coating-free vs actual red with coating.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  }
+]

@@ -1,0 +1,3902 @@
+[
+  {
+    "question_id": "sample_4_yes_q03",
+    "transcript_id": "sample_4",
+    "question": "Did the patient attend for an annual asthma follow-up?",
+    "bucket": "support",
+    "quote": "this is your annual follow-up. It is, for the asthma.",
+    "reason": "Transcript states the visit is the annual follow-up for asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q07",
+    "transcript_id": "sample_4",
+    "question": "Is the heart examination without abnormal findings?",
+    "bucket": "support",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Doctor reports chest and heart sound normal with nothing abnormal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q06",
+    "transcript_id": "sample_4",
+    "question": "Was the patient listened to with a stethoscope?",
+    "bucket": "support",
+    "quote": "Let me listen to your chest and your heart",
+    "reason": "Doctor listening to chest and heart entails stethoscope examination.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q05",
+    "transcript_id": "sample_4",
+    "question": "Were the lungs found to be normal on auscultation?",
+    "bucket": "support",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Chest sounding normal entails lungs normal on auscultation.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q02",
+    "transcript_id": "sample_4",
+    "question": "Are the patient's asthma findings stable at this visit?",
+    "bucket": "support",
+    "quote": "This is what a stable annual check looks like.",
+    "reason": "Doctor explicitly describes the check as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_hard_no_q01",
+    "transcript_id": "sample_4",
+    "question": "Should the asthma medication dose be increased?",
+    "bucket": "refute",
+    "quote": "No changes. You carry on exactly as you are.",
+    "reason": "Asserted dose increase vs actual continue unchanged with nothing to adjust.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q01",
+    "transcript_id": "sample_4",
+    "question": "Will the current treatment continue unchanged?",
+    "bucket": "support",
+    "quote": "No changes. You carry on exactly as you are.",
+    "reason": "Doctor states treatment continues unchanged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_yes_q04",
+    "transcript_id": "sample_4",
+    "question": "Does the visit concern asthma?",
+    "bucket": "support",
+    "quote": "It is, for the asthma.",
+    "reason": "Patient confirms the visit is for asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_off_topic_q01",
+    "transcript_id": "sample_4",
+    "question": "Is there any discussion about cooking?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of cooking anywhere in the visit.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_4_hard_no_q02",
+    "transcript_id": "sample_4",
+    "question": "Has an irregular heart rhythm been found?",
+    "bucket": "refute",
+    "quote": "Your chest and heart both sound normal.",
+    "reason": "Asserted irregular rhythm vs actual heart sounds normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_4.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q01",
+    "transcript_id": "sample_5",
+    "question": "Does the patient take pantoprazole for reflux?",
+    "bucket": "support",
+    "quote": "gave me reflux on top. Which is why you are on pantoprazole for that.",
+    "reason": "Transcript links reflux to pantoprazole use.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_hard_no_q02",
+    "transcript_id": "sample_5",
+    "question": "Did the back pain begin after surgery for a lumbar disc prolapse?",
+    "bucket": "refute",
+    "quote": "the cervical disc prolapse, operated in 2017",
+    "reason": "Asserted lumbar prolapse vs actual cervical disc prolapse operated in 2017.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_hard_no_q01",
+    "transcript_id": "sample_5",
+    "question": "Have the pains in the hands been attributed to gout?",
+    "bucket": "refute",
+    "quote": "Osteoarthritis is what is suspected there",
+    "reason": "Asserted gout vs actual suspected osteoarthritis in the hands.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q05",
+    "transcript_id": "sample_5",
+    "question": "Is the patient still in pain despite regular Ibumetin and Panodil?",
+    "bucket": "support",
+    "quote": "the pain has just carried on regardless. Despite taking the ibumetin and the panadil regularly? Despite both, and I do take them properly.",
+    "reason": "Pain persists despite taking Ibumetin and Panodil regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q02",
+    "transcript_id": "sample_5",
+    "question": "Will the NSAID treatment be continued under cover of a proton pump inhibitor?",
+    "bucket": "support",
+    "quote": "you continue the anti-inflammatory with the stomach protection alongside it",
+    "reason": "Continue anti-inflammatory with stomach protection entails NSAID under PPI cover.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q06",
+    "transcript_id": "sample_5",
+    "question": "Did the patient undergo surgery for a cervical disc prolapse in 2017?",
+    "bucket": "support",
+    "quote": "the cervical disc prolapse, operated in 2017",
+    "reason": "Transcript states cervical prolapse operated in 2017.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_off_topic_q02",
+    "transcript_id": "sample_5",
+    "question": "Does the conversation mention the patient owning a digital camera?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a digital camera.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q03",
+    "transcript_id": "sample_5",
+    "question": "Was muscle tension found in the neck and shoulders?",
+    "bucket": "support",
+    "quote": "i can feel muscle tension in your neck and shoulders",
+    "reason": "Examination finds muscle tension in neck and shoulders.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q04",
+    "transcript_id": "sample_5",
+    "question": "Are the menopausal symptoms treated with Activelle?",
+    "bucket": "support",
+    "quote": "the menopausal symptoms, which you are taking Activel for.",
+    "reason": "Menopausal symptoms treated with Activel, transcript spelling of Activelle.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_off_topic_q01",
+    "transcript_id": "sample_5",
+    "question": "Is the patient discussing owning a cat?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of owning a cat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q03",
+    "transcript_id": "sample_6",
+    "question": "Was the patient's voice noted to sound congested?",
+    "bucket": "support",
+    "quote": "You do sound congested.",
+    "reason": "Doctor notes the patient sounds congested.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_hard_no_q02",
+    "transcript_id": "sample_6",
+    "question": "Should the fungal infection be treated with Brentan gel?",
+    "bucket": "refute",
+    "quote": "And fluconazole, 50 milligrams, for seven days, for the mouth.",
+    "reason": "Asserted Brentan gel vs actual fluconazole for the mouth.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_off_topic_q01",
+    "transcript_id": "sample_6",
+    "question": "Does the patient talk about needing a new vehicle for their daily commute?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a vehicle or commute.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q04",
+    "transcript_id": "sample_6",
+    "question": "Are four daily doses of one million IU of penicillin planned?",
+    "bucket": "support",
+    "quote": "One million international units, four times daily, for seven days.",
+    "reason": "Penicillin dose and frequency match four daily doses of one million IU.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q05",
+    "transcript_id": "sample_6",
+    "question": "Does the patient also have a fungal infection in the mouth?",
+    "bucket": "support",
+    "quote": "And the mouth? That is a possible candidiasis.",
+    "reason": "Mouth issue assessed as possible candidiasis, a fungal infection.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q07",
+    "transcript_id": "sample_6",
+    "question": "Did the patient ask for penicillin?",
+    "bucket": "support",
+    "quote": "I want penicillin for it.",
+    "reason": "Patient explicitly asks for penicillin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q01",
+    "transcript_id": "sample_6",
+    "question": "Will the patient take Fluconazole 50 mg?",
+    "bucket": "support",
+    "quote": "And fluconazole, 50 milligrams, for seven days, for the mouth.",
+    "reason": "Fluconazole 50 milligrams prescribed for the mouth.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_hard_no_q01",
+    "transcript_id": "sample_6",
+    "question": "Does the patient want to avoid antibiotics?",
+    "bucket": "refute",
+    "quote": "I want penicillin for it.",
+    "reason": "Asserted avoidance of antibiotics vs actual request for penicillin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q02",
+    "transcript_id": "sample_6",
+    "question": "Is the patient complaining of sinus symptoms?",
+    "bucket": "support",
+    "quote": "My sinuses. Blocked, aching, the whole business.",
+    "reason": "Patient complains of blocked aching sinuses.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_6_yes_q06",
+    "transcript_id": "sample_6",
+    "question": "Has penicillin been prescribed for seven days?",
+    "bucket": "support",
+    "quote": "For the sinuses, penicillin. One million international units, four times daily, for seven days.",
+    "reason": "Penicillin for the sinuses prescribed for seven days.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_6.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q01",
+    "transcript_id": "sample_10",
+    "question": "Has the doctor found the condition to be unstable?",
+    "bucket": "refute",
+    "quote": "I would describe this as a stable situation.",
+    "reason": "Asserted unstable condition vs actual stable situation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q04",
+    "transcript_id": "sample_10",
+    "question": "Did the patient report new breathing symptoms?",
+    "bucket": "refute",
+    "quote": "Any new symptoms? No. Nothing new.",
+    "reason": "Asserted new breathing symptoms reported vs actual no new symptoms.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q01",
+    "transcript_id": "sample_10",
+    "question": "Does the patient need continued treatment?",
+    "bucket": "support",
+    "quote": "You do need to continue the treatment you are on.",
+    "reason": "Doctor states treatment must continue.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_off_topic_q02",
+    "transcript_id": "sample_10",
+    "question": "Did the patient mention owning a specific pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a pet.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_off_topic_q01",
+    "transcript_id": "sample_10",
+    "question": "Was any problem with housing discussed?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of housing.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q05",
+    "transcript_id": "sample_10",
+    "question": "Is the stomach acid medication being discontinued?",
+    "bucket": "refute",
+    "quote": "Dimista and Esomeprazole for the stomach acid. Both renewed.",
+    "reason": "Asserted stomach acid medication discontinued vs actual both renewed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q03",
+    "transcript_id": "sample_10",
+    "question": "Were abnormal sounds heard over the lungs?",
+    "bucket": "refute",
+    "quote": "Nothing abnormal on listening.",
+    "reason": "Asserted abnormal lung sounds vs actual nothing abnormal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q02",
+    "transcript_id": "sample_10",
+    "question": "Were the lungs and heart normal on auscultation?",
+    "bucket": "support",
+    "quote": "Your lungs and and your heart both sound normal.",
+    "reason": "Lungs and heart reported normal on listening.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_yes_q03",
+    "transcript_id": "sample_10",
+    "question": "Are the patient's complaints unchanged, with nothing new reported?",
+    "bucket": "support",
+    "quote": "Nothing you have described today points to something new.",
+    "reason": "Doctor confirms nothing new reported.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_10_hard_no_q02",
+    "transcript_id": "sample_10",
+    "question": "Does the plan include a referral to a lung specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of referral to a lung specialist.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_10.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_yes_q03",
+    "transcript_id": "sample_17",
+    "question": "Is the medicine to be taken after a meal?",
+    "bucket": "support",
+    "quote": "You take it after a meal.",
+    "reason": "Medicine is to be taken after a meal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q06",
+    "transcript_id": "sample_17",
+    "question": "Has the patient been told that the condition needs no treatment?",
+    "bucket": "refute",
+    "quote": "And it is one that needs treating.",
+    "reason": "Asserted no treatment needed vs actual needs treating.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_yes_q02",
+    "transcript_id": "sample_17",
+    "question": "Should the daily dose be 100 mg?",
+    "bucket": "support",
+    "quote": "Sporanox. 100 mg daily for 2 weeks.",
+    "reason": "Daily dose stated as 100 mg.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q05",
+    "transcript_id": "sample_17",
+    "question": "Were bacteria identified in the sample?",
+    "bucket": "refute",
+    "quote": "The swab shows yeast fungi.",
+    "reason": "Asserted bacteria vs actual yeast fungi.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q03",
+    "transcript_id": "sample_17",
+    "question": "Did the swab come from the throat?",
+    "bucket": "refute",
+    "quote": "You are here for the answer on the swab from your mouth.",
+    "reason": "Asserted throat swab vs actual swab from the mouth.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q02",
+    "transcript_id": "sample_17",
+    "question": "Was the prescribed dose 200 mg daily?",
+    "bucket": "refute",
+    "quote": "Sporanox. 100 mg daily for 2 weeks.",
+    "reason": "Asserted 200 mg daily vs actual 100 mg daily.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_off_topic_q01",
+    "transcript_id": "sample_17",
+    "question": "Is there any mention of attending a concert?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of attending a concert.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q01",
+    "transcript_id": "sample_17",
+    "question": "The treatment is planned to run for six weeks, right?",
+    "bucket": "refute",
+    "quote": "100 mg daily for 2 weeks",
+    "reason": "Asserted six weeks vs actual 2 weeks.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q04",
+    "transcript_id": "sample_17",
+    "question": "Should the tablets be taken on an empty stomach?",
+    "bucket": "refute",
+    "quote": "Always after food.",
+    "reason": "Asserted empty stomach vs actual always after food.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_yes_q01",
+    "transcript_id": "sample_17",
+    "question": "Will the treatment last two weeks?",
+    "bucket": "support",
+    "quote": "After a meal every day for 2 weeks.",
+    "reason": "Treatment duration stated as 2 weeks.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q04",
+    "transcript_id": "sample_18",
+    "question": "Should kidney function be monitored?",
+    "bucket": "support",
+    "quote": "we should monitor your blood pressure and your kidney function",
+    "reason": "Doctor states kidney function should be monitored.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_off_topic_q01",
+    "transcript_id": "sample_18",
+    "question": "Is there any reference to the patient planning a specific fitness challenge?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a fitness challenge.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q02",
+    "transcript_id": "sample_18",
+    "question": "Did the patient ask for a renewal of the Ibumetin prescription?",
+    "bucket": "support",
+    "quote": "I need my ibumetin renewed.",
+    "reason": "Patient asks for Ibumetin renewal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q01",
+    "transcript_id": "sample_18",
+    "question": "Has the Ibumetin prescription been issued?",
+    "bucket": "support",
+    "quote": "And you will still renew the ibumetin today? Yes. The prescription is created.",
+    "reason": "Doctor confirms the Ibumetin prescription is created.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q07",
+    "transcript_id": "sample_18",
+    "question": "Is the patient also taking Pantoprazole?",
+    "bucket": "support",
+    "quote": "you are still taking pantoprazole alongside it",
+    "reason": "Patient confirms taking pantoprazole alongside Ibumetin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_hard_no_q01",
+    "transcript_id": "sample_18",
+    "question": "Were liver values the focus of the planned blood tests?",
+    "bucket": "refute",
+    "quote": "We check kidneys, cholesterol, and blood sugar.",
+    "reason": "Asserted liver values vs actual kidneys, cholesterol and blood sugar.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_hard_no_q02",
+    "transcript_id": "sample_18",
+    "question": "Should the blood pressure readings be taken at the clinic instead of at home?",
+    "bucket": "refute",
+    "quote": "I would like you to measure your blood pressure at home over three days.",
+    "reason": "Asserted clinic readings vs actual home readings.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q06",
+    "transcript_id": "sample_18",
+    "question": "Will the blood tests include cholesterol and blood sugar?",
+    "bucket": "support",
+    "quote": "We check kidneys, cholesterol, and blood sugar.",
+    "reason": "Blood tests include cholesterol and blood sugar.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q03",
+    "transcript_id": "sample_18",
+    "question": "Does the doctor consider the NSAID use long-standing and high?",
+    "bucket": "support",
+    "quote": "You have used anti-inflammatory painkillers heavily and for a long time.",
+    "reason": "Doctor describes NSAID use as heavy and long-standing.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q05",
+    "transcript_id": "sample_18",
+    "question": "Was blood pressure to be measured at home over three days?",
+    "bucket": "support",
+    "quote": "I would like you to measure your blood pressure at home over three days.",
+    "reason": "Blood pressure to be measured at home over three days.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q04",
+    "transcript_id": "sample_19",
+    "question": "Is the patient still being treated for asthma?",
+    "bucket": "support",
+    "quote": "I am still being treated for asthma and for reflux.",
+    "reason": "Patient states still treated for asthma and reflux.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_off_topic_q01",
+    "transcript_id": "sample_19",
+    "question": "Did the patient discuss baking a cake in the conversation?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of baking a cake.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q03",
+    "transcript_id": "sample_19",
+    "question": "Does the doctor describe the medication as unstable and in need of change?",
+    "bucket": "refute",
+    "quote": "Your medication is stable.",
+    "reason": "Asserted unstable medication needing change vs actual stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q01",
+    "transcript_id": "sample_19",
+    "question": "Alongside asthma, is the patient treated for diabetes?",
+    "bucket": "refute",
+    "quote": "I am still being treated for asthma and for reflux.",
+    "reason": "Asserted diabetes vs actual reflux alongside asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q01",
+    "transcript_id": "sample_19",
+    "question": "Were three prescriptions renewed in total?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Three prescriptions renewed in total.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_off_topic_q02",
+    "transcript_id": "sample_19",
+    "question": "Did the conversation mention anything about the patient planning a trip?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of planning a trip.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q02",
+    "transcript_id": "sample_19",
+    "question": "Has Esomeprazole been renewed as well?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Isomeprazole renewed, transcript spelling of Esomeprazole.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q03",
+    "transcript_id": "sample_19",
+    "question": "Is Airomir among the renewed medicines?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Aromir renewed, transcript spelling of Airomir.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q04",
+    "transcript_id": "sample_19",
+    "question": "Were the prescriptions stopped rather than renewed?",
+    "bucket": "refute",
+    "quote": "All three renewed.",
+    "reason": "Asserted prescriptions stopped vs actual all three renewed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q02",
+    "transcript_id": "sample_19",
+    "question": "Was Pantoprazole the acid-reducing drug that was renewed?",
+    "bucket": "refute",
+    "quote": "The Isomeprazole is the one for the reflux",
+    "reason": "Asserted pantoprazole vs actual Isomeprazole for reflux.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_hard_no_q03",
+    "transcript_id": "sample_20",
+    "question": "Will the patient be referred to a pain clinic?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No referral or pain clinic is mentioned, only prescription renewal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_off_topic_q02",
+    "transcript_id": "sample_20",
+    "question": "Was a specific recipe or cooking activity discussed?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No recipe or cooking activity is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_off_topic_q01",
+    "transcript_id": "sample_20",
+    "question": "At any point does the patient talk about their experiences with a hobby?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "TV series and film are mentioned casually but not framed as a hobby experience.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q01",
+    "transcript_id": "sample_20",
+    "question": "Was Ibumetin renewed as well?",
+    "bucket": "support",
+    "quote": "I am creating prescriptions for both PAMEL and ibumedin now",
+    "reason": "Both prescriptions are created despite spelling variants of the drug names.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_hard_no_q01",
+    "transcript_id": "sample_20",
+    "question": "Did the patient ask for morphine to be renewed?",
+    "bucket": "refute",
+    "quote": "PAMOL and IBUMETIN.",
+    "reason": "Asserted morphine requested vs actual PAMOL and IBUMETIN named by patient.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_hard_no_q02",
+    "transcript_id": "sample_20",
+    "question": "Does the pain affect the lower back alone?",
+    "bucket": "refute",
+    "quote": "It is a general, widespread sort of pain, spread around the body rather than in one place.",
+    "reason": "Asserted lower back alone vs actual widespread pain around the body.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q05",
+    "transcript_id": "sample_20",
+    "question": "Is Pamol one of the medicines requested?",
+    "bucket": "support",
+    "quote": "PAMOL and IBUMETIN.",
+    "reason": "PAMOL is explicitly named as one of the two medicines used.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q02",
+    "transcript_id": "sample_20",
+    "question": "Has the pain problem been described as stable?",
+    "bucket": "support",
+    "quote": "Then we are looking at a stable pain problem",
+    "reason": "Pain problem is directly described as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q04",
+    "transcript_id": "sample_20",
+    "question": "Does the patient still need pain relief?",
+    "bucket": "support",
+    "quote": "you still need pain-relieving medication.",
+    "reason": "Transcript states continued need for pain-relieving medication.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q03",
+    "transcript_id": "sample_20",
+    "question": "Were both prescriptions issued?",
+    "bucket": "support",
+    "quote": "I am creating prescriptions for both PAMEL and ibumedin now",
+    "reason": "Both prescriptions are issued at the pharmacy.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q03",
+    "transcript_id": "sample_23",
+    "question": "Was a skin wart found under the right breast?",
+    "bucket": "support",
+    "quote": "The one under your right breast is a skin wart, about one centimeter.",
+    "reason": " wart under right breast is directly described.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q05",
+    "transcript_id": "sample_23",
+    "question": "Has the patient been informed about the risk of scarring and infection?",
+    "bucket": "support",
+    "quote": "there will be a scar where each one is removed and there is a risk of infection afterwards",
+    "reason": "Both scarring and infection risks are explicitly disclosed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q02",
+    "transcript_id": "sample_23",
+    "question": "Does the patient want the skin changes removed?",
+    "bucket": "support",
+    "quote": "I want them gone.",
+    "reason": "Patient explicitly requests removal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_off_topic_q02",
+    "transcript_id": "sample_23",
+    "question": "Is there any mention of the patient's pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_hard_no_q01",
+    "transcript_id": "sample_23",
+    "question": "Has the patient been told that the procedure carries no risk of scarring?",
+    "bucket": "refute",
+    "quote": "there will be a scar where each one is removed",
+    "reason": "Asserted no scarring risk vs actual statement that a scar will occur.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q04",
+    "transcript_id": "sample_23",
+    "question": "Is an appointment for the removal going to be arranged?",
+    "bucket": "support",
+    "quote": "I will arrange an appointment for the removal",
+    "reason": "Removal appointment is explicitly arranged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q06",
+    "transcript_id": "sample_23",
+    "question": "Do the changes on the abdomen and lower leg resemble seborrheic keratoses?",
+    "bucket": "support",
+    "quote": "They look like seborrheic keratoses.",
+    "reason": "Abdomen and lower leg changes are described as looking like seborrheic keratoses.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q01",
+    "transcript_id": "sample_23",
+    "question": "Were the skin changes judged to be benign?",
+    "bucket": "support",
+    "quote": "My assessment is that these are benign skin changes.",
+    "reason": "Changes are explicitly assessed as benign.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_off_topic_q01",
+    "transcript_id": "sample_23",
+    "question": "Does the patient talk about needing a new vehicle?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No vehicle need is discussed, only weather.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_hard_no_q02",
+    "transcript_id": "sample_23",
+    "question": "Are the elements on the abdomen about 2 cm across?",
+    "bucket": "refute",
+    "quote": "The others on your abdomen and lower leg are 0.6 cm",
+    "reason": "Asserted 2 cm vs actual 0.6 cm.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q06",
+    "transcript_id": "sample_33",
+    "question": "The visit is a follow-up on allergic rhinitis, correct?",
+    "bucket": "support",
+    "quote": "This is your follow-up for allergic rhinitis.",
+    "reason": "Visit is explicitly identified as allergic rhinitis follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q01",
+    "transcript_id": "sample_33",
+    "question": "Does the doctor plan to refer the patient to an allergy specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No referral or allergy specialist is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q02",
+    "transcript_id": "sample_33",
+    "question": "Were daily doses made mandatory going forward?",
+    "bucket": "refute",
+    "quote": "The plan is to continue it as needed.",
+    "reason": "Asserted mandatory daily doses vs actual as-needed use.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_off_topic_q01",
+    "transcript_id": "sample_33",
+    "question": "Is there any talk about the patient's recent purchase of a vehicle?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No vehicle purchase is discussed, only room plants.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q02",
+    "transcript_id": "sample_33",
+    "question": "Is the patient free of symptoms at the moment?",
+    "bucket": "support",
+    "quote": "I do not have any symptoms right now.",
+    "reason": "Patient states absence of current symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q04",
+    "transcript_id": "sample_33",
+    "question": "Did the antihistamine work well?",
+    "bucket": "support",
+    "quote": "The antihistamine is having a good effect.",
+    "reason": "Antihistamine is explicitly described as having good effect.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q03",
+    "transcript_id": "sample_33",
+    "question": "Has the medication helped the patient?",
+    "bucket": "support",
+    "quote": "It has helped.",
+    "reason": "Medication is confirmed to have helped.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q05",
+    "transcript_id": "sample_33",
+    "question": "Are the findings unremarkable?",
+    "bucket": "support",
+    "quote": "The examination I have done is normal.",
+    "reason": "Examination is explicitly described as normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_yes_q01",
+    "transcript_id": "sample_33",
+    "question": "Should the patient carry on with the treatment as needed?",
+    "bucket": "support",
+    "quote": "The plan is to continue it as needed.",
+    "reason": "Plan is explicitly to continue treatment as needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_33_hard_no_q03",
+    "transcript_id": "sample_33",
+    "question": "Was anything abnormal picked up at the examination?",
+    "bucket": "refute",
+    "quote": "Nothing abnormal was found on examination.",
+    "reason": "Asserted abnormal findings vs actual nothing abnormal found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_33.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q05",
+    "transcript_id": "sample_37",
+    "question": "Is the skin intact?",
+    "bucket": "support",
+    "quote": "The skin is intact.",
+    "reason": "Skin is directly stated to be intact.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q01",
+    "transcript_id": "sample_37",
+    "question": "Was erythema migrans seen around the bite?",
+    "bucket": "refute",
+    "quote": "There is no erythema migrans.",
+    "reason": "Asserted erythema migrans seen vs actual none present.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q03",
+    "transcript_id": "sample_37",
+    "question": "Is the risk of Borrelia considered high?",
+    "bucket": "refute",
+    "quote": "The risk of Borrelia here is low.",
+    "reason": "Asserted high Borrelia risk vs actual low risk.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q03",
+    "transcript_id": "sample_37",
+    "question": "Was erythema migrans absent?",
+    "bucket": "support",
+    "quote": "There is no erythema migrans.",
+    "reason": "Absence of erythema migrans is explicitly stated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q04",
+    "transcript_id": "sample_37",
+    "question": "Are redness and swelling absent?",
+    "bucket": "support",
+    "quote": "No redness at all. Any swelling? No swelling either.",
+    "reason": "Both redness and swelling are stated absent in one passage.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q06",
+    "transcript_id": "sample_37",
+    "question": "The plan involves no treatment, right?",
+    "bucket": "support",
+    "quote": "No treatment is needed.",
+    "reason": "Plan explicitly states no treatment is needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_off_topic_q01",
+    "transcript_id": "sample_37",
+    "question": "Does the conversation indicate the patient discussed their employment as a freelancer?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No employment or freelancer discussion occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q02",
+    "transcript_id": "sample_37",
+    "question": "Has the bite area become red and swollen?",
+    "bucket": "refute",
+    "quote": "Intact skin. No redness, no swelling, and no rash at the site.",
+    "reason": "Asserted red and swollen vs actual no redness or swelling.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q01",
+    "transcript_id": "sample_37",
+    "question": "Did the patient get a tick bite?",
+    "bucket": "support",
+    "quote": "I found a tick attached to my leg.",
+    "reason": "Patient directly reports attached tick.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q02",
+    "transcript_id": "sample_37",
+    "question": "Has the patient been told simply to keep an eye on the area?",
+    "bucket": "support",
+    "quote": "Observation.",
+    "reason": "Observation plan entails keeping an eye on the area.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q02",
+    "transcript_id": "sample_39",
+    "question": "Does the patient have pain in the lower back?",
+    "bucket": "support",
+    "quote": "Pain in my lower back.",
+    "reason": "Patient directly reports lower back pain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q04",
+    "transcript_id": "sample_39",
+    "question": "Has the patient been referred for surgery?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No surgery or surgical referral is mentioned, only pain relief and exercise.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_off_topic_q02",
+    "transcript_id": "sample_39",
+    "question": "Is the patient discussing their pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_off_topic_q01",
+    "transcript_id": "sample_39",
+    "question": "At any point does the patient express interest in learning digital photography techniques?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No photography interest is expressed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q04",
+    "transcript_id": "sample_39",
+    "question": "Was reduced mobility found during the examination?",
+    "bucket": "support",
+    "quote": "Your movement is also reduced when you bend and turn.",
+    "reason": "Reduced movement on bending and turning is explicitly found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q03",
+    "transcript_id": "sample_39",
+    "question": "Were painkillers part of the treatment plan?",
+    "bucket": "support",
+    "quote": "Painkillers and exercises.",
+    "reason": "Treatment summary confirmed to include painkillers.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q01",
+    "transcript_id": "sample_39",
+    "question": "Does the pain radiate down the leg?",
+    "bucket": "refute",
+    "quote": "No, it stays in the lower back.",
+    "reason": "Asserted radiation down leg vs actual stays in lower back.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_yes_q01",
+    "transcript_id": "sample_39",
+    "question": "The pain was assessed as nonspecific musculoskeletal pain, right?",
+    "bucket": "support",
+    "quote": "this is nonspecific muscle and joint pain in the back, without radiation.",
+    "reason": "Assessment is explicitly nonspecific muscle and joint pain without radiation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q03",
+    "transcript_id": "sample_39",
+    "question": "Did the doctor conclude that the pain came from a herniated disc?",
+    "bucket": "refute",
+    "quote": "this is nonspecific muscle and joint pain in the back, without radiation.",
+    "reason": "Asserted herniated disc vs actual nonspecific muscle and joint pain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_39_hard_no_q02",
+    "transcript_id": "sample_39",
+    "question": "Was the patient's mobility completely unaffected?",
+    "bucket": "refute",
+    "quote": "Your movement is also reduced when you bend and turn.",
+    "reason": "Asserted mobility unaffected vs actual reduced movement.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_39.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q02",
+    "transcript_id": "sample_42",
+    "question": "Was the blood pressure measured at 135/88?",
+    "bucket": "support",
+    "quote": "Your blood pressure is 135 over 88.",
+    "reason": "Blood pressure reading matches 135/88.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q07",
+    "transcript_id": "sample_42",
+    "question": "Did the doctor assess the patient as slightly overweight?",
+    "bucket": "support",
+    "quote": "It puts you in the mildly overweight range.",
+    "reason": "Mildly overweight assessment directly supports slightly overweight.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q06",
+    "transcript_id": "sample_42",
+    "question": "Were exercise recommendations also part of the plan?",
+    "bucket": "support",
+    "quote": "The plan is advice on diet and on exercise.",
+    "reason": "Exercise advice is explicitly part of the plan.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q05",
+    "transcript_id": "sample_42",
+    "question": "Does the patient have a BMI of 28?",
+    "bucket": "support",
+    "quote": "Your body mass index is 28.",
+    "reason": "BMI is explicitly stated as 28.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q03",
+    "transcript_id": "sample_42",
+    "question": "Has the patient been given advice about diet?",
+    "bucket": "support",
+    "quote": "The plan is advice on diet and on exercise.",
+    "reason": "Diet advice is explicitly part of the plan.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_hard_no_q02",
+    "transcript_id": "sample_42",
+    "question": "Did the doctor consider the patient severely obese?",
+    "bucket": "refute",
+    "quote": "It puts you in the mildly overweight range.",
+    "reason": "Asserted severely obese vs actual mildly overweight.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q01",
+    "transcript_id": "sample_42",
+    "question": "Is the patient feeling well?",
+    "bucket": "support",
+    "quote": "I feel perfectly well.",
+    "reason": "Patient explicitly states feeling well.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_yes_q04",
+    "transcript_id": "sample_42",
+    "question": "The visit was a preventive health check, correct?",
+    "bucket": "support",
+    "quote": "This is your preventive health check today.",
+    "reason": "Visit is explicitly identified as preventive health check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_hard_no_q01",
+    "transcript_id": "sample_42",
+    "question": "Was the blood pressure 155/98?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is 135 over 88.",
+    "reason": "Asserted 155/98 vs actual 135 over 88.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_42_off_topic_q01",
+    "transcript_id": "sample_42",
+    "question": "Does the patient talk about wanting to work part-time?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No part-time work wish is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_42.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q02",
+    "transcript_id": "sample_43",
+    "question": "Does the patient have a sore throat?",
+    "bucket": "support",
+    "quote": "My throat has been really sore.",
+    "reason": "Patient directly reports sore throat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q03",
+    "transcript_id": "sample_43",
+    "question": "Is the infection thought to be bacterial?",
+    "bucket": "refute",
+    "quote": "My assessment is that this is a viral infection.",
+    "reason": "Asserted bacterial vs actual viral infection.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q05",
+    "transcript_id": "sample_43",
+    "question": "Did the examination find no pus in the throat?",
+    "bucket": "support",
+    "quote": "I also looked at your throat and there was no pus.",
+    "reason": "Examination explicitly found no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_off_topic_q01",
+    "transcript_id": "sample_43",
+    "question": "Are the speakers discussing the patient's pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is discussed, only roadworks and forecast.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q04",
+    "transcript_id": "sample_43",
+    "question": "Was the strep test negative?",
+    "bucket": "support",
+    "quote": "It was negative.",
+    "reason": "Strep test result is explicitly negative.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q01",
+    "transcript_id": "sample_43",
+    "question": "Is the infection considered to be viral?",
+    "bucket": "support",
+    "quote": "My assessment is that this is a viral infection.",
+    "reason": "Infection is explicitly assessed as viral.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q01",
+    "transcript_id": "sample_43",
+    "question": "Does the patient describe abdominal pain as the main problem?",
+    "bucket": "refute",
+    "quote": "My throat has been really sore.",
+    "reason": "Asserted abdominal pain as main problem vs actual sore throat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q02",
+    "transcript_id": "sample_43",
+    "question": "Were the tonsils covered in coatings?",
+    "bucket": "refute",
+    "quote": "there was no pus.",
+    "reason": "Asserted tonsils covered in coatings vs actual no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_yes_q03",
+    "transcript_id": "sample_43",
+    "question": "Has the doctor decided against antibiotics?",
+    "bucket": "support",
+    "quote": "The plan is no antibiotics",
+    "reason": "Plan explicitly states no antibiotics.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_43_hard_no_q04",
+    "transcript_id": "sample_43",
+    "question": "Did the doctor see pus in the throat?",
+    "bucket": "refute",
+    "quote": "there was no pus.",
+    "reason": "Asserted pus seen vs actual no pus.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_43.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_yes_q03",
+    "transcript_id": "sample_47",
+    "question": "Has penicillin treatment been started?",
+    "bucket": "support",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Doctor explicitly states starting penicillin treatment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q04",
+    "transcript_id": "sample_47",
+    "question": "Is the patient able to swallow without any discomfort?",
+    "bucket": "refute",
+    "quote": "it hurts when I swallow",
+    "reason": "Asserted painless swallowing vs actual pain on swallowing.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q03",
+    "transcript_id": "sample_47",
+    "question": "Did the doctor prescribe erythromycin?",
+    "bucket": "refute",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Asserted erythromycin vs actual penicillin prescribed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q01",
+    "transcript_id": "sample_47",
+    "question": "Does the patient complain of hoarseness as the main symptom?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Hoarseness never mentioned; presenting complaint is sore throat.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q05",
+    "transcript_id": "sample_47",
+    "question": "Was the patient told to manage with symptom relief only?",
+    "bucket": "refute",
+    "quote": "I am starting you on penicillin treatment.",
+    "reason": "Asserted symptom relief only vs actual penicillin treatment started.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_off_topic_q01",
+    "transcript_id": "sample_47",
+    "question": "Does the conversation indicate the patient discussed their desire to learn digital photography techniques?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Digital photography never discussed in the conversation.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_yes_q01",
+    "transcript_id": "sample_47",
+    "question": "Were coatings seen on the tonsils?",
+    "bucket": "support",
+    "quote": "there is coating on them",
+    "reason": "Doctor observes coating on the tonsils.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q06",
+    "transcript_id": "sample_47",
+    "question": "Has the throat problem been assessed as a viral infection?",
+    "bucket": "refute",
+    "quote": "My assessment is tonsillitis.",
+    "reason": "Asserted viral infection vs actual assessment of tonsillitis.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_yes_q02",
+    "transcript_id": "sample_47",
+    "question": "Does the patient have a sore throat?",
+    "bucket": "support",
+    "quote": "A sore throat and pain on swallowing.",
+    "reason": "Doctor restates the patient sore-throat complaint.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_47_hard_no_q02",
+    "transcript_id": "sample_47",
+    "question": "Were the tonsils pale and free of coatings?",
+    "bucket": "refute",
+    "quote": "Your tonsils are red and there is coating on them.",
+    "reason": "Asserted pale and coating-free vs actual red with coating.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_47.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_hard_no_q02",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor attribute the fatigue to a thyroid disorder?",
+    "bucket": "refute",
+    "quote": "there is no hormonal cause for the tiredness",
+    "reason": "Asserted thyroid attribution vs actual no hormonal cause found.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_off_topic_q01",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor ask about the patient's experience with specific technology?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of technology experience occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q03",
+    "transcript_id": "sample_48",
+    "question": "Was the TSH normal?",
+    "bucket": "support",
+    "quote": "It came back normal.",
+    "reason": "TSH (thyroid-stimulating hormone) test returned normal.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q06",
+    "transcript_id": "sample_48",
+    "question": "Did the glucose test come back normal too?",
+    "bucket": "support",
+    "quote": "That was normal as well.",
+    "reason": "Glucose test stated normal after the thyroid result.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q05",
+    "transcript_id": "sample_48",
+    "question": "Were both blood tests within normal limits?",
+    "bucket": "support",
+    "quote": "Both normal.",
+    "reason": "Both thyroid and glucose results stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_hard_no_q01",
+    "transcript_id": "sample_48",
+    "question": "Is the tiredness described as brief and occasional?",
+    "bucket": "refute",
+    "quote": "it has been going on and on",
+    "reason": "Asserted brief and occasional vs actual ongoing persistent tiredness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q04",
+    "transcript_id": "sample_48",
+    "question": "Has the patient been left without any specific treatment?",
+    "bucket": "support",
+    "quote": "No specific treatment is needed on the basis of these results.",
+    "reason": "Doctor states no specific treatment is needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q02",
+    "transcript_id": "sample_48",
+    "question": "Is the patient's tiredness persistent?",
+    "bucket": "support",
+    "quote": "Persistent fatigue.",
+    "reason": "Tiredness explicitly labeled persistent fatigue.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q07",
+    "transcript_id": "sample_48",
+    "question": "Does the doctor rule out an endocrine cause?",
+    "bucket": "support",
+    "quote": "there is no hormonal cause for the tiredness",
+    "reason": "Doctor rules out a hormonal (endocrine) cause.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_48_yes_q01",
+    "transcript_id": "sample_48",
+    "question": "The thyroid test gave a normal result, right?",
+    "bucket": "support",
+    "quote": "the thyroid and the glucose results are normal",
+    "reason": "Thyroid result explicitly stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_48.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q04",
+    "transcript_id": "sample_50",
+    "question": "Are further tests needed before the diagnosis can be settled?",
+    "bucket": "support",
+    "quote": "Further tests have been arranged to settle it.",
+    "reason": "Doctor states further tests arranged to settle the diagnosis.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q01",
+    "transcript_id": "sample_50",
+    "question": "Does the fasting blood sugar lie at 5.0 mmol/L?",
+    "bucket": "refute",
+    "quote": "Your fasting blood sugar was 7.0 millimoles per liter.",
+    "reason": "Asserted 5.0 vs actual 7.0 mmol/L.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_off_topic_q01",
+    "transcript_id": "sample_50",
+    "question": "Are the speakers discussing the patient's recent college experience?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of college experience occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q01",
+    "transcript_id": "sample_50",
+    "question": "The HbA1c came out at 47 mmol/mol, right?",
+    "bucket": "support",
+    "quote": "Your long-term sugar value was 47 millimoles per mole.",
+    "reason": "Long-term sugar (HbA1c) stated as 47.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q03",
+    "transcript_id": "sample_50",
+    "question": "Was the patient's BMI recorded as 29?",
+    "bucket": "support",
+    "quote": "Your body mass index is 29.",
+    "reason": "BMI explicitly stated as 29.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q03",
+    "transcript_id": "sample_50",
+    "question": "Has metformin treatment been started at this visit?",
+    "bucket": "refute",
+    "quote": "Nothing changes for you until we have them.",
+    "reason": "Asserted metformin started vs actual no changes pending further tests.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_off_topic_q02",
+    "transcript_id": "sample_50",
+    "question": "Was the patient talking about their recent weekend?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the recent weekend occurs; only a holiday is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q05",
+    "transcript_id": "sample_50",
+    "question": "Is the patient free of any symptoms at this visit?",
+    "bucket": "support",
+    "quote": "I feel completely normal.",
+    "reason": "Patient reports feeling completely normal with no symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_yes_q02",
+    "transcript_id": "sample_50",
+    "question": "Does the patient have a fasting blood sugar of 7.0 mmol/L?",
+    "bucket": "support",
+    "quote": "Your fasting blood sugar was 7.0 millimoles per liter.",
+    "reason": "Fasting blood sugar explicitly stated as 7.0.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_50_hard_no_q02",
+    "transcript_id": "sample_50",
+    "question": "Were the results enough to confirm type 2 diabetes already?",
+    "bucket": "refute",
+    "quote": "It is not confirmed. It is a suspicion.",
+    "reason": "Asserted confirmed diabetes vs actual unconfirmed suspicion.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_50.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_yes_q02",
+    "transcript_id": "sample_52",
+    "question": "Did the doctor plan continued follow-up?",
+    "bucket": "support",
+    "quote": "The plan is continued support and follow-up.",
+    "reason": "Doctor states plan is continued support and follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q06",
+    "transcript_id": "sample_52",
+    "question": "Has the patient been discharged from any further follow-up?",
+    "bucket": "refute",
+    "quote": "The plan is continued support and follow-up.",
+    "reason": "Asserted discharged from follow-up vs actual continued follow-up planned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_yes_q03",
+    "transcript_id": "sample_52",
+    "question": "Was the patient seen as engaged during the consultation?",
+    "bucket": "support",
+    "quote": "you seem engaged and motivated",
+    "reason": "Doctor describes the patient as engaged and motivated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q05",
+    "transcript_id": "sample_52",
+    "question": "Does the plan involve starting insulin?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Insulin never mentioned; plan is continued support and follow-up.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q04",
+    "transcript_id": "sample_52",
+    "question": "Is the patient's grasp of the treatment considered inadequate?",
+    "bucket": "refute",
+    "quote": "you have a good understanding of your illness and your treatment",
+    "reason": "Asserted inadequate grasp vs actual good understanding assessed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q02",
+    "transcript_id": "sample_52",
+    "question": "Was the patient found to be poorly motivated?",
+    "bucket": "refute",
+    "quote": "you seem engaged and motivated",
+    "reason": "Asserted poorly motivated vs actual engaged and motivated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_yes_q01",
+    "transcript_id": "sample_52",
+    "question": "The patient understands the treatment well, right?",
+    "bucket": "support",
+    "quote": "you have a good understanding of your illness and your treatment",
+    "reason": "Doctor assesses good understanding of illness and treatment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q03",
+    "transcript_id": "sample_52",
+    "question": "Were the classes the patient attended about hypertension?",
+    "bucket": "refute",
+    "quote": "I attended the diabetes education course.",
+    "reason": "Asserted hypertension classes vs actual diabetes education course.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_off_topic_q01",
+    "transcript_id": "sample_52",
+    "question": "Does the doctor ask about the patient's plans for the holidays?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of holiday plans occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q01",
+    "transcript_id": "sample_52",
+    "question": "Did the patient skip the diabetes education?",
+    "bucket": "refute",
+    "quote": "I attended the diabetes education course.",
+    "reason": "Asserted skipped education vs actual attended course.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q02",
+    "transcript_id": "sample_54",
+    "question": "Is the blood pressure elevated?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is normal.",
+    "reason": "Asserted elevated vs actual normal blood pressure.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q04",
+    "transcript_id": "sample_54",
+    "question": "Was the foot examination normal?",
+    "bucket": "support",
+    "quote": "Your feet are normal.",
+    "reason": "Foot examination explicitly stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_off_topic_q01",
+    "transcript_id": "sample_54",
+    "question": "Does the patient discuss their job?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the patient job occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q04",
+    "transcript_id": "sample_54",
+    "question": "Was the patient given a pneumococcal vaccination?",
+    "bucket": "refute",
+    "quote": "I have had my flu vaccination.",
+    "reason": "Asserted pneumococcal vs actual flu vaccination.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q01",
+    "transcript_id": "sample_54",
+    "question": "Has the diabetes become unstable?",
+    "bucket": "refute",
+    "quote": "your diabetes looks stable",
+    "reason": "Asserted unstable vs actual stable diabetes.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q03",
+    "transcript_id": "sample_54",
+    "question": "Has the patient received a flu vaccination?",
+    "bucket": "support",
+    "quote": "I have had my flu vaccination.",
+    "reason": "Patient states having had flu vaccination.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q02",
+    "transcript_id": "sample_54",
+    "question": "Did the plan include continued monitoring?",
+    "bucket": "support",
+    "quote": "the plan is continued monitoring with your annual check as usual",
+    "reason": "Plan explicitly stated as continued monitoring with annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q03",
+    "transcript_id": "sample_54",
+    "question": "Does the plan involve a check-up only every second year?",
+    "bucket": "refute",
+    "quote": "with your annual check as usual",
+    "reason": "Asserted check every second year vs actual annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_off_topic_q02",
+    "transcript_id": "sample_54",
+    "question": "Was the doctor concerned that the patient's symptoms might be related to exposure to the dark side of the Force?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of the Force occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q01",
+    "transcript_id": "sample_54",
+    "question": "Does the doctor regard the diabetes as stable?",
+    "bucket": "support",
+    "quote": "your diabetes looks stable",
+    "reason": "Doctor assesses diabetes as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_yes_q02",
+    "transcript_id": "sample_55",
+    "question": "Does the plan include routine follow-up?",
+    "bucket": "support",
+    "quote": "routine follow-up as usual",
+    "reason": "Plan stated as routine follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q01",
+    "transcript_id": "sample_55",
+    "question": "Does the plan include an urgent referral to a kidney specialist?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Urgent kidney referral never mentioned; plan is routine follow-up.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_off_topic_q01",
+    "transcript_id": "sample_55",
+    "question": "Does the conversation indicate the patient was thinking about joining a hiking club?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a hiking club occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_yes_q03",
+    "transcript_id": "sample_55",
+    "question": "Will the current treatment be continued?",
+    "bucket": "support",
+    "quote": "continue your current treatment exactly as it is",
+    "reason": "Doctor instructs to continue current treatment unchanged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_yes_q01",
+    "transcript_id": "sample_55",
+    "question": "Did the HbA1c come out at 43 mmol/mol?",
+    "bucket": "support",
+    "quote": "your long-term sugar value is 43 millimoles per mole",
+    "reason": "Long-term sugar (HbA1c) stated as 43.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q05",
+    "transcript_id": "sample_55",
+    "question": "Did the tests show albuminuria?",
+    "bucket": "refute",
+    "quote": "there is no albumin in your urine",
+    "reason": "Asserted albuminuria vs actual no albumin in urine.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q04",
+    "transcript_id": "sample_55",
+    "question": "Is the HbA1c reported as 53 mmol/mol?",
+    "bucket": "refute",
+    "quote": "your long-term sugar value is 43 millimoles per mole",
+    "reason": "Asserted 53 vs actual 43 mmol/mol.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q02",
+    "transcript_id": "sample_55",
+    "question": "Was the creatinine found to be raised?",
+    "bucket": "refute",
+    "quote": "your creatinine is normal",
+    "reason": "Asserted raised creatinine vs actual normal creatinine.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_hard_no_q03",
+    "transcript_id": "sample_55",
+    "question": "Has the patient reported tiredness and thirst?",
+    "bucket": "refute",
+    "quote": "No. Nothing that I have noticed.",
+    "reason": "Asserted tiredness and thirst reported vs actual denial of symptoms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_55_off_topic_q02",
+    "transcript_id": "sample_55",
+    "question": "Does the patient mention having a preference for tea?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of tea preference occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_55.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q01",
+    "transcript_id": "sample_56",
+    "question": "Has the cause of the tiredness remained unexplained?",
+    "bucket": "support",
+    "quote": "We have not identified a specific cause.",
+    "reason": "Doctor states no specific cause identified for tiredness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_off_topic_q01",
+    "transcript_id": "sample_56",
+    "question": "Was the doctor asking about the patient's upcoming movie night?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a movie night occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q02",
+    "transcript_id": "sample_56",
+    "question": "Has iron treatment been started for the tiredness?",
+    "bucket": "refute",
+    "quote": "I am not starting anything further today.",
+    "reason": "Asserted iron started vs actual nothing started.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q02",
+    "transcript_id": "sample_56",
+    "question": "Did the COVID-19 test come back negative?",
+    "bucket": "support",
+    "quote": "your coronavirus test was negative.",
+    "reason": "Coronavirus (COVID-19) test stated negative.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q04",
+    "transcript_id": "sample_56",
+    "question": "Was the patient's thyroid function found to be reduced?",
+    "bucket": "refute",
+    "quote": "Your thyroid tests are normal.",
+    "reason": "Asserted reduced thyroid function vs actual normal tests.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q04",
+    "transcript_id": "sample_56",
+    "question": "The patient's thyroid function was checked, wasn't it?",
+    "bucket": "support",
+    "quote": "Your thyroid tests are normal.",
+    "reason": "Thyroid function explicitly tested with normal result.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q01",
+    "transcript_id": "sample_56",
+    "question": "Is the patient complaining mainly of chest pain?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Chest pain never mentioned; complaint is tiredness.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_hard_no_q03",
+    "transcript_id": "sample_56",
+    "question": "Will treatment for the fatigue begin straight away?",
+    "bucket": "refute",
+    "quote": "I am not starting anything further today.",
+    "reason": "Asserted treatment begins vs actual nothing further needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_yes_q03",
+    "transcript_id": "sample_56",
+    "question": "Will further measures be held off for the time being?",
+    "bucket": "support",
+    "quote": "For the moment we observe,",
+    "reason": "Doctor states plan is observation for the moment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_56_off_topic_q02",
+    "transcript_id": "sample_56",
+    "question": "Are the speakers discussing the weather?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the weather occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_56.dc5ba020.json"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Will the patient continue on the current medication?",
+    "question_id": "sample_57_yes_q05",
+    "quote": "you continue your current medication",
+    "reason": "Doctor instructs continuation of the current medication.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the diabetes considered stable?",
+    "question_id": "sample_57_yes_q07",
+    "quote": "your diabetes is stable",
+    "reason": "Assessment explicitly states the diabetes is stable.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Has the patient kept up the lifestyle changes?",
+    "question_id": "sample_57_yes_q04",
+    "quote": "I have kept it up",
+    "reason": "Patient confirms they kept up the lifestyle routine.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was it concluded that no changes to treatment are needed?",
+    "question_id": "sample_57_yes_q03",
+    "quote": "that no changes are needed",
+    "reason": "Assessment concludes that no changes are needed.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient feel stable?",
+    "question_id": "sample_57_yes_q06",
+    "quote": "You feel stable",
+    "reason": "Doctor confirms the patient feels stable.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the doctor ask about the patient's job responsibilities?",
+    "question_id": "sample_57_off_topic_q01",
+    "quote": "",
+    "reason": "Job responsibilities are never mentioned in the transcript.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Should the patient carry on with the same lifestyle?",
+    "question_id": "sample_57_yes_q01",
+    "quote": "You continue your lifestyle exactly as you are",
+    "reason": "Plan instructs continuation of the lifestyle as-is.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the patient advised to stop the current medication?",
+    "question_id": "sample_57_hard_no_q01",
+    "quote": "you continue your current medication",
+    "reason": "Asserted stop versus actual continue of current medication.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Will the diabetes now be treated with insulin?",
+    "question_id": "sample_57_hard_no_q02",
+    "quote": "you continue your current medication",
+    "reason": "Asserted new insulin treatment versus actual continuation of current medication with no changes.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The patient stays on the medicine already in use, correct?",
+    "question_id": "sample_57_yes_q02",
+    "quote": "Same medication, same routine",
+    "reason": "Plan confirms same medication and routine continue.",
+    "transcript_file": "transcripts/conversation_sample_57.dc5ba020.json",
+    "transcript_id": "sample_57"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Have complications of the diabetes been identified?",
+    "question_id": "sample_63_hard_no_q01",
+    "quote": "with no complications",
+    "reason": "Asserted complications identified versus actual no complications.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Did the patient describe new episodes of dizziness?",
+    "question_id": "sample_63_hard_no_q04",
+    "quote": "",
+    "reason": "Dizziness is never mentioned; only a general denial of new symptoms occurs.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Is the treatment being changed to a new medication?",
+    "question_id": "sample_63_hard_no_q02",
+    "quote": "to continue your current treatment",
+    "reason": "Asserted change to new medication versus actual continuation of current treatment.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Was the patient's condition described as being caused by a mysterious disturbance in the Force?",
+    "question_id": "sample_63_off_topic_q01",
+    "quote": "",
+    "reason": "No mention of Force or mysterious causes occurs.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the blood tests show impaired kidney function?",
+    "question_id": "sample_63_hard_no_q03",
+    "quote": "Your kidney function is normal",
+    "reason": "Asserted impaired kidney function versus actual normal kidney function.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the diabetes control judged to be good?",
+    "question_id": "sample_63_yes_q01",
+    "quote": "good diabetes control",
+    "reason": "Assessment explicitly states good diabetes control.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The lipid profile came back normal, didn't it?",
+    "question_id": "sample_63_yes_q02",
+    "quote": "your lipid profile is normal",
+    "reason": "Results state the lipid profile is normal.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the HbA1c measured at 41 mmol/mol?",
+    "question_id": "sample_63_yes_q03",
+    "quote": "Your hemoglobin A1c is 41 millimoles per mole",
+    "reason": "Result gives hemoglobin A1c as 41 millimoles per mole.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Are annual check-ups planned to continue?",
+    "question_id": "sample_63_yes_q05",
+    "quote": "see you again for the yearly check",
+    "reason": "Plan states a yearly check will continue.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Did the patient report no new symptoms?",
+    "question_id": "sample_63_yes_q04",
+    "quote": "No new symptoms",
+    "reason": "Patient explicitly reports no new symptoms.",
+    "transcript_file": "transcripts/conversation_sample_63.dc5ba020.json",
+    "transcript_id": "sample_63"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Is dry skin the reason for this consultation?",
+    "question_id": "sample_64_yes_q04",
+    "quote": "has become very dry",
+    "reason": "Patient presents because foot skin has become very dry.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the condition assessed as xerosis?",
+    "question_id": "sample_64_yes_q01",
+    "quote": "The condition is called xerosis",
+    "reason": "Doctor explicitly names the condition xerosis.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Did the doctor prescribe an antifungal cream?",
+    "question_id": "sample_64_hard_no_q01",
+    "quote": "I will prescribe a moisturizing cream",
+    "reason": "Asserted antifungal cream versus actual moisturizing cream prescribed.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "A moisturizing cream was prescribed, wasn't it?",
+    "question_id": "sample_64_yes_q03",
+    "quote": "I will prescribe a moisturizing cream",
+    "reason": "Doctor states a moisturizing cream will be prescribed.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Were open sores found on the feet?",
+    "question_id": "sample_64_hard_no_q03",
+    "quote": "There are no sores",
+    "reason": "Asserted open sores found versus actual no sores.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Was intense itching the main complaint?",
+    "question_id": "sample_64_hard_no_q04",
+    "quote": "",
+    "reason": "Itching is never mentioned; complaint is dryness of feet.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Does the patient complain of dryness on the hands?",
+    "question_id": "sample_64_hard_no_q02",
+    "quote": "No, just the feet",
+    "reason": "Asserted dryness on hands versus actual dryness only on feet.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Was the skin problem assessed as eczema?",
+    "question_id": "sample_64_hard_no_q05",
+    "quote": "The condition is called xerosis",
+    "reason": "Asserted eczema versus actual assessment of xerosis.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Did the examination rule out any wounds?",
+    "question_id": "sample_64_yes_q02",
+    "quote": "There are no sores",
+    "reason": "Examination found no sores, entailing no wounds.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the patient express a desire to change their employment status?",
+    "question_id": "sample_64_off_topic_q01",
+    "quote": "",
+    "reason": "Employment status change is never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_64.dc5ba020.json",
+    "transcript_id": "sample_64"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Was the patient given a pneumococcal vaccination?",
+    "question_id": "sample_66_hard_no_q02",
+    "quote": "I am here for the influenza vaccination",
+    "reason": "Asserted pneumococcal vaccination versus actual influenza vaccination.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the vaccination given as part of diabetes care?",
+    "question_id": "sample_66_yes_q03",
+    "quote": "I am here for the influenza vaccination as part of my diabetes care",
+    "reason": "Visit is explicitly for influenza vaccination as part of diabetes care.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did a local reaction develop at the injection site?",
+    "question_id": "sample_66_hard_no_q01",
+    "quote": "I can see no reaction at all",
+    "reason": "Asserted local reaction versus actual no reaction observed.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The diabetes status was described as stable, wasn't it?",
+    "question_id": "sample_66_yes_q04",
+    "quote": "your diabetes status is stable",
+    "reason": "Diabetes status is explicitly described as stable.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the patient's diabetes found to be unstable?",
+    "question_id": "sample_66_hard_no_q03",
+    "quote": "your diabetes status is stable",
+    "reason": "Asserted unstable versus actual stable diabetes status.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Is there any reference to the patient planning to watch a specific movie?",
+    "question_id": "sample_66_off_topic_q01",
+    "quote": "",
+    "reason": "No movie or watching plans are ever mentioned.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Has follow-up been discontinued going forward?",
+    "question_id": "sample_66_hard_no_q05",
+    "quote": "we continue with follow-up as planned",
+    "reason": "Asserted discontinued follow-up versus actual continued follow-up as planned.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the doctor decide to adjust the diabetes medication?",
+    "question_id": "sample_66_hard_no_q04",
+    "quote": "there are no changes to make today",
+    "reason": "Asserted medication adjustment versus actual no changes to make.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the patient free of any reaction after the injection?",
+    "question_id": "sample_66_yes_q02",
+    "quote": "I can see no reaction at all",
+    "reason": "Observation explicitly notes no reaction at all.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Will the treatment continue without changes?",
+    "question_id": "sample_66_yes_q01",
+    "quote": "there are no changes to make today",
+    "reason": "Plan explicitly states there are no changes to make.",
+    "transcript_file": "transcripts/conversation_sample_66.dc5ba020.json",
+    "transcript_id": "sample_66"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Has the patient been referred to a dietitian?",
+    "question_id": "sample_67_hard_no_q02",
+    "quote": "",
+    "reason": "Dietitian referral is never mentioned; only diet adherence is discussed.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The doctor described the diabetes as stable, right?",
+    "question_id": "sample_67_yes_q02",
+    "quote": "your diabetes is stable",
+    "reason": "Doctor explicitly states the diabetes is stable.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Will the treatment be continued unchanged?",
+    "question_id": "sample_67_yes_q05",
+    "quote": "We continue your treatment unchanged",
+    "reason": "Plan explicitly continues treatment unchanged.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Was the patient planning to cook a specific dish for dinner mentioned?",
+    "question_id": "sample_67_off_topic_q01",
+    "quote": "",
+    "reason": "Cooking or dinner plans are never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the patient's self-care considered good?",
+    "question_id": "sample_67_yes_q04",
+    "quote": "with good self-care on your part",
+    "reason": "Assessment explicitly notes good self-care.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Is the diabetes described as poorly controlled?",
+    "question_id": "sample_67_hard_no_q01",
+    "quote": "your diabetes is stable",
+    "reason": "Asserted poorly controlled versus actual stable diabetes.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient say they are doing well?",
+    "question_id": "sample_67_yes_q01",
+    "quote": "I feel well",
+    "reason": "Patient explicitly says they feel well.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the patient sticking to the diet and lifestyle advice?",
+    "question_id": "sample_67_yes_q06",
+    "quote": "I have kept to the diet and the lifestyle side of things",
+    "reason": "Patient confirms keeping to diet and lifestyle.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Has the weight remained stable?",
+    "question_id": "sample_67_yes_q07",
+    "quote": "Your weight is stable",
+    "reason": "Doctor explicitly states weight is stable.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the HbA1c 43 mmol/mol?",
+    "question_id": "sample_67_yes_q03",
+    "quote": "Your hemoglobin A1c is 43 millimoles per mole",
+    "reason": "Result gives hemoglobin A1c as 43 millimoles per mole.",
+    "transcript_file": "transcripts/conversation_sample_67.dc5ba020.json",
+    "transcript_id": "sample_67"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient feel well?",
+    "question_id": "sample_69_yes_q02",
+    "quote": "I feel fine",
+    "reason": "Patient explicitly says they feel fine.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the blood pressure normal?",
+    "question_id": "sample_69_yes_q01",
+    "quote": "Your blood pressure is normal",
+    "reason": "Finding explicitly states blood pressure is normal.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the foot status normal?",
+    "question_id": "sample_69_yes_q03",
+    "quote": "your foot status is normal",
+    "reason": "Finding explicitly states foot status is normal.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Will the regular check-ups be continued?",
+    "question_id": "sample_69_yes_q04",
+    "quote": "to continue your checkups",
+    "reason": "Plan states checkups will continue.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The diabetes was judged to be stable, right?",
+    "question_id": "sample_69_yes_q06",
+    "quote": "your diabetes is stable",
+    "reason": "Assessment explicitly states diabetes is stable.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Are there no signs of complications?",
+    "question_id": "sample_69_yes_q05",
+    "quote": "with no signs of complications",
+    "reason": "Assessment explicitly notes no signs of complications.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Were wounds discovered on the feet?",
+    "question_id": "sample_69_hard_no_q01",
+    "quote": "There is nothing abnormal there",
+    "reason": "Asserted wounds discovered versus actual nothing abnormal on feet.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the patient express interest in changing their work schedule?",
+    "question_id": "sample_69_off_topic_q01",
+    "quote": "",
+    "reason": "Work schedule change is never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Is blood pressure medication being started?",
+    "question_id": "sample_69_hard_no_q02",
+    "quote": "",
+    "reason": "Blood pressure medication is never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Have early complications of the diabetes been detected?",
+    "question_id": "sample_69_hard_no_q03",
+    "quote": "with no signs of complications",
+    "reason": "Asserted complications detected versus actual no signs of complications.",
+    "transcript_file": "transcripts/conversation_sample_69.dc5ba020.json",
+    "transcript_id": "sample_69"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The vaccination went as planned, didn't it?",
+    "question_id": "sample_70_yes_q04",
+    "quote": "It was given as planned",
+    "reason": "Summary states vaccination was given as planned.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the vaccine actually given?",
+    "question_id": "sample_70_yes_q06",
+    "quote": "That is the vaccination given",
+    "reason": "Doctor confirms the vaccination was given.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Was blood taken during the same visit?",
+    "question_id": "sample_70_hard_no_q03",
+    "quote": "",
+    "reason": "Blood taking is never mentioned in the visit.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Were no further measures decided on?",
+    "question_id": "sample_70_yes_q01",
+    "quote": "nothing further is needed",
+    "reason": "Summary states nothing further is needed.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is this vaccination something the patient receives annually?",
+    "question_id": "sample_70_yes_q05",
+    "quote": "for your yearly influenza vaccination",
+    "reason": "Visit is for the yearly influenza vaccination.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the vaccination postponed to a later date?",
+    "question_id": "sample_70_hard_no_q01",
+    "quote": "It was given as planned",
+    "reason": "Asserted postponed versus actual given as planned.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Can the patient leave without any additional treatment?",
+    "question_id": "sample_70_yes_q02",
+    "quote": "Nothing more follows from today's visit",
+    "reason": "Summary states nothing more follows from the visit.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Did the patient discuss their college courses online?",
+    "question_id": "sample_70_off_topic_q01",
+    "quote": "",
+    "reason": "College courses are never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the patient free of side effects after the vaccine?",
+    "question_id": "sample_70_yes_q03",
+    "quote": "there were no side effects today",
+    "reason": "Doctor confirms there were no side effects today.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Is the patient asked to come back in a week for a second dose?",
+    "question_id": "sample_70_hard_no_q02",
+    "quote": "nothing further is needed",
+    "reason": "Asserted return for second dose versus actual nothing further needed.",
+    "transcript_file": "transcripts/conversation_sample_70.dc5ba020.json",
+    "transcript_id": "sample_70"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Has the patient been troubled by increased thirst?",
+    "question_id": "sample_71_hard_no_q02",
+    "quote": "",
+    "reason": "Increased thirst is never mentioned in the conversation.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Was the patient discussing their pet?",
+    "question_id": "sample_71_off_topic_q01",
+    "quote": "",
+    "reason": "No pet is mentioned at any point.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Did the creatinine come back normal?",
+    "question_id": "sample_71_yes_q03",
+    "quote": "Your creatinine is normal.",
+    "reason": "Transcript states creatinine is normal verbatim.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Is the LDL cholesterol 4.2 mmol/L?",
+    "question_id": "sample_71_hard_no_q03",
+    "quote": "Your LDL cholesterol is 2.2 mmol per liter.",
+    "reason": "Asserted 4.2 mmol/L vs actual 2.2 mmol/L stated in transcript.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the HbA1c 42 mmol/mol?",
+    "question_id": "sample_71_yes_q04",
+    "quote": "Your hemoglobin A1c is 42 millimoles per mole.",
+    "reason": "Transcript states hemoglobin A1c is 42 millimoles per mole verbatim.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the creatinine turn out to be elevated?",
+    "question_id": "sample_71_hard_no_q01",
+    "quote": "Your creatinine is normal.",
+    "reason": "Asserted elevated vs actual normal stated in transcript.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "According to the conversation, was a specific type of sport played by the patient discussed?",
+    "question_id": "sample_71_off_topic_q02",
+    "quote": "",
+    "reason": "No specific sport played is discussed; only casual walking as weekend plans is mentioned.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Are there no signs of complications?",
+    "question_id": "sample_71_yes_q05",
+    "quote": "there are no signs of complications",
+    "reason": "Transcript states there are no signs of complications verbatim.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the LDL cholesterol 2.2 mmol/L?",
+    "question_id": "sample_71_yes_q01",
+    "quote": "Your LDL cholesterol is 2.2 mmol per liter.",
+    "reason": "Transcript states LDL cholesterol is 2.2 mmol per liter verbatim.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The diabetes was described as stable, right?",
+    "question_id": "sample_71_yes_q02",
+    "quote": "your diabetes is stable",
+    "reason": "Transcript assessment states diabetes is stable verbatim.",
+    "transcript_file": "transcripts/conversation_sample_71.dc5ba020.json",
+    "transcript_id": "sample_71"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Does the conversation indicate the patient uses specific software?",
+    "question_id": "sample_75_off_topic_q01",
+    "quote": "",
+    "reason": "No specific software use is mentioned; only a check-in screen at reception is mentioned.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient deny any known exposure to COVID-19?",
+    "question_id": "sample_75_yes_q01",
+    "quote": "No, none that I know of.",
+    "reason": "Patient denies known COVID-19 exposure verbatim when asked.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is the patient also feeling tired?",
+    "question_id": "sample_75_yes_q02",
+    "quote": "I have been tired",
+    "reason": "Patient states tiredness verbatim alongside sore throat.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Is a bacterial infection thought to be the most likely cause?",
+    "question_id": "sample_75_hard_no_q05",
+    "quote": "most likely a viral upper respiratory infection",
+    "reason": "Asserted bacterial cause vs actual viral cause stated in assessment.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Were rest and fluids recommended?",
+    "question_id": "sample_75_yes_q04",
+    "quote": "The plan is rest and plenty of fluids.",
+    "reason": "Transcript states rest and plenty of fluids as the plan verbatim.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the patient report a known exposure to COVID-19?",
+    "question_id": "sample_75_hard_no_q02",
+    "quote": "No, none that I know of.",
+    "reason": "Asserted known exposure vs actual denial of any known exposure.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Will the patient be starting a course of antibiotics?",
+    "question_id": "sample_75_hard_no_q03",
+    "quote": "No antibiotics are needed",
+    "reason": "Asserted antibiotics starting vs actual no antibiotics needed.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Has the patient had a sore throat for a few days?",
+    "question_id": "sample_75_yes_q03",
+    "quote": "A few days of sore throat and tiredness.",
+    "reason": "Transcript confirms a few days of sore throat verbatim.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the patient found to have a fever?",
+    "question_id": "sample_75_hard_no_q04",
+    "quote": "you have no fever",
+    "reason": "Asserted fever vs actual no fever stated on examination.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the throat examination reveal pronounced swelling with pus?",
+    "question_id": "sample_75_hard_no_q01",
+    "quote": "slightly red, just mild redness at the back",
+    "reason": "Asserted pronounced swelling with pus vs actual slight redness only.",
+    "transcript_file": "transcripts/conversation_sample_75.dc5ba020.json",
+    "transcript_id": "sample_75"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Did the patient receive a tetanus vaccination?",
+    "question_id": "sample_77_yes_q02",
+    "quote": "I have also given you a tetanus vaccination today.",
+    "reason": "Transcript states tetanus vaccination given today verbatim.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Did the infection appear only two days after the injury?",
+    "question_id": "sample_77_hard_no_q01",
+    "quote": "I pricked it on a thorn about two weeks ago",
+    "reason": "Asserted two days vs actual about two weeks stated in transcript.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the patient talk about using a digital device for online shopping?",
+    "question_id": "sample_77_off_topic_q01",
+    "quote": "",
+    "reason": "No digital device or online shopping is mentioned.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was the infection judged to follow a penetrating trauma?",
+    "question_id": "sample_77_yes_q03",
+    "quote": "It is an infection following the penetrating injury.",
+    "reason": "Transcript judges infection as following the penetrating injury verbatim.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Have about two weeks passed since the injury?",
+    "question_id": "sample_77_yes_q07",
+    "quote": "about two weeks ago",
+    "reason": "Transcript dates the thorn injury to about two weeks ago verbatim.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Did the trouble start after the patient pricked themselves on a thorn?",
+    "question_id": "sample_77_yes_q04",
+    "quote": "I pricked it on a thorn",
+    "reason": "Patient states pricking toe on a thorn verbatim as the start.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was a foreign body found in the toe?",
+    "question_id": "sample_77_hard_no_q02",
+    "quote": "There is no foreign body left in the toe.",
+    "reason": "Asserted foreign body found vs actual no foreign body left.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The patient was treated with penicillin, correct?",
+    "question_id": "sample_77_yes_q06",
+    "quote": "We are treating it with penicillin.",
+    "reason": "Transcript states treatment with penicillin verbatim.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is a foreign body ruled out?",
+    "question_id": "sample_77_yes_q05",
+    "quote": "There is no foreign body left in the toe.",
+    "reason": "Transcript rules out retained foreign body verbatim.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Does the patient have an infection in the big toe?",
+    "question_id": "sample_77_yes_q01",
+    "quote": "I pricked it on a thorn about two weeks ago, and now I think it has become infected",
+    "reason": "Patient describes thorn prick to toe followed by infection, entailing big-toe infection.",
+    "transcript_file": "transcripts/conversation_sample_77.dc5ba020.json",
+    "transcript_id": "sample_77"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Is chondromalacia patellae suspected on clinical grounds?",
+    "question_id": "sample_79_yes_q02",
+    "quote": "I suspect a condition called chondromalacia patelli",
+    "reason": "Transcript suspects chondromalacia (spelled patelli) on clinical description.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Has the patient been referred to a physiotherapist instead of further procedures?",
+    "question_id": "sample_79_hard_no_q03",
+    "quote": "I am going to refer you for an arthroscopy.",
+    "reason": "Asserted physiotherapist referral vs actual arthroscopy referral.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the patient express interest in learning Spanish?",
+    "question_id": "sample_79_off_topic_q01",
+    "quote": "",
+    "reason": "Spanish or language learning is never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Do the pains come and go rather than being constant?",
+    "question_id": "sample_79_yes_q05",
+    "quote": "It comes and goes.",
+    "reason": "Transcript states pains come and go verbatim.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Does the pain sit on the back of the thigh?",
+    "question_id": "sample_79_hard_no_q04",
+    "quote": "pain behind my right kneecap",
+    "reason": "Asserted back of thigh vs actual behind right kneecap.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient have pain behind the kneecap?",
+    "question_id": "sample_79_yes_q03",
+    "quote": "pain behind my right kneecap",
+    "reason": "Transcript states pain behind right kneecap verbatim.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Did the patient show up in person for the consultation?",
+    "question_id": "sample_79_yes_q01",
+    "quote": "Louise, come in.",
+    "reason": "The invitation to come in entails an in-person visit.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the diagnosis of chondromalacia patellae confirmed by an MRI scan?",
+    "question_id": "sample_79_hard_no_q02",
+    "quote": "this is a clinical suspicion at this stage, not something confirmed.",
+    "reason": "Asserted MRI confirmation vs actual unconfirmed clinical suspicion with no MRI.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Are the knee pains constant throughout the day?",
+    "question_id": "sample_79_hard_no_q01",
+    "quote": "It comes and goes.",
+    "reason": "Asserted constant pain vs actual intermittent comes-and-goes pattern.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Was the suspicion reached without imaging?",
+    "question_id": "sample_79_yes_q04",
+    "quote": "From what you describe, I suspect",
+    "reason": "Suspicion is based on patient description with no imaging mentioned before referral.",
+    "transcript_file": "transcripts/conversation_sample_79.dc5ba020.json",
+    "transcript_id": "sample_79"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Is a viral cause thought to be the most likely explanation?",
+    "question_id": "sample_81_yes_q02",
+    "quote": "most likely a viral gastroenteritis",
+    "reason": "Transcript assesses most likely viral gastroenteritis verbatim.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Has the patient been given antibiotics for the illness?",
+    "question_id": "sample_81_hard_no_q02",
+    "quote": "Keeping your fluids up matters more than anything I could write on a prescription.",
+    "reason": "Asserted antibiotics given vs actual no prescription, fluids and symptom treatment only.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "low",
+    "question": "Is admission to hospital part of the plan?",
+    "question_id": "sample_81_hard_no_q04",
+    "quote": "",
+    "reason": "Hospital or admission is never mentioned; plan is home fluids and symptom relief.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Did the patient receive advice about fluid intake?",
+    "question_id": "sample_81_yes_q03",
+    "quote": "advice on fluid intake and on treating the symptoms",
+    "reason": "Transcript states advice on fluid intake verbatim.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Is the patient complaining of chest symptoms?",
+    "question_id": "sample_81_hard_no_q01",
+    "quote": "",
+    "reason": "Chest symptoms are never mentioned; discussion concerns stomach and abdomen.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Does the patient describe symptoms of gastroenteritis?",
+    "question_id": "sample_81_yes_q01",
+    "quote": "All the usual gastroenteritis symptoms.",
+    "reason": "Patient describes usual gastroenteritis symptoms verbatim.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Was gastroenteritis the diagnosis arrived at?",
+    "question_id": "sample_81_yes_q04",
+    "quote": "most likely a viral gastroenteritis",
+    "reason": "Transcript assesses most likely viral gastroenteritis verbatim.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the conversation indicate the patient discussed their recent purchase of groceries?",
+    "question_id": "sample_81_off_topic_q01",
+    "quote": "",
+    "reason": "Groceries or purchases are never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the patient told to restrict fluid intake?",
+    "question_id": "sample_81_hard_no_q03",
+    "quote": "Keeping your fluids up",
+    "reason": "Asserted fluid restriction vs actual advice to keep fluids up.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was a bacterial cause considered the most likely one?",
+    "question_id": "sample_81_hard_no_q05",
+    "quote": "most likely a viral gastroenteritis",
+    "reason": "Asserted bacterial cause vs actual viral cause stated in assessment.",
+    "transcript_file": "transcripts/conversation_sample_81.dc5ba020.json",
+    "transcript_id": "sample_81"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Was the growth suspected to be a basal cell carcinoma?",
+    "question_id": "sample_82_hard_no_q02",
+    "quote": "my suspicion is is molluscum contagiosum.",
+    "reason": "Asserted basal cell carcinoma vs actual suspected molluscum contagiosum.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "high",
+    "question": "Were seven small lesions counted in the area?",
+    "question_id": "sample_82_hard_no_q01",
+    "quote": "I can see three small lesions",
+    "reason": "Asserted seven lesions vs actual three lesions seen.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Does the patient express interest in using a particular software?",
+    "question_id": "sample_82_off_topic_q01",
+    "quote": "",
+    "reason": "No software is mentioned at any point.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Has a cream been prescribed as the treatment?",
+    "question_id": "sample_82_hard_no_q03",
+    "quote": "I will treat them with freezing.",
+    "reason": "Asserted cream prescription vs actual freezing treatment planned.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "absent",
+    "confidence": "high",
+    "question": "Did they talk about the weather being unusually hot?",
+    "question_id": "sample_82_off_topic_q02",
+    "quote": "",
+    "reason": "Weather or heat is never mentioned.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "refute",
+    "confidence": "medium",
+    "question": "Will the lesions be removed surgically?",
+    "question_id": "sample_82_hard_no_q04",
+    "quote": "I will treat them with freezing.",
+    "reason": "Asserted surgical removal vs actual freezing treatment planned.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "The lesions will be treated with freezing, right?",
+    "question_id": "sample_82_yes_q03",
+    "quote": "I will treat them with freezing.",
+    "reason": "Transcript states lesions will be treated with freezing verbatim.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "support",
+    "confidence": "medium",
+    "question": "Do the elements resemble molluscs?",
+    "question_id": "sample_82_yes_q01",
+    "quote": "my suspicion is is molluscum contagiosum.",
+    "reason": "Molluscum diagnosis entails mollusc-like elements.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Has the patient noticed a wart-like growth?",
+    "question_id": "sample_82_yes_q02",
+    "quote": "It looks a bit like a wart.",
+    "reason": "Patient describes growth as looking like a wart verbatim.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "bucket": "support",
+    "confidence": "high",
+    "question": "Were three small lesions seen in the same area of the thorax?",
+    "question_id": "sample_82_yes_q04",
+    "quote": "three in one area on the thorax",
+    "reason": "Transcript confirms three in one area on the thorax verbatim.",
+    "transcript_file": "transcripts/conversation_sample_82.dc5ba020.json",
+    "transcript_id": "sample_82"
+  },
+  {
+    "question_id": "sample_84_hard_no_q01",
+    "transcript_id": "sample_84",
+    "question": "Is the check-up being done because the patient has symptoms from the heart?",
+    "bucket": "refute",
+    "quote": "What we are doing today is a preventive health check because of the family disposition you described.",
+    "reason": "Asserted symptoms as reason, but transcript states check is preventive because of family disposition.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_hard_no_q02",
+    "transcript_id": "sample_84",
+    "question": "Does the patient say that exercise is something they rarely do?",
+    "bucket": "refute",
+    "quote": "I train regularly.",
+    "reason": "Asserted rarely exercises, but patient states they train regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_off_topic_q01",
+    "transcript_id": "sample_84",
+    "question": "Was the patient referred to Doctor Strange for magical treatment?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Doctor Strange and magical treatment are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q02",
+    "transcript_id": "sample_84",
+    "question": "Was it the patient's grandfather who died of a heart attack?",
+    "bucket": "support",
+    "quote": "My grandfather on my father's side died of a heart attack",
+    "reason": "Transcript directly states grandfather died of heart attack.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q04",
+    "transcript_id": "sample_84",
+    "question": "Does the patient exercise regularly?",
+    "bucket": "support",
+    "quote": "I train regularly.",
+    "reason": "Patient directly states they train regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q06",
+    "transcript_id": "sample_84",
+    "question": "Will both blood tests and an ECG be carried out?",
+    "bucket": "support",
+    "quote": "I will take blood samples, and I will record an electrocardiogram",
+    "reason": "Doctor states plan for blood samples and electrocardiogram.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q05",
+    "transcript_id": "sample_84",
+    "question": "Was the blood pressure measured at 138 over 83?",
+    "bucket": "support",
+    "quote": "I have measured it at 138 over 83.",
+    "reason": "Doctor states blood pressure measurement as 138 over 83.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q01",
+    "transcript_id": "sample_84",
+    "question": "Does the patient report cardiovascular disease in the family?",
+    "bucket": "support",
+    "quote": "there is cardiovascular disease in your family? Yes.",
+    "reason": "Doctor asks and patient confirms family cardiovascular disease.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q03",
+    "transcript_id": "sample_84",
+    "question": "Did that grandfather die at the age of 52?",
+    "bucket": "support",
+    "quote": "he was only 52.",
+    "reason": "Transcript states grandfather was only 52.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_84_yes_q07",
+    "transcript_id": "sample_84",
+    "question": "Is the patient otherwise healthy and living a healthy life?",
+    "bucket": "support",
+    "quote": "I am healthy, as far as I know. No illnesses at all. I eat well and I look after myself.",
+    "reason": "Patient reports being healthy with no illness and healthy habits.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_84.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_off_topic_q01",
+    "transcript_id": "sample_86",
+    "question": "Does the conversation mention a specific dish the patient plans to cook for dinner?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No dish or dinner plans are mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q01",
+    "transcript_id": "sample_86",
+    "question": "Is the patient free of fever?",
+    "bucket": "support",
+    "quote": "No fever.",
+    "reason": "Patient denies fever when asked.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q03",
+    "transcript_id": "sample_86",
+    "question": "Is the tenderness in the area described as severe?",
+    "bucket": "refute",
+    "quote": "there is slight tenderness there.",
+    "reason": "Asserted severe tenderness, but transcript states slight tenderness.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q01",
+    "transcript_id": "sample_86",
+    "question": "Has surgery been scheduled to remove the swelling?",
+    "bucket": "refute",
+    "quote": "We wait and see how it develops.",
+    "reason": "Asserted surgery scheduled, but actual plan is to wait and see.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q05",
+    "transcript_id": "sample_86",
+    "question": "Were both testicles found to be enlarged and abnormal?",
+    "bucket": "refute",
+    "quote": "The testicles themselves feel normal to me on both sides.",
+    "reason": "Asserted both enlarged and abnormal, but exam found them normal on both sides.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q04",
+    "transcript_id": "sample_86",
+    "question": "Did the patient have a fever when he came in?",
+    "bucket": "refute",
+    "quote": "No fever.",
+    "reason": "Asserted fever present, but patient reported no fever.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q03",
+    "transcript_id": "sample_86",
+    "question": "Both testicles felt normal at the examination, correct?",
+    "bucket": "support",
+    "quote": "The testicles themselves feel normal to me on both sides.",
+    "reason": "Doctor states both testicles feel normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q02",
+    "transcript_id": "sample_86",
+    "question": "Does the doctor suspect a testicular torsion?",
+    "bucket": "refute",
+    "quote": "What I suspect is a spermatocele",
+    "reason": "Asserted torsion suspected, but doctor suspects spermatocele.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_hard_no_q06",
+    "transcript_id": "sample_86",
+    "question": "Was the swelling located on the left side of the scrotum?",
+    "bucket": "refute",
+    "quote": "a small swelling around the epididymis on the right",
+    "reason": "Asserted left side, but swelling is on the right.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_86_yes_q02",
+    "transcript_id": "sample_86",
+    "question": "Was a small swelling found around the epididymis?",
+    "bucket": "support",
+    "quote": "a small swelling around the epididymis on the right",
+    "reason": "Doctor reports small swelling around epididymis on right.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_86.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q04",
+    "transcript_id": "sample_90",
+    "question": "Does the doctor consider the change harmless?",
+    "bucket": "support",
+    "quote": "the change looks harmless.",
+    "reason": "Doctor states change looks harmless.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q01",
+    "transcript_id": "sample_90",
+    "question": "Did the doctor find the change suspicious?",
+    "bucket": "refute",
+    "quote": "the change looks harmless.",
+    "reason": "Asserted suspicious, but doctor states harmless.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_off_topic_q01",
+    "transcript_id": "sample_90",
+    "question": "Does the patient talk about their job responsibilities?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Job responsibilities are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q03",
+    "transcript_id": "sample_90",
+    "question": "Did the patient notice a new mole?",
+    "bucket": "support",
+    "quote": "I have got a new mole on my thigh",
+    "reason": "Patient states they have a new mole on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q03",
+    "transcript_id": "sample_90",
+    "question": "Is the new mole sitting on the back?",
+    "bucket": "refute",
+    "quote": "a new mole on my thigh",
+    "reason": "Asserted back location, but mole is on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q01",
+    "transcript_id": "sample_90",
+    "question": "Was a photo sent in for assessment?",
+    "bucket": "support",
+    "quote": "You sent a photograph through to us",
+    "reason": "Doctor confirms photo sent and patient affirms.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q05",
+    "transcript_id": "sample_90",
+    "question": "Has the doctor reviewed the photograph?",
+    "bucket": "support",
+    "quote": "I have looked at the photograph carefully.",
+    "reason": "Doctor states they reviewed the photograph.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_off_topic_q02",
+    "transcript_id": "sample_90",
+    "question": "Does the patient mention owning a cat?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Owning a cat is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_hard_no_q02",
+    "transcript_id": "sample_90",
+    "question": "Does the patient describe the mole as small and unchanged?",
+    "bucket": "refute",
+    "quote": "it is quite large.",
+    "reason": "Asserted small, but patient describes mole as quite large.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_90_yes_q02",
+    "transcript_id": "sample_90",
+    "question": "Is the mole located on the thigh?",
+    "bucket": "support",
+    "quote": "a new mole on my thigh",
+    "reason": "Patient states mole is on thigh.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_90.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_off_topic_q01",
+    "transcript_id": "sample_92",
+    "question": "At any point does the patient talk about their pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Pets are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q02",
+    "transcript_id": "sample_92",
+    "question": "Has the result of the urine analysis already come back?",
+    "bucket": "refute",
+    "quote": "We are waiting for that answer.",
+    "reason": "Asserted result already back, but transcript states they are still waiting.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q03",
+    "transcript_id": "sample_92",
+    "question": "Is the pulse recorded as 92?",
+    "bucket": "refute",
+    "quote": "your pulse is 62.",
+    "reason": "Asserted pulse 92, but recorded pulse is 62.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q03",
+    "transcript_id": "sample_92",
+    "question": "Has a urine sample been sent off for albumin/creatinine ratio analysis?",
+    "bucket": "support",
+    "quote": "I'm sending a urine sample for analysis. What are they looking for? The ratio between albumin and creatinine.",
+    "reason": "Doctor sends urine for analysis to check albumin-creatinine ratio.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q02",
+    "transcript_id": "sample_92",
+    "question": "Does the patient work as a staff manager in a retail chain?",
+    "bucket": "support",
+    "quote": "the staff manager role in the retail chain? Yes.",
+    "reason": "Patient confirms staff manager role in retail chain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q04",
+    "transcript_id": "sample_92",
+    "question": "Are the patient's exercise habits limited to less than an hour a week?",
+    "bucket": "refute",
+    "quote": "I train maybe eight to ten hours a week.",
+    "reason": "Asserted under an hour weekly, but patient trains eight to ten hours weekly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q01",
+    "transcript_id": "sample_92",
+    "question": "Did the patient ask to have his cholesterol level checked?",
+    "bucket": "support",
+    "quote": "My cholesterol, I think. I would like the level checked.",
+    "reason": "Patient asks for cholesterol level to be checked.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_off_topic_q02",
+    "transcript_id": "sample_92",
+    "question": "Is there any reference to the patient using specific software for work?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Work software is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q04",
+    "transcript_id": "sample_92",
+    "question": "Was the previous LDL value 3.9?",
+    "bucket": "support",
+    "quote": "My LDL was 3.9.",
+    "reason": "Patient states previous LDL was 3.9.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q01",
+    "transcript_id": "sample_92",
+    "question": "Was the blood pressure measured at 160/95?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is 135 over 86",
+    "reason": "Asserted 160/95, but measured pressure is 135 over 86.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q05",
+    "transcript_id": "sample_95",
+    "question": "Does the plan involve a check every third month from now on?",
+    "bucket": "refute",
+    "quote": "You are given an appointment for the annual check.",
+    "reason": "Asserted check every third month, but plan is annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q03",
+    "transcript_id": "sample_95",
+    "question": "Have the results of the blood tests already been gone through?",
+    "bucket": "refute",
+    "quote": "We have taken your blood test today",
+    "reason": "Asserted results already reviewed, but blood test was just taken today.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q02",
+    "transcript_id": "sample_95",
+    "question": "Were blood tests taken at this visit?",
+    "bucket": "support",
+    "quote": "We have taken your blood test today",
+    "reason": "Transcript states blood test taken today.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q03",
+    "transcript_id": "sample_95",
+    "question": "Has the patient been free of side effects?",
+    "bucket": "support",
+    "quote": "any side effects at all? None.",
+    "reason": "Patient reports no side effects.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_off_topic_q01",
+    "transcript_id": "sample_95",
+    "question": "Does the patient talk about having a pet hamster?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Pet hamster is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q04",
+    "transcript_id": "sample_95",
+    "question": "Was the follow-up handled by telephone?",
+    "bucket": "refute",
+    "quote": "I am here for the follow-up.",
+    "reason": "Asserted telephone follow-up, but patient attended in person.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q01",
+    "transcript_id": "sample_95",
+    "question": "The treatment is considered well tolerated, right?",
+    "bucket": "support",
+    "quote": "the treatment is well tolerated.",
+    "reason": "Transcript states treatment is well tolerated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q02",
+    "transcript_id": "sample_95",
+    "question": "Is the treatment being stopped because it is poorly tolerated?",
+    "bucket": "refute",
+    "quote": "the treatment is well tolerated.",
+    "reason": "Asserted stopped for poor tolerance, but treatment is well tolerated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q01",
+    "transcript_id": "sample_95",
+    "question": "Did the patient report muscle pain as a side effect?",
+    "bucket": "refute",
+    "quote": "None. Nothing I have noticed.",
+    "reason": "Asserted muscle pain reported, but patient reported no side effects.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q06",
+    "transcript_id": "sample_95",
+    "question": "Has the dose been increased at this consultation?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Dose change is never mentioned.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  }
+]

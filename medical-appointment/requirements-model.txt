@@ -1,0 +1,4 @@
+# Model dependencies for the verifier (the official requirements.txt is left
+# untouched). torch is installed separately with the CUDA index in setup_env.sh.
+transformers>=4.40
+numpy>=1.24

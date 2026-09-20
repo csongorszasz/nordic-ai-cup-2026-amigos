@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_19_yes_q04",
+    "transcript_id": "sample_19",
+    "question": "Is the patient still being treated for asthma?",
+    "bucket": "support",
+    "quote": "I am still being treated for asthma and for reflux.",
+    "reason": "Patient states still treated for asthma and reflux.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_off_topic_q01",
+    "transcript_id": "sample_19",
+    "question": "Did the patient discuss baking a cake in the conversation?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of baking a cake.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q03",
+    "transcript_id": "sample_19",
+    "question": "Does the doctor describe the medication as unstable and in need of change?",
+    "bucket": "refute",
+    "quote": "Your medication is stable.",
+    "reason": "Asserted unstable medication needing change vs actual stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q01",
+    "transcript_id": "sample_19",
+    "question": "Alongside asthma, is the patient treated for diabetes?",
+    "bucket": "refute",
+    "quote": "I am still being treated for asthma and for reflux.",
+    "reason": "Asserted diabetes vs actual reflux alongside asthma.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q01",
+    "transcript_id": "sample_19",
+    "question": "Were three prescriptions renewed in total?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Three prescriptions renewed in total.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_off_topic_q02",
+    "transcript_id": "sample_19",
+    "question": "Did the conversation mention anything about the patient planning a trip?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of planning a trip.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q02",
+    "transcript_id": "sample_19",
+    "question": "Has Esomeprazole been renewed as well?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Isomeprazole renewed, transcript spelling of Esomeprazole.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_yes_q03",
+    "transcript_id": "sample_19",
+    "question": "Is Airomir among the renewed medicines?",
+    "bucket": "support",
+    "quote": "Activel, Aromir, and Isomeprazole. All three renewed.",
+    "reason": "Aromir renewed, transcript spelling of Airomir.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q04",
+    "transcript_id": "sample_19",
+    "question": "Were the prescriptions stopped rather than renewed?",
+    "bucket": "refute",
+    "quote": "All three renewed.",
+    "reason": "Asserted prescriptions stopped vs actual all three renewed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_19_hard_no_q02",
+    "transcript_id": "sample_19",
+    "question": "Was Pantoprazole the acid-reducing drug that was renewed?",
+    "bucket": "refute",
+    "quote": "The Isomeprazole is the one for the reflux",
+    "reason": "Asserted pantoprazole vs actual Isomeprazole for reflux.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_19.dc5ba020.json"
+  }
+]

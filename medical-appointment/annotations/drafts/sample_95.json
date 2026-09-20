@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_95_hard_no_q05",
+    "transcript_id": "sample_95",
+    "question": "Does the plan involve a check every third month from now on?",
+    "bucket": "refute",
+    "quote": "You are given an appointment for the annual check.",
+    "reason": "Asserted check every third month, but plan is annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q03",
+    "transcript_id": "sample_95",
+    "question": "Have the results of the blood tests already been gone through?",
+    "bucket": "refute",
+    "quote": "We have taken your blood test today",
+    "reason": "Asserted results already reviewed, but blood test was just taken today.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q02",
+    "transcript_id": "sample_95",
+    "question": "Were blood tests taken at this visit?",
+    "bucket": "support",
+    "quote": "We have taken your blood test today",
+    "reason": "Transcript states blood test taken today.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q03",
+    "transcript_id": "sample_95",
+    "question": "Has the patient been free of side effects?",
+    "bucket": "support",
+    "quote": "any side effects at all? None.",
+    "reason": "Patient reports no side effects.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_off_topic_q01",
+    "transcript_id": "sample_95",
+    "question": "Does the patient talk about having a pet hamster?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Pet hamster is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q04",
+    "transcript_id": "sample_95",
+    "question": "Was the follow-up handled by telephone?",
+    "bucket": "refute",
+    "quote": "I am here for the follow-up.",
+    "reason": "Asserted telephone follow-up, but patient attended in person.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_yes_q01",
+    "transcript_id": "sample_95",
+    "question": "The treatment is considered well tolerated, right?",
+    "bucket": "support",
+    "quote": "the treatment is well tolerated.",
+    "reason": "Transcript states treatment is well tolerated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q02",
+    "transcript_id": "sample_95",
+    "question": "Is the treatment being stopped because it is poorly tolerated?",
+    "bucket": "refute",
+    "quote": "the treatment is well tolerated.",
+    "reason": "Asserted stopped for poor tolerance, but treatment is well tolerated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q01",
+    "transcript_id": "sample_95",
+    "question": "Did the patient report muscle pain as a side effect?",
+    "bucket": "refute",
+    "quote": "None. Nothing I have noticed.",
+    "reason": "Asserted muscle pain reported, but patient reported no side effects.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_95_hard_no_q06",
+    "transcript_id": "sample_95",
+    "question": "Has the dose been increased at this consultation?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Dose change is never mentioned.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_95.dc5ba020.json"
+  }
+]

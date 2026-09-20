@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_18_yes_q04",
+    "transcript_id": "sample_18",
+    "question": "Should kidney function be monitored?",
+    "bucket": "support",
+    "quote": "we should monitor your blood pressure and your kidney function",
+    "reason": "Doctor states kidney function should be monitored.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_off_topic_q01",
+    "transcript_id": "sample_18",
+    "question": "Is there any reference to the patient planning a specific fitness challenge?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a fitness challenge.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q02",
+    "transcript_id": "sample_18",
+    "question": "Did the patient ask for a renewal of the Ibumetin prescription?",
+    "bucket": "support",
+    "quote": "I need my ibumetin renewed.",
+    "reason": "Patient asks for Ibumetin renewal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q01",
+    "transcript_id": "sample_18",
+    "question": "Has the Ibumetin prescription been issued?",
+    "bucket": "support",
+    "quote": "And you will still renew the ibumetin today? Yes. The prescription is created.",
+    "reason": "Doctor confirms the Ibumetin prescription is created.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q07",
+    "transcript_id": "sample_18",
+    "question": "Is the patient also taking Pantoprazole?",
+    "bucket": "support",
+    "quote": "you are still taking pantoprazole alongside it",
+    "reason": "Patient confirms taking pantoprazole alongside Ibumetin.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_hard_no_q01",
+    "transcript_id": "sample_18",
+    "question": "Were liver values the focus of the planned blood tests?",
+    "bucket": "refute",
+    "quote": "We check kidneys, cholesterol, and blood sugar.",
+    "reason": "Asserted liver values vs actual kidneys, cholesterol and blood sugar.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_hard_no_q02",
+    "transcript_id": "sample_18",
+    "question": "Should the blood pressure readings be taken at the clinic instead of at home?",
+    "bucket": "refute",
+    "quote": "I would like you to measure your blood pressure at home over three days.",
+    "reason": "Asserted clinic readings vs actual home readings.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q06",
+    "transcript_id": "sample_18",
+    "question": "Will the blood tests include cholesterol and blood sugar?",
+    "bucket": "support",
+    "quote": "We check kidneys, cholesterol, and blood sugar.",
+    "reason": "Blood tests include cholesterol and blood sugar.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q03",
+    "transcript_id": "sample_18",
+    "question": "Does the doctor consider the NSAID use long-standing and high?",
+    "bucket": "support",
+    "quote": "You have used anti-inflammatory painkillers heavily and for a long time.",
+    "reason": "Doctor describes NSAID use as heavy and long-standing.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_18_yes_q05",
+    "transcript_id": "sample_18",
+    "question": "Was blood pressure to be measured at home over three days?",
+    "bucket": "support",
+    "quote": "I would like you to measure your blood pressure at home over three days.",
+    "reason": "Blood pressure to be measured at home over three days.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_18.dc5ba020.json"
+  }
+]

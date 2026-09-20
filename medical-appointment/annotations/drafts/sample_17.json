@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_17_yes_q03",
+    "transcript_id": "sample_17",
+    "question": "Is the medicine to be taken after a meal?",
+    "bucket": "support",
+    "quote": "You take it after a meal.",
+    "reason": "Medicine is to be taken after a meal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q06",
+    "transcript_id": "sample_17",
+    "question": "Has the patient been told that the condition needs no treatment?",
+    "bucket": "refute",
+    "quote": "And it is one that needs treating.",
+    "reason": "Asserted no treatment needed vs actual needs treating.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_yes_q02",
+    "transcript_id": "sample_17",
+    "question": "Should the daily dose be 100 mg?",
+    "bucket": "support",
+    "quote": "Sporanox. 100 mg daily for 2 weeks.",
+    "reason": "Daily dose stated as 100 mg.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q05",
+    "transcript_id": "sample_17",
+    "question": "Were bacteria identified in the sample?",
+    "bucket": "refute",
+    "quote": "The swab shows yeast fungi.",
+    "reason": "Asserted bacteria vs actual yeast fungi.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q03",
+    "transcript_id": "sample_17",
+    "question": "Did the swab come from the throat?",
+    "bucket": "refute",
+    "quote": "You are here for the answer on the swab from your mouth.",
+    "reason": "Asserted throat swab vs actual swab from the mouth.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q02",
+    "transcript_id": "sample_17",
+    "question": "Was the prescribed dose 200 mg daily?",
+    "bucket": "refute",
+    "quote": "Sporanox. 100 mg daily for 2 weeks.",
+    "reason": "Asserted 200 mg daily vs actual 100 mg daily.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_off_topic_q01",
+    "transcript_id": "sample_17",
+    "question": "Is there any mention of attending a concert?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of attending a concert.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q01",
+    "transcript_id": "sample_17",
+    "question": "The treatment is planned to run for six weeks, right?",
+    "bucket": "refute",
+    "quote": "100 mg daily for 2 weeks",
+    "reason": "Asserted six weeks vs actual 2 weeks.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_hard_no_q04",
+    "transcript_id": "sample_17",
+    "question": "Should the tablets be taken on an empty stomach?",
+    "bucket": "refute",
+    "quote": "Always after food.",
+    "reason": "Asserted empty stomach vs actual always after food.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_17_yes_q01",
+    "transcript_id": "sample_17",
+    "question": "Will the treatment last two weeks?",
+    "bucket": "support",
+    "quote": "After a meal every day for 2 weeks.",
+    "reason": "Treatment duration stated as 2 weeks.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_17.dc5ba020.json"
+  }
+]

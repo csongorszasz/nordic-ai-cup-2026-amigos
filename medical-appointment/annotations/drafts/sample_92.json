@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_92_off_topic_q01",
+    "transcript_id": "sample_92",
+    "question": "At any point does the patient talk about their pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Pets are never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q02",
+    "transcript_id": "sample_92",
+    "question": "Has the result of the urine analysis already come back?",
+    "bucket": "refute",
+    "quote": "We are waiting for that answer.",
+    "reason": "Asserted result already back, but transcript states they are still waiting.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q03",
+    "transcript_id": "sample_92",
+    "question": "Is the pulse recorded as 92?",
+    "bucket": "refute",
+    "quote": "your pulse is 62.",
+    "reason": "Asserted pulse 92, but recorded pulse is 62.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q03",
+    "transcript_id": "sample_92",
+    "question": "Has a urine sample been sent off for albumin/creatinine ratio analysis?",
+    "bucket": "support",
+    "quote": "I'm sending a urine sample for analysis. What are they looking for? The ratio between albumin and creatinine.",
+    "reason": "Doctor sends urine for analysis to check albumin-creatinine ratio.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q02",
+    "transcript_id": "sample_92",
+    "question": "Does the patient work as a staff manager in a retail chain?",
+    "bucket": "support",
+    "quote": "the staff manager role in the retail chain? Yes.",
+    "reason": "Patient confirms staff manager role in retail chain.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q04",
+    "transcript_id": "sample_92",
+    "question": "Are the patient's exercise habits limited to less than an hour a week?",
+    "bucket": "refute",
+    "quote": "I train maybe eight to ten hours a week.",
+    "reason": "Asserted under an hour weekly, but patient trains eight to ten hours weekly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q01",
+    "transcript_id": "sample_92",
+    "question": "Did the patient ask to have his cholesterol level checked?",
+    "bucket": "support",
+    "quote": "My cholesterol, I think. I would like the level checked.",
+    "reason": "Patient asks for cholesterol level to be checked.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_off_topic_q02",
+    "transcript_id": "sample_92",
+    "question": "Is there any reference to the patient using specific software for work?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Work software is never mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_yes_q04",
+    "transcript_id": "sample_92",
+    "question": "Was the previous LDL value 3.9?",
+    "bucket": "support",
+    "quote": "My LDL was 3.9.",
+    "reason": "Patient states previous LDL was 3.9.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_92_hard_no_q01",
+    "transcript_id": "sample_92",
+    "question": "Was the blood pressure measured at 160/95?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is 135 over 86",
+    "reason": "Asserted 160/95, but measured pressure is 135 over 86.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_92.dc5ba020.json"
+  }
+]

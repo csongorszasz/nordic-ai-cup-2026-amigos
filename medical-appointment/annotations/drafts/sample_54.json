@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_54_hard_no_q02",
+    "transcript_id": "sample_54",
+    "question": "Is the blood pressure elevated?",
+    "bucket": "refute",
+    "quote": "Your blood pressure is normal.",
+    "reason": "Asserted elevated vs actual normal blood pressure.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q04",
+    "transcript_id": "sample_54",
+    "question": "Was the foot examination normal?",
+    "bucket": "support",
+    "quote": "Your feet are normal.",
+    "reason": "Foot examination explicitly stated normal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_off_topic_q01",
+    "transcript_id": "sample_54",
+    "question": "Does the patient discuss their job?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of the patient job occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q04",
+    "transcript_id": "sample_54",
+    "question": "Was the patient given a pneumococcal vaccination?",
+    "bucket": "refute",
+    "quote": "I have had my flu vaccination.",
+    "reason": "Asserted pneumococcal vs actual flu vaccination.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q01",
+    "transcript_id": "sample_54",
+    "question": "Has the diabetes become unstable?",
+    "bucket": "refute",
+    "quote": "your diabetes looks stable",
+    "reason": "Asserted unstable vs actual stable diabetes.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q03",
+    "transcript_id": "sample_54",
+    "question": "Has the patient received a flu vaccination?",
+    "bucket": "support",
+    "quote": "I have had my flu vaccination.",
+    "reason": "Patient states having had flu vaccination.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q02",
+    "transcript_id": "sample_54",
+    "question": "Did the plan include continued monitoring?",
+    "bucket": "support",
+    "quote": "the plan is continued monitoring with your annual check as usual",
+    "reason": "Plan explicitly stated as continued monitoring with annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_hard_no_q03",
+    "transcript_id": "sample_54",
+    "question": "Does the plan involve a check-up only every second year?",
+    "bucket": "refute",
+    "quote": "with your annual check as usual",
+    "reason": "Asserted check every second year vs actual annual check.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_off_topic_q02",
+    "transcript_id": "sample_54",
+    "question": "Was the doctor concerned that the patient's symptoms might be related to exposure to the dark side of the Force?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of the Force occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_54_yes_q01",
+    "transcript_id": "sample_54",
+    "question": "Does the doctor regard the diabetes as stable?",
+    "bucket": "support",
+    "quote": "your diabetes looks stable",
+    "reason": "Doctor assesses diabetes as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_54.dc5ba020.json"
+  }
+]

@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_52_yes_q02",
+    "transcript_id": "sample_52",
+    "question": "Did the doctor plan continued follow-up?",
+    "bucket": "support",
+    "quote": "The plan is continued support and follow-up.",
+    "reason": "Doctor states plan is continued support and follow-up.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q06",
+    "transcript_id": "sample_52",
+    "question": "Has the patient been discharged from any further follow-up?",
+    "bucket": "refute",
+    "quote": "The plan is continued support and follow-up.",
+    "reason": "Asserted discharged from follow-up vs actual continued follow-up planned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_yes_q03",
+    "transcript_id": "sample_52",
+    "question": "Was the patient seen as engaged during the consultation?",
+    "bucket": "support",
+    "quote": "you seem engaged and motivated",
+    "reason": "Doctor describes the patient as engaged and motivated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q05",
+    "transcript_id": "sample_52",
+    "question": "Does the plan involve starting insulin?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "Insulin never mentioned; plan is continued support and follow-up.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q04",
+    "transcript_id": "sample_52",
+    "question": "Is the patient's grasp of the treatment considered inadequate?",
+    "bucket": "refute",
+    "quote": "you have a good understanding of your illness and your treatment",
+    "reason": "Asserted inadequate grasp vs actual good understanding assessed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q02",
+    "transcript_id": "sample_52",
+    "question": "Was the patient found to be poorly motivated?",
+    "bucket": "refute",
+    "quote": "you seem engaged and motivated",
+    "reason": "Asserted poorly motivated vs actual engaged and motivated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_yes_q01",
+    "transcript_id": "sample_52",
+    "question": "The patient understands the treatment well, right?",
+    "bucket": "support",
+    "quote": "you have a good understanding of your illness and your treatment",
+    "reason": "Doctor assesses good understanding of illness and treatment.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q03",
+    "transcript_id": "sample_52",
+    "question": "Were the classes the patient attended about hypertension?",
+    "bucket": "refute",
+    "quote": "I attended the diabetes education course.",
+    "reason": "Asserted hypertension classes vs actual diabetes education course.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_off_topic_q01",
+    "transcript_id": "sample_52",
+    "question": "Does the doctor ask about the patient's plans for the holidays?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No discussion of holiday plans occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_52_hard_no_q01",
+    "transcript_id": "sample_52",
+    "question": "Did the patient skip the diabetes education?",
+    "bucket": "refute",
+    "quote": "I attended the diabetes education course.",
+    "reason": "Asserted skipped education vs actual attended course.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_52.dc5ba020.json"
+  }
+]

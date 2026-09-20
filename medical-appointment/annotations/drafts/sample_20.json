@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_20_hard_no_q03",
+    "transcript_id": "sample_20",
+    "question": "Will the patient be referred to a pain clinic?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No referral or pain clinic is mentioned, only prescription renewal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_off_topic_q02",
+    "transcript_id": "sample_20",
+    "question": "Was a specific recipe or cooking activity discussed?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No recipe or cooking activity is discussed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_off_topic_q01",
+    "transcript_id": "sample_20",
+    "question": "At any point does the patient talk about their experiences with a hobby?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "TV series and film are mentioned casually but not framed as a hobby experience.",
+    "confidence": "low",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q01",
+    "transcript_id": "sample_20",
+    "question": "Was Ibumetin renewed as well?",
+    "bucket": "support",
+    "quote": "I am creating prescriptions for both PAMEL and ibumedin now",
+    "reason": "Both prescriptions are created despite spelling variants of the drug names.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_hard_no_q01",
+    "transcript_id": "sample_20",
+    "question": "Did the patient ask for morphine to be renewed?",
+    "bucket": "refute",
+    "quote": "PAMOL and IBUMETIN.",
+    "reason": "Asserted morphine requested vs actual PAMOL and IBUMETIN named by patient.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_hard_no_q02",
+    "transcript_id": "sample_20",
+    "question": "Does the pain affect the lower back alone?",
+    "bucket": "refute",
+    "quote": "It is a general, widespread sort of pain, spread around the body rather than in one place.",
+    "reason": "Asserted lower back alone vs actual widespread pain around the body.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q05",
+    "transcript_id": "sample_20",
+    "question": "Is Pamol one of the medicines requested?",
+    "bucket": "support",
+    "quote": "PAMOL and IBUMETIN.",
+    "reason": "PAMOL is explicitly named as one of the two medicines used.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q02",
+    "transcript_id": "sample_20",
+    "question": "Has the pain problem been described as stable?",
+    "bucket": "support",
+    "quote": "Then we are looking at a stable pain problem",
+    "reason": "Pain problem is directly described as stable.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q04",
+    "transcript_id": "sample_20",
+    "question": "Does the patient still need pain relief?",
+    "bucket": "support",
+    "quote": "you still need pain-relieving medication.",
+    "reason": "Transcript states continued need for pain-relieving medication.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_20_yes_q03",
+    "transcript_id": "sample_20",
+    "question": "Were both prescriptions issued?",
+    "bucket": "support",
+    "quote": "I am creating prescriptions for both PAMEL and ibumedin now",
+    "reason": "Both prescriptions are issued at the pharmacy.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_20.dc5ba020.json"
+  }
+]
