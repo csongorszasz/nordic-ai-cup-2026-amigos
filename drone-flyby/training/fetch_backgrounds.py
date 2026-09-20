@@ -80,6 +80,22 @@ AREAS = {
     'coast_oregon':     (44.6300, -124.0500, 'rocky shore, small craft, jetties'),
 }
 
+# HELD-OUT areas: never fetched before the test set was built, so no training run has seen
+# them. training/holdout_scene.py pastes objects on these to score background generalisation
+# with exact labels. Keep them out of AREAS so a training fetch cannot pull them in.
+HOLDOUT_AREAS = {
+    'ho_valley_ca':     (36.3300, -119.6500, 'irrigated valley floor, packing sheds'),
+    'ho_coast_nc':      (34.7200, -76.7300, 'barrier coast, creeks, small docks'),
+    'ho_plains_ks':     (38.5000, -98.2000, 'section-line farmland, grain bins'),
+    'ho_city_denver':   (39.7400, -105.0000, 'downtown grid, flat roofs, lots'),
+    'ho_hills_tn':      (35.9000, -84.1500, 'wooded hills, ridge roads'),
+    'ho_port_savannah': (32.1300, -81.1400, 'container terminal, barges'),
+    'ho_airbase_tucson': (32.1700, -110.8800, 'apron, hardstanding, stored airframes'),
+    'ho_lakes_mn':      (46.3000, -94.2000, 'lakes, timber, cabins'),
+    'ho_suburb_tx':     (30.1800, -95.4500, 'new suburbs, cul-de-sacs, ponds'),
+    'ho_desert_ut':     (38.5700, -109.5500, 'red rock, wash channels, tracks'),
+}
+
 
 def web_mercator(lon: float, lat: float):
     x = lon * 20037508.34 / 180.0
@@ -120,6 +136,8 @@ def main():
     parser.add_argument('--jitter', type=float, default=1500.0, help='metres of random offset per tile')
     parser.add_argument('--timeout', type=int, default=120)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--holdout', action='store_true',
+                        help='fetch HOLDOUT_AREAS instead: backgrounds kept out of every training run')
     args = parser.parse_args()
 
     out = Path(args.out)
@@ -128,11 +146,12 @@ def main():
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
 
     rng = random.Random(args.seed)
-    keys = args.areas or sorted(AREAS)
+    pool = dict(AREAS, **HOLDOUT_AREAS) if args.holdout else AREAS
+    keys = args.areas or sorted(HOLDOUT_AREAS if args.holdout else AREAS)
     for key in keys:
-        if key not in AREAS:
-            raise SystemExit(f'unknown area {key!r}; known: {", ".join(sorted(AREAS))}')
-        lat, lon, description = AREAS[key]
+        if key not in pool:
+            raise SystemExit(f'unknown area {key!r}; known: {", ".join(sorted(pool))}')
+        lat, lon, description = pool[key]
         for n in range(args.per_area):
             name = f'{key}_{n}.jpg'
             path = out / name
