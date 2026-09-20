@@ -80,6 +80,25 @@ inference (960+1280 = 237 ms on the laptop, 960+1600 = 320 ms; the VM ran 960+12
 ~247 ms against a 333 ms frame interval). Not deployed: +0.008 is not worth risking dropped frames without
 measuring on the VM first.
 
+## Choose on frames 1-125 only. The overall number cost us a validation.
+
+`allbg` last scored **0.663** overall against the live model's 0.640, was deployed, and came
+back from validation at **0.4926** against 0.5171. Its halves explain it:
+
+| | frames 1-125 (tune) | frames 126-249 (check) | overall | live |
+|---|---|---|---|---|
+| live model | **0.636** | 0.715 | 0.640 | **0.5171** |
+| allbg last | 0.635 | 0.747 | **0.663** | 0.4926 |
+
+On the half we are allowed to choose on they are tied; the entire gain sat in the half kept
+back for confirmation. Ranking by the overall number is ranking partly by the confirmation
+half, and it picked a model that is 0.025 worse live. `overnight.sh` now flags a candidate
+only when its tune half beats 0.636; anything better overall but not on tune is recorded in
+`overnight/CHECK_HALF_ONLY.txt` and not proposed for deployment.
+
+Offline still ranks big differences correctly (0.55 vs 0.64 is real). It cannot separate
+0.64 from 0.66 -- 43 objects over 13 classes is too small a test for that.
+
 ## A quarter of what we report is for classes that are not there
 
 Counting every box the live model reports over the 249 Copenhagen frames:

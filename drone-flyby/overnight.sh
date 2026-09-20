@@ -50,11 +50,26 @@ YOLO('runs/$run/weights/$e.pt').export(format='openvino', dynamic=True, int8=Tru
   [ -z "$all" ] && { echo "    FAILED"; tail -5 <<< "$res"; return 1; }
   printf '%s\t%s\t%s\t%s\t%s\n' "$run" "$e" "$all" "${tune:-?}" "${check:-?}" >> "$TSV"
   echo "    $run $e -> $all (tune $tune, check $check)"
-  # Anything past the live model gets a note of its own, so it is easy to spot in the morning.
-  if awk -v a="$all" -v t="${tune:-0}" 'BEGIN{exit !(a>0.640 && t>0.636)}'; then
-    printf '%s %s  overall %s  tune %s  check %s\n' "$run" "$e" "$all" "$tune" "$check" >> "$OUT/BEATS_LIVE.txt"
-    return 0   # keep the weights and the export: this one is a candidate to deploy
+  # Selection happens on the tune half (frames 1-125) ONLY. allbg last scored 0.663 overall
+  # against the live model's 0.640 and was deployed on that; live it gave 0.4926 against
+  # 0.5171. Its tune half was 0.635 to the live model's 0.636 -- a tie -- so all of the
+  # apparent gain sat in the confirmation half. Judging on the overall number is judging on
+  # the half kept back for confirmation, and it cost us a validation.
+  if awk -v t="${tune:-0}" 'BEGIN{exit !(t>0.636)}'; then
+    printf '%s %s  tune %s  overall %s  check %s\n' "$run" "$e" "$tune" "$all" "$check" >> "$OUT/BEATS_LIVE.txt"
+    return 0   # a real candidate: better on the half we are allowed to choose on
   fi
+  if awk -v a="$all" 'BEGIN{exit !(a>0.640)}'; then
+    # Good overall but not on the tune half: keep the weights, do not treat it as a candidate.
+    printf '%s %s  tune %s  overall %s  check %s\n' "$run" "$e" "$tune" "$all" "$check" >> "$OUT/CHECK_HALF_ONLY.txt"
+    return 0
+  fi
+  # Never delete the model that is serving, or the one we would roll back to. Scoring it
+  # returns exactly 0.640, which is not "above the bar", and the cleanup below once ate it:
+  # the rollback after allbg's bad validation failed because of that.
+  case "$run/$e" in
+    synth400_11s_neighbours_0919-1604/epoch15) return 0 ;;
+  esac
   # Keep the disk in check: the .pt and the export are ~40 MB each. Still on IDUN if wanted again.
   rm -rf "runs/$run/weights/${e}_int8_openvino_model" "runs/$run/weights/$e.pt"
 }
@@ -63,7 +78,14 @@ runs_list() {
   ssh -o BatchMode=yes idun "cd ~/nordic-cup/drone-flyby/runs && ls -d $RUNS_GLOB 2>/dev/null"
 }
 
-for round in $(seq 200); do
+for round in $(seq 400); do
+  # IDUN is only reachable on eduroam or the NTNU VPN. Off it, every ssh times out;
+  # wait for the network to come back instead of treating it as "everything is done".
+  if ! ssh -o BatchMode=yes -o ConnectTimeout=15 idun 'echo ok' >/dev/null 2>&1; then
+    echo "$(date +%H:%M) IDUN unreachable (VPN down?), waiting"
+    sleep 180
+    continue
+  fi
   mapfile -t runs < <(runs_list)
   [ ${#runs[@]} -eq 0 ] && { sleep 300; continue; }
   progressed=0
@@ -77,8 +99,9 @@ for round in $(seq 200); do
   done < <(sort -k3 -rn "$TSV" | cut -f1 | awk '!seen[$0]++')
   [ $progressed = 0 ] && sleep 420
   # Everything scored and nothing left training? Then we are done.
-  if [ "$(wc -l < "$TSV")" -ge 40 ] && ! ssh -o BatchMode=yes idun 'squeue -u $USER -h' | grep -q .; then
-    break
+  if [ "$(wc -l < "$TSV")" -ge 40 ]; then
+    q=$(ssh -o BatchMode=yes -o ConnectTimeout=15 idun 'squeue -u $USER -h' 2>/dev/null) || q=UNREACHABLE
+    [ -n "$q" ] || break   # reachable and nothing queued: done. Unreachable keeps us looping.
   fi
 done
 echo "=== finished $(date -Is) ==="
