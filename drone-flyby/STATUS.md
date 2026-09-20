@@ -1,4 +1,4 @@
-# Drone flyby: where things stand (2026-09-19 19:30 CEST, branch `waffles`)
+# Drone flyby: where things stand (2026-09-20 08:00 CEST, branch `waffles`)
 
 For anyone (person or agent) picking this up. Final submission deadline: 2026-09-20 16:00 CEST.
 
@@ -11,7 +11,7 @@ For anyone (person or agent) picking this up. Final submission deadline: 2026-09
 - Serve from a public IP (the Azure VM, `deploy_vm.sh`). Tunnels (cloudflared, ngrok) lost 20-60 of the
   249 frames and cost 0.03-0.16 mAP.
 
-## Best so far: live 0.517 (247/249 frames answered)
+## Best, and what to submit: live 0.5171 (247/249 frames answered)
 
 ```bash
 bash deploy_vm.sh <vm ip> runs/synth400_11s_neighbours_0919-1604/weights/epoch15_int8_openvino_model DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
@@ -75,10 +75,11 @@ with any of the three real ones** (best 0.06). They land on dark bushes and a ci
 ta-ta contributes 0.00 and adds false positives on top.
 
 Raising the second small-object pass from 1280 to 1600 gives 0.640 -> **0.648**, all of it from
-medium_launcher (0.40 -> 0.48) and small_launcher (0.46 -> 0.48); ta-ta stays 0.00. It costs about 35% more
-inference (960+1280 = 237 ms on the laptop, 960+1600 = 320 ms; the VM ran 960+1280 in 183 ms, so expect
-~247 ms against a 333 ms frame interval). Not deployed: +0.008 is not worth risking dropped frames without
-measuring on the VM first.
+medium_launcher (0.40 -> 0.48) and small_launcher (0.46 -> 0.48); ta-ta stays 0.00. It was deployed and validated, and it lost:
+**live 0.4594 against 0.5171**. Measured on the VM afterwards, a request took **836 ms**, not the ~247 ms
+extrapolated from laptop timings -- the 4-vCPU VM does not scale the way a laptop does. At 836 ms against a
+333 ms frame interval two frames in three are skipped, which is the whole loss. Do not extrapolate VM
+inference cost from laptop measurements; time it on the VM.
 
 ## What to submit (2026-09-20 morning)
 
