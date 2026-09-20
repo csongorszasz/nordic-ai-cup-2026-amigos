@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_5_yes_q01",
+    "transcript_id": "sample_5",
+    "question": "Does the patient take pantoprazole for reflux?",
+    "bucket": "support",
+    "quote": "gave me reflux on top. Which is why you are on pantoprazole for that.",
+    "reason": "Transcript links reflux to pantoprazole use.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_hard_no_q02",
+    "transcript_id": "sample_5",
+    "question": "Did the back pain begin after surgery for a lumbar disc prolapse?",
+    "bucket": "refute",
+    "quote": "the cervical disc prolapse, operated in 2017",
+    "reason": "Asserted lumbar prolapse vs actual cervical disc prolapse operated in 2017.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_hard_no_q01",
+    "transcript_id": "sample_5",
+    "question": "Have the pains in the hands been attributed to gout?",
+    "bucket": "refute",
+    "quote": "Osteoarthritis is what is suspected there",
+    "reason": "Asserted gout vs actual suspected osteoarthritis in the hands.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q05",
+    "transcript_id": "sample_5",
+    "question": "Is the patient still in pain despite regular Ibumetin and Panodil?",
+    "bucket": "support",
+    "quote": "the pain has just carried on regardless. Despite taking the ibumetin and the panadil regularly? Despite both, and I do take them properly.",
+    "reason": "Pain persists despite taking Ibumetin and Panodil regularly.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q02",
+    "transcript_id": "sample_5",
+    "question": "Will the NSAID treatment be continued under cover of a proton pump inhibitor?",
+    "bucket": "support",
+    "quote": "you continue the anti-inflammatory with the stomach protection alongside it",
+    "reason": "Continue anti-inflammatory with stomach protection entails NSAID under PPI cover.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q06",
+    "transcript_id": "sample_5",
+    "question": "Did the patient undergo surgery for a cervical disc prolapse in 2017?",
+    "bucket": "support",
+    "quote": "the cervical disc prolapse, operated in 2017",
+    "reason": "Transcript states cervical prolapse operated in 2017.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_off_topic_q02",
+    "transcript_id": "sample_5",
+    "question": "Does the conversation mention the patient owning a digital camera?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of a digital camera.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q03",
+    "transcript_id": "sample_5",
+    "question": "Was muscle tension found in the neck and shoulders?",
+    "bucket": "support",
+    "quote": "i can feel muscle tension in your neck and shoulders",
+    "reason": "Examination finds muscle tension in neck and shoulders.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_yes_q04",
+    "transcript_id": "sample_5",
+    "question": "Are the menopausal symptoms treated with Activelle?",
+    "bucket": "support",
+    "quote": "the menopausal symptoms, which you are taking Activel for.",
+    "reason": "Menopausal symptoms treated with Activel, transcript spelling of Activelle.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_5_off_topic_q01",
+    "transcript_id": "sample_5",
+    "question": "Is the patient discussing owning a cat?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No mention of owning a cat.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_5.dc5ba020.json"
+  }
+]

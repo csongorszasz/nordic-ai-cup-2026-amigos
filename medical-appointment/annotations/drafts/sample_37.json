@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_37_yes_q05",
+    "transcript_id": "sample_37",
+    "question": "Is the skin intact?",
+    "bucket": "support",
+    "quote": "The skin is intact.",
+    "reason": "Skin is directly stated to be intact.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q01",
+    "transcript_id": "sample_37",
+    "question": "Was erythema migrans seen around the bite?",
+    "bucket": "refute",
+    "quote": "There is no erythema migrans.",
+    "reason": "Asserted erythema migrans seen vs actual none present.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q03",
+    "transcript_id": "sample_37",
+    "question": "Is the risk of Borrelia considered high?",
+    "bucket": "refute",
+    "quote": "The risk of Borrelia here is low.",
+    "reason": "Asserted high Borrelia risk vs actual low risk.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q03",
+    "transcript_id": "sample_37",
+    "question": "Was erythema migrans absent?",
+    "bucket": "support",
+    "quote": "There is no erythema migrans.",
+    "reason": "Absence of erythema migrans is explicitly stated.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q04",
+    "transcript_id": "sample_37",
+    "question": "Are redness and swelling absent?",
+    "bucket": "support",
+    "quote": "No redness at all. Any swelling? No swelling either.",
+    "reason": "Both redness and swelling are stated absent in one passage.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q06",
+    "transcript_id": "sample_37",
+    "question": "The plan involves no treatment, right?",
+    "bucket": "support",
+    "quote": "No treatment is needed.",
+    "reason": "Plan explicitly states no treatment is needed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_off_topic_q01",
+    "transcript_id": "sample_37",
+    "question": "Does the conversation indicate the patient discussed their employment as a freelancer?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No employment or freelancer discussion occurs.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_hard_no_q02",
+    "transcript_id": "sample_37",
+    "question": "Has the bite area become red and swollen?",
+    "bucket": "refute",
+    "quote": "Intact skin. No redness, no swelling, and no rash at the site.",
+    "reason": "Asserted red and swollen vs actual no redness or swelling.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q01",
+    "transcript_id": "sample_37",
+    "question": "Did the patient get a tick bite?",
+    "bucket": "support",
+    "quote": "I found a tick attached to my leg.",
+    "reason": "Patient directly reports attached tick.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_37_yes_q02",
+    "transcript_id": "sample_37",
+    "question": "Has the patient been told simply to keep an eye on the area?",
+    "bucket": "support",
+    "quote": "Observation.",
+    "reason": "Observation plan entails keeping an eye on the area.",
+    "confidence": "medium",
+    "transcript_file": "transcripts/conversation_sample_37.dc5ba020.json"
+  }
+]

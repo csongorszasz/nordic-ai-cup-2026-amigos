@@ -1,0 +1,102 @@
+[
+  {
+    "question_id": "sample_23_yes_q03",
+    "transcript_id": "sample_23",
+    "question": "Was a skin wart found under the right breast?",
+    "bucket": "support",
+    "quote": "The one under your right breast is a skin wart, about one centimeter.",
+    "reason": " wart under right breast is directly described.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q05",
+    "transcript_id": "sample_23",
+    "question": "Has the patient been informed about the risk of scarring and infection?",
+    "bucket": "support",
+    "quote": "there will be a scar where each one is removed and there is a risk of infection afterwards",
+    "reason": "Both scarring and infection risks are explicitly disclosed.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q02",
+    "transcript_id": "sample_23",
+    "question": "Does the patient want the skin changes removed?",
+    "bucket": "support",
+    "quote": "I want them gone.",
+    "reason": "Patient explicitly requests removal.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_off_topic_q02",
+    "transcript_id": "sample_23",
+    "question": "Is there any mention of the patient's pet?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No pet is mentioned.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_hard_no_q01",
+    "transcript_id": "sample_23",
+    "question": "Has the patient been told that the procedure carries no risk of scarring?",
+    "bucket": "refute",
+    "quote": "there will be a scar where each one is removed",
+    "reason": "Asserted no scarring risk vs actual statement that a scar will occur.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q04",
+    "transcript_id": "sample_23",
+    "question": "Is an appointment for the removal going to be arranged?",
+    "bucket": "support",
+    "quote": "I will arrange an appointment for the removal",
+    "reason": "Removal appointment is explicitly arranged.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q06",
+    "transcript_id": "sample_23",
+    "question": "Do the changes on the abdomen and lower leg resemble seborrheic keratoses?",
+    "bucket": "support",
+    "quote": "They look like seborrheic keratoses.",
+    "reason": "Abdomen and lower leg changes are described as looking like seborrheic keratoses.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_yes_q01",
+    "transcript_id": "sample_23",
+    "question": "Were the skin changes judged to be benign?",
+    "bucket": "support",
+    "quote": "My assessment is that these are benign skin changes.",
+    "reason": "Changes are explicitly assessed as benign.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_off_topic_q01",
+    "transcript_id": "sample_23",
+    "question": "Does the patient talk about needing a new vehicle?",
+    "bucket": "absent",
+    "quote": "",
+    "reason": "No vehicle need is discussed, only weather.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  },
+  {
+    "question_id": "sample_23_hard_no_q02",
+    "transcript_id": "sample_23",
+    "question": "Are the elements on the abdomen about 2 cm across?",
+    "bucket": "refute",
+    "quote": "The others on your abdomen and lower leg are 0.6 cm",
+    "reason": "Asserted 2 cm vs actual 0.6 cm.",
+    "confidence": "high",
+    "transcript_file": "transcripts/conversation_sample_23.dc5ba020.json"
+  }
+]

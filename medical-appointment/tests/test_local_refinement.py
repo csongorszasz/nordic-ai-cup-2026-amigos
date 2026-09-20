@@ -1,0 +1,53 @@
+"""Refinement cannot change decisions or escape the supplied local region."""
+
+from refine_quotes import decode_refinement, render
+
+
+WORDS = [
+    {"word": " The", "start": 0.0, "end": 0.3},
+    {"word": " dose", "start": 0.4, "end": 0.8},
+    {"word": " is", "start": 0.9, "end": 1.1},
+    {"word": " 100", "start": 1.2, "end": 1.5},
+    {"word": " mg.", "start": 1.6, "end": 1.9},
+]
+TRANSCRIPT = {"words": WORDS, "duration": 2.0}
+CASE = {"first": 0, "last": 4, "row": {"span": [0.0, 1.9], "quote": "The dose is 100 mg."}}
+
+
+def test_keep_and_bad_quotes_preserve_baseline():
+    assert decode_refinement({"keep": True}, CASE, TRANSCRIPT) == ([0.2, 1.9], "kept")
+    assert decode_refinement(None, CASE, TRANSCRIPT) == ([0.2, 1.9], "missing")
+    assert decode_refinement({"quote": "not here"}, CASE, TRANSCRIPT) == ([0.2, 1.9], "unaligned")
+
+
+def test_unique_refinement_aligns_inside_the_region():
+    assert decode_refinement({"quote": "100 mg."}, CASE, TRANSCRIPT) == ([1.4, 1.9], "refined")
+    narrow = {**CASE, "last": 2}
+    assert decode_refinement({"quote": "100 mg."}, narrow, TRANSCRIPT) == ([0.2, 1.9], "unaligned")
+
+
+def test_blind_extraction_hides_only_the_anchor():
+    case = {
+        "qid": "q01", "row": {"question": "Q?", "quote": "the proposed answer"},
+        "context": "unchanged local words", "start": 1.0, "end": 3.0,
+    }
+    normal, blind = render([case]), render([case], blind=True)
+    assert "CURRENT: the proposed answer" in normal
+    assert "CURRENT:" not in blind and "the proposed answer" not in blind
+    assert "CONTEXT [1.00-3.00]: unchanged local words" in blind
+    assert '"keep"' not in blind
+
+
+def test_word_pointer_bounds_are_local_and_inclusive():
+    span, reason = decode_refinement(
+        {"first_word": "w03", "last_word": "w04"}, CASE, TRANSCRIPT, word_indices=True
+    )
+    assert span == [1.4, 1.9] and reason == "refined"
+    for entry in (
+        {"first_word": "w04", "last_word": "w03"},
+        {"first_word": "w00", "last_word": "w99"},
+        {"first_word": 0, "last_word": 4},
+    ):
+        assert decode_refinement(entry, CASE, TRANSCRIPT, word_indices=True) == (
+            [0.2, 1.9], "invalid_indices"
+        )
