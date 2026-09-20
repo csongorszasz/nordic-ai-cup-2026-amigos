@@ -83,6 +83,22 @@ inference cost from laptop measurements; time it on the VM.
 
 ## What to submit (2026-09-20 morning)
 
+**The evaluation is a different 250-frame sequence** (README "Validation and evaluation"), and
+recording the validation sequence is allowed. A rival scored 0.85 on validation and 0.22 on the
+evaluation -- the signature of fine-tuning on the recorded validation frames, which is legal and
+worthless, because the scene it is judged on is one nobody has seen.
+
+We never trained on Copenhagen. That makes our validation score an honest estimate of
+unseen-scene performance rather than a memorisation score: there is no cliff waiting for us,
+and it is why the live validations can be trusted to rank generalisation, not just fit.
+
+The one real argument against the incumbent: the evaluation scene is new, we hallucinate badly
+on unfamiliar ground (1255 phantom jammers on Copenhagen, condors on moored boats), and bigbg
+saw 240 sharp Danish backgrounds including harbours. If the evaluation scene is unlike
+Copenhagen, bigbg could generalise better. Against it: Copenhagen was unseen for both, and
+bigbg lost there by 0.022.
+
+
 **Submit the model that is already serving.** Deploy command, unchanged since 0.5171:
 
 ```bash
