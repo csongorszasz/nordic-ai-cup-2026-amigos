@@ -108,6 +108,19 @@ bash deploy_vm.sh 9.160.106.215 runs/synth400_11s_neighbours_0919-1604/weights/e
 # submit http://9.160.106.215:9053/predict
 ```
 
+**Preflight, verified 2026-09-20 08:35 CEST.** Re-run these before pressing submit; all four
+passed, so the endpoint below is ready as it stands.
+
+| check | how | result |
+|---|---|---|
+| container up | `ssh azureuser@9.160.106.215 'docker ps'` | `drone` up, `0.0.0.0:9053->9053` |
+| right weights | md5 of `~/drone/serve_weights/model_openvino_model/*` vs the local `epoch15_int8_openvino_model` | all 3 files identical |
+| right settings | `docker inspect drone --format '{{range .Config.Env}}...'` | `DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1 DRONE_CAMERA=sweep` |
+| answers frames | POST one real 4K frame to `/predict` | HTTP 200, **734 ms** round trip from home against a 3333 ms budget, 21 detections, `request_id`/`frame` echoed |
+
+Test traffic is safe: `solution._states` is keyed by `sequence_id`, so a smoke test under its own
+id cannot touch a real run's tracking memory. Use a throwaway id.
+
 Four live validations, the only measurement that can rank models:
 
 | served | live |
@@ -235,6 +248,20 @@ On the Helsinki scene the same model scores condor 0.87, jammer 0.74, spacecraft
 not broken; the model has simply never seen a marina, a Danish shed or a city yard and reads them as
 objects. That is the same finding as the background experiment from the other direction, and it is the
 argument for more and more varied sharp photo backgrounds rather than more sprite work.
+
+**Suppressing those classes at inference gains exactly nothing. Measured, do not try it.**
+Stripping all 1871 phantom boxes (24% of everything we report) from the Copenhagen trace and
+re-scoring gives 0.6403 overall / 0.6364 tune -- identical to four decimals. Three reasons, all
+checked in `src/local_evaluator.py` and `src/dtos.py`: `params.catIds` is filtered to the classes
+present in ground truth, so absent classes are never scored; COCO's `maxDets=100` is per
+*category* and we peak near 5 boxes per frame per class; the API caps a response at 500 boxes and
+our worst frame is 63. Phantoms cannot crowd out real detections.
+
+The downside is real, though. The evaluation scene is a different sequence and may contain these
+classes, and a suppressed class contributes a hard 0.00 to a macro average. On the held-out
+flight, which has all 16 classes: suppressing jammer costs **-0.0146**, suppressing all three
+costs **-0.0593** -- larger than every gap between our candidates. Upside zero, downside up to
+0.06 on an unknown: strictly dominated.
 
 ## The recipe with no flags is still the one to beat
 
