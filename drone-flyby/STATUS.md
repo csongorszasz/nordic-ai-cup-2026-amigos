@@ -126,6 +126,19 @@ and near zero on the rest lands at ~0.22. The failure is class-specific, not ter
 
 ## THE DECISION (2026-09-20 ~10:40 CEST)
 
+**Submit allbg_e25.** Confirmed by two five-run samples:
+
+| model | n | mean | sd | 95% CI |
+|---|---|---|---|---|
+| allbg_e25 | 5 | **0.4971** | 0.0231 | 0.4769-0.5174 |
+| sharp_e10 | 5 | 0.4830 | 0.0339 | 0.4534-0.5127 |
+
+The +0.0141 difference is NOT significant (95% CI of the difference -0.022..+0.050), so this is
+not "allbg_e25 wins". It is that allbg_e25 has the higher mean, the tighter spread, and 14-class
+woodland coverage against sharp_e10's 12 -- the weak evidence and the solid evidence agree.
+Pooled sd 0.0285 is similar for both models, so the noise belongs to the harness, not to any
+model; there is no "more stable" checkpoint to exploit.
+
 **Submit allbg_e25** -- `runs/synth400_11s_allbg_0919-2339/weights/epoch25_int8_openvino_model`,
 settings `DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1`. Verify with
 `bash preflight.sh <that path>` before pressing submit.
