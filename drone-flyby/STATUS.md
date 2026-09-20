@@ -124,6 +124,58 @@ at conf 0.87-0.92 -- but it reports only 131 boxes above 0.25 across 249 views, 
 aircraft classes. Since mAP is macro-averaged over classes present, ~0.9 on four aircraft classes
 and near zero on the rest lands at ~0.22. The failure is class-specific, not terrain.
 
+## 2026-09-20 live ranking under the REVISED labels, and the forest evidence
+
+Everything above this line that cites an offline or live score predates the label change.
+
+**Live validation, old scene (motorway/scrub), revised labels.** Every run scene-tagged by
+byte-comparing a matching L0 view (`tools_whichscene.sh`); all confirmed OLD.
+
+| model | mAP | frames answered |
+|---|---|---|
+| sharp_e10 | **0.5224** | 249 |
+| bigbg7_last | 0.5111 | 248 |
+| bigbg_e15 | 0.4782 | 247 |
+| dk_e15 | 0.4759 | 241 |
+| allbg_last | 0.4525 | 242 |
+| neighbours e15 (the old incumbent) | 0.4470 | 248 |
+
+Frames answered does not explain the ordering: the incumbent answered 248 and came last.
+All single runs; no variance estimate yet under these labels.
+
+**The forest scene disagrees, and by the rules it is the more relevant one.** The evaluation runs
+a *different* sequence from validation (README:440), validation is the old scene, so the
+evaluation is not the old scene. A forest scene was served for 28 minutes this morning and our
+evaluation score was then voided, so forest is plausibly the evaluation set. We recorded its 249
+frames legally (README:437 permits keeping the validation sequence) but have no labels, so the
+numbers below are a proxy: consensus objects are boxes >=3 of 5 models agree on, and samples of
+every category below were hand-checked in the imagery.
+
+| model | forest recall vs consensus | misses of 120 | unique dets | hand check of uniques |
+|---|---|---|---|---|
+| bigbg_e15 | **0.892** | 13 | 61 | all 20 inspected were REAL, incl. 30 ta-ta |
+| allbg_last | 0.833 | 20 | 42 | - |
+| incumbent | 0.817 | 22 | 29 | - |
+| sharp_e10 | 0.775 | 27 | 145 | mixed: real finds plus phantom jammers on bushes |
+| bigbg7_last | 0.750 | 30 | 25 | its 30 misses were inspected and are REAL objects |
+
+**Class coverage on forest is the decisive number**, because mAP is macro-averaged over classes
+present, so a class a model cannot see at all contributes a hard 0.00:
+
+| class | bigbg7 | bigbg_e15 | incumbent | allbg | sharp_e10 |
+|---|---|---|---|---|---|
+| hangar | 9 | 12 | 10 | 10 | **0** |
+| medium_launcher | 1 | 4 | **0** | 7 | **0** |
+| condor | 1 | 1 | 3 | 3 | **0** |
+| ta-ta | 4 | **36** | 5 | 18 | 42 |
+| classes seen | 13 | **14** | 13 | **14** | **12** |
+
+sharp_e10 leads the live table and is blind to three classes on woodland. Two dead classes out of
+fourteen is ~0.14 of a macro average, against its 0.011 live lead.
+
+**Reading: if the evaluation is woodland, bigbg_e15 is the pick; if it is the old scene,
+sharp_e10 is.** The question worth asking the organisers is which dataset the evaluation uses.
+
 ## What to submit (2026-09-20 morning)
 
 **The evaluation is a different 250-frame sequence** (README "Validation and evaluation"), and
