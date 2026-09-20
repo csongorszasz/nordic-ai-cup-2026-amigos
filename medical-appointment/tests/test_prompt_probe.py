@@ -136,7 +136,7 @@ def test_confirmation_requires_frozen_development_and_explicit_semantic_review()
         "definition_sha256": definition_hash("v1_claim"),
     }
     development = {
-        "phase": "development", "complete": True, "selected_tids": ["a", "b"],
+        "phase": "development", "complete": True, "full_phase": True, "selected_tids": ["a", "b"],
         "signature": signature, "pipeline_source_sha256": source,
         "definition_sha256": {"v1_claim": definition_hash("v1_claim")},
         "variants": {"base": {"failed_questions": 0}, "v1_claim": {"failed_questions": 0}},
@@ -158,6 +158,8 @@ def test_confirmation_requires_frozen_development_and_explicit_semantic_review()
         validate_confirmation(order_selection, order_development, manifest, signature, source)
     order_development["protocol_extension"] = ORDER_CONTROL_EXTENSION
     assert validate_confirmation(order_selection, order_development, manifest, signature, source) == ["base", "claim"]
+    with pytest.raises(ValueError, match="Confirmation"):
+        validate_confirmation(order_selection, {**order_development, "full_phase": False}, manifest, signature, source)
 
 
 def test_answer_order_control_is_a_separate_frozen_pair(monkeypatch, tmp_path):
@@ -203,3 +205,15 @@ def test_semantic_change_packet_hides_reference_coordinates_and_retains_negative
         semantic_changes(control, [])
     with pytest.raises(ValueError, match="different questions"):
         semantic_changes(control, [{**candidate[0], "gold": [4.0, 5.0]}])
+
+
+def test_execution_shards_partition_the_fixed_phase_without_reselecting_conversations():
+    manifest = {"development_tids": ["a", "b", "c", "d"], "confirmation_tids": ["e", "f"]}
+    left = selected_tids(manifest, "development", 0, 2)
+    right = selected_tids(manifest, "development", 1, 2)
+    assert left == ["a", "c"] and right == ["b", "d"]
+    assert set(left).isdisjoint(right)
+    assert set(left + right) == set(selected_tids(manifest, "development"))
+    for index, count in ((0, 0), (True, 2), (2, 2), (0, 5)):
+        with pytest.raises(ValueError, match="Execution shards"):
+            selected_tids(manifest, "development", index, count)

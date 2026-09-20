@@ -349,6 +349,22 @@ separate pair, not an expanded sweep. Reports record the post-pilot protocol
 extension, and confirmation rejects an unrecorded extension. The original
 two candidates and their failed results are not replaced or relabeled.
 
+When a complete phase cannot obtain a practical CPU allocation, use
+`--shard-count 2 --shard-index 0` and then index 1 for development.
+Shards take fixed interleaved slices of the already frozen conversation list;
+they do not choose cases by model outcome. Their summaries explicitly have
+`full_phase=false` and cannot pass the confirmation-selection gate.
+
+After every shard completes, run `merge_prompt_round.py --baseline <baseline>
+--round <round> --phase development --parts <part0>/results/prompt_probe
+<part1>/results/prompt_probe` in a model-free CPU snapshot. The merger checks
+unique complete partitions, identical source/model/runtime/prompt hashes,
+unchanged references, exact correction semantics, and reproduced scores/failure
+counts. It creates the complete phase summary and reference-hidden change
+packet. No best-of-run selection or missing-shard denominator reduction is
+allowed. Confirmation can likewise be executed in fixed shards, but only
+after a complete frozen development selection exists.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.

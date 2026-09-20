@@ -214,10 +214,19 @@ The apparent `v1` gain was rejected: it answered yes to fever while citing
 `v1_claim` also joined noncontiguous statements, causing a correctly recorded
 grounding failure. A higher point score does not excuse those errors.
 
-**Prepared, not yet measured:** one explicitly documented answer-order control
-(`claim`) uses the identical claim rules with the original answer-first schema
-and demonstrations. It is a post-pilot development extension, not a
-preregistered winner. No new medical wording or confirmation feedback is used.
+An explicitly documented answer-order control (`claim`) then reused the
+identical rules with the original answer-first schema and demonstrations.
+It reproduced the prior base records exactly and improved the small-model
+pilot to **0.755725 composite / 0.592875 mIoU**, keeping **30/30 answers**
+correct with no grounding failures. Both changed citations are semantically
+valid; one still disagrees with the suspect reference and receives no metric
+credit.
+
+This post-pilot extension is not a preregistered winner or a new best service.
+Its +0.053125 delta is concentrated in one citation, the three-conversation
+interval includes zero, and the Gemma reference remains stronger. The
+unchanged pair is advancing to the full development cohort; no new medical
+wording or confirmation feedback is used.
 
 ## 7. Dataset and evaluation findings
 
@@ -294,6 +303,7 @@ transcript-matched comparison with the 0.8007 control.
 | Endpoint-source cross-fit | `endpoint-source-cv-1eace62d` |
 | Exact prompt-input freeze | `prompt-round-freeze-bf75822a` |
 | Complete first prompt pilot | `prompt-qwen4b-pilot-e6075a85` |
+| Answer-first mechanism control | `prompt-answer-first-control-0a25be46` |
 
 Pulled run artifacts live under `results\idun_runs\<run-id>\artifacts`.
 They, model weights, transcripts, and captures are gitignored. New substantial

@@ -1750,3 +1750,24 @@ sample-specific wording, or confirmation feedback are added. It runs only as
 the separate `base`/`claim` pair, and any later confirmation must record this
 protocol extension and a completed semantic review. The original reference
 labels, prompt definitions, scores, and failures remain unchanged in the ledger.
+
+- **Answer-first control outcome:** `prompt-answer-first-control-0a25be46`,
+  CPU job `25408609`, reproduced all 30 prior Qwen base records point by point.
+  The unchanged claim rules with answer-first output improved composite
+  **0.702600 -> 0.755725** and mIoU **0.504333 -> 0.592875**, retaining
+  **30/30 correct decisions** and zero grounding failures.
+  Delta **+0.053125**, interval **[0.000000, +0.146094]**, comes from just
+  three conversations and is concentrated in one citation. This is a useful
+  pilot signal, not a reliable full-corpus or Gemma-service gain.
+- Both changed citations pass the reference-hidden semantic review: the
+  observation/no-further-measures statement is directly relevant, and the
+  no-sores finding is a clearer source than the patient's acknowledgement.
+  The latter still scores zero against the suspect greeting reference; no
+  attempt was made to imitate that reference. The qualified Gemma reference
+  remains **0.888534** on these same 30 questions.
+- Continue with the **unchanged** `base`/`claim` pair on all 140 development
+  questions. A scheduler-only two-hour CPU request projected a start after the
+  deadline, so execution is split deterministically into two seven-conversation
+  shards, one active at a time. This is not a new data split or a smaller score
+  denominator. Every shard must be merged, with identical model/runtime/prompt
+  hashes and all failures retained, before choosing a prompt for confirmation.

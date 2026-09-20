@@ -31,7 +31,7 @@ ORDER_CONTROL_EXTENSION = (
 PIPELINE_FILES = (
     "answerers/llm_prompt.py", "answerers/llm_client.py", "answerers/llm.py",
     "answerers/llm_parse.py", "answerers/align.py", "answerers/base.py", "answerers/boundaries.py",
-    "probe_prompt_round.py",
+    "probe_prompt_round.py", "merge_prompt_round.py",
 )
 
 
@@ -39,6 +39,13 @@ def definition_hash(variant):
     if variant not in ARMS:
         raise ValueError("This prompt round permits only its declared arms and the documented order control.")
     return hashlib.sha256((system_prompt(variant) + "\n" + schema_hint(variant)).encode()).hexdigest()
+
+
+def pipeline_hashes():
+    return {
+        name: hashlib.sha256((Path(__file__).parent / name).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+        for name in PIPELINE_FILES
+    }
 
 
 def validate_inputs(rows, requests, transcripts, manifest, frozen):
@@ -67,19 +74,26 @@ def validate_inputs(rows, requests, transcripts, manifest, frozen):
     return grouped
 
 
-def selected_tids(manifest, phase):
+def selected_tids(manifest, phase, shard_index=0, shard_count=1):
     if phase == "feasibility":
         tid = manifest["feasibility_tid"]
         if tid not in manifest["development_tids"]:
             raise ValueError("Feasibility must not consume a confirmation conversation.")
-        return [tid]
-    if phase == "pilot":
+        tids = [tid]
+    elif phase == "pilot":
         if not set(manifest["pilot_tids"]).issubset(manifest["development_tids"]):
             raise ValueError("The pilot escaped the development partition.")
-        return list(manifest["pilot_tids"])
-    if phase in {"development", "confirmation"}:
-        return list(manifest[f"{phase}_tids"])
-    raise ValueError("Unknown prompt-round phase.")
+        tids = list(manifest["pilot_tids"])
+    elif phase in {"development", "confirmation"}:
+        tids = list(manifest[f"{phase}_tids"])
+    else:
+        raise ValueError("Unknown prompt-round phase.")
+    if (
+        any(isinstance(value, bool) or not isinstance(value, int) for value in (shard_index, shard_count))
+        or not 1 <= shard_count <= len(tids) or not 0 <= shard_index < shard_count
+    ):
+        raise ValueError("Execution shards require valid indices and nonempty fixed conversation groups.")
+    return tids[shard_index::shard_count]
 
 
 def validate_confirmation(selection, development, manifest, signature, source_hashes):
@@ -89,6 +103,7 @@ def validate_confirmation(selection, development, manifest, signature, source_ha
         or selection.get("signature") != signature
         or selection.get("definition_sha256") != definition_hash(variant)
         or development.get("phase") != "development" or development.get("complete") is not True
+        or development.get("full_phase") is not True
         or development.get("selected_tids") != manifest["development_tids"]
         or development.get("signature") != signature or development.get("pipeline_source_sha256") != source_hashes
         or (variant == "claim" and development.get("protocol_extension") != ORDER_CONTROL_EXTENSION)
@@ -236,6 +251,8 @@ def main():
     parser.add_argument("--phase", choices=("feasibility", "pilot", "development", "confirmation"), default="feasibility")
     parser.add_argument("--variants", nargs="+", choices=ARMS, default=["base", "v1", "v1_claim"])
     parser.add_argument("--selection", type=Path)
+    parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--shard-count", type=int, default=1)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
     parser.add_argument("--conversation-budget-s", type=float, default=600.0)
     parser.add_argument("--output", type=Path, default=Path("results/prompt_probe"))
@@ -257,7 +274,8 @@ def main():
     manifest = json.loads(manifest_path.read_text())
     frozen = json.loads((args.round / "frozen_demonstrations.json").read_text())
     grouped = validate_inputs(rows, requests, transcripts, manifest, frozen)
-    tids = selected_tids(manifest, args.phase)
+    phase_tids = selected_tids(manifest, args.phase)
+    tids = selected_tids(manifest, args.phase, args.shard_index, args.shard_count)
     threads = int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))
     if threads < 1:
         raise ValueError("Allocated CPU thread count must be positive.")
@@ -270,10 +288,7 @@ def main():
         "runtime": runtime,
         "round_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
     }
-    source_hashes = {
-        name: hashlib.sha256((Path(__file__).parent / name).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
-        for name in PIPELINE_FILES
-    }
+    source_hashes = pipeline_hashes()
     variants = args.variants
     if args.phase == "confirmation":
         if args.selection is None:
@@ -295,6 +310,8 @@ def main():
     torch.set_num_interop_threads(1)
     report = {
         "complete": False, "phase": args.phase, "selected_tids": tids, "signature": signature,
+        "full_phase": args.shard_count == 1, "phase_tids": phase_tids,
+        "execution_shard": {"index": args.shard_index, "count": args.shard_count},
         "pipeline_source_sha256": source_hashes,
         "definition_sha256": {variant: definition_hash(variant) for variant in variants},
         "protocol_extension": ORDER_CONTROL_EXTENSION if "claim" in variants else None,
