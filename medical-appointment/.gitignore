@@ -54,6 +54,7 @@ docs/_build/
 .pybuilder/
 target/
 .ipynb_checkpoints
+notebooks/figures/
 profile_default/
 ipython_config.py
 __pypackages__/
