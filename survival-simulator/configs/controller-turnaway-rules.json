@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "policy": "heuristic",
+  "heuristic": {
+    "backend": "turnaway"
+  }
+}

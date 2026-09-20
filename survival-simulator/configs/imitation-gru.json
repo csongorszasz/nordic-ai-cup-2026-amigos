@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "mode": "imitation",
+  "policy": "neural",
+  "seed": 12345,
+  "updates": 5,
+  "rollout_steps": 32,
+  "teacher": {
+    "path": "configs/controller-turnaway-wall-aware.json",
+    "sha256": "bd2385a8969f50d2b98bff0ab97e9fd465d6de70d57de69172fd5598da5f8be7"
+  },
+  "model": {
+    "encoder": "pool",
+    "memory": "gru",
+    "hidden_size": 128,
+    "team_context": true,
+    "public_context": true
+  },
+  "imitation": {
+    "epochs": 1,
+    "teacher_probability": 1.0,
+    "dagger_rounds": 0,
+    "max_frames": 1024
+  },
+  "ppo": {"sequence_length": 16},
+  "evaluation": {"enabled": true, "every_updates": 5},
+  "budget": {
+    "kind": "diagnostic", "max_updates": 5, "max_native_ticks": 1024,
+    "max_evaluation_episodes": 9, "host_memory_mb": 16384
+  },
+  "resources": {
+    "device": "auto",
+    "workers": 1,
+    "action_repeat": 1,
+    "max_vram_mb": 6144
+  }
+}
