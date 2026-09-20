@@ -81,6 +81,49 @@ extrapolated from laptop timings -- the 4-vCPU VM does not scale the way a lapto
 333 ms frame interval two frames in three are skipped, which is the whole loss. Do not extrapolate VM
 inference cost from laptop measurements; time it on the VM.
 
+## 2026-09-20: the organisers changed the ground truth, and swapped the scene for 28 minutes
+
+Read this before trusting any number in this file that predates it.
+
+**The labels changed under us.** Our recording of a validation run on 09-19 22:00 and one from
+09-20 09:29 share 123 views with the same frame number, resolution level and camera centre.
+All 123 are **byte-identical** (`md5`, and mean abs pixel diff 0.000). Same weights, md5-verified.
+The scores: **0.5171 on 09-19, 0.4470 on 09-20.** The imagery did not move, so the ground truth
+or the scoring did.
+
+Consequences:
+- Every offline number above was measured against `datasets/copenhagen_test/labels.json`, which
+  was hand-built to match the OLD ground truth. It is now scoring a target that no longer exists.
+- The live ranking reversed. On the old scene, same day, same labels: bigbg **0.4782**,
+  incumbent **0.4470**. Historically it was incumbent 0.5171, bigbg 0.4953. A revision that adds
+  previously-missing annotations penalises weaker recall, and by different amounts per model, so
+  a genuine reordering is plausible. One run each so far; needs a repeat.
+
+**A different scene was served for 28 minutes.** Recorded frames, tagged by diffing the first
+full-frame view against references (`scratchpad/whichscene.sh`):
+
+| UTC | frames | scene | attempt | score | model |
+|---|---|---|---|---|---|
+| 05:48-05:49 | 248 | A (motorway/scrub) | - | - | incumbent |
+| 06:50-06:51 | 249 | **B (forest/manor)** | `ed897d7c` | 0.2190 | incumbent |
+| 07:15-07:17 | 247 | **B** | `17b40e1f` | 0.2253 | incumbent |
+| 07:20-07:22 | 247 | A | `f57d4c65` | 0.4782 | bigbg |
+| 07:25, 07:29 | 247/248 | A | `9f346caf` | 0.4470 | incumbent |
+
+A and B differ by mean abs pixel diff 52/255; runs of the same scene match at 0.00. Scene B
+appears only in that window. **Our one evaluation attempt scored 0.23, which matches our scene-B
+results and nothing else** -- so the attempt that counts was taken on the scene that was served
+by mistake, if it was a mistake.
+
+Within one scene and one label set, live repeatability is tight: the two scene-B runs of the same
+model gave 0.2190 and 0.2253, a spread of 0.0063. Across scenes it is meaningless. **Tag every
+future validation with its scene before comparing anything.**
+
+On scene B the detector is not blind -- it finds jets, helicopters and small planes in clearings
+at conf 0.87-0.92 -- but it reports only 131 boxes above 0.25 across 249 views, almost all
+aircraft classes. Since mAP is macro-averaged over classes present, ~0.9 on four aircraft classes
+and near zero on the rest lands at ~0.22. The failure is class-specific, not terrain.
+
 ## What to submit (2026-09-20 morning)
 
 **The evaluation is a different 250-frame sequence** (README "Validation and evaluation"), and
