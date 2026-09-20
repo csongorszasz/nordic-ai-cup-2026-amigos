@@ -10,12 +10,14 @@ from typing import Literal
 
 from src.policies.config import HeuristicConfig, SearchConfig
 
+Objective = float | tuple[float, ...]
+
 
 @dataclass(frozen=True)
 class SearchTrial:
     index: int
     config: HeuristicConfig
-    score: float
+    score: Objective
 
     @property
     def parameters(self) -> dict[str, float | int | str]:
@@ -26,7 +28,7 @@ class SearchTrial:
 @dataclass(frozen=True)
 class SearchResult:
     best_config: HeuristicConfig
-    best_score: float
+    best_score: Objective
     trials: tuple[SearchTrial, ...]
     method: Literal["random", "cma"]
 
@@ -62,26 +64,27 @@ def aggregate_world_scores(
 
 
 def _evaluate(
-    config: HeuristicConfig, index: int, evaluate: Callable[[HeuristicConfig], float],
+    config: HeuristicConfig, index: int, evaluate: Callable[[HeuristicConfig], Objective],
 ) -> SearchTrial:
     try:
         score = evaluate(config)
     except Exception as error:
         error.add_note(f"Controller search candidate {index}: {config.model_dump(mode='json')}")
         raise
-    if isinstance(score, bool) or not isinstance(score, Real) or not math.isfinite(score):
+    values = score if isinstance(score, tuple) else (score,)
+    if not values or any(isinstance(v, bool) or not isinstance(v, Real) or not math.isfinite(v) for v in values):
         raise ValueError(
             f"Controller search candidate {index} must return a finite real score, got {score!r}; "
             f"parameters={config.model_dump(mode='json')}"
         )
-    return SearchTrial(index, config, float(score))
+    return SearchTrial(index, config, tuple(float(v) for v in score) if isinstance(score, tuple) else float(score))
 
 
 def optimize_controller(
     base: HeuristicConfig, search: SearchConfig, seed: int,
-    evaluate: Callable[[HeuristicConfig], float],
+    evaluate: Callable[[HeuristicConfig], Objective],
     *,
-    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[float]] | None = None,
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None = None,
 ) -> SearchResult:
     """Evaluate the unmodified baseline first, then maximize within the evaluation budget.
 
@@ -113,14 +116,16 @@ def optimize_controller(
             trials.append(_evaluate(base, 0, evaluate))
         if len(trials) < search.candidates:
             _cma_trials(base, search, seed, bounds, parameters, evaluate, trials, evaluate_many)
+    if len({isinstance(trial.score, tuple) for trial in trials}) != 1:
+        raise ValueError("Search objectives cannot mix scalar and lexicographic results.")
     best = max(trials, key=lambda trial: (trial.score, -trial.index))
     return SearchResult(best.config, best.score, tuple(trials), search.method)
 
 
 def _evaluate_group(
     configurations: Sequence[HeuristicConfig], start: int,
-    evaluate: Callable[[HeuristicConfig], float],
-    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[float]] | None,
+    evaluate: Callable[[HeuristicConfig], Objective],
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None,
 ) -> list[SearchTrial]:
     if evaluate_many is None:
         return [_evaluate(config, start + index, evaluate) for index, config in enumerate(configurations)]
@@ -140,9 +145,9 @@ def _evaluate_group(
 def _cma_trials(
     base: HeuristicConfig, search: SearchConfig, seed: int,
     bounds: tuple[tuple[str, tuple[float, float]], ...],
-    parameters: dict[str, float | int | str], evaluate: Callable[[HeuristicConfig], float],
+    parameters: dict[str, float | int | str], evaluate: Callable[[HeuristicConfig], Objective],
     trials: list[SearchTrial],
-    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[float]] | None = None,
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None = None,
 ) -> None:
     try:
         import cma
@@ -195,6 +200,13 @@ def _cma_trials(
             proposals.append(config)
         evaluated = _evaluate_group(proposals, len(trials), evaluate, evaluate_many)
         trials.extend(evaluated)
-        scores = [-trial.score for trial in evaluated[int(include_baseline):]]
+        objectives = [trial.score for trial in evaluated[int(include_baseline):]]
+        if any(isinstance(value, tuple) for value in objectives):
+            if not all(isinstance(value, tuple) for value in objectives):
+                raise ValueError("CMA objectives cannot mix scalar and lexicographic results.")
+            ordered = sorted(set(objectives))
+            scores = [-float(ordered.index(value)) for value in objectives]
+        else:
+            scores = [-value for value in objectives]
         if count == population and count >= 3:
             strategy.tell(solutions, scores)

@@ -2,6 +2,43 @@
 
 # Survival simulator
 
+## Policy used for the evaluation submission
+
+**The policy used for submitting the evaluation run was
+`benchmark-results\pc2\abe.json`**, as confirmed by the user.
+**Use this exact descriptor when trying to reproduce the submitted policy.**
+Do not substitute `configs\controller.json`, `pc2\candidate.json`, or a later
+`training-results\p32\policy.json`: those can select different policies.
+
+The descriptor's SHA-256 is:
+
+```text
+510e5639d47f31a045eb5ea1835157e222894600fce4cd229a36a176db762e3d
+```
+
+The machine-readable reference is `benchmark-results\evaluation-submission.json`.
+The corresponding frozen source archive is `benchmark-results\pc2\source.zip`.
+The benchmark folder also contains incomplete/failed attempts and live-run
+snapshots; their manifests retain those statuses and they are not complete rankings.
+
+From `survival-simulator`, select the submitted descriptor before starting the
+endpoint:
+
+```powershell
+$env:SURVIVAL_POLICY_CONFIG = ".\benchmark-results\pc2\abe.json"
+.\.venv\Scripts\python.exe .\agent_server.py
+```
+
+For a local matched-seed reproduction using the recorded policy seed:
+
+```powershell
+.\.venv\Scripts\python.exe benchmark.py run --policy src.policies.runtime:create_policy --config .\benchmark-results\pc2\abe.json --fixed-policy-seed 1 --suite quick --workers 1 --progress --output .\benchmark-results\reproduce-abe
+```
+
+The official evaluation's world seeds are not specified here. Match the recorded
+runtime/dependencies and consult the saved provenance; a matching seed alone does
+not guarantee an identical replay.
+
 Improvise, adapt, overcome!
 
 You are the hivemind of an entire species of herbivores. Ensure their survival by eating fruits and conserving energy, but beware of the predators roaming the territory.
@@ -360,6 +397,94 @@ Remove-Item Env:BENCHMARK_INTEGRATION
 
 ## Developing a policy
 
+### Population-dynamics controller and local experiments
+
+`configs\controller-population.json` is an **opt-in, non-RL** controller. The existing
+submission default is unchanged until a candidate meets the survival and HTTP gates.
+It budgets food and the 25-energy net cost of a birth, forecasts cohort replacement,
+staggers births, and coordinates uncertain local patch maps. Observed energy residuals
+identify senescence; hidden engine state is used only for experiment diagnostics.
+
+There is no literal death-at-age cutoff: a hidden threshold between 60 and 120 starts
+an increasing energy surcharge. More importantly, the native tree-spawn decay factor
+halves every 300 simulated seconds, while trees and fruit expire. These rules do not support
+an indefinite-survival guarantee. The objective is therefore measured full-horizon
+survival across diverse seeds, with separately labelled extended-native probes, not
+a claim that any finite seed suite proves survival forever.
+
+The population workflow uses only the local CPU, ordinary simulator, Matplotlib,
+and optional CMA search. It does not require PyTorch or call a cloud evaluator.
+Use a supported interpreter and the lightweight dependencies:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r .\requirements-search.txt
+.\.venv\Scripts\python.exe benchmark.py run --policy src.policies.runtime:create_policy --config .\configs\controller-population.json --fixed-policy-seed 1 --suite quick --workers 2 --progress --output .\benchmark-results\pop-quick
+```
+
+Open the run's `progress\index.html` for automatically refreshed population/renewal,
+energy/resource, survival, failure/spatial, and performance plots. Plot data also lives
+in CSV/JSON. Incomplete and capped episodes are visible but cannot rank as complete.
+Confirmed death causes are separate from rule-based collapse hypotheses.
+
+Telemetry is opt-in (`--telemetry`, implied by `--progress`). Each case stores discrete
+events, sampled energy/population traces, sparse public request/action snapshots, its
+final public request, and a terminal summary. Live readers tail complete records from
+append-only streams instead of racing atomic replacements of a shared `latest.json`.
+Engine-truth diagnostics never enter
+policy inputs. Energy expenditure is aggregated exactly between samples. Storage
+limits fail explicitly rather than dropping records.
+
+```powershell
+# Read saved records and refresh plots; never starts simulations.
+.\.venv\Scripts\python.exe -m src.benchmarking.progress --run .\benchmark-results\pop-quick --watch
+# Preserve the original score comparison or opt into survival-first ordering.
+.\.venv\Scripts\python.exe benchmark.py compare --reference .\benchmark-results\reference --candidate .\benchmark-results\pop-quick --survival-first --output .\benchmark-results\pop-compare
+# Optional non-RL search; parameters, worlds, case identities and budgets are recorded.
+.\.venv\Scripts\python.exe train.py --config .\configs\search-population.json --output .\training-results\pop-search
+```
+
+Survival ordering is lexicographic: completed worlds, lower-tail survival, worst-case
+survival, terminal renewal/reserve health, then native score. An additional extinction
+cannot be offset by a fruit-score bonus. Repeats collapse to the worst outcome per
+world for this objective. CMA receives within-generation ranks but selects its final
+winner using the original metric tuple across generations. The checked-in eight-candidate
+search is an initial bounded experiment, not a claim of convergence.
+
+For the complete bounded local study:
+
+```powershell
+.\.venv\Scripts\python.exe population_experiments.py --output .\benchmark-results\pc1 --workers 4
+```
+
+The study measures worker throughput before selecting concurrency, compares existing
+baselines, runs controller search and ablations, evaluates a matched standard comparison,
+then 100 development worlds and a frozen audit containing the 20 fixed holdout worlds
+plus 100 fresh worlds. Fresh-audit uncertainty is reported separately from the fixed
+holdout. Extended probes keep native physics and only change the stopping horizon.
+Loopback HTTP acceptance is a separate final step; the study never changes the default
+controller or submits to a remote service.
+
+Its `index.html` links the current stage's live plots and all logs. Source/config/seed
+provenance and a source archive are saved. Do not edit runtime sources during a study:
+source changes stop later stages rather than mixing versions. Use short output paths
+on Windows and a new directory for every run. Completed records survive interruptions;
+there is no implicit retry, overwritten result, or exact mid-episode resume.
+
+`--workers N` opts the benchmark into isolated CPU episode processes with a per-episode
+watchdog (`--episode-timeout`). Omitting it preserves the original in-process runner.
+Compare runs with matching execution modes. A single stateful HTTP endpoint must use
+one episode worker; parallel HTTP worlds are rejected. The HTTP gate measures the whole
+call, including request serialization and response decoding/validation, against the
+local 10-second individual and 600-second accumulated limits.
+
+`--suite-file` accepts a version-1 `{ "version": 1, "name": "...", "seeds": [...] }`
+manifest. `--time-limit` changes only the stopping horizon; different horizons cannot
+be pooled in one ranking. A configured `--max-steps` remains diagnostic even if a case
+dies before that cap.
+
+Implementation details and limitations are in `docs\policy-architecture.md`.
+
 For the current **BC convergence** work, see `docs\bc-convergence.md`: immutable complete
 teacher demonstrations, offline optimizer steps, current-weight recurrent validation,
 and copying/score gates. It does not advance to DAgger or PPO merely because a budget ends.
@@ -421,8 +546,10 @@ python -m pip install -r requirements-training.txt
 ```
 
 Experiments use strict JSON configurations and typed overrides, not edits to Python.
-**All real runs are user-launched.** The assistant may implement and run synthetic checks
-or regenerate saved plots, but must not launch training, simulator evaluation, or cluster jobs.
+**Learning/cluster runs below remain user-launched.** Explicitly authorized local
+population experiments may use the non-RL workflow above. Otherwise the assistant may
+implement synthetic checks or regenerate saved plots, but must not launch learning,
+simulator evaluation, or cluster jobs without the user's authorization.
 The BC/PPO presets are small **provisional diagnostic plans**, not proven best parameters.
 
 ```powershell

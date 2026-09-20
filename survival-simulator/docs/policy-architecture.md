@@ -42,6 +42,63 @@ benchmark factory ----- policies/runtime ----- serving/session + /predict
 | Existing `benchmarking/` | Full-horizon score measurements and paired comparisons | Training reward changes |
 | `serving/session.py`, `agent_server.py` | Serialization, retry handling, explicitly scoped state | Automatic model fallback or concurrent-game inference |
 
+## Opt-in population-dynamics policy
+
+`configs\controller-population.json` selects `heuristic.backend=population`.
+This is a rule-based population controller, not RL. It reuses hierarchical observation
+parsing and teammate transforms, the shared action-cost helpers, and TurnAway's swept
+wall filter. Existing backends and the submission default retain their behavior.
+
+`policies\population.py` owns identity-keyed demographic history, local coordinate
+frames, bounded anonymous resource tracks, replacement scheduling, and colony
+assignment. Frames merge on observed teammate relations and survive root loss or
+temporary separation. Ambiguous landmark matches are not treated as exact identities.
+Blind movement increases localization uncertainty; excessive uncertainty discards the
+unreliable shared-frame history and falls back to a fresh local frame. Native skipped
+agent updates are detected from unchanged age: stale observations neither refresh
+landmarks nor certify that a tree disappeared.
+
+Resource capacity combines biome-based conservative priors with observed retained
+energy and exposure. Births cost the parent 100 but create a child with 75 energy, so
+replacement has a 25-energy tax in addition to living and movement. Capacity changes
+require hysteresis; `target_population` is an upper target and `max_population` is a
+computational safeguard, not a claim of ecological carrying capacity. The legacy
+`min_population` floor is not imposed by this backend.
+
+The population preset plans replacement before age 60 without requiring every agent
+to breed or forbidding older emergency reproduction. Only one birth is reserved at a
+time, with cohort spacing, reserves and newborn threat checks. Confirmed living child
+IDs, inferred senescence and trait feasibility affect roles; weak traits do not veto
+the last viable breeder. Resource assignments favor renewal and hunger, while patch
+crowding encourages dispersion when alternatives are known. Neither multiple viable
+refuges nor a particular predator target is guaranteed by partial observations.
+
+The `capacity_feedback`, `patch_memory`, `dispersion`, and `elder_decoys` switches are
+explicit ablations. Decoys are disabled by default and require an aging, low-energy
+parent with a viable successor, a closer observed threat relationship, and an outward
+route that does not reduce separation from that threat. They are not a guarantee of
+successful diversion.
+
+The shared `PolicySession` still owns bootstrap/reset/retry handling and the single
+HTTP stream. The controller sees public DTOs only. Optional `Environment.event_sink`
+instrumentation belongs exclusively to `benchmarking\telemetry.py`; it records exact
+transfers and confirmed death events without RNG calls or iteration changes. Recent
+collapse hypotheses remain distinct from those events. Tests check non-interference
+under controlled ordering; the engine's existing set-order variability is not removed.
+
+`benchmarking\progress.py` reads durable traces and renders local plots without running
+episodes. `benchmarking\survival.py` supplies the same complete-case ordering to search,
+reports and candidate comparisons. `benchmarking\jobs.py` owns bounded CPU processes
+and watchdog cleanup. `population_experiments.py` composes existing CLIs into a local
+study with immutable seed pools, source snapshots, live plot links and explicit failure
+records. The existing neural progress/evaluation pipeline is not used.
+
+No finite experiment proves an all-seed guarantee. Native resource replenishment
+decays geometrically, trees and fruit expire, living consumes energy, and births lose
+energy overall. Sustained population replacement cannot be guaranteed indefinitely
+under these unchanged rules. Native-horizon outcomes, longer stopping horizons,
+diagnostic caps, operational failures and statistical assumptions remain separate.
+
 ## Rule-only turnaway policy
 
 `configs/controller-turnaway-rules.json` selects `heuristic.backend=turnaway`.

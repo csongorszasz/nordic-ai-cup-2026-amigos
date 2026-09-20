@@ -20,7 +20,7 @@ Probability = Annotated[float, Field(ge=0, le=1)]
 
 
 class HeuristicConfig(Settings):
-    backend: Literal["scalar", "vectorized", "hierarchical", "turnaway"] = "scalar"
+    backend: Literal["scalar", "vectorized", "hierarchical", "turnaway", "population"] = "scalar"
     escape_strategy: Literal[
         "direct", "direct_wall_aware", "predictive_wall_aware",
     ] = "predictive_wall_aware"
@@ -54,6 +54,16 @@ class HeuristicConfig(Settings):
     high_population_breeding_energy: PositiveFloat = 330.0
     predator_face_turn: float = Field(default=1.2, gt=0, le=3.141592653589793)
     emergency_spawn_distance: PositiveFloat = 35.0
+    population_reserve: float = Field(default=15.0, ge=0)
+    population_safety: float = Field(default=0.8, gt=0, le=1)
+    population_hysteresis: float = Field(default=0.2, gt=0, le=1)
+    birth_spacing: PositiveFloat = 3.0
+    patch_memory_seconds: PositiveFloat = 30.0
+    population_scan_ticks: PositiveInt = 30
+    capacity_feedback: bool = True
+    patch_memory: bool = True
+    dispersion: bool = True
+    elder_decoys: bool = False
 
     @model_validator(mode="after")
     def hierarchical_ranges(self):
@@ -122,11 +132,17 @@ class ImitationConfig(Settings):
 
 class SearchConfig(Settings):
     method: Literal["random", "cma"] = "random"
+    objective: Literal["native_score", "survival"] = "native_score"
     candidates: PositiveInt = 8
     worlds: PositiveInt = 3
     sigma: float = Field(default=0.2, gt=0, le=1)
     lower_tail_fraction: float = Field(default=0.25, gt=0, le=1)
     lower_tail_weight: Probability = 0.0
+    fixed_policy_seed: Seed | None = None
+    progress: bool = False
+    sample_every: PositiveInt = 10
+    max_trace_mb: PositiveInt = 64
+    episode_timeout_seconds: PositiveFloat = 1800.0
     parameters: dict[str, tuple[float, float]] = Field(default_factory=lambda: {
         "breeding_energy": (180.0, 320.0),
         "breeding_age": (40.0, 85.0),
@@ -140,7 +156,7 @@ class SearchConfig(Settings):
         if not self.parameters:
             raise ValueError("Search requires at least one bounded parameter.")
         for name, (lower, upper) in self.parameters.items():
-            if name not in HeuristicConfig.model_fields or name in ("backend", "directions"):
+            if name not in HeuristicConfig.model_fields or HeuristicConfig.model_fields[name].annotation is not float:
                 raise ValueError(f"Unsupported continuous heuristic parameter: {name}")
             if lower >= upper:
                 raise ValueError(f"Search bounds must be increasing: {name}")
@@ -211,6 +227,10 @@ class ExperimentConfig(Settings):
             raise ValueError("The vector BC angle head has no validated stochastic PPO codec.")
         if self.mode == "search" and self.policy != "heuristic":
             raise ValueError("Search mode requires policy='heuristic'.")
+        if self.mode == "search" and self.search.objective == "survival" and (
+            self.resources.device != "cpu" or self.resources.action_repeat != 1
+        ):
+            raise ValueError("Survival search requires CPU execution and native action_repeat=1.")
         if self.mode == "profile" and self.policy != "heuristic":
             raise ValueError("The reference-collection profiler requires policy='heuristic'.")
         if self.ppo.sequence_length > self.rollout_steps and self.mode == "ppo":

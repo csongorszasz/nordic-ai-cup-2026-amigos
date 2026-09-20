@@ -7,6 +7,7 @@ import importlib
 import importlib.metadata
 import io
 import json
+import logging
 import math
 import os
 import platform
@@ -37,10 +38,12 @@ _ENGINE_FILES = (
     Path("src") / "utils" / "sensing.py",
 )
 _RUNNER_FILES = tuple(
-    Path("src") / "benchmarking" / name for name in ("config.py", "policies.py", "runner.py")
+    Path("src") / "benchmarking" / name
+    for name in ("config.py", "policies.py", "runner.py", "telemetry.py", "jobs.py")
 )
 _REPORTING_FILES = (
-    *(Path("src") / "benchmarking" / name for name in ("artifacts.py", "comparison.py", "plots.py")),
+    *(Path("src") / "benchmarking" / name
+      for name in ("artifacts.py", "comparison.py", "plots.py", "progress.py", "survival.py")),
     Path("benchmark.py"),
 )
 _BASELINE_SOURCE = Path("src") / "utils" / "controllers" / "dummy_agent_policy.py"
@@ -493,14 +496,30 @@ def summarize_run(manifest: RunManifest, episodes: Sequence[EpisodeResult]) -> d
     }
 
 
+def _atomic_replace(source: Path, destination: Path) -> None:
+    for attempt in range(6):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError as error:
+            if getattr(error, "winerror", None) not in (5, 32, 33) or attempt == 5:
+                raise
+            if attempt == 0:
+                logging.getLogger(__name__).warning(
+                    "Transient Windows file lock while publishing %s; retrying boundedly: %s",
+                    destination, error,
+                )
+            time.sleep(min(0.2, 0.01 * 3**attempt))
+
+
 def _atomic_text(path: Path, text: str) -> None:
-    pending = path.with_name(f".{path.name}.{uuid.uuid4().hex}.pending")
+    pending = path.with_name(f".{uuid.uuid4().hex}.tmp")
     try:
         with pending.open("x", encoding="utf-8", newline="\n") as stream:
             stream.write(text)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(pending, path)
+        _atomic_replace(pending, path)
     finally:
         if pending.exists():
             pending.unlink()

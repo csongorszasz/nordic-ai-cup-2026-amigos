@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.benchmarking.artifacts import build_manifest
+from src.benchmarking.artifacts import _atomic_text, build_manifest
 from src.benchmarking.config import (
     PROJECT_ROOT, PolicySpec, Suite, canonical_json, read_json,
 )
@@ -35,16 +35,7 @@ def file_hash(path: Path) -> str:
 
 def write_json(path: Path, value: object) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True, allow_nan=False) + "\n"
-    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-    try:
-        with temporary.open("x", encoding="utf-8") as stream:
-            stream.write(payload)
-            stream.flush()
-            os.fsync(stream.fileno())
-        temporary.replace(path)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
+    _atomic_text(path, payload)
 
 
 def write_json_gzip(path: Path, value: object) -> None:

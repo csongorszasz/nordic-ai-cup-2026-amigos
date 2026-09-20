@@ -310,6 +310,9 @@ class ProvenanceTests(unittest.TestCase):
             ("src", "benchmarking", "config.py"), ("src", "benchmarking", "policies.py"),
             ("src", "benchmarking", "runner.py"), ("src", "benchmarking", "artifacts.py"),
             ("src", "benchmarking", "comparison.py"), ("src", "benchmarking", "plots.py"),
+            ("src", "benchmarking", "telemetry.py"), ("src", "benchmarking", "progress.py"),
+            ("src", "benchmarking", "survival.py"),
+            ("src", "benchmarking", "jobs.py"),
             ("src", "utils", "controllers", "dummy_agent_policy.py"), ("benchmark.py",),
         ):
             self.source(*relative)

@@ -1,0 +1,1 @@
+{"candidate":null,"case":{"case_id":"world-101-repeat-0","policy_seed":1,"policy_seed_mode":"fixed","repeat_index":0,"world_seed":101},"max_steps":60,"max_trace_mb":64,"sample_every":10,"schema_version":1,"scope":"diagnostic","time_limit":3000.0,"visibility":"engine_truth_for_evaluation_only"}

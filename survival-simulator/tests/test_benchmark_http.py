@@ -84,6 +84,30 @@ class HTTPPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cover exactly"):
             policy.act(frame())
 
+    def test_response_decoding_is_inside_the_budget(self):
+        times = []
+
+        class DecodingResponse(Response):
+            @staticmethod
+            def json():
+                times.append("decode")
+                return Response.json()
+
+        class DecodingSession(Session):
+            def post(self, url, **kwargs):
+                times.append("post")
+                return DecodingResponse()
+
+        def clock():
+            times.append("clock")
+            return 0.0 if len(times) == 1 else 11.0
+
+        policy = HTTPPolicy(HTTPPolicyConfig(url="https://example.test/predict"),
+                            session=DecodingSession(), clock=clock)
+        with self.assertRaises(TimeoutError):
+            policy.act(frame())
+        self.assertEqual(times, ["clock", "post", "decode", "clock"])
+
 
 if __name__ == "__main__":
     unittest.main()

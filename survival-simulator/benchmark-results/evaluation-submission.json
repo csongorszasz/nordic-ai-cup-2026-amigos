@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "role": "evaluation_submission",
+  "policy_config": "pc2\\abe.json",
+  "policy_sha256": "510e5639d47f31a045eb5ea1835157e222894600fce4cd229a36a176db762e3d",
+  "confirmation_source": "User identified this descriptor as the policy used for submitting the evaluation run.",
+  "recorded_on": "2026-09-20",
+  "frozen_source_archive": "pc2\\source.zip",
+  "local_reference_policy_seed": 1,
+  "reproduction_note": "Use this exact descriptor to reproduce the submitted policy. Do not substitute the default controller, the study-selected candidate, or a later search winner. Official evaluation world seeds are not specified here."
+}

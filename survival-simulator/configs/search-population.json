@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "mode": "search",
+  "policy": "heuristic",
+  "seed": 12345,
+  "heuristic": {
+    "backend": "population",
+    "min_population": 1,
+    "target_population": 12,
+    "max_population": 16,
+    "breeding_age": 45.0,
+    "population_reserve": 15.0,
+    "population_safety": 0.8,
+    "birth_spacing": 3.0,
+    "patch_radius": 20.0,
+    "threat_distance": 150.0,
+    "sprint_distance": 60.0
+  },
+  "search": {
+    "method": "cma",
+    "objective": "survival",
+    "candidates": 8,
+    "worlds": 8,
+    "fixed_policy_seed": 1,
+    "lower_tail_fraction": 0.05,
+    "progress": true,
+    "sample_every": 10,
+    "max_trace_mb": 64,
+    "episode_timeout_seconds": 1800.0,
+    "parameters": {
+      "breeding_age": [35.0, 58.0],
+      "population_reserve": [5.0, 30.0],
+      "population_safety": [0.5, 1.0],
+      "birth_spacing": [1.0, 6.0],
+      "exploration_move_fraction": [0.15, 0.5]
+    }
+  },
+  "resources": {
+    "device": "cpu",
+    "workers": 4
+  }
+}

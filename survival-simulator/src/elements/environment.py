@@ -22,6 +22,7 @@ class Environment:
     ): # Chunk size must at least be the maximum visible distance
         self.rng: random.Random = rng
         self.rendering = rendering
+        self.event_sink = None
 
         self.width: int = width
         self.height: int = height
@@ -80,6 +81,11 @@ class Environment:
             self.world_surface = None
             self.vision_screen = None
             self.leaf_screen = None
+
+    def _emit_event(self, kind: str, **data):
+        sink = getattr(self, "event_sink", None)
+        if sink is not None:
+            sink({"kind": kind, "sim_time": float(self.time), **data})
 
 
     def _render_biome_surface(self):
@@ -421,13 +427,25 @@ class Environment:
         self.agents.append(agent)
         self.agents_dict[agent.agent_id] = agent
         self._update_agent_grid()
+        self._emit_event(
+            "birth", agent_id=agent.agent_id,
+            parent_id=parent.agent_id if parent is not None else None,
+            energy=agent.energy, age=agent.age, x=float(agent.x), y=float(agent.y),
+            max_age=agent.max_age, max_energy=agent.max_energy,
+            speed=agent.speed, sprint_speed=agent.sprint_speed,
+        )
         return agent
     
-    def kill_agent(self, agent: Agent):
+    def kill_agent(self, agent: Agent, *, reason: str = "removed"):
         """
         Remove an agent from the environment.
         """
         if agent in self.agents:
+            self._emit_event(
+                "death", agent_id=agent.agent_id, reason=reason,
+                energy=agent.energy, age=agent.age, senescent=agent.age > agent.max_age,
+                x=float(agent.x), y=float(agent.y),
+            )
             self.agents.remove(agent)
             self.agents_dict.pop(agent.agent_id, None)  # removes if exists, does nothing if not
             self._update_agent_grid()
@@ -455,6 +473,10 @@ class Environment:
             self.fruits.append(fruit)
             self.fruits_dict[fruit.fruit_id] = fruit
             self._update_fruit_grid()
+            self._emit_event(
+                "fruit_spawn", fruit_id=fruit.fruit_id,
+                x=float(fruit.x), y=float(fruit.y), energy=fruit.energy,
+            )
             return fruit
         else:
             return None
@@ -466,11 +488,15 @@ class Environment:
         y = tree.y + dist * np.sin(angle)
         return self.spawn_fruit(x=x, y=y, max_attempts=0) # Try only once
 
-    def remove_fruit(self, fruit: Fruit) -> None:
+    def remove_fruit(self, fruit: Fruit, *, reason: str = "removed") -> None:
         """
         Remove a fruit from the environment.
         """
         if fruit in self.fruits: # TODO: Check if this line is necessary
+            self._emit_event(
+                "fruit_removed", fruit_id=fruit.fruit_id, reason=reason,
+                age=fruit.age, energy=fruit.energy,
+            )
             self.fruits.remove(fruit)
             self.fruits_dict.pop(fruit.fruit_id, None)
             self._update_fruit_grid()
@@ -494,6 +520,7 @@ class Environment:
             tree = Tree(x, y)
             self.trees.append(tree)
             self._update_tree_grid()
+            self._emit_event("tree_spawn", x=float(tree.x), y=float(tree.y))
             return tree
         else:
             return None
@@ -503,6 +530,7 @@ class Environment:
         Remove a tree from the environment.
         """
         if tree in self.trees:
+            self._emit_event("tree_removed", x=float(tree.x), y=float(tree.y), age=tree.age)
             self.trees.remove(tree)
             self._update_tree_grid()
 
@@ -518,6 +546,7 @@ class Environment:
             predator = Predator(x, y, size=size, speed=speed, sprint_speed=sprint_speed, color=color, rng=self.rng)
             self.predators.append(predator)
             self._update_predator_grid()
+            self._emit_event("predator_spawn", x=float(predator.x), y=float(predator.y))
             return predator
 
 
@@ -592,14 +621,16 @@ class Environment:
         Rotate an entity in the environment.
         """
         entity.direction += turn_angle
-        self.update_entity_energy(entity, min(np.pi, abs(turn_angle)) / (2 * np.pi)) # Cost per turn capped at 180°
+        self.update_entity_energy(entity, min(np.pi, abs(turn_angle)) / (2 * np.pi), reason="turn") # Cost per turn capped at 180°
         
 
-    def update_entity_energy(self, entity: Creature, energy_cost: float):
+    def update_entity_energy(self, entity: Creature, energy_cost: float, *, reason: str = "move"):
         """
         Update the energy of an entity in the environment.
         """
         entity.energy -= energy_cost
+        if isinstance(entity, Agent) and energy_cost != 0:
+            self._emit_event("energy_cost", agent_id=entity.agent_id, reason=reason, amount=float(energy_cost))
 
 
     def get_agent_state(self, agent_id: int) -> Optional[dict]:
@@ -651,7 +682,7 @@ class Environment:
         # Spawn agent
         if spawn_agent and agent.energy > 100:
             self.spawn_agent(parent=agent)
-            agent.energy -= 100
+            self.update_entity_energy(agent, 100, reason="birth")
 
     # ------------------- SIMULATION STEP -------------------
 
@@ -668,14 +699,14 @@ class Environment:
             agent.age += dt # age in seconds
 
             biome_energy_modifier = self.biome_map[min(max(int(agent.x), 0), self.width - 1), min(max(int(agent.y), 0), self.height - 1)].energy_drain_rate # energy drain modifier based on biome
-            agent.energy -= dt * biome_energy_modifier # cost one energy per second to be alive
+            self.update_entity_energy(agent, dt * biome_energy_modifier, reason="living") # cost one energy per second to be alive
 
             if agent.energy <= 0: # Agent is dead
-                self.kill_agent(agent)
+                self.kill_agent(agent, reason="energy_depletion")
                 continue
 
             if agent.age > agent.max_age:
-                agent.energy -= 0.01 * agent.age # When old, lose more energy
+                self.update_entity_energy(agent, 0.01 * agent.age, reason="senescence") # When old, lose more energy
             
             local_agents, local_fruits, local_trees, local_obstacles, local_predators, local_edges = self._get_local_objects(agent)
             
@@ -698,9 +729,15 @@ class Environment:
                     dy = agent.y - fruit.y
                     distance = np.hypot(dx, dy)
                     if distance < agent.size + fruit.radius:  # touching
+                        previous_energy = agent.energy
                         agent.energy = min(agent.max_energy, agent.energy + fruit.energy) # Eat fruit
                         self.score += fruit.energy / 1000 # Increase score based on fruit energy
-                        self.remove_fruit(fruit) # Remove fruit
+                        self._emit_event(
+                            "fruit_eaten", agent_id=agent.agent_id, fruit_id=fruit.fruit_id,
+                            energy=fruit.energy, retained=agent.energy - previous_energy,
+                            x=float(fruit.x), y=float(fruit.y),
+                        )
+                        self.remove_fruit(fruit, reason="eaten") # Remove fruit
 
         # Step all predators
         for predator in self.predators:
@@ -752,7 +789,7 @@ class Environment:
                     agent = local_agents[index]
                     predator.energy = min(predator.max_energy, predator.energy + agent.energy)
                     self.score -= agent.energy / 100 # Penalize agent for being eaten
-                    self.kill_agent(agent)
+                    self.kill_agent(agent, reason="predation")
 
             if predator.energy <= 0: # Go to sleep if energy is 0
                 predator.resting = True
@@ -761,7 +798,7 @@ class Environment:
         # Grow fruits
         for fruit in self.fruits:
             if fruit.age > 100: # Fruit rots over time
-                self.remove_fruit(fruit)
+                self.remove_fruit(fruit, reason="rot")
                 continue
             fruit.grow(amount=2 * dt) # Grow by 2 energy per second
 

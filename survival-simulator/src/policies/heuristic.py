@@ -403,6 +403,10 @@ class HeuristicPolicy:
 
 
 def build_policy(seed: int, config: HeuristicConfig):
+    if config.backend == "population":
+        from src.policies.population import PopulationPolicy
+
+        return PopulationPolicy(seed, config)
     if config.backend == "turnaway":
         from src.policies.turnaway import TurnawayPolicy
 

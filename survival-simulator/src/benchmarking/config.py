@@ -261,7 +261,7 @@ class RunManifest(Record):
     cases: list[EpisodeCase] = Field(min_length=1)
     policy: PolicySpec
     provenance: Provenance
-    execution: Literal["sequential"] = "sequential"
+    execution: Literal["sequential", "processes"] = "sequential"
     status: RunStatus = "running"
     failure: FailureInfo | None = None
 

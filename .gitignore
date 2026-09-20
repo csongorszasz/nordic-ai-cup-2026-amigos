@@ -1,5 +1,8 @@
 __pycache__/
 .venv/
-/survival-simulator/benchmark-results/
+/survival-simulator/benchmark-results/**/.*.tmp
+/survival-simulator/benchmark-results/**/.*.pending
+/survival-simulator/benchmark-results/**/.*.png
+/survival-simulator/benchmark-results/**/*.pending.png
 /survival-simulator/training-results/
 /survival-simulator/plans/

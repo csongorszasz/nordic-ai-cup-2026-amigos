@@ -1,0 +1,70 @@
+Transient Windows file lock while publishing C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc1\s\telemetry\candidate-00000\world-3146859322-repeat-0\latest.json; retrying boundedly: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3146859322-repeat-0\\.03bf9d2dd31f4f95ae574e11e53281e0.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3146859322-repeat-0\\latest.json'
+world=43676229 ticks=1000 time=100.0 agents=16 score=108.29
+world=3522623596 ticks=1000 time=100.0 agents=16 score=109.77
+world=1789368711 ticks=1000 time=100.0 agents=16 score=111.92
+world=3146859322 ticks=1000 time=100.0 agents=16 score=109.64
+world=43676229 ticks=2000 time=200.0 agents=14 score=217.13
+world=1789368711 ticks=2000 time=200.0 agents=16 score=217.87
+world=3522623596 ticks=2000 time=200.0 agents=16 score=221.67
+world=3146859322 ticks=2000 time=200.0 agents=16 score=220.92
+Transient Windows file lock while publishing C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc1\s\telemetry\candidate-00000\world-1789368711-repeat-0\latest.json; retrying boundedly: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\.c574285035c54c04a76c27367ae3ab74.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\latest.json'
+Transient Windows file lock while publishing C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc1\s\telemetry\candidate-00000\world-3146859322-repeat-0\latest.json; retrying boundedly: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3146859322-repeat-0\\.d92cb5a1d3ed4040a0c49dbd85c9feb4.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3146859322-repeat-0\\latest.json'
+Transient Windows file lock while publishing C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc1\s\telemetry\candidate-00000\world-3522623596-repeat-0\latest.json; retrying boundedly: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3522623596-repeat-0\\.39eecf38bec8467c96a595f0163b7bcb.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-3522623596-repeat-0\\latest.json'
+Transient Windows file lock while publishing C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc1\s\telemetry\candidate-00000\world-43676229-repeat-0\latest.json; retrying boundedly: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-43676229-repeat-0\\.766fabb3604342b8bfd40a1520b1da12.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-43676229-repeat-0\\latest.json'
+Traceback (most recent call last):
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 556, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 549, in main
+    return execute(config, args.output, args.resume, run_plan=args.run_plan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 503, in execute
+    result = run_search(config, run)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 64, in run_search
+    return run_survival_search(config, run)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 273, in run_survival_search
+    result = optimize_controller(
+             ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\training\search.py", line 118, in optimize_controller
+    _cma_trials(base, search, seed, bounds, parameters, evaluate, trials, evaluate_many)
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\training\search.py", line 201, in _cma_trials
+    evaluated = _evaluate_group(proposals, len(trials), evaluate, evaluate_many)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\training\search.py", line 133, in _evaluate_group
+    scores = list(evaluate_many(configurations))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 224, in evaluate_many
+    for job, result in run_jobs(
+                       ^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\jobs.py", line 107, in run_jobs
+    raise JobExecutionError(running.job, reply[1], result=reply[2])
+src.benchmarking.jobs.JobExecutionError: EpisodeExecutionError: world-1789368711-repeat-0: telemetry: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\.c574285035c54c04a76c27367ae3ab74.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\latest.json'
+Traceback (most recent call last):
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\runner.py", line 163, in run_episode
+    telemetry.observe(last_step, ticks)
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\telemetry.py", line 210, in observe
+    self._json("latest.json", {**self.metadata, "state": "running", "sample": self.latest})
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\telemetry.py", line 93, in _json
+    _atomic_text(self.path / name, canonical_json(value) + "\n")
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\artifacts.py", line 522, in _atomic_text
+    _atomic_replace(pending, path)
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\artifacts.py", line 502, in _atomic_replace
+    os.replace(source, destination)
+PermissionError: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\.c574285035c54c04a76c27367ae3ab74.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\latest.json'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\jobs.py", line 37, in _worker
+    result = function(job)
+             ^^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\train.py", line 173, in _survival_search_episode
+    return run_episode(
+           ^^^^^^^^^^^^
+  File "C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\runner.py", line 191, in run_episode
+    raise EpisodeExecutionError(result("failed", "error", failure)) from exc
+src.benchmarking.runner.EpisodeExecutionError: world-1789368711-repeat-0: telemetry: [WinError 5] Access is denied: 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\.c574285035c54c04a76c27367ae3ab74.tmp' -> 'C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc1\\s\\telemetry\\candidate-00000\\world-1789368711-repeat-0\\latest.json'
+
+Controller search candidate batch 0-7.

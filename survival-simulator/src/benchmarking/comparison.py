@@ -89,7 +89,7 @@ def _interval(deltas: Sequence[float]) -> dict:
     }
 
 
-def compare_runs(reference: SavedRun, candidates: Sequence[SavedRun]) -> dict:
+def compare_runs(reference: SavedRun, candidates: Sequence[SavedRun], *, survival_first: bool = False) -> dict:
     if not candidates:
         raise ValueError("Provide at least one candidate; a reference may also be its own candidate.")
     saved_runs = [reference, *candidates]
@@ -196,6 +196,44 @@ def compare_runs(reference: SavedRun, candidates: Sequence[SavedRun]) -> dict:
         "timing_compatible": all(pair["timing_compatible"] for pair in comparisons),
         "warnings": warnings, "runs": runs, "comparisons": comparisons, "leaderboard": leaderboard,
     }
+    if survival_first:
+        from src.benchmarking.survival import survival_metrics, terminal_health
+
+        expected = [case.case_id for case in reference.manifest.cases]
+        health = [
+            terminal_health(
+                run.path, run.episodes,
+                required=run.manifest.provenance.timing_context.get("population_telemetry", False),
+            )
+            for run in saved_runs
+        ]
+        measured_health = all(value is not None for value in health)
+        metrics = {
+            key: survival_metrics(
+                run.episodes, expected_case_ids=expected,
+                time_limit=run.manifest.simulation.time_limit,
+                terminal_health=health[index] if measured_health else None,
+            )
+            for index, (key, run) in enumerate(zip(
+                ["reference", *(f"candidate-{i}" for i in range(1, len(candidates) + 1))], saved_runs,
+            ))
+        }
+        report["objective"] = "survival-v1"
+        report["survival"] = metrics
+        ordered = sorted(leaderboard, key=lambda row: (metrics[row["key"]]["rank"], row["key"]), reverse=True)
+        previous, rank = None, 0
+        for position, row in enumerate(ordered, 1):
+            score = metrics[row["key"]]["rank"]
+            if score != previous:
+                rank = position
+            row["rank"] = rank
+            previous = score
+        report["leaderboard"] = ordered
+        report["warnings"].append("Survival ordering precedes native score.")
+        if not measured_health:
+            report["warnings"].append(
+                "Terminal health is omitted from every rank because it was not measured for every compared run."
+            )
     return report
 
 
@@ -224,7 +262,8 @@ def _report_markdown(report: dict) -> str:
         f"Suite: {_markdown(report['suite']['name'])}; {report['world_count']} world seeds, "
         f"{report['case_count']} cases per run; repeats: {report['repeats']}.",
         f"Reference: {_markdown(report['reference_label'])} (`reference`).", "",
-        "## Descriptive leaderboard - native final score", "",
+        ("## Survival-first leaderboard - native scores are secondary"
+         if report.get("objective") == "survival-v1" else "## Descriptive leaderboard - native final score"), "",
         "| Rank | Role | Policy | Mean | Median | Sample std | Min | Max | n |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
@@ -235,6 +274,17 @@ def _report_markdown(report: dict) -> str:
             *(score[name] for name in ("mean", "median", "sample_std", "min", "max", "count")),
         ]
         lines.append("| " + " | ".join("unavailable" if value is None else str(value) for value in values) + " |")
+    if report.get("objective") == "survival-v1":
+        lines.extend([
+            "", "| Policy | Completed worlds | Worlds | Lower-tail survival | Worst survival |",
+            "| --- | --- | --- | --- | --- |",
+        ])
+        for row in report["leaderboard"]:
+            metric = report["survival"][row["key"]]
+            lines.append(
+                f"| {_markdown(row['label'])} | {metric['completed_worlds']} | {metric['worlds']} | "
+                f"{metric['lower_tail_seconds']} | {metric['worst_seconds']} |"
+            )
     lines.extend([
         "", "## Absolute paired deltas - candidate minus reference", "",
         "| Candidate | Mean delta | 95% interval | Wins | Ties | Losses | Independent worlds |",

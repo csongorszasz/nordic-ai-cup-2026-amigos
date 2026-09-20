@@ -60,6 +60,8 @@ def _search_episode(arguments):
 
 
 def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
+    if config.search.objective == "survival":
+        return run_survival_search(config, run)
     from src.training.search import aggregate_world_scores, optimize_controller
 
     worlds = training_seeds(config.seed, config.search.worlds)
@@ -152,6 +154,137 @@ def run_search(config: ExperimentConfig, run: TrainingRun) -> dict:
         },
         "selected_config": selected.model_dump(mode="json"),
         "ranking_scope": "training worlds only; not held-out evidence",
+    }
+
+
+def _survival_search_episode(job):
+    from src.benchmarking.telemetry import EpisodeTelemetry
+    from src.policies.heuristic import create_policy
+
+    index, world_seed, options, policy_seed, root, sample_every, max_trace_mb = job
+    case = EpisodeCase(
+        case_id=f"world-{world_seed}-repeat-0", world_seed=world_seed, repeat_index=0,
+        policy_seed=world_seed if policy_seed is None else policy_seed,
+        policy_seed_mode="derived" if policy_seed is None else "fixed",
+    )
+    telemetry = EpisodeTelemetry(
+        Path(root), case, candidate=index, sample_every=sample_every, max_trace_mb=max_trace_mb,
+    )
+    return run_episode(
+        case, create_policy, options, simulation_factory=_ProgressSimulation, telemetry=telemetry,
+    )
+
+
+def run_survival_search(config: ExperimentConfig, run: TrainingRun) -> dict:
+    from src.benchmarking.config import read_json
+    from src.benchmarking.jobs import JobExecutionError, run_jobs
+    from src.benchmarking.progress import render_progress
+    from src.benchmarking.survival import OBJECTIVE_VERSION, survival_metrics
+    from src.training.search import optimize_controller
+
+    if config.search.progress:
+        from src.benchmarking.plots import require_plotting
+
+        require_plotting()
+    worlds = training_seeds(config.seed, config.search.worlds)
+    write_json(run.path / "search-worlds.json", {"version": 1, "name": "search", "seeds": worlds})
+    run.emit({
+        "event": "training_worlds", "seeds": worlds, "full_horizon": True,
+        "objective_version": OBJECTIVE_VERSION,
+        "max_episodes": config.search.candidates * len(worlds),
+        "max_native_ticks": config.search.candidates * len(worlds) * 30001,
+        "max_trace_bytes": config.search.candidates * len(worlds) * config.search.max_trace_mb * 1024**2,
+    })
+    index = 0
+    metrics_by_candidate = {}
+    last_refresh = 0.0
+
+    def refresh():
+        nonlocal last_refresh
+        if config.search.progress and time.monotonic() - last_refresh >= 10.0:
+            render_progress(run.path)
+            last_refresh = time.monotonic()
+
+    def evaluate_many(configurations):
+        nonlocal index
+        start = index
+        index += len(configurations)
+        jobs = [
+            (start + offset, seed, options.model_dump(mode="json"),
+             config.search.fixed_policy_seed, str(run.path), config.search.sample_every,
+             config.search.max_trace_mb)
+            for offset, options in enumerate(configurations) for seed in worlds
+        ]
+        records = {candidate: {} for candidate in range(start, index)}
+        run.emit({
+            "event": "search_batch", "candidate_start": start, "candidates": len(configurations),
+            "episodes": len(jobs), "workers": config.resources.workers,
+        })
+        try:
+            for job, result in run_jobs(
+                jobs, _survival_search_episode, workers=config.resources.workers,
+                timeout_seconds=config.search.episode_timeout_seconds, progress=refresh,
+            ):
+                candidate, seed, options = job[:3]
+                run.emit({
+                    "event": "search_episode", "candidate": candidate, "config": options,
+                    "result": result.model_dump(mode="json"),
+                })
+                if result.case.world_seed != seed or result.status != "ok":
+                    raise ValueError("Survival search received an invalid episode identity or outcome.")
+                records[candidate][seed] = result
+                print(
+                    f"candidate={candidate} world={seed} survival={result.survival_seconds:.1f} "
+                    f"completed={result.completed} score={result.score:.3f}", flush=True,
+                )
+        except JobExecutionError as error:
+            run.emit({
+                "event": "search_worker_failed", "candidate": error.job[0], "world_seed": error.job[1],
+                "error": str(error),
+                "result": error.result.model_dump(mode="json") if error.result is not None else None,
+            })
+            raise
+        objectives = []
+        expected = [f"world-{seed}-repeat-0" for seed in worlds]
+        for candidate in range(start, index):
+            health = {}
+            for seed, record in records[candidate].items():
+                path = run.path / "telemetry" / f"candidate-{candidate:05d}" / record.case.case_id / "summary.json"
+                summary = read_json(path)
+                if summary["result"] != record.model_dump(mode="json"):
+                    raise ValueError("Search telemetry disagrees with its completed episode.")
+                sample = summary["last_sample"]
+                health[record.case.case_id] = (sample["young_reproductive"], sample["energy_p10"] or 0.0)
+            metrics = survival_metrics(
+                list(records[candidate].values()), expected_case_ids=expected,
+                tail_fraction=config.search.lower_tail_fraction, terminal_health=health,
+            )
+            metrics_by_candidate[candidate] = metrics
+            objectives.append(tuple(metrics["rank"]))
+            run.emit({"event": "search_candidate_summary", "candidate": candidate, **metrics})
+            print(
+                f"candidate={candidate} completed={metrics['completed_worlds']}/{metrics['worlds']} "
+                f"tail={metrics['lower_tail_seconds']:.1f} worst={metrics['worst_seconds']:.1f}",
+                flush=True,
+            )
+        refresh()
+        return objectives
+
+    result = optimize_controller(
+        config.heuristic, config.search, config.seed, lambda options: evaluate_many([options])[0],
+        evaluate_many=evaluate_many,
+    )
+    selected = RuntimeConfig(policy="heuristic", heuristic=result.best_config)
+    write_json(run.path / "policy.json", selected.model_dump(mode="json"))
+    write_json(run.path / "survival-summary.json", {
+        "objective_version": OBJECTIVE_VERSION, "candidates": metrics_by_candidate,
+    })
+    return {
+        "mode": "search", "method": result.method, "trials": len(result.trials),
+        "worlds": worlds, "best_survival_rank": result.best_score,
+        "selected_config": selected.model_dump(mode="json"),
+        "ranking_scope": "Fixed search worlds only; not held-out or infinite-horizon evidence.",
+        "objective_version": OBJECTIVE_VERSION,
     }
 
 
@@ -373,18 +506,24 @@ def execute(
         else:
             result = run_neural(config, run, resume)
         run.finish("complete", result)
+        if config.mode == "search" and config.search.objective == "survival" and config.search.progress:
+            from src.benchmarking.progress import render_progress
+
+            render_progress(run.path)
     except KeyboardInterrupt:
         run.finish("interrupted", {"error": "Interrupted; completed checkpoint updates are preserved."})
         return 130
     except Exception as exc:
-        from src.training.evaluation import EvaluationBackpressure
-        if isinstance(exc, EvaluationBackpressure):
-            run.finish("paused", {"reason": str(exc), "resume_requires_user_launch": True})
-            print(str(exc), file=sys.stderr)
-            return 3
+        if config.mode in ("imitation", "ppo"):
+            from src.training.evaluation import EvaluationBackpressure
+            if isinstance(exc, EvaluationBackpressure):
+                run.finish("paused", {"reason": str(exc), "resume_requires_user_launch": True})
+                print(str(exc), file=sys.stderr)
+                return 3
         # Record the training boundary failure and propagate it; never manufacture a result.
-        run.finish("failed", {"error_type": type(exc).__name__, "error": str(exc),
-                              "traceback": traceback.format_exc()})
+        if run.manifest["status"] == "running":
+            run.finish("failed", {"error_type": type(exc).__name__, "error": str(exc),
+                                  "traceback": traceback.format_exc()})
         raise
     print(f"Saved {config.mode} run to {run.path}", flush=True)
     return 0

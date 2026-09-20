@@ -36,44 +36,44 @@ class HTTPPolicy:
         self.total_wait_seconds = 0.0
 
     def act(self, step: StepResponse) -> list[ActionRequest]:
-        body = step.model_dump_json()
         started = self.clock()
         try:
+            body = step.model_dump_json()
             response = self.session.post(
                 self.config.url, data=body,
                 headers={"Content-Type": "application/json", **self.config.headers},
                 timeout=self.config.per_request_timeout_seconds,
                 verify=self.config.verify_tls,
             )
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"HTTP endpoint returned {response.status_code} on call {self.calls + 1}: "
+                    f"{response.text[:500]}",
+                )
+            try:
+                payload = response.json()
+            except JSONDecodeError as exc:
+                raise ValueError("HTTP endpoint returned invalid JSON.") from exc
+            if not isinstance(payload, dict) or not isinstance(payload.get("actions"), list):
+                raise ValueError("HTTP endpoint response must contain an actions list.")
+            actions = [ActionRequest.model_validate(value, strict=True) for value in payload["actions"]]
+            return validate_actions(
+                actions, [agent.agent_id for agent in step.agent_status], revalidate=False,
+            )
         finally:
             elapsed = self.clock() - started
             self.calls += 1
             self.total_wait_seconds += elapsed
-        if elapsed > self.config.per_request_timeout_seconds:
-            raise TimeoutError(
-                f"HTTP request {self.calls} took {elapsed:.3f}s, exceeding "
-                f"{self.config.per_request_timeout_seconds:.3f}s.",
-            )
-        if self.total_wait_seconds > self.config.cumulative_timeout_seconds:
-            raise TimeoutError(
-                f"HTTP endpoint accumulated {self.total_wait_seconds:.3f}s after "
-                f"{self.calls} calls, exceeding {self.config.cumulative_timeout_seconds:.3f}s.",
-            )
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"HTTP endpoint returned {response.status_code} on call {self.calls}: "
-                f"{response.text[:500]}",
-            )
-        try:
-            payload = response.json()
-        except JSONDecodeError as exc:
-            raise ValueError("HTTP endpoint returned invalid JSON.") from exc
-        if not isinstance(payload, dict) or not isinstance(payload.get("actions"), list):
-            raise ValueError("HTTP endpoint response must contain an actions list.")
-        actions = [ActionRequest.model_validate(value, strict=True) for value in payload["actions"]]
-        return validate_actions(
-            actions, [agent.agent_id for agent in step.agent_status], revalidate=False,
-        )
+            if elapsed > self.config.per_request_timeout_seconds:
+                raise TimeoutError(
+                    f"HTTP request {self.calls} took {elapsed:.3f}s, exceeding "
+                    f"{self.config.per_request_timeout_seconds:.3f}s.",
+                )
+            if self.total_wait_seconds > self.config.cumulative_timeout_seconds:
+                raise TimeoutError(
+                    f"HTTP endpoint accumulated {self.total_wait_seconds:.3f}s after "
+                    f"{self.calls} calls, exceeding {self.config.cumulative_timeout_seconds:.3f}s.",
+                )
 
 
 def create_policy(seed: int, config: dict) -> HTTPPolicy:

@@ -4,6 +4,7 @@ import time
 import traceback
 from collections.abc import Callable
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import JsonValue
@@ -14,6 +15,9 @@ from src.benchmarking.config import (
 from src.benchmarking.policies import Policy, PolicyFactory, validate_actions
 from src.core import SimulationCore
 from src.utils.DTOs import ObservationResponse, StepResponse
+
+if TYPE_CHECKING:
+    from src.benchmarking.telemetry import EpisodeTelemetry
 
 
 class EpisodeExecutionError(RuntimeError):
@@ -70,6 +74,7 @@ def run_episode(
     max_steps: int | None = None,
     *,
     simulation_factory: Callable[..., SimulationCore] = SimulationCore,
+    telemetry: "EpisodeTelemetry | None" = None,
 ) -> EpisodeResult:
     settings = settings or SimulationSettings()
     if max_steps is not None and (
@@ -90,14 +95,16 @@ def run_episode(
     ticks = 0
     population_sum = 0
     stage = "simulation_initialization"
+    telemetry_finished = False
 
     def result(status, termination, failure=None):
+        nonlocal telemetry_finished
         mean_ms = float(np.mean(latencies)) if latencies else None
         p50_ms, p95_ms = (
             (float(value) for value in np.percentile(latencies, [50, 95]))
             if latencies else (None, None)
         )
-        return EpisodeResult(
+        record = EpisodeResult(
             case=case,
             status=status,
             termination=termination,
@@ -121,10 +128,19 @@ def run_episode(
             ),
             failure=failure,
         )
+        if telemetry is not None and not telemetry_finished:
+            if last_step is not None and status in ("ok", "truncated"):
+                telemetry.observe(last_step, ticks, force=True)
+            telemetry_finished = True
+            telemetry.finish(record)
+        return record
 
     try:
         with _timed(totals, "initialization_seconds"):
             sim = simulation_factory(seed=case.world_seed, **settings.core_kwargs())
+        if telemetry is not None:
+            stage = "telemetry_initialization"
+            telemetry.attach(sim.env)
         initial_agents = len(sim.env.agents)
         peak_agents = initial_agents
         stage = "policy_construction"
@@ -142,6 +158,9 @@ def run_episode(
             ticks += 1
             population_sum += last_step.n_agents
             peak_agents = max(peak_agents, last_step.n_agents)
+            if telemetry is not None:
+                stage = "telemetry"
+                telemetry.observe(last_step, ticks)
             if last_step.n_agents == 0:
                 return result("ok", "extinction")
             if last_step.sim_time > settings.time_limit:
@@ -156,6 +175,9 @@ def run_episode(
                 proposed = policy.act(policy_input)
             stage = "action_validation"
             validated = validate_actions(proposed, expected_ids)
+            if telemetry is not None:
+                stage = "telemetry"
+                telemetry.decision(last_step, validated, policy, latencies[-1])
             actions = [(action.agent_id, action) for action in validated]
     except KeyboardInterrupt as exc:
         failure = FailureInfo(stage=stage, error_type=type(exc).__name__, message="Interrupted by user.")

@@ -153,7 +153,7 @@ def _parse_entities(agent: ObservationResponse) -> tuple[Entity, ...]:
     return tuple(entities)
 
 
-def _build_contexts(step: StepResponse) -> dict[int, AgentContext]:
+def _build_contexts(step: StepResponse, *, zero_distance_aware: bool = False) -> dict[int, AgentContext]:
     agents = {agent.agent_id: agent for agent in step.agent_status}
     entities = {agent_id: _parse_entities(agent) for agent_id, agent in agents.items()}
     adjacency: dict[int, list[tuple[int, float, float, float]]] = {
@@ -164,7 +164,11 @@ def _build_contexts(step: StepResponse) -> dict[int, AgentContext]:
             teammate_id = entity.agent_id
             if entity.kind != "Agent" or teammate_id not in agents:
                 continue
-            heading = relative_heading(entity.angle, entity.rel_dir or 0.0)
+            heading = (
+                wrap_angle(entity.angle - (entity.rel_dir or 0.0))
+                if zero_distance_aware and entity.distance == 0.0
+                else relative_heading(entity.angle, entity.rel_dir or 0.0)
+            )
             adjacency[observer_id].append((teammate_id, entity.x, entity.y, heading))
             cosine, sine = math.cos(heading), math.sin(heading)
             inverse_x = -(cosine * entity.x + sine * entity.y)
