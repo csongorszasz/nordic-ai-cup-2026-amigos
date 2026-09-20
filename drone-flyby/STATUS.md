@@ -80,6 +80,26 @@ inference (960+1280 = 237 ms on the laptop, 960+1600 = 320 ms; the VM ran 960+12
 ~247 ms against a 333 ms frame interval). Not deployed: +0.008 is not worth risking dropped frames without
 measuring on the VM first.
 
+## The offline score is too noisy to rank models. Read this before chasing a number.
+
+`oldgen` re-ran the live model's **exact generator code** (git 510418e) with its exact recipe.
+By epoch: 0.587, 0.620, **0.516**, 0.564, 0.552, 0.469 on the tune half. The live model's
+epoch 15 scored 0.636. Same code, same command, a different draw.
+
+Spread of the tune score across epochs **within one run**, over 17 runs: median **0.068**,
+up to 0.151. Every difference argued about during the night -- dk 0.622, sharp 0.609,
+allbg 0.635, bigbg 0.636 against the live model's 0.636 -- sits inside that.
+
+So: the live model's 0.636 is one lucky epoch of one run, not a reproducible property of
+its recipe. Nothing in the generator "broke" tonight; `ctrl` at 0.476 was the same noise.
+43 objects over 13 classes cannot separate models a few points apart, and picking the best
+of N noisy checkpoints selects mostly for luck, which is exactly how allbg reached a
+validation and lost 0.025 live.
+
+What the offline score is still good for: catching a model that is plainly broken (0.45 vs
+0.62), and per-class diagnosis. What it cannot do: choose between two decent models. For
+that, only a live validation counts -- 249 frames against the real ground truth.
+
 ## Choose on frames 1-125 only. The overall number cost us a validation.
 
 `allbg` last scored **0.663** overall against the live model's 0.640, was deployed, and came
