@@ -124,6 +124,33 @@ at conf 0.87-0.92 -- but it reports only 131 boxes above 0.25 across 249 views, 
 aircraft classes. Since mAP is macro-averaged over classes present, ~0.9 on four aircraft classes
 and near zero on the rest lands at ~0.22. The failure is class-specific, not terrain.
 
+## The live validation cannot rank models either. Measured, 2026-09-20.
+
+sharp_e10, byte-identical model, one container (`StartedAt` 08:09:13, no restart between runs),
+same scene, four validations:
+
+| time | score |
+|---|---|
+| 08:01 | 0.5224 |
+| 08:09 | 0.4727 |
+| 08:11 | 0.4721 |
+| 08:12 | 0.5104 |
+
+**Range 0.050, sd ~0.024.** The whole spread across seven *different* candidates that morning was
+0.4470-0.5224 = 0.075. One model's own spread is two-thirds of the spread across all seven, so no
+gap in that table is meaningful.
+
+Earlier in the day this file claimed live validation was precise to +/-0.006. That came from two
+forest runs that happened to agree -- a sample of two -- and was wrong. Do not quote it.
+
+What this does NOT mean: the metric is useless. sd 0.024 means averaging n runs gives a standard
+error of 0.024/sqrt(n). To separate two models 0.03 apart at 95% confidence needs about **5 runs
+each** (1.96 * 0.024 * sqrt(2/n) < 0.03). At ~90 s per validation that is ~8 minutes per model,
+which is affordable. **Rank by the mean of 5, never by a single run.**
+
+Cause is not frame count: all four runs answered 245-249 frames, and across the seven candidates
+the model answering the most frames (the old incumbent, 248) scored last.
+
 ## 2026-09-20 live ranking under the REVISED labels, and the forest evidence
 
 Everything above this line that cites an offline or live score predates the label change.
