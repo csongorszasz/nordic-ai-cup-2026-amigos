@@ -1,0 +1,97 @@
+{
+ "churchill": {
+  "dropped_parts": [],
+  "gains": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "length_m": 11.48,
+  "mean_colour_error": 32.3,
+  "mean_iou": 0.84,
+  "mesh": "models/tank/churchill/scene.gltf",
+  "offsets": [
+   95.3,
+   98.8,
+   52.3
+  ],
+  "paint": "edited",
+  "per_sprite": [
+   {
+    "colour_error": 33.0,
+    "file": "tank/f024_4.png",
+    "iou": 0.827,
+    "lean": 180,
+    "structure": 0.048,
+    "tilt": 24,
+    "yaw": 220
+   },
+   {
+    "colour_error": 33.2,
+    "file": "tank/f023_5.png",
+    "iou": 0.841,
+    "lean": 180,
+    "structure": 0.059,
+    "tilt": 24,
+    "yaw": 220
+   },
+   {
+    "colour_error": 32.5,
+    "file": "tank/f022_6.png",
+    "iou": 0.824,
+    "lean": 180,
+    "structure": 0.077,
+    "tilt": 24,
+    "yaw": 220
+   },
+   {
+    "colour_error": 31.9,
+    "file": "tank/f021_6.png",
+    "iou": 0.85,
+    "lean": 180,
+    "structure": 0.019,
+    "tilt": 24,
+    "yaw": 225
+   },
+   {
+    "colour_error": 31.8,
+    "file": "tank/f020_6.png",
+    "iou": 0.836,
+    "lean": 180,
+    "structure": 0.031,
+    "tilt": 24,
+    "yaw": 225
+   },
+   {
+    "colour_error": 32.5,
+    "file": "tank/f019_6.png",
+    "iou": 0.843,
+    "lean": 0,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 225
+   },
+   {
+    "colour_error": 31.3,
+    "file": "tank/f018_6.png",
+    "iou": 0.842,
+    "lean": 180,
+    "structure": 0.026,
+    "tilt": 24,
+    "yaw": 225
+   },
+   {
+    "colour_error": 32.0,
+    "file": "tank/f016_6.png",
+    "iou": 0.858,
+    "lean": 135,
+    "structure": 0.0,
+    "tilt": 24,
+    "yaw": 230
+   }
+  ],
+  "tilt": 24.0,
+  "up": "auto",
+  "edits": "long barrel added, a third of the hull beyond its front (dark olive)"
+ }
+}

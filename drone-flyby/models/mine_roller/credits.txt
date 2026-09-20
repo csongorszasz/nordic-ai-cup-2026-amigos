@@ -1,0 +1,7 @@
+mine_roller - 3D model sources
+
+PT-34-85 mine clearing vehicle [candidate]
+  https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f
+  author:  42manako
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    T-34 hull with roller drum; ground extent close to the measured 12.6 x 11.1 m

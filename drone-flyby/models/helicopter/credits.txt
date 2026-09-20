@@ -1,0 +1,13 @@
+helicopter - 3D model sources
+
+Mi-28N Havoc [candidate]
+  https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68
+  author:  Rukh3D
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    downloadable Mi-28N, stands in for the view-only Mi-28 Juan found; scale to 24.4 x 19.7 m
+
+Mi-28 [rejected]
+  https://sketchfab.com/3d-models/mi-28-4def720fb3b0415dac4839c267ccbd7d
+  author:  undoniuzz
+  licence: None (all rights reserved) - check the page
+  note:    view-only (isDownloadable=false) and no licence set

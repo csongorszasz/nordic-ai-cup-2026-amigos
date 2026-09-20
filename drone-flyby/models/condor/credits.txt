@@ -1,0 +1,7 @@
+condor - 3D model sources
+
+Battlefield 2042 Condor [candidate]
+  https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight
+  author:  ?
+  licence: CGTrader free - CHECK the page; note this is a game asset, see the caveat in MODELS.md - check the page
+  note:    quad-rotor VTOL transport, close to the X-shaped 4-engine sprite. IP caveat: extracted from Battlefield 2042 (EA/DICE)

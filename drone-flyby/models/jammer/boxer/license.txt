@@ -1,0 +1,11 @@
+Model Information:
+* title:	GTK BOXER ARMORED PERSONNEL CARRIERS
+* source:	https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194
+* author:	Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "GTK BOXER ARMORED PERSONNEL CARRIERS" (https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194) by Muhamad Mirza Arrafi (https://sketchfab.com/nazidefenseforceofficial) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

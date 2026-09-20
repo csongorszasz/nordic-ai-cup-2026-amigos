@@ -1,0 +1,7 @@
+small_plane - 3D model sources
+
+Yak-9 [candidate]
+  https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684
+  author:  Starpovich
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    WW2 fighter; paint the red nose/tail markings seen in the sprites; scale to 10.5 x 9.0 m

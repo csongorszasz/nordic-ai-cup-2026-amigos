@@ -1,0 +1,196 @@
+#!/bin/bash
+# ==============================================================================
+# Run drone-flyby training on NTNU IDUN from a laptop.
+# Adapted from Juan's thesis-prep harness (src/idun/).
+#
+# Usage (from drone-flyby/):
+#   bash idun/submit.sh setup                 # once: build the conda env on IDUN
+#   bash idun/submit.sh test                  # 20-min job: GPU, torch, ultralytics sanity
+#   bash idun/submit.sh run <command...>      # GPU job running any command in drone-flyby/
+#   bash idun/submit.sh train-synth [frames] [label] [model] [batch]
+#                                             # synthetic dataset + YOLO training, one job; weights in
+#                                             # runs/synth<frames>_<size>_<label>_<date>/. Jobs can run
+#                                             # side by side (each builds its own dataset).
+#   bash idun/submit.sh resume <run>          # continue a run cut off by the time limit
+#   bash idun/submit.sh queue                 # your jobs
+#   bash idun/submit.sh logs [job_id]         # tail the latest (or one) job log
+#   bash idun/submit.sh scores [run]          # validation per epoch of the latest (or one) run
+#   bash idun/submit.sh fetch                 # pull runs/ (weights, metrics) back here
+#   bash idun/submit.sh sync                  # upload code without submitting
+#
+# Examples:
+#   bash idun/submit.sh run python training/train_yolo.py --epochs 60 --batch 32
+#   bash idun/submit.sh train-synth 400
+#   bash idun/submit.sh train-synth 400 padded yolo11m
+#   SYNTH_ARGS="--balance --boost ta-ta=2" bash idun/submit.sh train-synth 400 balanced   # extra synth_dataset.py options
+#   EPOCHS=25 bash idun/submit.sh train-synth 400 quick   # default 60; yolo11s reached 0.825 of its 0.875 by epoch 14
+#   SAVE_PERIOD=5 bash idun/submit.sh train-synth 400 x   # also keep epoch5.pt, epoch10.pt, ... to pick on Copenhagen
+#
+# Overrides:
+#   REMOTE=idun                        SSH alias from ~/.ssh/config
+#   REMOTE_DIR=~/nordic-cup/drone-flyby  kept apart from anything else in the home dir
+#   SLURM_ACCOUNT=share-ie-idi         allocation to bill
+# ==============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DRONE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+REMOTE="${REMOTE:-idun}"
+REMOTE_DIR="${REMOTE_DIR:-~/nordic-cup/drone-flyby}"
+SLURM_ACCOUNT="${SLURM_ACCOUNT:-share-ie-idi}"
+
+ACTION="${1:-help}"
+
+check_ssh() {
+    echo -n "Checking SSH connection to '${REMOTE}'... "
+    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "$REMOTE" "echo ok" >/dev/null 2>&1; then
+        echo "FAILED"
+        echo "Cannot reach '${REMOTE}'. Are you on eduroam or the NTNU VPN, and is"
+        echo "'Host ${REMOTE}' in ~/.ssh/config? See idun/README.md."
+        exit 1
+    fi
+    echo "OK"
+}
+
+# Code, the supplied scene, sprite cut-outs and backgrounds go up; generated
+# datasets, runs, recordings and the local venv stay here. Datasets are rebuilt
+# on IDUN, which is faster than uploading them. Two exceptions: the 3D-model sprite
+# bank goes up (rendering it needs OpenGL), and the raw city mesh stays here (GBs;
+# only its rendered frames in backgrounds/helsinki3d_frames/ are needed).
+sync_code() {
+    ssh "$REMOTE" "mkdir -p ${REMOTE_DIR}"
+    echo "Syncing ${DRONE_DIR} -> ${REMOTE}:${REMOTE_DIR}"
+    rsync -az --delete --info=stats1 \
+        --exclude='.venv' \
+        --exclude='__pycache__' \
+        --exclude='*.pyc' \
+        --exclude='.pytest_cache' \
+        --exclude='.downloads' \
+        --include='/datasets/' \
+        --include='/datasets/model_sprites/***' \
+        --exclude='/datasets/*' \
+        --exclude='/backgrounds/helsinki3d/' \
+        --exclude='runs' \
+        --exclude='recordings' \
+        --exclude='logs' \
+        --exclude='annotated' \
+        --exclude='*.pt' \
+        "${DRONE_DIR}/" "${REMOTE}:${REMOTE_DIR}/"
+}
+
+# The commit the job runs (IDUN gets the code by rsync, without .git); "-dirty" means
+# uncommitted changes went up too. train_yolo.py stores it in the run's provenance.json.
+GIT_COMMIT="$(git -C "${DRONE_DIR}" describe --always --dirty 2>/dev/null || echo unknown)"
+
+submit() {
+    local job_file="$1" cmd="$2"
+    local out
+    out=$(ssh "$REMOTE" "cd ${REMOTE_DIR} && mkdir -p logs && GIT_COMMIT=${GIT_COMMIT} RUN_CMD=$(printf '%q' "$cmd") sbatch --export=ALL --account=${SLURM_ACCOUNT} idun/${job_file}")
+    echo "$out"
+    local job_id
+    job_id=$(awk '{print $NF}' <<<"$out")
+    echo ""
+    echo "Follow it with:  bash idun/submit.sh logs ${job_id}"
+}
+
+case "$ACTION" in
+    sync)
+        check_ssh
+        sync_code
+        ;;
+
+    setup)
+        check_ssh
+        sync_code
+        ssh -t "$REMOTE" "cd ${REMOTE_DIR} && bash idun/setup_env.sh"
+        ;;
+
+    test)
+        check_ssh
+        sync_code
+        submit job_test.slurm ""
+        ;;
+
+    run)
+        shift
+        [ $# -gt 0 ] || { echo "run needs a command, e.g. python training/train_yolo.py"; exit 1; }
+        check_ssh
+        sync_code
+        submit job.slurm "$*"
+        ;;
+
+    train-synth)
+        FRAMES="${2:-300}"
+        LABEL="${3:-run}"
+        MODEL="${4:-yolo11s}"                 # yolo11n/s/m/l/x
+        BATCH="${5:-$([ "$MODEL" = yolo11s ] || [ "$MODEL" = yolo11n ] && echo 32 || echo 16)}"
+        NAME="synth${FRAMES}_${MODEL#yolo}_${LABEL}_$(date +%m%d-%H%M)"   # unique: never overwrites an earlier run
+        DATA="datasets/runs/${NAME}"          # per run, so jobs can run side by side
+        echo "Run name: ${NAME} (commit ${GIT_COMMIT}, batch ${BATCH})${SYNTH_ARGS:+, synth options: ${SYNTH_ARGS}}, ${EPOCHS:-60} epochs"
+        check_ssh
+        sync_code
+        # Pretrained weights come from the login node; compute nodes may have no internet.
+        ssh "$REMOTE" "cd ${REMOTE_DIR} && [ -s ${MODEL}.pt ] || curl -sSfL -o ${MODEL}.pt https://github.com/ultralytics/assets/releases/download/v8.3.0/${MODEL}.pt"
+        # Synthetic only; the real Helsinki scene (all 25 frames) is the validation set, so the
+        # best checkpoint is picked on real imagery. Copenhagen stays out of it entirely.
+        # The generated images are deleted after a successful run (the seed rebuilds them).
+        submit job.slurm "python training/make_dataset.py --all-val --out ${DATA}/real && python training/synth_dataset.py --frames ${FRAMES} --out ${DATA}/synth --val-dir ${DATA}/real/images/val ${SYNTH_ARGS:-} && python training/train_yolo.py --model ${MODEL}.pt --data ${DATA}/synth/data.yaml --epochs ${EPOCHS:-60} --batch ${BATCH} --name ${NAME} --save-period ${SAVE_PERIOD:--1} && rm -rf ${DATA}"
+        ;;
+
+    resume)
+        RUN="${2:?resume needs a run name, e.g. synth400_m_padded_0919-0930}"
+        check_ssh
+        sync_code
+        # Continues from last.pt with the run's own settings and dataset (kept, since it did not finish).
+        submit job.slurm "python training/train_yolo.py --resume runs/${RUN}/weights/last.pt && rm -rf datasets/runs/${RUN}"
+        ;;
+
+    queue)
+        check_ssh
+        ssh "$REMOTE" "squeue -u \$(whoami) --format='%.10i %.9P %.22j %.2t %.10M %.6D %R'"
+        ;;
+
+    logs)
+        check_ssh
+        TARGET="${2:-}"
+        if [ -n "$TARGET" ]; then
+            ssh -t "$REMOTE" "tail -n 50 -f ${REMOTE_DIR}/logs/*${TARGET}*.out"
+        else
+            LATEST=$(ssh "$REMOTE" "ls -t ${REMOTE_DIR}/logs/*.out 2>/dev/null | head -n 1" || true)
+            [ -n "$LATEST" ] || { echo "No logs yet in ${REMOTE}:${REMOTE_DIR}/logs/"; exit 0; }
+            echo "Tailing ${LATEST}"
+            ssh -t "$REMOTE" "tail -n 50 -f ${LATEST}"
+        fi
+        ;;
+
+    scores)
+        check_ssh
+        RUN="${2:-}"
+        # Newest run with a results.csv unless one is named. Columns are looked up by header.
+        ssh "$REMOTE" "cd ${REMOTE_DIR}/runs && f=\$(if [ -n '${RUN}' ]; then echo '${RUN}'/results.csv; else ls -t */results.csv | head -1; fi) && echo \"\$f\" && awk -F, '
+            NR == 1 { for (i = 1; i <= NF; i++) { gsub(/ /, \"\", \$i); c[\$i] = i }
+                      printf \"%6s %10s %8s %8s %10s\\n\", \"epoch\", \"precision\", \"recall\", \"mAP50\", \"mAP50-95\"; next }
+            { m = \$c[\"metrics/mAP50(B)\"] + 0
+              printf \"%6d %10.3f %8.3f %8.3f %10.3f\\n\", \$c[\"epoch\"], \$c[\"metrics/precision(B)\"], \$c[\"metrics/recall(B)\"], m, \$c[\"metrics/mAP50-95(B)\"]
+              if (m > best) { best = m; at = \$c[\"epoch\"] } }
+            END { printf \"best mAP50 %.3f at epoch %d of %d\\n\", best, at, NR - 1 }' \"\$f\""
+        ;;
+
+    fetch)
+        check_ssh
+        mkdir -p "${DRONE_DIR}/runs"
+        rsync -az --info=stats1 "${REMOTE}:${REMOTE_DIR}/runs/" "${DRONE_DIR}/runs/"
+        echo "Weights are in runs/<name>/weights/best.pt. Serve one with DRONE_MODEL=<path>."
+        ;;
+
+    help|--help|-h)
+        sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+        ;;
+
+    *)
+        echo "Unknown action '$ACTION'. Run: bash idun/submit.sh help"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint Review</title>
+<style>
+  :root { --bg:#10141a; --panel:#1a2029; --line:#2c3440; --text:#e6e9ee; --muted:#8b95a3; --accent:#5aa9ff;
+          --ok:#4fd18b; --no:#ff6b6b; --note:#ffd23f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 system-ui, sans-serif; display:flex; height:100vh; overflow:hidden; }
+  aside { width:220px; flex:none; background:var(--panel); border-right:1px solid var(--line); padding:12px; overflow-y:auto; }
+  aside a { color:var(--accent); text-decoration:none; }
+  h1 { font-size:16px; margin:10px 0 8px; }
+  .cls { display:flex; justify-content:space-between; padding:5px 8px; border-radius:6px; cursor:pointer; }
+  .cls:hover { background:var(--bg); } .cls.active { background:var(--bg); outline:1px solid var(--accent); }
+  .cls b { font-weight:600; font-size:12px; }
+  .s-proposed { color:var(--ok); } .s-current { color:var(--no); } .s-note { color:var(--note); }
+  .help { color:var(--muted); font-size:12px; line-height:1.8; margin-top:12px; }
+  kbd { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; }
+  main { flex:1; overflow-y:auto; padding:12px 16px; min-width:0; }
+  header { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  header h2 { margin:0; font-size:20px; }
+  header .meta { color:var(--muted); font-size:13px; flex:1; }
+  button { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); } button.on { border-color:var(--accent); color:var(--accent); }
+  #bProposed:hover { border-color:var(--ok); } #bCurrent:hover { border-color:var(--no); } #bNote:hover { border-color:var(--note); }
+  #verdict { font-size:13px; margin:6px 0; min-height:18px; }
+  #noteBox { display:none; margin:6px 0; } #noteBox textarea { width:100%; height:60px; background:var(--panel); color:var(--text);
+             border:1px solid var(--note); border-radius:6px; font:inherit; padding:6px; }
+  .viewers { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin:10px 0; }
+  .viewer { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .viewer .cap { padding:6px 8px; font-size:13px; } .viewer .cap small { color:var(--muted); display:block; }
+  #glrow { position:relative; display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; height:340px; margin-bottom:10px; }
+  #glrow .gl { position:relative; background:#2a2e35; border-radius:8px; }
+  #glrow canvas { position:absolute; inset:0; width:100%; height:100%; cursor:grab; }
+  #glrow .msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted);
+                font-size:13px; text-align:center; padding:12px; pointer-events:none; z-index:1; }
+  h3 { font-size:13px; color:var(--muted); margin:14px 0 6px; font-weight:600; }
+  .s-fresh { color:#ffb347; }
+  .strip { display:flex; gap:6px; flex-wrap:wrap; }
+  .strip img { width:130px; height:130px; object-fit:contain; background:#000; border-radius:4px; }
+  .strip.sprites img { background:#6b6f63; }
+  .empty { color:var(--muted); font-size:12px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<aside>
+  <a href="/">&larr; sprite review</a> · <a href="/viewer3d">3D viewer</a>
+  <h1>Paint review</h1>
+  <div id="list"></div>
+  <div class="help">
+    Compare the model's paint with the real objects below it.<br>
+    <kbd>1</kbd> use the proposed paint<br>
+    <kbd>2</kbd> keep the current paint<br>
+    <kbd>N</kbd> leave a note (<kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels)<br>
+    <kbd>&uarr;</kbd> <kbd>&darr;</kbd> previous / next class<br>
+    <kbd>T</kbd> top view (as the drone sees it) · <kbd>R</kbd> spin on/off<br>
+    Drag to turn, scroll to zoom, right-drag to move: all three follow.
+  </div>
+</aside>
+<main>
+  <header>
+    <h2 id="title">-</h2><span class="meta" id="meta"></span>
+    <button id="bTop">Top view (T)</button><button id="bSpin" class="on">Spin (R)</button>
+    <button id="bProposed">Use proposed (1)</button><button id="bCurrent">Keep current (2)</button><button id="bNote">Note (N)</button>
+  </header>
+  <div id="verdict"></div>
+  <div id="noteBox"><textarea id="note" placeholder="What is off? e.g. the real ones are darker green, no white stripes, the rotor is too bright..."></textarea></div>
+  <div class="viewers" style="margin-bottom:0">
+    <div class="viewer"><div class="cap">As found <small>the downloaded model, its own textures</small></div></div>
+    <div class="viewer"><div class="cap">Current <small id="curLabel">what the training sprites use now</small></div></div>
+    <div class="viewer"><div class="cap">Proposed <small id="propLabel">-</small></div></div>
+  </div>
+  <!-- One canvas and one camera for all three: drag, scroll or right-drag anywhere moves them together. -->
+  <div id="glrow"><div class="gl" id="v0"></div><div class="gl" id="v1"></div><div class="gl" id="v2"></div><canvas id="gl"></canvas></div>
+  <h3>Helsinki: real, labelled (what training compares against)</h3><div class="strip" id="helsinki"></div>
+  <h3>Copenhagen: real, from your review (test only: for your eyes, never for training)</h3><div class="strip" id="copenhagen"></div>
+  <h3>Training sprites now: rendered from the current paint</h3><div class="strip sprites" id="sprites"></div>
+  <h3 id="proposedHead">Training sprites proposed: rendered from the proposed model</h3><div class="strip sprites" id="proposedSprites"></div>
+</main>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+const $ = id => document.getElementById(id);
+let classes = [], index = 0, spin = true, syncing = false;
+
+// Three scenes drawn side by side on one canvas with one camera, so they always match.
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setScissorTest(true);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+camera.position.set(1.6, 1.2, 1.6);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = 2;
+const viewers = [0, 1, 2].map(i => {
+  const host = $('v' + i);
+  const msg = document.createElement('div'); msg.className = 'msg'; host.appendChild(msg);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(-1, 2, 1); scene.add(sun);
+  scene.add(new THREE.GridHelper(4, 20, 0x555a63, 0x3a3f48));
+  return { host, scene, msg, model: null, token: 0 };
+});
+
+function resize() {
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+}
+addEventListener('resize', resize);
+
+function render() {
+  const box = canvas.getBoundingClientRect();
+  renderer.setClearColor(0x10141a); renderer.setScissor(0, 0, box.width, box.height); renderer.clear();
+  for (const v of viewers) {
+    const r = v.host.getBoundingClientRect();
+    const x = r.left - box.left, y = box.bottom - r.bottom;   // WebGL counts from the bottom left
+    renderer.setViewport(x, y, r.width, r.height); renderer.setScissor(x, y, r.width, r.height);
+    renderer.setClearColor(0x2a2e35); renderer.clear();
+    camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+    renderer.render(v.scene, camera);
+  }
+}
+
+// Centre on the ground, longest horizontal side 1 (as viewer3d.html and the fit do).
+function normalise(obj, drop) {
+  // Parts the fit left out (render_models.py --drop), matched on trimesh's "<mesh> (<node>)" names.
+  const dropped = o => { for (let p = o; p && p !== obj; p = p.parent) if (drop.some(d => (p.userData.partName || p.name || '').includes(d))) return true; return false; };
+  obj.traverse(o => { if (o.isMesh && drop.length && dropped(o)) o.visible = false; });
+  const box = new THREE.Box3();
+  obj.updateMatrixWorld(true);
+  obj.traverse(o => { if (o.isMesh && o.visible) box.expandByObject(o); });
+  const size = box.getSize(new THREE.Vector3());
+  const scale = 1 / Math.max(size.x, size.z);
+  obj.scale.setScalar(scale);
+  const c = box.getCenter(new THREE.Vector3());
+  obj.position.set(-c.x * scale, -box.min.y * scale, -c.z * scale);
+}
+
+// The painted .glb files are Y up as the fit saw them. Turn the model as found the same way:
+// render_models.load_normalised maps the file's up axis to Z (for the fit), export_painted maps Z
+// back to Y, so a Y-up file needs nothing, a Z-up one -90 degrees about X, and '-z' +90.
+const UP_FIX = { auto: 0, y: 0, z: -Math.PI / 2, '-z': Math.PI / 2 };
+async function load(v, url, drop = [], up = null) {
+  const token = ++v.token;
+  if (v.model) { v.scene.remove(v.model); v.model = null; }
+  if (!url) { v.msg.textContent = 'none yet'; return; }
+  v.msg.textContent = 'loading…';
+  try {
+    const isObj = url.toLowerCase().endsWith('.obj');
+    const gltf = isObj ? null : await new GLTFLoader().loadAsync(url);
+    const raw = isObj ? await new OBJLoader().loadAsync(url) : gltf.scene;
+    if (token !== v.token) return;          // another class was opened meanwhile
+    const obj = new THREE.Group();
+    raw.rotation.x = up ? (UP_FIX[up] ?? 0) : 0;
+    obj.add(raw);
+    if (gltf) { const json = gltf.parser.json; raw.traverse(o => {   // three.js renames parts: keep the glTF names the fit refers to
+      const a = gltf.parser.associations.get(o);
+      if (a) o.userData.partName = `${a.meshes !== undefined ? json.meshes[a.meshes].name || '' : ''} (${a.nodes !== undefined ? json.nodes[a.nodes].name || '' : ''})`;
+    }); }
+    obj.traverse(o => { if (o.isMesh) for (const m of [].concat(o.material)) if ('metalness' in m) { m.metalness = 0; m.metalnessMap = null; } });
+    normalise(obj, drop);
+    v.scene.add(obj); v.model = obj; v.msg.textContent = '';
+  } catch (err) { if (token === v.token) v.msg.textContent = 'could not load: ' + (err.message || err); }
+}
+
+function strip(id, urls) {
+  $(id).innerHTML = urls.length ? urls.map(u => `<img loading="lazy" src="${u}">`).join('') : '<span class="empty">none</span>';
+}
+
+const mark0 = r => !r ? '' : r.status === 'proposed' ? '<b class="s-proposed">proposed</b>' : r.status === 'current' ? '<b class="s-current">current</b>' : '<b class="s-note">note</b>';
+const mark = (r, c) => c && c.fresh ? '<b class="s-fresh">NEW proposal</b>' : c && c.applied ? '<b class="s-current">applied</b>' : mark0(r);
+function drawList() {
+  $('list').innerHTML = classes.map((c, i) => `<div class="cls${i === index ? ' active' : ''}" data-i="${i}">${c.cls}${mark(c.review, c)}</div>`).join('');
+  for (const el of $('list').children) el.onclick = () => open(+el.dataset.i);
+}
+function drawVerdict() {
+  const r = classes[index].review;
+  $('verdict').innerHTML = !r ? '<span class="empty">no verdict yet</span>' :
+    `${mark(r, classes[index])}${r.note ? ' · ' + r.note.replace(/</g, '&lt;') : ''}`;
+}
+
+function open(i) {
+  index = (i + classes.length) % classes.length;
+  const c = classes[index];
+  $('title').textContent = c.cls;
+  $('meta').textContent = c.model ? `model ${c.model} · shape fit IoU ${c.iou}` : 'no fitted model';
+  $('curLabel').textContent = c.current_label || 'none';
+  $('propLabel').textContent = c.proposed ? c.proposed_label : 'no proposal for this class yet';
+  load(viewers[0], c.original, c.dropped_parts || [], c.up || 'auto');
+  load(viewers[1], c.current);
+  load(viewers[2], c.proposed);
+  strip('helsinki', c.helsinki.map(f => `/flyby/refcrop/${f}?side=260`));
+  strip('copenhagen', c.copenhagen.map(o => `/review/crop/${o.frame}.jpg?box=${o.box.join(',')}&side=260`));
+  strip('sprites', c.sprites.map(f => `/model_sprites/${f}`));
+  strip('proposedSprites', (c.proposed_sprites || []).map(f => `/model_sprites_proposed/${f}`));
+  document.getElementById('proposedHead').style.display = (c.proposed_sprites || []).length ? '' : 'none';
+  closeNote(); drawList(); drawVerdict();
+  location.hash = c.cls;
+}
+
+async function verdict(status, note = null) {
+  const c = classes[index];
+  await fetch('/api/paint/review', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cls: c.cls, status, note: note ?? (c.review && c.review.note) }) });
+  c.review = { status, note: note ?? (c.review && c.review.note) };
+  c.fresh = false;
+  drawList(); drawVerdict();
+}
+function openNote() { $('noteBox').style.display = 'block'; $('note').value = (classes[index].review || {}).note || ''; $('note').focus(); }
+function closeNote() { $('noteBox').style.display = 'none'; }
+
+function topView() {
+  spin = false; controls.autoRotate = false; $('bSpin').classList.remove('on');
+  camera.position.set(0, 3, 0.0001); controls.target.set(0, 0, 0); controls.update();
+}
+function toggleSpin() { spin = !spin; controls.autoRotate = spin; $('bSpin').classList.toggle('on', spin); }
+
+$('bProposed').onclick = () => verdict('proposed');
+$('bCurrent').onclick = () => verdict('current');
+$('bNote').onclick = openNote;
+$('bTop').onclick = topView;
+$('bSpin').onclick = toggleSpin;
+$('note').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); const r = classes[index].review; verdict(r && r.status !== 'note' ? r.status : 'note', $('note').value.trim()); closeNote(); }
+  else if (e.key === 'Escape') closeNote();
+  e.stopPropagation();
+});
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
+  const k = e.key.toLowerCase();
+  if (k === '1') verdict('proposed');
+  else if (k === '2') verdict('current');
+  else if (k === 'n') { e.preventDefault(); openNote(); }
+  else if (k === 't') topView();
+  else if (k === 'r') toggleSpin();
+  else if (e.key === 'ArrowDown') { e.preventDefault(); open(index + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); open(index - 1); }
+});
+
+classes = await (await fetch('/api/paint')).json();
+resize();
+const start = classes.findIndex(c => c.cls === decodeURIComponent(location.hash.slice(1)));
+open(start >= 0 ? start : 0);
+function frame() {
+  controls.update();
+  render();
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

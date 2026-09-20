@@ -1,0 +1,7 @@
+medium_launcher - 3D model sources
+
+Mim-23 Hawk SAM air defence system (game-ready) [candidate]
+  https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4
+  author:  Dominik Biały
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    Juan: the dark cluster with barrels in the medium_launcher sprites is this Hawk launcher; scale to 9.9 x 9.3 m

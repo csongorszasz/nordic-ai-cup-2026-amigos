@@ -1,0 +1,11 @@
+Model Information:
+* title:	Old Wooden Watchtower (House 3)
+* source:	https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499
+* author:	Blenderust (https://sketchfab.com/narighillya)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Old Wooden Watchtower (House 3)" (https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499) by Blenderust (https://sketchfab.com/narighillya) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

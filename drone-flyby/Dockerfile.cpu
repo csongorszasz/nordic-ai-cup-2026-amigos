@@ -1,0 +1,20 @@
+# CPU-only image for serving from an Azure VM (no GPU quota). Built on the VM by deploy_vm.sh.
+FROM python:3.11-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# CPU torch wheels: a fraction of the size of the CUDA ones.
+RUN pip install --no-cache-dir torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt ultralytics==8.4.154 openvino==2026.4.0
+
+COPY src/ ./
+COPY serve_weights/ ./weights/
+
+ENV DRONE_MODEL=/app/weights/best.pt DRONE_CAMERA=sweep
+EXPOSE 9053
+CMD ["python", "api.py"]

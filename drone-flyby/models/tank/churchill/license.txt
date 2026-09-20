@@ -1,0 +1,11 @@
+Model Information:
+* title:	Low Poly Churchill VII Tank WW2
+* source:	https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c
+* author:	LowPolyCount (https://sketchfab.com/EndangeredOXX)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Low Poly Churchill VII Tank WW2" (https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c) by LowPolyCount (https://sketchfab.com/EndangeredOXX) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

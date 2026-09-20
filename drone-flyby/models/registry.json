@@ -1,0 +1,360 @@
+{
+ "condor": [
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the page; note this is a game asset, see the caveat in MODELS.md",
+   "note": "quad-rotor VTOL transport, close to the X-shaped 4-engine sprite. IP caveat: extracted from Battlefield 2042 (EA/DICE)",
+   "status": "downloaded",
+   "title": "Battlefield 2042 Condor",
+   "url": "https://www.cgtrader.com/free-3d-models/military/military-vehicle/battlefield-2042-condor-flight"
+  }
+ ],
+ "hangar": [
+  {
+   "added": "2026-09-17",
+   "author": "Vitor Augusto",
+   "author_profile": "https://sketchfab.com/Vitorodrigues",
+   "downloadable": true,
+   "faces": 40,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "check against the measured 38.9 x 25.0 m and the dark curved roof in the sprites",
+   "status": "candidate",
+   "title": "Hangar",
+   "url": "https://sketchfab.com/3d-models/hangar-c3e821610c644ade9878aa56af867e05"
+  },
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the licence line on the page (Royalty Free vs Editorial Uses Only)",
+   "note": "hardened aircraft shelter, arched roof: matches the dark curved roof in the sprites better than a generic hangar. Scale to 38.9 x 25.0 m",
+   "status": "downloaded",
+   "title": "NATO aircraft shelter v2",
+   "url": "https://www.cgtrader.com/free-3d-models/military/other/nato-aircraft-shelter-v2"
+  }
+ ],
+ "helicopter": [
+  {
+   "added": "2026-09-17",
+   "author": "Rukh3D",
+   "author_profile": "https://sketchfab.com/rukh3d",
+   "downloadable": true,
+   "faces": 25086,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "downloadable Mi-28N, stands in for the view-only Mi-28 Juan found; scale to 24.4 x 19.7 m",
+   "status": "downloaded",
+   "title": "Mi-28N Havoc",
+   "url": "https://sketchfab.com/3d-models/mi-28n-havoc-3e80c95bbadf46abbafba9d9a08afc68"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "undoniuzz",
+   "author_profile": "https://sketchfab.com/undoniuzz",
+   "downloadable": false,
+   "faces": 23620,
+   "licence": "None (all rights reserved)",
+   "licence_requirements": null,
+   "note": "view-only (isDownloadable=false) and no licence set",
+   "status": "rejected",
+   "title": "Mi-28",
+   "url": "https://sketchfab.com/3d-models/mi-28-4def720fb3b0415dac4839c267ccbd7d"
+  }
+ ],
+ "jammer": [
+  {
+   "added": "2026-09-18",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 7405,
+   "licence": "CC Attribution-NonCommercial",
+   "licence_requirements": "Author must be credited. No commercial use.",
+   "note": "right kind of vehicle (boxy APC) but CC BY-NC: NonCommercial is doubtful for a prize competition",
+   "status": "rejected",
+   "title": "XA-180 (Finland)",
+   "url": "https://sketchfab.com/3d-models/xa-180-finland-e9d12c7fa3ab443dacf20225221e2768"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 25525,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "preferred: XA-180's successor, same author (42manako) as the XA-180 Juan picked, but CC-BY. 25.5k faces, scale to 9.0 x 6.7 m, green",
+   "status": "candidate",
+   "title": "Ukrainian Patria AMV",
+   "url": "https://sketchfab.com/3d-models/ukrainian-patria-amv-49992289be014290b54f1e8345ac78b3"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "Muhamad Mirza Arrafi",
+   "author_profile": "https://sketchfab.com/nazidefenseforceofficial",
+   "downloadable": true,
+   "faces": 29353,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "alternative: literally box-shaped hull, closest to the flat green box in the sprites",
+   "status": "downloaded",
+   "title": "GTK BOXER ARMORED PERSONNEL CARRIERS",
+   "url": "https://sketchfab.com/3d-models/gtk-boxer-armored-personnel-carriers-e74b3f67d954401ab825bb1053dfd194"
+  }
+ ],
+ "jet_plane": [
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the licence line on the page",
+   "note": "A-7 is 14.1 m long, 11.8 m span; our jet_plane is 17.0 x 16.2 m so scale up slightly. The bundled shelter may also serve hangar",
+   "status": "downloaded",
+   "title": "A-7 Corsair II with weapons and shelter bonus",
+   "url": "https://www.cgtrader.com/free-3d-models/aircraft/military-aircraft/a7-corsair-ii-aircraft-with-weapons-and-shelter-bonus"
+  }
+ ],
+ "large_launcher": [
+  {
+   "added": "2026-09-17",
+   "author": "Muhamad Mirza Arrafi",
+   "author_profile": "https://sketchfab.com/nazidefenseforceofficial",
+   "downloadable": true,
+   "faces": 13649,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "downloadable stand-in for the view-only Patriot Juan found; scale to 31.3 x 23.1 m",
+   "status": "candidate",
+   "title": "MIM-104 Patriot Surface-To-Air Missile (SAM)",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-surface-to-air-missile-sam-7a64d0af78514a159877edab1ab2bccb"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "SpatialNeglect",
+   "author_profile": "https://sketchfab.com/jeandiz",
+   "downloadable": false,
+   "faces": 69732,
+   "licence": "Standard",
+   "licence_requirements": "Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works",
+   "note": "VIEW-ONLY on Sketchfab (isDownloadable=false), so the mesh cannot be obtained",
+   "status": "rejected",
+   "title": "MIM-104 Patriot",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-5aa6d27d22274a7aac54ed7cc0eee7c7"
+  },
+  {
+   "added": "2026-09-17",
+   "author": "Chenzoss",
+   "author_profile": "https://sketchfab.com/Chenzoss",
+   "downloadable": true,
+   "faces": 119997,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's pick; downloadable CC-BY, 120k faces (heavy but fine for offline rendering). Scale to 31.3 x 23.1 m",
+   "status": "downloaded",
+   "title": "MIM-104 Patriot Air Defense System",
+   "url": "https://sketchfab.com/3d-models/mim-104-patriot-air-defense-system-977f1f08a2014da99138a3364b7a56cd"
+  }
+ ],
+ "large_tower": [
+  {
+   "added": "2026-09-17",
+   "author": "Blenderust",
+   "author_profile": "https://sketchfab.com/narighillya",
+   "downloadable": true,
+   "faces": 664,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "wooden watchtower; scale to the measured 13.9 x 12.6 m footprint",
+   "status": "candidate",
+   "title": "Old Wooden Watchtower (House 3)",
+   "url": "https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499"
+  },
+  {
+   "added": "2026-09-17",
+   "licence": "CGTrader free - CHECK the licence line on the page",
+   "note": "Juan: closer to the large_tower sprites than the Sketchfab watchtower; scale to 13.9 x 12.6 m",
+   "status": "downloaded",
+   "title": "Old wooden watchtower (low poly)",
+   "url": "https://www.cgtrader.com/free-3d-models/exterior/other/old-wooden-watchtower-low-poly"
+  }
+ ],
+ "medium_launcher": [
+  {
+   "added": "2026-09-18",
+   "author": "Dominik Biały",
+   "author_profile": "https://sketchfab.com/crazyyuan",
+   "downloadable": true,
+   "faces": 53030,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan: the dark cluster with barrels in the medium_launcher sprites is this Hawk launcher; scale to 9.9 x 9.3 m",
+   "status": "downloaded",
+   "title": "Mim-23 Hawk SAM air defence system (game-ready)",
+   "url": "https://sketchfab.com/3d-models/mim-23-hawk-sam-air-defence-system-game-ready-8728909b6ce24ef8baeffabbf5bae8f4"
+  }
+ ],
+ "medium_plane": [
+  {
+   "added": "2026-09-18",
+   "author": "PapaX007",
+   "author_profile": "https://sketchfab.com/PapaX007",
+   "downloadable": true,
+   "faces": 902936,
+   "licence": "CC Attribution-NonCommercial-NoDerivs",
+   "licence_requirements": "Author must be credited. No commercial use. Modified versions can not be distributed.",
+   "note": "CC BY-NC-ND: NoDerivs forbids scaling/tinting/rendering it into training sprites; also 900k faces",
+   "status": "rejected",
+   "title": "P51- Mustang",
+   "url": "https://sketchfab.com/3d-models/p51-mustang-d911a5f3f4f046f3a1161fd8b537caba"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "UlissesVinicios",
+   "author_profile": "https://sketchfab.com/UlissesVinicios",
+   "downloadable": true,
+   "faces": 5680,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "CC-BY stand-in for the BY-NC-ND Mustang Juan found; repaint dark olive, scale to 11.8 x 10.3 m",
+   "status": "candidate",
+   "title": "P-51 Mustang",
+   "url": "https://sketchfab.com/3d-models/p-51-mustang-36f0f3e71d2a4c18b479db1ae8f9e7a7"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "an.s055163",
+   "author_profile": "https://sketchfab.com/an.s055163",
+   "downloadable": true,
+   "faces": 9302,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "alternative CC-BY Mustang, 9.3k faces",
+   "status": "downloaded",
+   "title": "P-51 Mustang",
+   "url": "https://sketchfab.com/3d-models/p-51-mustang-dbb4a717a4c141f9bf0869bf1ce74529"
+  }
+ ],
+ "mine_roller": [
+  {
+   "added": "2026-09-17",
+   "author": "42manako",
+   "author_profile": "https://sketchfab.com/42manako",
+   "downloadable": true,
+   "faces": 2812,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "T-34 hull with roller drum; ground extent close to the measured 12.6 x 11.1 m",
+   "status": "downloaded",
+   "title": "PT-34-85 mine clearing vehicle",
+   "url": "https://sketchfab.com/3d-models/pt-34-85-mine-clearing-vehicle-b845931a1ba64b318ad01c3968bba18f"
+  }
+ ],
+ "small_launcher": [
+  {
+   "added": "2026-09-18",
+   "author": "Revada",
+   "author_profile": "https://sketchfab.com/revada",
+   "downloadable": true,
+   "faces": 16752,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan: stand-in for a 23x30 px blob with no visible shape; scale to 6.3 x 4.6 m, tint pale green",
+   "status": "downloaded",
+   "title": "Rapier Missle Launcher",
+   "url": "https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b"
+  }
+ ],
+ "small_plane": [
+  {
+   "added": "2026-09-18",
+   "author": "Starpovich",
+   "author_profile": "https://sketchfab.com/Starpovich",
+   "downloadable": true,
+   "faces": 12346,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "WW2 fighter; paint the red nose/tail markings seen in the sprites; scale to 10.5 x 9.0 m",
+   "status": "downloaded",
+   "title": "Yak-9",
+   "url": "https://sketchfab.com/3d-models/yak-9-08ea8d09a2b943bead5814e1aa712684"
+  }
+ ],
+ "small_tower": [
+  {
+   "added": "2026-09-17",
+   "author": "Blenderust",
+   "author_profile": "https://sketchfab.com/narighillya",
+   "downloadable": true,
+   "faces": 664,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan: keep THIS Sketchfab watchtower for small_tower, tinted green, 12.6 x 12.0 m (large_tower uses the CGTrader one)",
+   "status": "downloaded",
+   "title": "Old Wooden Watchtower (House 3)",
+   "url": "https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499"
+  }
+ ],
+ "spacecraft": [
+  {
+   "added": "2026-09-17",
+   "author": "Daniel",
+   "author_profile": "https://sketchfab.com/DanielAndersson",
+   "downloadable": true,
+   "faces": 20272,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's first find; silhouette matches the TIE in the sprites",
+   "status": "downloaded",
+   "title": "Star Wars: TIE/in Interceptor",
+   "url": "https://sketchfab.com/3d-models/star-wars-tiein-interceptor-80171ec2930b4949836bcf24d9694c41"
+  }
+ ],
+ "ta-ta": [
+  {
+   "added": "2026-09-18",
+   "licence": "CGTrader free - CHECK the licence line on the page",
+   "note": "the class is an AT-AT at 32x17 px (6.7 x 3.6 m); Star Wars IP, same grey area as the organisers' TIE fighter",
+   "status": "downloaded",
+   "title": "Star Wars AT-AT Walker",
+   "url": "https://www.cgtrader.com/free-3d-models/space/other/star-wars-at-at-walker-68bd9d4c-a316-4517-8b6c-b6feb3b1da77"
+  }
+ ],
+ "tank": [
+  {
+   "added": "2026-09-18",
+   "author": "VladosikUA",
+   "author_profile": "https://sketchfab.com/VladosikUA",
+   "downloadable": false,
+   "faces": 731210,
+   "licence": null,
+   "licence_requirements": null,
+   "note": "closest match to the sprites, but view-only with no licence: shape reference only",
+   "status": "reference",
+   "title": "Black Prince",
+   "url": "https://sketchfab.com/3d-models/black-prince-aa7487b728e34f5ea2196c57585182cb"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "LowPolyCount",
+   "author_profile": "https://sketchfab.com/EndangeredOXX",
+   "downloadable": true,
+   "faces": 10352,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "preferred: the Black Prince is built on the Churchill hull, so same silhouette; 10k faces. Scale to 10.5 x 9.9 m, repaint camo",
+   "status": "downloaded",
+   "title": "Low Poly Churchill VII Tank WW2",
+   "url": "https://sketchfab.com/3d-models/low-poly-churchill-vii-tank-ww2-bd140fe8aa32438ab712ce47762d968c"
+  },
+  {
+   "added": "2026-09-18",
+   "author": "yanix",
+   "author_profile": "https://sketchfab.com/yanix",
+   "downloadable": true,
+   "faces": 500756,
+   "licence": "CC Attribution",
+   "licence_requirements": "Author must be credited. Commercial use is allowed.",
+   "note": "Juan's fallback if the Churchill does not look right; 500k faces",
+   "status": "candidate",
+   "title": "Tank T-10M",
+   "url": "https://sketchfab.com/3d-models/tank-t-10m-9aeda33a945c42f0bdebe3d1ef91da06"
+  }
+ ]
+}

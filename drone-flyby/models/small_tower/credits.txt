@@ -1,0 +1,7 @@
+small_tower - 3D model sources
+
+Old Wooden Watchtower (House 3) [candidate]
+  https://sketchfab.com/3d-models/old-wooden-watchtower-house-3-49b77f82b0944d5188c04c3fc205a499
+  author:  Blenderust
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    Juan: keep THIS Sketchfab watchtower for small_tower, tinted green, 12.6 x 12.0 m (large_tower uses the CGTrader one)

@@ -1,0 +1,7 @@
+small_launcher - 3D model sources
+
+Rapier Missle Launcher [candidate]
+  https://sketchfab.com/3d-models/rapier-missle-launcher-047f034901d24a94af4cb090d671a72b
+  author:  Revada
+  licence: CC Attribution - Author must be credited. Commercial use is allowed.
+  note:    Juan: stand-in for a 23x30 px blob with no visible shape; scale to 6.3 x 4.6 m, tint pale green
