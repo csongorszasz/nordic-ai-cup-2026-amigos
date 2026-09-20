@@ -1,0 +1,4 @@
+candidate_key,candidate_label,reference_key,reference_label,case_id,world_seed,repeat_index,policy_seed,policy_seed_mode,reference_score,candidate_score,delta
+candidate-1,population-v1,reference,hierarchical-baseline,world-1-repeat-0,1,0,1,fixed,678.4577954000446,1139.6602673574646,461.20247195742
+candidate-1,population-v1,reference,hierarchical-baseline,world-17-repeat-0,17,0,1,fixed,492.6204185880138,871.4219463477762,378.80152775976234
+candidate-1,population-v1,reference,hierarchical-baseline,world-42-repeat-0,42,0,1,fixed,711.466204728932,1380.6418744653397,669.1756697364077

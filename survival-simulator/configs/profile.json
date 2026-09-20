@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "mode": "profile",
+  "policy": "heuristic",
+  "seed": 12345,
+  "rollout_steps": 128,
+  "heuristic": {
+    "backend": "hierarchical"
+  },
+  "resources": {
+    "device": "cpu",
+    "workers": 1,
+    "action_repeat": 5
+  }
+}

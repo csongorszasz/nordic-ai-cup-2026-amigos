@@ -1,0 +1,5 @@
+candidate,world_seed,case_id,state,scope,survival_seconds,completed
+,1,world-1-repeat-0,truncated,diagnostic,5.999999999999995,False
+,101,world-101-repeat-0,truncated,diagnostic,5.999999999999995,False
+,17,world-17-repeat-0,truncated,diagnostic,5.999999999999995,False
+,42,world-42-repeat-0,truncated,diagnostic,5.999999999999995,False

@@ -1,0 +1,51 @@
+{
+  "schedule": {
+    "basis": "provisional",
+    "rationale": "Five small collect-fit blocks exercise publication at initial and fifth/final update; they are a pipeline diagnostic, not enough data to select a competitive policy.",
+    "units": "updates, decision ticks, uint32 seed",
+    "alternatives": "Larger budgets require user-run timing and score evidence before selection.",
+    "uncertainty": "No training quality or throughput is predicted."
+  },
+  "model": {
+    "basis": "provisional",
+    "rationale": "Retain the existing small shared GRU and entity pooling; add public score and identity/rank so teacher-dependent distinctions are observable. Legacy width remains an ablation.",
+    "units": "units, embeddings, log standard deviation",
+    "alternatives": "Feedforward versus GRU, pooling versus attention, public context off, hidden widths measured on the target allocation.",
+    "uncertainty": "Memory fit and teacher imitation fidelity require a user-launched pilot."
+  },
+  "optimizer": {
+    "basis": "provisional",
+    "rationale": "Existing Adam learning rate and gradient limit are a small-update starting hypothesis, not mathematically optimal values; inspect gradient norms and policy KL.",
+    "units": "learning rate and gradient L2 norm",
+    "alternatives": "Compare smaller/larger rates under matched collected transitions.",
+    "uncertainty": "No target-task sensitivity evidence is claimed."
+  },
+  "ppo": {
+    "basis": "provisional",
+    "rationale": "Undiscounted team score motivates gamma=1. One epoch and short BPTT bound the diagnostic. A fixed divisor5 scales the actor relative to the initial team, not by current population. Scratch PPO disables teacher regularization.",
+    "units": "probabilities, ratios, loss weights, decision ticks",
+    "alternatives": "Measure longer trace/chunks, clipping and loss coefficients; warm-start regularization is a separate explicitly configured ablation.",
+    "uncertainty": "GAE and chunk horizons are derived in preflight; they are not a proof of sufficient long-term credit."
+  },
+  "imitation": {
+    "basis": "provisional",
+    "rationale": "Start with teacher-only BC and one fit epoch per update; bound FIFO replay. Enable DAgger explicitly only after examining the BC curve and teacher labels.",
+    "units": "epochs, mixture probability, rounds, team frames",
+    "alternatives": "User-launched DAgger rounds and more epochs after the initial supervised sanity check.",
+    "uncertainty": "Loss improvement does not imply improved native episode score."
+  },
+  "resources": {
+    "basis": "provisional",
+    "rationale": "One CPU environment and the existing conservative memory cap are a diagnostic starting point even on80GB hardware; do not fill an accelerator before measuring memory and CPU throughput. Cadence1 matches serving.",
+    "units": "workers, threads, MiB, tokens, seconds, native ticks per action",
+    "alternatives": "Increase workers/tokens/memory after user-run A100 or H100 workload measurements.",
+    "uncertainty": "Allocation-specific limits and native-thread overhead must be measured."
+  },
+  "evaluation": {
+    "basis": "provisional",
+    "rationale": "Use initial and every5completedupdates plus final full episodes on the existing three-world quick development suite. Bound snapshot size and pending queue; budget includes the teacher reference.",
+    "units": "learner updates, episodes, MiB, seconds",
+    "alternatives": "Adjust cadence/repeats before a run after measuring evaluator cost and variance; reserve holdout.",
+    "uncertainty": "Three seeds give a noisy development curve, not a statistical claim of superiority."
+  }
+}

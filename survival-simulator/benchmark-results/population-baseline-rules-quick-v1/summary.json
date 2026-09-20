@@ -1,0 +1,202 @@
+{
+  "aggregate_scope": "diagnostic_subset",
+  "completion": {
+    "completed": 0,
+    "count": 0,
+    "fraction": null
+  },
+  "expected_cases": 3,
+  "failed_cases": 1,
+  "failure": {
+    "error_type": "PermissionError",
+    "message": "[WinError 5] Access is denied: 'benchmark-results\\\\population-baseline-rules-quick-v1\\\\telemetry\\\\world-1-repeat-0\\\\.latest.json.2bfdc74b36744c04933ca84e7ee143e4.pending' -> 'benchmark-results\\\\population-baseline-rules-quick-v1\\\\telemetry\\\\world-1-repeat-0\\\\latest.json'",
+    "stage": "telemetry",
+    "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\src\\benchmarking\\runner.py\", line 163, in run_episode\n    telemetry.observe(last_step, ticks)\n  File \"C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\src\\benchmarking\\telemetry.py\", line 185, in observe\n    self._json(\"latest.json\", {**self.metadata, \"state\": \"running\", \"sample\": self.latest})\n  File \"C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\src\\benchmarking\\telemetry.py\", line 83, in _json\n    _atomic_text(self.path / name, canonical_json(value) + \"\\n\")\n  File \"C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\src\\benchmarking\\artifacts.py\", line 505, in _atomic_text\n    os.replace(pending, path)\nPermissionError: [WinError 5] Access is denied: 'benchmark-results\\\\population-baseline-rules-quick-v1\\\\telemetry\\\\world-1-repeat-0\\\\.latest.json.2bfdc74b36744c04933ca84e7ee143e4.pending' -> 'benchmark-results\\\\population-baseline-rules-quick-v1\\\\telemetry\\\\world-1-repeat-0\\\\latest.json'\n"
+  },
+  "fixed_policy_seed": 1,
+  "interrupted_cases": 0,
+  "is_complete": false,
+  "label": "aggressive-birth-baseline",
+  "measurement_scope": "ok_and_truncated_episodes",
+  "missing_case_ids": [
+    "world-17-repeat-0",
+    "world-42-repeat-0"
+  ],
+  "missing_cases": 2,
+  "policy_latency": {
+    "batch_call_unit": "all_current_agents",
+    "batch_max_ms": {
+      "count": 1,
+      "max": 8.001100000000001,
+      "mean": 8.001100000000001,
+      "median": 8.001100000000001,
+      "min": 8.001100000000001,
+      "sample_std": null
+    },
+    "batch_mean_ms": {
+      "count": 1,
+      "max": 1.5219458310919851,
+      "mean": 1.5219458310919851,
+      "median": 1.5219458310919851,
+      "min": 1.5219458310919851,
+      "sample_std": null
+    },
+    "batch_p50_ms": {
+      "count": 1,
+      "max": 1.3242,
+      "mean": 1.3242,
+      "median": 1.3242,
+      "min": 1.3242,
+      "sample_std": null
+    },
+    "batch_p95_ms": {
+      "count": 1,
+      "max": 3.4533199999999997,
+      "mean": 3.4533199999999997,
+      "median": 3.4533199999999997,
+      "min": 3.4533199999999997,
+      "sample_std": null
+    },
+    "policy_calls": {
+      "count": 1,
+      "max": 1859,
+      "mean": 1859.0,
+      "median": 1859,
+      "min": 1859,
+      "sample_std": null
+    },
+    "pooled_batch_mean_ms": 1.521945831091984,
+    "pooled_percentiles_available": false,
+    "summary_unit": "episode",
+    "total_policy_calls": 1859
+  },
+  "population": {
+    "final": {
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "sample_std": null
+    },
+    "initial": {
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "sample_std": null
+    },
+    "mean": {
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "sample_std": null
+    },
+    "peak": {
+      "count": 0,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "min": null,
+      "sample_std": null
+    }
+  },
+  "rankable": false,
+  "recorded_cases": 1,
+  "repeats": 1,
+  "run_id": "8efa65e54d89487e9642ea6c491560b4",
+  "runtime": {
+    "episode_seconds": {
+      "count": 1,
+      "max": 75.4648934,
+      "mean": 75.4648934,
+      "median": 75.4648934,
+      "min": 75.4648934,
+      "sample_std": null,
+      "total": 75.4648934
+    },
+    "initialization_seconds": {
+      "count": 1,
+      "max": 3.2533794,
+      "mean": 3.2533794,
+      "median": 3.2533794,
+      "min": 3.2533794,
+      "sample_std": null,
+      "total": 3.2533794
+    },
+    "policy_construction_seconds": {
+      "count": 1,
+      "max": 0.0262314,
+      "mean": 0.0262314,
+      "median": 0.0262314,
+      "min": 0.0262314,
+      "sample_std": null,
+      "total": 0.0262314
+    },
+    "policy_seconds": {
+      "count": 1,
+      "max": 2.8292972999999986,
+      "mean": 2.8292972999999986,
+      "median": 2.8292972999999986,
+      "min": 2.8292972999999986,
+      "sample_std": null,
+      "total": 2.8292972999999986
+    },
+    "simulation_seconds": {
+      "count": 1,
+      "max": 34.55623660000002,
+      "mean": 34.55623660000002,
+      "median": 34.55623660000002,
+      "min": 34.55623660000002,
+      "sample_std": null,
+      "total": 34.55623660000002
+    }
+  },
+  "schema_version": 2,
+  "score": {
+    "count": 0,
+    "max": null,
+    "mean": null,
+    "median": null,
+    "min": null,
+    "sample_std": null
+  },
+  "sim_time": {
+    "count": 0,
+    "max": null,
+    "mean": null,
+    "median": null,
+    "min": null,
+    "sample_std": null
+  },
+  "status": "failed",
+  "successful_cases": 0,
+  "suite": "quick",
+  "survival_seconds": {
+    "count": 0,
+    "max": null,
+    "mean": null,
+    "median": null,
+    "min": null,
+    "sample_std": null
+  },
+  "ticks": {
+    "count": 0,
+    "max": null,
+    "mean": null,
+    "median": null,
+    "min": null,
+    "sample_std": null
+  },
+  "timing_scope": "all_recorded_attempts",
+  "truncated_cases": 0,
+  "warnings": [
+    "Diagnostic results only; observed subsets are not a complete policy ranking.",
+    "No scored episodes are available; missing and failed scores are not zero.",
+    "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+  ],
+  "world_count": 3
+}

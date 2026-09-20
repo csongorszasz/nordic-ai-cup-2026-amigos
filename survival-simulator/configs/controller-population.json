@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "policy": "heuristic",
+  "heuristic": {
+    "backend": "population",
+    "breeding_age": 45.0,
+    "population_reserve": 15.0,
+    "population_safety": 0.8,
+    "population_hysteresis": 0.2,
+    "birth_spacing": 3.0,
+    "patch_memory_seconds": 30.0,
+    "population_scan_ticks": 30,
+    "min_population": 1,
+    "target_population": 12,
+    "max_population": 16,
+    "patch_radius": 20.0,
+    "patch_tolerance": 8.0,
+    "patch_capacity": 2,
+    "exploration_move_fraction": 0.35,
+    "threat_distance": 150.0,
+    "sprint_distance": 60.0,
+    "predator_face_turn": 1.2,
+    "capacity_feedback": true,
+    "patch_memory": true,
+    "dispersion": true,
+    "elder_decoys": false
+  }
+}

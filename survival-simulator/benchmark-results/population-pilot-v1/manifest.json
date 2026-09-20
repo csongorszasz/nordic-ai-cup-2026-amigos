@@ -1,0 +1,233 @@
+{
+  "cases": [
+    {
+      "case_id": "world-1-repeat-0",
+      "policy_seed": 1,
+      "policy_seed_mode": "fixed",
+      "repeat_index": 0,
+      "world_seed": 1
+    },
+    {
+      "case_id": "world-17-repeat-0",
+      "policy_seed": 1,
+      "policy_seed_mode": "fixed",
+      "repeat_index": 0,
+      "world_seed": 17
+    },
+    {
+      "case_id": "world-42-repeat-0",
+      "policy_seed": 1,
+      "policy_seed_mode": "fixed",
+      "repeat_index": 0,
+      "world_seed": 42
+    }
+  ],
+  "created_at": "2026-09-20T09:41:57.453085+00:00",
+  "execution": "sequential",
+  "failure": null,
+  "fixed_policy_seed": 1,
+  "max_steps": 200,
+  "policy": {
+    "config": {
+      "checkpoint": null,
+      "checkpoint_sha256": null,
+      "device": "cpu",
+      "heuristic": {
+        "backend": "hierarchical",
+        "breeder_fraction": 0.25,
+        "breeding_age": 58.157631064637584,
+        "breeding_energy": 253.4105475704165,
+        "breeding_reserve": 58.24716164884594,
+        "danger_weight": 4.221954232890617,
+        "directions": 16,
+        "emergency_spawn_distance": 35.0,
+        "energy_weight": 0.15,
+        "escape_strategy": "predictive_wall_aware",
+        "exploration_move_fraction": 0.35,
+        "exploration_weight": 0.3,
+        "food_weight": 2.0,
+        "fruit_contact_radius": 10.0,
+        "high_population_breeding_energy": 330.0,
+        "low_population_breeding_energy": 185.0,
+        "max_population": 16,
+        "max_turn": 0.45,
+        "min_population": 7,
+        "patch_capacity": 2,
+        "patch_move_fraction": 0.65,
+        "patch_radius": 28.0,
+        "patch_tolerance": 8.0,
+        "predator_face_turn": 1.2,
+        "scan_turn": 0.12,
+        "scout_fraction": 0.2,
+        "sprint_distance": 45.0,
+        "target_population": 12,
+        "target_population_breeding_energy": 255.0,
+        "threat_distance": 127.44741865848646,
+        "wall_margin": 12.0,
+        "wall_weight": 4.0
+      },
+      "policy": "heuristic",
+      "torch_threads": 1,
+      "version": 1
+    },
+    "label": "src.policies.runtime:create_policy",
+    "reference": "src.policies.runtime:create_policy"
+  },
+  "protocol_version": "local-benchmark-v2",
+  "provenance": {
+    "artifacts": {
+      "files": {},
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    "engine": {
+      "files": {
+        "src\\core.py": "2ad02095e83945ffbcea87b95bc1b8a3341fe7d63dfd7a3be9190e9b4cff49cd",
+        "src\\elements\\agent.py": "dc4f2dd1822e37194f1eeed9a744a2158d1a0f1f5ea9a22e743481a1c4941202",
+        "src\\elements\\biome.py": "eb7aeb35a2fb35c60db57fc08195ae4ea8b48d3a53484c4b36f774102318ad4d",
+        "src\\elements\\creature.py": "6f87ff503354040aae4d0ece2540336ead532a269a985521a3cc78d73b455383",
+        "src\\elements\\environment.py": "a8b44da3361cce8e1d985525d130b66b1a3094656cdc9550d04e51a21f016813",
+        "src\\elements\\fruit.py": "070306871872585dfc9784455adb95bb0a3fec2c7649c5fa76a0d7eb1e84fb2d",
+        "src\\elements\\obstacle.py": "5a01e5a890d1ab99f74ddf0fc7999c11fe015ef5c6a7ef7ab730c294965d620a",
+        "src\\elements\\predator.py": "6035f4e088a09d47fcacc15d913b5075c25c6b734eed4f16ab080f6769c041e3",
+        "src\\elements\\tree.py": "97943fec031efddb18522630cd3eb2dbc84b5f6c5021a6a6816f966f065d9031",
+        "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+        "src\\utils\\sensing.py": "7522e83490f9e5891830a44ff05cbfe29a039bc265b0e1f63d2cb95a48ca0a44",
+        "src\\utils\\simulation.py": "c567f00770af857b4ec9427765c41627c1fffec8ca0c5e929583a96feb315f5b"
+      },
+      "sha256": "8c7209c2b8c0f02b5e800c8010d2893a3f6934632845b9f36b5920f0e135fe3a"
+    },
+    "git": {
+      "dirty": true,
+      "revision": "af36a9c90678b3f7f801e0f479b04c35525232c8",
+      "status": " M survival-simulator/benchmark.py\n M survival-simulator/src/benchmarking/artifacts.py\n M survival-simulator/src/benchmarking/runner.py\n M survival-simulator/src/elements/environment.py\n M survival-simulator/tests/test_benchmark_artifacts.py\n?? survival-simulator/requirements-search.txt\n?? survival-simulator/src/benchmarking/progress.py\n?? survival-simulator/src/benchmarking/survival.py\n?? survival-simulator/src/benchmarking/telemetry.py\n?? survival-simulator/tests/test_population_mechanics.py\n?? survival-simulator/tests/test_population_ranking.py\n?? survival-simulator/tests/test_population_telemetry.py"
+    },
+    "policy": {
+      "files": {
+        "src\\benchmarking\\__init__.py": "04d7052c0ead7ba1320a9f68c994d8d5df827c50af8bee5c99ebe9798a70fdd8",
+        "src\\benchmarking\\artifacts.py": "2ef62946b7708418439d95976bd07277608fd764c2ad3123b73533af734570bc",
+        "src\\benchmarking\\config.py": "b1e45625ef3591dae231819a60cf86b667cf2b299820ab1cd5d82dcb417f6349",
+        "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+        "src\\policies\\__init__.py": "82e80e72f4ef90e11f5711ce753250edd2c66ae9e8ea1828773e9ca04a731e60",
+        "src\\policies\\actions.py": "421df52934332568df61d5a44024d3cd92afe7f189a433d7160201654dfe4a96",
+        "src\\policies\\config.py": "0449ca5cda7a60b5e396819753eb4fa2cec7df5edf2c6e5a9f3ef105ff30326f",
+        "src\\policies\\features.py": "38d44c3db2036eee89de790ac5ac86867366c84d7cc169b1f2010bee5ea952e4",
+        "src\\policies\\geometry.py": "09793a9d45e6925fc0eba040cb3251206ffdd7c31b4068b3f57f8187a222a82a",
+        "src\\policies\\heuristic.py": "0b5e693f7931725abe8fde9307027b34a3a7dbab546aaf4dba19e54f87e05e95",
+        "src\\policies\\hierarchical.py": "e4b4f0f209fe0a421613abfd120c5a1cca6e53d124d4b6e6f0a38a1e7bfda2dd",
+        "src\\policies\\memory.py": "a575770f5fd0385798964cae22ee2e90c4f4240cc7b61490d01b43e412109e25",
+        "src\\policies\\networks.py": "ea6a292f81b2bd0462ca53c447df2ad5b1bf760b35001dff1810e9f8485871c7",
+        "src\\policies\\neural.py": "72833561a27518eb9d8179b41a45ee14d0288b05fa64fac7b60d3e7f3e16c9af",
+        "src\\policies\\runtime.py": "9147c88265a4050b6b9c0d8fa3ad906c9f536df18102f5528daa39b568280904",
+        "src\\policies\\turnaway.py": "b1df5bf57cad19f51ffaf50516b8d2990cefcf6491d5b5a82ce0d1a3a8b72dd4",
+        "src\\policies\\vectorized.py": "f14cf6592d47e587c6f852376cbdf26cd2f362cba0b128cf57e607170304a47a",
+        "src\\training\\__init__.py": "8f97b01ee1142db201ff3ce0a42b076e1de46a7849e2dfa643487b7be310feea",
+        "src\\training\\artifacts.py": "eb627ec108e8ec4d51b3bfe42f4a240118af462ec6e7eac010bce2efc70e6302",
+        "src\\training\\teacher.py": "effa3728ce0590f9785b64b086a25064604c8bfa875fe9a9b9fb57e0226b555c",
+        "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+        "src\\utils\\controllers\\dummy_agent_policy.py": "5d3f8bb1cb5865d5f73b7329efa3516ffafa55d3516741714595345efeb64b4e"
+      },
+      "sha256": "087dfffbbe6708f39cb95795641662dcc250dd56c0fb5e4e62b71e1313e6338f"
+    },
+    "reporting": {
+      "files": {
+        "benchmark.py": "dbc5c935626753d939ed6ce983ff26c8984ed7a0a7db2e87d80a2b2843b81427",
+        "src\\benchmarking\\artifacts.py": "2ef62946b7708418439d95976bd07277608fd764c2ad3123b73533af734570bc",
+        "src\\benchmarking\\comparison.py": "1cd125c05cce3b650da5ce455caf55189006fdba122c8acbebd72b2bed868bf2",
+        "src\\benchmarking\\plots.py": "8f3470e1eaa5a9772bb171e39c46aa58417fb0dbc9ecaf59a25af3356750ebbe",
+        "src\\benchmarking\\progress.py": "18607f3665900be5f17d1e2b1510ec3fdac228b6f6cab047cbe8cb33a45db178",
+        "src\\benchmarking\\survival.py": "7a8ef52d3949e224b8f7fab45101d305db78c16af02f6796ef56ddcb75fb609f"
+      },
+      "sha256": "42b7068d8bb464499780b33926591c596316451e11befc5c1375b56d4d084f23"
+    },
+    "runner": {
+      "files": {
+        "src\\benchmarking\\config.py": "b1e45625ef3591dae231819a60cf86b667cf2b299820ab1cd5d82dcb417f6349",
+        "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+        "src\\benchmarking\\runner.py": "8be62c5e2e597785a4efb3808ebc514e6169614a026ad33ebc615684c8fc0911",
+        "src\\benchmarking\\telemetry.py": "acd6e96b862d21310191dea36a06beb5dc5e8b2c3d947be3cc2710c0b0608f54"
+      },
+      "sha256": "9ad186899327c4bf413fc9599eb3222706d435112f2af06420edc962ea9538ce"
+    },
+    "runtime": {
+      "architecture": "AMD64-64bit",
+      "dependencies": {
+        "Shapely": "2.1.2",
+        "numpy": "2.3.5",
+        "pydantic": "2.12.4",
+        "pydantic_core": "2.41.5",
+        "pygame": "2.6.1",
+        "scipy": "1.16.3"
+      },
+      "implementation": "CPython",
+      "native_libraries": {
+        "GEOS": "3.13.1",
+        "GEOS_CAPI": "3.13.1-CAPI-1.19.2",
+        "SDL": "2.28.4",
+        "SDL_image": "2.0.5",
+        "SDL_ttf": "2.20.1",
+        "libc": "unavailable",
+        "numpy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+        "numpy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+        "scipy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}",
+        "scipy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}"
+      },
+      "os": "Windows",
+      "os_release": "11 (10.0.26200)",
+      "python_version": "3.12.10"
+    },
+    "timing_context": {
+      "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+      "cpu_affinity": null,
+      "hostname": "szasz",
+      "logical_cpu_count": 20,
+      "population_telemetry": true,
+      "progress_plots": true,
+      "python_compiler": "MSC v.1943 64 bit (AMD64)",
+      "python_executable": "C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\.venv\\Scripts\\python.exe",
+      "telemetry_sample_every": 10,
+      "thread_environment": {
+        "BLIS_NUM_THREADS": null,
+        "MKL_DYNAMIC": null,
+        "MKL_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": null,
+        "OMP_DYNAMIC": null,
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": null
+      },
+      "timer": {
+        "adjustable": false,
+        "implementation": "QueryPerformanceCounter()",
+        "monotonic": true,
+        "name": "perf_counter_ns",
+        "resolution_seconds": 1e-07
+      }
+    }
+  },
+  "repeats": 1,
+  "run_id": "0d77eed02c5141718f26f9aec323bde6",
+  "schema_version": 2,
+  "seed_version": "sha256-policy-seed-v1",
+  "simulation": {
+    "chunk_size": 400,
+    "dt": 0.1,
+    "env_height": 1200,
+    "env_width": 1600,
+    "starting_agents": 5,
+    "starting_fruits": 32,
+    "starting_predators": 0,
+    "starting_trees": 50,
+    "time_limit": 3000.0
+  },
+  "status": "truncated",
+  "suite": {
+    "name": "quick",
+    "seeds": [
+      1,
+      17,
+      42
+    ],
+    "version": 1
+  },
+  "suite_sha256": "78588af3cdef600f127858bccacbea715022fba4ecbde4ee2801e1f2bb1f89af"
+}

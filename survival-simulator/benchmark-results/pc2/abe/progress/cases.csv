@@ -1,0 +1,4 @@
+candidate,world_seed,case_id,state,scope,survival_seconds,completed
+,1,world-1-repeat-0,ok,native,1147.5000000000518,False
+,17,world-17-repeat-0,ok,native,1118.2000000000785,False
+,42,world-42-repeat-0,ok,native,1040.8000000001489,False

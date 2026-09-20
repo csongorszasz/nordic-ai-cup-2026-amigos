@@ -1,0 +1,4 @@
+survival-simulator/idun/*.sh text eol=lf
+survival-simulator/idun/*.slurm text eol=lf
+# Preserve recorded experiment bytes and the submitted policy's checksum.
+survival-simulator/benchmark-results/** -text

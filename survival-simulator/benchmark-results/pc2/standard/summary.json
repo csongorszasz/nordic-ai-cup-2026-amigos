@@ -1,0 +1,192 @@
+{
+  "aggregate_scope": "full_run",
+  "completion": {
+    "completed": 0,
+    "count": 20,
+    "fraction": 0.0
+  },
+  "expected_cases": 20,
+  "failed_cases": 0,
+  "failure": null,
+  "fixed_policy_seed": 1,
+  "interrupted_cases": 0,
+  "is_complete": true,
+  "label": "standard",
+  "measurement_scope": "ok_and_truncated_episodes",
+  "missing_case_ids": [],
+  "missing_cases": 0,
+  "policy_latency": {
+    "batch_call_unit": "all_current_agents",
+    "batch_max_ms": {
+      "count": 20,
+      "max": 63.97899999999999,
+      "mean": 32.11797,
+      "median": 33.8635,
+      "min": 7.5144,
+      "sample_std": 15.035275938661192
+    },
+    "batch_mean_ms": {
+      "count": 20,
+      "max": 5.296136856800958,
+      "mean": 3.3493968209737934,
+      "median": 3.236854110315632,
+      "min": 1.6059814354190958,
+      "sample_std": 0.9803320912379466
+    },
+    "batch_p50_ms": {
+      "count": 20,
+      "max": 4.64935,
+      "mean": 2.9935025,
+      "median": 2.884925,
+      "min": 1.7029,
+      "sample_std": 0.8505794276589218
+    },
+    "batch_p95_ms": {
+      "count": 20,
+      "max": 12.607800000000001,
+      "mean": 7.314758499999999,
+      "median": 6.9984449999999985,
+      "min": 3.3069799999999985,
+      "sample_std": 2.3067159050545962
+    },
+    "policy_calls": {
+      "count": 20,
+      "max": 12903,
+      "mean": 8753.2,
+      "median": 8721.5,
+      "min": 5083,
+      "sample_std": 1834.3766358371618
+    },
+    "pooled_batch_mean_ms": 3.3816633202714446,
+    "pooled_percentiles_available": false,
+    "summary_unit": "episode",
+    "total_policy_calls": 175064
+  },
+  "population": {
+    "final": {
+      "count": 20,
+      "max": 0,
+      "mean": 0.0,
+      "median": 0.0,
+      "min": 0,
+      "sample_std": 0.0
+    },
+    "initial": {
+      "count": 20,
+      "max": 5,
+      "mean": 5.0,
+      "median": 5.0,
+      "min": 5,
+      "sample_std": 0.0
+    },
+    "mean": {
+      "count": 20,
+      "max": 13.241138059701493,
+      "mean": 11.480491633387476,
+      "median": 11.549094867810911,
+      "min": 8.162225004471471,
+      "sample_std": 1.4628439646363138
+    },
+    "peak": {
+      "count": 20,
+      "max": 16,
+      "mean": 16.0,
+      "median": 16.0,
+      "min": 16,
+      "sample_std": 0.0
+    }
+  },
+  "rankable": true,
+  "recorded_cases": 20,
+  "repeats": 1,
+  "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+  "runtime": {
+    "episode_seconds": {
+      "count": 20,
+      "max": 392.7628323,
+      "mean": 200.48444639,
+      "median": 202.55683555000002,
+      "min": 85.6232147,
+      "sample_std": 71.80000373664983,
+      "total": 4009.6889278
+    },
+    "initialization_seconds": {
+      "count": 20,
+      "max": 2.5441371,
+      "mean": 1.9091620150000002,
+      "median": 1.80500675,
+      "min": 1.3149973,
+      "sample_std": 0.3639390931412017,
+      "total": 38.1832403
+    },
+    "policy_construction_seconds": {
+      "count": 20,
+      "max": 0.0247685,
+      "mean": 0.017744455,
+      "median": 0.0167822,
+      "min": 0.0098692,
+      "sample_std": 0.004331270529104534,
+      "total": 0.3548891
+    },
+    "policy_seconds": {
+      "count": 20,
+      "max": 55.656108599999946,
+      "mean": 29.60037537500001,
+      "median": 27.85596120000007,
+      "min": 12.396570699999987,
+      "sample_std": 11.289363510573137,
+      "total": 592.0075075000002
+    },
+    "simulation_seconds": {
+      "count": 20,
+      "max": 221.90773770000024,
+      "mean": 121.10933172999998,
+      "median": 128.89158685,
+      "min": 50.15064300000004,
+      "sample_std": 41.239116426034656,
+      "total": 2422.1866345999997
+    }
+  },
+  "schema_version": 2,
+  "score": {
+    "count": 20,
+    "max": 1336.2114837991362,
+    "mean": 913.6692985547836,
+    "median": 912.6057419518495,
+    "min": 531.4539148408453,
+    "sample_std": 191.20802176796062
+  },
+  "sim_time": {
+    "count": 20,
+    "max": 1290.3999999999219,
+    "mean": 875.4200000001061,
+    "median": 872.2500000001298,
+    "min": 508.4000000000471,
+    "sample_std": 183.4376635837102
+  },
+  "status": "complete",
+  "successful_cases": 20,
+  "suite": "standard",
+  "survival_seconds": {
+    "count": 20,
+    "max": 1290.3999999999219,
+    "mean": 875.4200000001061,
+    "median": 872.2500000001298,
+    "min": 508.4000000000471,
+    "sample_std": 183.4376635837102
+  },
+  "ticks": {
+    "count": 20,
+    "max": 12904,
+    "mean": 8754.2,
+    "median": 8722.5,
+    "min": 5084,
+    "sample_std": 1834.3766358371618
+  },
+  "timing_scope": "all_recorded_attempts",
+  "truncated_cases": 0,
+  "warnings": [
+    "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+  ],
+  "world_count": 20
+}

@@ -2,7 +2,8 @@ from src.elements.environment import Environment
 
 
 def create_environment(env_width, env_height, chunk_size, starting_agents,
-                       starting_predators, starting_fruits, starting_trees, rng):
+                       starting_predators, starting_fruits, starting_trees, rng,
+                       rendering=True):
     """
     Initialize an environment for simulation.
     
@@ -17,7 +18,7 @@ def create_environment(env_width, env_height, chunk_size, starting_agents,
     Returns:
         Environment: The initialized environment object.
     """
-    env = Environment(env_width, env_height, chunk_size, rng)
+    env = Environment(env_width, env_height, chunk_size, rng, rendering=rendering)
 
     obstacles = env_width // 20
 
@@ -40,7 +41,7 @@ def create_environment(env_width, env_height, chunk_size, starting_agents,
     return env
 
 
-def step_environment(env, actions, dt=1/10):
+def step_environment(env, actions, dt=1/10, *, observe_agents=True):
     """
     Apply agent actions and advance the environment by one timestep.
 
@@ -65,7 +66,7 @@ def step_environment(env, actions, dt=1/10):
         )
 
     # Step non-agent entities (fruits, predators, etc.)
-    env.non_agent_step(dt)
+    env.non_agent_step(dt, observe_agents=observe_agents)
 
     # Update agent dict
     env.agents_dict = {agent.agent_id: agent for agent in env.agents}

@@ -1,0 +1,12 @@
+case_id,world_seed,repeat_index,policy_seed,policy_seed_mode,status,termination,score,sim_time,survival_seconds,ticks,completed,initial_agents,final_agents,peak_agents,mean_population,initialization_seconds,policy_construction_seconds,simulation_seconds,policy_seconds,episode_seconds,policy_calls,batch_mean_ms,batch_p50_ms,batch_p95_ms,batch_max_ms,failure_stage,failure_error_type,failure_message,failure_traceback
+world-1-repeat-0,1,0,1,fixed,failed,error,,185.99999999999372,185.99999999999372,1860,False,5,9,32,11.558602150537634,3.2533794,0.0262314,34.55623660000002,2.8292972999999986,75.4648934,1859,1.5219458310919851,1.3242,3.4533199999999997,8.001100000000001,telemetry,PermissionError,[WinError 5] Access is denied: 'benchmark-results\\population-baseline-rules-quick-v1\\telemetry\\world-1-repeat-0\\.latest.json.2bfdc74b36744c04933ca84e7ee143e4.pending' -> 'benchmark-results\\population-baseline-rules-quick-v1\\telemetry\\world-1-repeat-0\\latest.json',"Traceback (most recent call last):
+  File ""C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\runner.py"", line 163, in run_episode
+    telemetry.observe(last_step, ticks)
+  File ""C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\telemetry.py"", line 185, in observe
+    self._json(""latest.json"", {**self.metadata, ""state"": ""running"", ""sample"": self.latest})
+  File ""C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\telemetry.py"", line 83, in _json
+    _atomic_text(self.path / name, canonical_json(value) + ""\n"")
+  File ""C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\src\benchmarking\artifacts.py"", line 505, in _atomic_text
+    os.replace(pending, path)
+PermissionError: [WinError 5] Access is denied: 'benchmark-results\\population-baseline-rules-quick-v1\\telemetry\\world-1-repeat-0\\.latest.json.2bfdc74b36744c04933ca84e7ee143e4.pending' -> 'benchmark-results\\population-baseline-rules-quick-v1\\telemetry\\world-1-repeat-0\\latest.json'
+"

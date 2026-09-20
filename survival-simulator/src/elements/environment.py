@@ -16,8 +16,13 @@ class Environment:
     """
     Environment class defines the environment in which the agents live. Handles all interactions.
     """
-    def __init__(self, width: int, height: int, chunk_size: int, rng: random.Random): # Chunk size must at least be the maximum visible distance
+    def __init__(
+        self, width: int, height: int, chunk_size: int, rng: random.Random,
+        rendering: bool = True,
+    ): # Chunk size must at least be the maximum visible distance
         self.rng: random.Random = rng
+        self.rendering = rendering
+        self.event_sink = None
 
         self.width: int = width
         self.height: int = height
@@ -37,14 +42,18 @@ class Environment:
         # Set up biomes
         map_generator = Map_generator(self.width, self.height, self.rng, num_biomes=10, num_rivers=1)
         self.biome_map: np.ndarray = map_generator.generate()
-        # Cache surface for biome rendering
-        self.biome_surface = pygame.Surface((self.width, self.height))
-        self._render_biome_surface()
-        self.static_surface = self.biome_surface.copy() # Static surface for rendering static elements
-
-        # Cache surfaces for shadow and obstacle rendering
-        self.shadow_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        self.obstacle_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        if self.rendering:
+            self.biome_surface = pygame.Surface((self.width, self.height))
+            self._render_biome_surface()
+            self.static_surface = self.biome_surface.copy()
+            self.shadow_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.obstacle_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        else:
+            self.biome_surface = None
+            self.static_surface = None
+            self.shadow_surface = None
+            self.obstacle_surface = None
+            self._consume_biome_render_rng()
 
         # Set up chunking for efficiency
         self.chunk_size: int = chunk_size  # size of each grid cell for spatial partitioning
@@ -54,6 +63,9 @@ class Environment:
         self.grid_obstacles: Dict[Tuple[int, int], Set[Obstacle]] = defaultdict(set)
         self.grid_edges: Dict[Tuple[int, int], Set[Tuple[Tuple[float, float], Tuple[float, float]]]] = defaultdict(set)
         self.grid_predators: Dict[Tuple[int, int], Set[Predator]] = defaultdict(set)
+        self._local_edge_cache: Dict[
+            Tuple[int, int], Tuple[Tuple[Tuple[float, float], Tuple[float, float]], ...]
+        ] = {}
 
         # Store all agents observations to avoid recalculating
         self.agent_observations: Dict[int, dict] = {}
@@ -61,11 +73,19 @@ class Environment:
         self._create_boundaries(thickness=30) # Encapsulate environment
         self._update_spatial_grid() # Build grid
     
-        # Create an offscreen surface the size of the environment
-        self.world_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        # Create vision and leaf surfaces
-        self.vision_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
-        self.leaf_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        if self.rendering:
+            self.world_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.vision_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            self.leaf_screen = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        else:
+            self.world_surface = None
+            self.vision_screen = None
+            self.leaf_screen = None
+
+    def _emit_event(self, kind: str, **data):
+        sink = getattr(self, "event_sink", None)
+        if sink is not None:
+            sink({"kind": kind, "sim_time": float(self.time), **data})
 
 
     def _render_biome_surface(self):
@@ -76,6 +96,11 @@ class Environment:
                 self.biome_surface.set_at((x, y), color)
         # Optional: smooth edges
         smooth_surface(self.biome_surface, size=3)
+
+    def _consume_biome_render_rng(self):
+        for x in range(self.width):
+            for y in range(self.height):
+                self.rng.choice(self.biome_map[x, y].color_palette)
 
     # ------------------- Grid functions -------------------
     def to_chunk(self, x: int, y: int) -> Tuple[int, int]:
@@ -128,6 +153,7 @@ class Environment:
     def _update_edge_grid(self):
         """Rebuilds the spatial grid for all edges."""
         self.grid_edges = defaultdict(set)
+        self._local_edge_cache = {}
         for edge in self.edges:
             # Edge may span multiple chunks
             min_cx, min_cy = self.to_chunk(edge[0][0], edge[0][1])
@@ -159,7 +185,6 @@ class Environment:
         local_trees = set()
         local_obstacles = set()
         local_predators = set()
-        local_edges = set()
         chunks = self._get_neighboring_chunks(creature.x, creature.y)
         for ch in chunks:
             local_agents.update(self.grid_agents.get(ch, []))
@@ -167,7 +192,6 @@ class Environment:
             local_trees.update(self.grid_trees.get(ch, []))
             local_obstacles.update(self.grid_obstacles.get(ch, []))
             local_predators.update(self.grid_predators.get(ch, []))
-            local_edges.update(self.grid_edges.get(ch, []))
 
         # Remove self from agents/predators
         if creature in local_agents:
@@ -175,7 +199,10 @@ class Environment:
         elif creature in local_predators:
             local_predators.remove(creature)
 
-        return local_agents, local_fruits, local_trees, local_obstacles, local_predators, local_edges
+        return (
+            local_agents, local_fruits, local_trees, local_obstacles, local_predators,
+            self._get_local_edges(creature),
+        )
     
     def _get_local_agents(self, creature: Creature):
         """Return only the agents in neighboring chunks."""
@@ -224,11 +251,17 @@ class Environment:
     
     def _get_local_edges(self, creature: Creature):
         """Return only the edges in the creature's neighboring chunks."""
+        chunk = self.to_chunk(creature.x, creature.y)
+        cached = self._local_edge_cache.get(chunk)
+        if cached is not None:
+            return cached
         local_edges = set()
         chunks = self._get_neighboring_chunks(creature.x, creature.y)
         for ch in chunks:
             local_edges.update(self.grid_edges.get(ch, []))
-        return local_edges
+        result = tuple(local_edges)
+        self._local_edge_cache[chunk] = result
+        return result
 
 
 
@@ -261,9 +294,13 @@ class Environment:
 
         obs = Obstacle(x, y, width=width, height=height, color=color)
         self.obstacles.append(obs)
-        shadow_color = np.clip(obs.color - np.array([50,50,50]), 0, 255)
-        obs.draw_shadow(self.shadow_surface, color=tuple(shadow_color))
-        pygame.draw.rect(self.obstacle_surface, color, pygame.Rect(obs.x, obs.y, obs.width, obs.height)) # Update static surface
+        if self.rendering:
+            shadow_color = np.clip(obs.color - np.array([50,50,50]), 0, 255)
+            obs.draw_shadow(self.shadow_surface, color=tuple(shadow_color))
+            pygame.draw.rect(
+                self.obstacle_surface, color,
+                pygame.Rect(obs.x, obs.y, obs.width, obs.height),
+            )
 
         # Rebuild all edges
         self.edges = set()
@@ -390,13 +427,25 @@ class Environment:
         self.agents.append(agent)
         self.agents_dict[agent.agent_id] = agent
         self._update_agent_grid()
+        self._emit_event(
+            "birth", agent_id=agent.agent_id,
+            parent_id=parent.agent_id if parent is not None else None,
+            energy=agent.energy, age=agent.age, x=float(agent.x), y=float(agent.y),
+            max_age=agent.max_age, max_energy=agent.max_energy,
+            speed=agent.speed, sprint_speed=agent.sprint_speed,
+        )
         return agent
     
-    def kill_agent(self, agent: Agent):
+    def kill_agent(self, agent: Agent, *, reason: str = "removed"):
         """
         Remove an agent from the environment.
         """
         if agent in self.agents:
+            self._emit_event(
+                "death", agent_id=agent.agent_id, reason=reason,
+                energy=agent.energy, age=agent.age, senescent=agent.age > agent.max_age,
+                x=float(agent.x), y=float(agent.y),
+            )
             self.agents.remove(agent)
             self.agents_dict.pop(agent.agent_id, None)  # removes if exists, does nothing if not
             self._update_agent_grid()
@@ -424,6 +473,10 @@ class Environment:
             self.fruits.append(fruit)
             self.fruits_dict[fruit.fruit_id] = fruit
             self._update_fruit_grid()
+            self._emit_event(
+                "fruit_spawn", fruit_id=fruit.fruit_id,
+                x=float(fruit.x), y=float(fruit.y), energy=fruit.energy,
+            )
             return fruit
         else:
             return None
@@ -435,11 +488,15 @@ class Environment:
         y = tree.y + dist * np.sin(angle)
         return self.spawn_fruit(x=x, y=y, max_attempts=0) # Try only once
 
-    def remove_fruit(self, fruit: Fruit) -> None:
+    def remove_fruit(self, fruit: Fruit, *, reason: str = "removed") -> None:
         """
         Remove a fruit from the environment.
         """
         if fruit in self.fruits: # TODO: Check if this line is necessary
+            self._emit_event(
+                "fruit_removed", fruit_id=fruit.fruit_id, reason=reason,
+                age=fruit.age, energy=fruit.energy,
+            )
             self.fruits.remove(fruit)
             self.fruits_dict.pop(fruit.fruit_id, None)
             self._update_fruit_grid()
@@ -463,6 +520,7 @@ class Environment:
             tree = Tree(x, y)
             self.trees.append(tree)
             self._update_tree_grid()
+            self._emit_event("tree_spawn", x=float(tree.x), y=float(tree.y))
             return tree
         else:
             return None
@@ -472,6 +530,7 @@ class Environment:
         Remove a tree from the environment.
         """
         if tree in self.trees:
+            self._emit_event("tree_removed", x=float(tree.x), y=float(tree.y), age=tree.age)
             self.trees.remove(tree)
             self._update_tree_grid()
 
@@ -487,6 +546,7 @@ class Environment:
             predator = Predator(x, y, size=size, speed=speed, sprint_speed=sprint_speed, color=color, rng=self.rng)
             self.predators.append(predator)
             self._update_predator_grid()
+            self._emit_event("predator_spawn", x=float(predator.x), y=float(predator.y))
             return predator
 
 
@@ -561,14 +621,16 @@ class Environment:
         Rotate an entity in the environment.
         """
         entity.direction += turn_angle
-        self.update_entity_energy(entity, min(np.pi, abs(turn_angle)) / (2 * np.pi)) # Cost per turn capped at 180°
+        self.update_entity_energy(entity, min(np.pi, abs(turn_angle)) / (2 * np.pi), reason="turn") # Cost per turn capped at 180°
         
 
-    def update_entity_energy(self, entity: Creature, energy_cost: float):
+    def update_entity_energy(self, entity: Creature, energy_cost: float, *, reason: str = "move"):
         """
         Update the energy of an entity in the environment.
         """
         entity.energy -= energy_cost
+        if isinstance(entity, Agent) and energy_cost != 0:
+            self._emit_event("energy_cost", agent_id=entity.agent_id, reason=reason, amount=float(energy_cost))
 
 
     def get_agent_state(self, agent_id: int) -> Optional[dict]:
@@ -620,11 +682,11 @@ class Environment:
         # Spawn agent
         if spawn_agent and agent.energy > 100:
             self.spawn_agent(parent=agent)
-            agent.energy -= 100
+            self.update_entity_energy(agent, 100, reason="birth")
 
     # ------------------- SIMULATION STEP -------------------
 
-    def non_agent_step(self, dt: float):
+    def non_agent_step(self, dt: float, *, observe_agents: bool = True):
         """
         Update environment one step
 
@@ -637,27 +699,27 @@ class Environment:
             agent.age += dt # age in seconds
 
             biome_energy_modifier = self.biome_map[min(max(int(agent.x), 0), self.width - 1), min(max(int(agent.y), 0), self.height - 1)].energy_drain_rate # energy drain modifier based on biome
-            agent.energy -= dt * biome_energy_modifier # cost one energy per second to be alive
+            self.update_entity_energy(agent, dt * biome_energy_modifier, reason="living") # cost one energy per second to be alive
 
             if agent.energy <= 0: # Agent is dead
-                self.kill_agent(agent)
+                self.kill_agent(agent, reason="energy_depletion")
                 continue
 
             if agent.age > agent.max_age:
-                agent.energy -= 0.01 * agent.age # When old, lose more energy
+                self.update_entity_energy(agent, 0.01 * agent.age, reason="senescence") # When old, lose more energy
             
             local_agents, local_fruits, local_trees, local_obstacles, local_predators, local_edges = self._get_local_objects(agent)
             
-            # Get observation
-            observation = agent.observe(
-                agents=local_agents,
-                fruits=local_fruits,
-                trees=local_trees,
-                obstacles=local_obstacles,
-                predators=local_predators,
-                edges=local_edges
-            )
-            self.agent_observations[agent.agent_id] = observation
+            if observe_agents:
+                observation = agent.observe(
+                    agents=local_agents,
+                    fruits=local_fruits,
+                    trees=local_trees,
+                    obstacles=local_obstacles,
+                    predators=local_predators,
+                    edges=local_edges
+                )
+                self.agent_observations[agent.agent_id] = observation
 
             # Handle fruit interactions
             if local_fruits:
@@ -667,9 +729,15 @@ class Environment:
                     dy = agent.y - fruit.y
                     distance = np.hypot(dx, dy)
                     if distance < agent.size + fruit.radius:  # touching
+                        previous_energy = agent.energy
                         agent.energy = min(agent.max_energy, agent.energy + fruit.energy) # Eat fruit
                         self.score += fruit.energy / 1000 # Increase score based on fruit energy
-                        self.remove_fruit(fruit) # Remove fruit
+                        self._emit_event(
+                            "fruit_eaten", agent_id=agent.agent_id, fruit_id=fruit.fruit_id,
+                            energy=fruit.energy, retained=agent.energy - previous_energy,
+                            x=float(fruit.x), y=float(fruit.y),
+                        )
+                        self.remove_fruit(fruit, reason="eaten") # Remove fruit
 
         # Step all predators
         for predator in self.predators:
@@ -721,7 +789,7 @@ class Environment:
                     agent = local_agents[index]
                     predator.energy = min(predator.max_energy, predator.energy + agent.energy)
                     self.score -= agent.energy / 100 # Penalize agent for being eaten
-                    self.kill_agent(agent)
+                    self.kill_agent(agent, reason="predation")
 
             if predator.energy <= 0: # Go to sleep if energy is 0
                 predator.resting = True
@@ -730,7 +798,7 @@ class Environment:
         # Grow fruits
         for fruit in self.fruits:
             if fruit.age > 100: # Fruit rots over time
-                self.remove_fruit(fruit)
+                self.remove_fruit(fruit, reason="rot")
                 continue
             fruit.grow(amount=2 * dt) # Grow by 2 energy per second
 
@@ -811,6 +879,8 @@ class Environment:
         """
         Visualize the environment scaled to fit the screen (zoomed out if needed).
         """
+        if not self.rendering:
+            raise RuntimeError("This environment was created without rendering surfaces.")
         # Clear all layers
         self.world_surface.fill((0, 0, 0, 0))
         self.vision_screen.fill((0, 0, 0, 0))

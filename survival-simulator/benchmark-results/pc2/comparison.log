@@ -1,0 +1,6 @@
+Policy (role) | Mean score | Survival s | Time-limit completions | Mean delta
+standard (candidate-1) | 913.669299 | 875.42 | 0/20 | 272.225438
+ref (reference) | 641.443860 | 623.80 | 0/20 | --
+Note: Rankings are descriptive; confidence intervals are not automatic significance claims.
+Note: Survival ordering precedes native score.
+Saved comparison to C:\Users\t-cszasz\orca\workspaces\nordic-ai-cup-2026-amigos\csongor-survival-simulator-EVOLUTIONARY\survival-simulator\benchmark-results\pc2\comparison.

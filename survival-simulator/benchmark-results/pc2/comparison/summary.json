@@ -1,0 +1,2175 @@
+{
+  "bootstrap": {
+    "confidence_level": 0.95,
+    "method": "percentile",
+    "n_resamples": 10000,
+    "numpy_version": "2.3.5",
+    "repeat_aggregation": "mean_paired_delta_within_world",
+    "rng": "PCG64",
+    "sampling_unit": "world_seed",
+    "scipy_version": "1.16.3",
+    "seed": 20260917
+  },
+  "case_count": 20,
+  "comparisons": [
+    {
+      "case_count": 20,
+      "case_delta_summary": {
+        "count": 20,
+        "max": 615.4037518467111,
+        "mean": 272.22543818887215,
+        "median": 290.5225732236154,
+        "min": -161.38946905653881,
+        "sample_std": 200.19440158194823
+      },
+      "case_deltas": [
+        {
+          "candidate_score": 1123.970655479533,
+          "case_id": "world-1-repeat-0",
+          "delta": 461.48941323629776,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 662.4812422432352,
+          "repeat_index": 0,
+          "world_seed": 1
+        },
+        {
+          "candidate_score": 1146.6008948253016,
+          "case_id": "world-17-repeat-0",
+          "delta": 424.20643452814215,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 722.3944602971594,
+          "repeat_index": 0,
+          "world_seed": 17
+        },
+        {
+          "candidate_score": 1086.6035332519161,
+          "case_id": "world-42-repeat-0",
+          "delta": 269.3969736743386,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 817.2065595775775,
+          "repeat_index": 0,
+          "world_seed": 42
+        },
+        {
+          "candidate_score": 736.6168252233226,
+          "case_id": "world-101-repeat-0",
+          "delta": 296.2938962232341,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 440.3229290000885,
+          "repeat_index": 0,
+          "world_seed": 101
+        },
+        {
+          "candidate_score": 916.1146473887958,
+          "case_id": "world-202-repeat-0",
+          "delta": 377.09869180152873,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 539.0159555872671,
+          "repeat_index": 0,
+          "world_seed": 202
+        },
+        {
+          "candidate_score": 793.0710492890946,
+          "case_id": "world-303-repeat-0",
+          "delta": 324.19540183375364,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 468.875647455341,
+          "repeat_index": 0,
+          "world_seed": 303
+        },
+        {
+          "candidate_score": 551.6747087294735,
+          "case_id": "world-404-repeat-0",
+          "delta": 146.6531705616797,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 405.02153816779384,
+          "repeat_index": 0,
+          "world_seed": 404
+        },
+        {
+          "candidate_score": 963.536109572248,
+          "case_id": "world-505-repeat-0",
+          "delta": 334.7498857401491,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 628.7862238320989,
+          "repeat_index": 0,
+          "world_seed": 505
+        },
+        {
+          "candidate_score": 900.1931647309983,
+          "case_id": "world-606-repeat-0",
+          "delta": -161.38946905653881,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 1061.5826337875371,
+          "repeat_index": 0,
+          "world_seed": 606
+        },
+        {
+          "candidate_score": 937.3133909306912,
+          "case_id": "world-707-repeat-0",
+          "delta": 375.3687405871666,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 561.9446503435246,
+          "repeat_index": 0,
+          "world_seed": 707
+        },
+        {
+          "candidate_score": 954.087586586365,
+          "case_id": "world-808-repeat-0",
+          "delta": 193.1816571289669,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 760.9059294573981,
+          "repeat_index": 0,
+          "world_seed": 808
+        },
+        {
+          "candidate_score": 868.9319434193508,
+          "case_id": "world-909-repeat-0",
+          "delta": 284.75125022399664,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 584.1806931953541,
+          "repeat_index": 0,
+          "world_seed": 909
+        },
+        {
+          "candidate_score": 782.3096003308198,
+          "case_id": "world-1001-repeat-0",
+          "delta": -161.16670738361518,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 943.4763077144349,
+          "repeat_index": 0,
+          "world_seed": 1001
+        },
+        {
+          "candidate_score": 909.0968365149032,
+          "case_id": "world-1337-repeat-0",
+          "delta": 273.6460401923131,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 635.4507963225901,
+          "repeat_index": 0,
+          "world_seed": 1337
+        },
+        {
+          "candidate_score": 945.0113934502214,
+          "case_id": "world-2026-repeat-0",
+          "delta": 507.3186722704935,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 437.69272117972787,
+          "repeat_index": 0,
+          "world_seed": 2026
+        },
+        {
+          "candidate_score": 1336.2114837991362,
+          "case_id": "world-4096-repeat-0",
+          "delta": 279.1286587615382,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 1057.082825037598,
+          "repeat_index": 0,
+          "world_seed": 4096
+        },
+        {
+          "candidate_score": 531.4539148408453,
+          "case_id": "world-8191-repeat-0",
+          "delta": 16.172804247111458,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 515.2811105937338,
+          "repeat_index": 0,
+          "world_seed": 8191
+        },
+        {
+          "candidate_score": 829.5125530198869,
+          "case_id": "world-104729-repeat-0",
+          "delta": 159.6556767921577,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 669.8568762277292,
+          "repeat_index": 0,
+          "world_seed": 104729
+        },
+        {
+          "candidate_score": 1089.0397880491416,
+          "case_id": "world-271828-repeat-0",
+          "delta": 615.4037518467111,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 473.63603620243055,
+          "repeat_index": 0,
+          "world_seed": 271828
+        },
+        {
+          "candidate_score": 872.0358916636271,
+          "case_id": "world-314159-repeat-0",
+          "delta": 428.3538205680186,
+          "policy_seed": 1,
+          "policy_seed_mode": "fixed",
+          "reference_score": 443.68207109560853,
+          "repeat_index": 0,
+          "world_seed": 314159
+        }
+      ],
+      "ci95": {
+        "high": 353.6619523820891,
+        "low": 184.99813855354006,
+        "status": "estimated"
+      },
+      "key": "candidate-1",
+      "label": "standard",
+      "losses": 2,
+      "mean_delta": 272.22543818887215,
+      "reference_key": "reference",
+      "seed_delta_summary": {
+        "count": 20,
+        "max": 615.4037518467111,
+        "mean": 272.22543818887215,
+        "median": 290.5225732236154,
+        "min": -161.38946905653881,
+        "sample_std": 200.19440158194823
+      },
+      "seed_deltas": [
+        {
+          "candidate_mean": 1123.970655479533,
+          "mean_delta": 461.48941323629776,
+          "reference_mean": 662.4812422432352,
+          "repeats": 1,
+          "world_seed": 1
+        },
+        {
+          "candidate_mean": 1146.6008948253016,
+          "mean_delta": 424.20643452814215,
+          "reference_mean": 722.3944602971594,
+          "repeats": 1,
+          "world_seed": 17
+        },
+        {
+          "candidate_mean": 1086.6035332519161,
+          "mean_delta": 269.3969736743386,
+          "reference_mean": 817.2065595775775,
+          "repeats": 1,
+          "world_seed": 42
+        },
+        {
+          "candidate_mean": 736.6168252233226,
+          "mean_delta": 296.2938962232341,
+          "reference_mean": 440.3229290000885,
+          "repeats": 1,
+          "world_seed": 101
+        },
+        {
+          "candidate_mean": 916.1146473887958,
+          "mean_delta": 377.09869180152873,
+          "reference_mean": 539.0159555872671,
+          "repeats": 1,
+          "world_seed": 202
+        },
+        {
+          "candidate_mean": 793.0710492890946,
+          "mean_delta": 324.19540183375364,
+          "reference_mean": 468.875647455341,
+          "repeats": 1,
+          "world_seed": 303
+        },
+        {
+          "candidate_mean": 551.6747087294735,
+          "mean_delta": 146.6531705616797,
+          "reference_mean": 405.02153816779384,
+          "repeats": 1,
+          "world_seed": 404
+        },
+        {
+          "candidate_mean": 963.536109572248,
+          "mean_delta": 334.7498857401491,
+          "reference_mean": 628.7862238320989,
+          "repeats": 1,
+          "world_seed": 505
+        },
+        {
+          "candidate_mean": 900.1931647309983,
+          "mean_delta": -161.38946905653881,
+          "reference_mean": 1061.5826337875371,
+          "repeats": 1,
+          "world_seed": 606
+        },
+        {
+          "candidate_mean": 937.3133909306912,
+          "mean_delta": 375.3687405871666,
+          "reference_mean": 561.9446503435246,
+          "repeats": 1,
+          "world_seed": 707
+        },
+        {
+          "candidate_mean": 954.087586586365,
+          "mean_delta": 193.1816571289669,
+          "reference_mean": 760.9059294573981,
+          "repeats": 1,
+          "world_seed": 808
+        },
+        {
+          "candidate_mean": 868.9319434193508,
+          "mean_delta": 284.75125022399664,
+          "reference_mean": 584.1806931953541,
+          "repeats": 1,
+          "world_seed": 909
+        },
+        {
+          "candidate_mean": 782.3096003308198,
+          "mean_delta": -161.16670738361518,
+          "reference_mean": 943.4763077144349,
+          "repeats": 1,
+          "world_seed": 1001
+        },
+        {
+          "candidate_mean": 909.0968365149032,
+          "mean_delta": 273.6460401923131,
+          "reference_mean": 635.4507963225901,
+          "repeats": 1,
+          "world_seed": 1337
+        },
+        {
+          "candidate_mean": 945.0113934502214,
+          "mean_delta": 507.3186722704935,
+          "reference_mean": 437.69272117972787,
+          "repeats": 1,
+          "world_seed": 2026
+        },
+        {
+          "candidate_mean": 1336.2114837991362,
+          "mean_delta": 279.1286587615382,
+          "reference_mean": 1057.082825037598,
+          "repeats": 1,
+          "world_seed": 4096
+        },
+        {
+          "candidate_mean": 531.4539148408453,
+          "mean_delta": 16.172804247111458,
+          "reference_mean": 515.2811105937338,
+          "repeats": 1,
+          "world_seed": 8191
+        },
+        {
+          "candidate_mean": 829.5125530198869,
+          "mean_delta": 159.6556767921577,
+          "reference_mean": 669.8568762277292,
+          "repeats": 1,
+          "world_seed": 104729
+        },
+        {
+          "candidate_mean": 1089.0397880491416,
+          "mean_delta": 615.4037518467111,
+          "reference_mean": 473.63603620243055,
+          "repeats": 1,
+          "world_seed": 271828
+        },
+        {
+          "candidate_mean": 872.0358916636271,
+          "mean_delta": 428.3538205680186,
+          "reference_mean": 443.68207109560853,
+          "repeats": 1,
+          "world_seed": 314159
+        }
+      ],
+      "ties": 0,
+      "timing_compatible": true,
+      "warnings": [],
+      "win_tie_loss_unit": "paired_case",
+      "wins": 18,
+      "world_count": 20
+    }
+  ],
+  "kind": "paired_comparison",
+  "leaderboard": [
+    {
+      "key": "candidate-1",
+      "label": "standard",
+      "rank": 1,
+      "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+      "summary": {
+        "aggregate_scope": "full_run",
+        "completion": {
+          "completed": 0,
+          "count": 20,
+          "fraction": 0.0
+        },
+        "expected_cases": 20,
+        "failed_cases": 0,
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "interrupted_cases": 0,
+        "is_complete": true,
+        "label": "standard",
+        "measurement_scope": "ok_and_truncated_episodes",
+        "missing_case_ids": [],
+        "missing_cases": 0,
+        "policy_latency": {
+          "batch_call_unit": "all_current_agents",
+          "batch_max_ms": {
+            "count": 20,
+            "max": 63.97899999999999,
+            "mean": 32.11797,
+            "median": 33.8635,
+            "min": 7.5144,
+            "sample_std": 15.035275938661192
+          },
+          "batch_mean_ms": {
+            "count": 20,
+            "max": 5.296136856800958,
+            "mean": 3.3493968209737934,
+            "median": 3.236854110315632,
+            "min": 1.6059814354190958,
+            "sample_std": 0.9803320912379466
+          },
+          "batch_p50_ms": {
+            "count": 20,
+            "max": 4.64935,
+            "mean": 2.9935025,
+            "median": 2.884925,
+            "min": 1.7029,
+            "sample_std": 0.8505794276589218
+          },
+          "batch_p95_ms": {
+            "count": 20,
+            "max": 12.607800000000001,
+            "mean": 7.314758499999999,
+            "median": 6.9984449999999985,
+            "min": 3.3069799999999985,
+            "sample_std": 2.3067159050545962
+          },
+          "policy_calls": {
+            "count": 20,
+            "max": 12903,
+            "mean": 8753.2,
+            "median": 8721.5,
+            "min": 5083,
+            "sample_std": 1834.3766358371618
+          },
+          "pooled_batch_mean_ms": 3.3816633202714446,
+          "pooled_percentiles_available": false,
+          "summary_unit": "episode",
+          "total_policy_calls": 175064
+        },
+        "population": {
+          "final": {
+            "count": 20,
+            "max": 0,
+            "mean": 0.0,
+            "median": 0.0,
+            "min": 0,
+            "sample_std": 0.0
+          },
+          "initial": {
+            "count": 20,
+            "max": 5,
+            "mean": 5.0,
+            "median": 5.0,
+            "min": 5,
+            "sample_std": 0.0
+          },
+          "mean": {
+            "count": 20,
+            "max": 13.241138059701493,
+            "mean": 11.480491633387476,
+            "median": 11.549094867810911,
+            "min": 8.162225004471471,
+            "sample_std": 1.4628439646363138
+          },
+          "peak": {
+            "count": 20,
+            "max": 16,
+            "mean": 16.0,
+            "median": 16.0,
+            "min": 16,
+            "sample_std": 0.0
+          }
+        },
+        "rankable": true,
+        "recorded_cases": 20,
+        "repeats": 1,
+        "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+        "runtime": {
+          "episode_seconds": {
+            "count": 20,
+            "max": 392.7628323,
+            "mean": 200.48444639,
+            "median": 202.55683555000002,
+            "min": 85.6232147,
+            "sample_std": 71.80000373664983,
+            "total": 4009.6889278
+          },
+          "initialization_seconds": {
+            "count": 20,
+            "max": 2.5441371,
+            "mean": 1.9091620150000002,
+            "median": 1.80500675,
+            "min": 1.3149973,
+            "sample_std": 0.3639390931412017,
+            "total": 38.1832403
+          },
+          "policy_construction_seconds": {
+            "count": 20,
+            "max": 0.0247685,
+            "mean": 0.017744455,
+            "median": 0.0167822,
+            "min": 0.0098692,
+            "sample_std": 0.004331270529104534,
+            "total": 0.3548891
+          },
+          "policy_seconds": {
+            "count": 20,
+            "max": 55.656108599999946,
+            "mean": 29.60037537500001,
+            "median": 27.85596120000007,
+            "min": 12.396570699999987,
+            "sample_std": 11.289363510573137,
+            "total": 592.0075075000002
+          },
+          "simulation_seconds": {
+            "count": 20,
+            "max": 221.90773770000024,
+            "mean": 121.10933172999998,
+            "median": 128.89158685,
+            "min": 50.15064300000004,
+            "sample_std": 41.239116426034656,
+            "total": 2422.1866345999997
+          }
+        },
+        "schema_version": 2,
+        "score": {
+          "count": 20,
+          "max": 1336.2114837991362,
+          "mean": 913.6692985547836,
+          "median": 912.6057419518495,
+          "min": 531.4539148408453,
+          "sample_std": 191.20802176796062
+        },
+        "sim_time": {
+          "count": 20,
+          "max": 1290.3999999999219,
+          "mean": 875.4200000001061,
+          "median": 872.2500000001298,
+          "min": 508.4000000000471,
+          "sample_std": 183.4376635837102
+        },
+        "status": "complete",
+        "successful_cases": 20,
+        "suite": "standard",
+        "survival_seconds": {
+          "count": 20,
+          "max": 1290.3999999999219,
+          "mean": 875.4200000001061,
+          "median": 872.2500000001298,
+          "min": 508.4000000000471,
+          "sample_std": 183.4376635837102
+        },
+        "ticks": {
+          "count": 20,
+          "max": 12904,
+          "mean": 8754.2,
+          "median": 8722.5,
+          "min": 5084,
+          "sample_std": 1834.3766358371618
+        },
+        "timing_scope": "all_recorded_attempts",
+        "truncated_cases": 0,
+        "warnings": [
+          "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+        ],
+        "world_count": 20
+      }
+    },
+    {
+      "key": "reference",
+      "label": "ref",
+      "rank": 2,
+      "run_id": "5bd5ef7d579c4882bfdff254a13b357f",
+      "summary": {
+        "aggregate_scope": "full_run",
+        "completion": {
+          "completed": 0,
+          "count": 20,
+          "fraction": 0.0
+        },
+        "expected_cases": 20,
+        "failed_cases": 0,
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "interrupted_cases": 0,
+        "is_complete": true,
+        "label": "ref",
+        "measurement_scope": "ok_and_truncated_episodes",
+        "missing_case_ids": [],
+        "missing_cases": 0,
+        "policy_latency": {
+          "batch_call_unit": "all_current_agents",
+          "batch_max_ms": {
+            "count": 20,
+            "max": 36.7037,
+            "mean": 20.325754999999997,
+            "median": 24.9035,
+            "min": 3.0387999999999997,
+            "sample_std": 12.630472107293993
+          },
+          "batch_mean_ms": {
+            "count": 20,
+            "max": 0.9218620820668693,
+            "mean": 0.7164256838867445,
+            "median": 0.7235506427756306,
+            "min": 0.6123436778290993,
+            "sample_std": 0.09053125018511979
+          },
+          "batch_p50_ms": {
+            "count": 20,
+            "max": 0.8627,
+            "mean": 0.65381,
+            "median": 0.6556500000000001,
+            "min": 0.5202,
+            "sample_std": 0.10180594233509575
+          },
+          "batch_p95_ms": {
+            "count": 20,
+            "max": 1.7896999999999994,
+            "mean": 1.3908587499999996,
+            "median": 1.3691349999999987,
+            "min": 1.133745,
+            "sample_std": 0.16839796116151548
+          },
+          "policy_calls": {
+            "count": 20,
+            "max": 10528,
+            "mean": 6237.0,
+            "median": 5731.5,
+            "min": 3789,
+            "sample_std": 1978.3384575525945
+          },
+          "pooled_batch_mean_ms": 0.7201996592913261,
+          "pooled_percentiles_available": false,
+          "summary_unit": "episode",
+          "total_policy_calls": 124740
+        },
+        "population": {
+          "final": {
+            "count": 20,
+            "max": 0,
+            "mean": 0.0,
+            "median": 0.0,
+            "min": 0,
+            "sample_std": 0.0
+          },
+          "initial": {
+            "count": 20,
+            "max": 5,
+            "mean": 5.0,
+            "median": 5.0,
+            "min": 5,
+            "sample_std": 0.0
+          },
+          "mean": {
+            "count": 20,
+            "max": 9.394602698650674,
+            "mean": 7.31173907560634,
+            "median": 7.261298005707614,
+            "min": 5.405595946243666,
+            "sample_std": 0.9940809192209289
+          },
+          "peak": {
+            "count": 20,
+            "max": 16,
+            "mean": 12.7,
+            "median": 12.0,
+            "min": 8,
+            "sample_std": 1.688973528196155
+          }
+        },
+        "rankable": true,
+        "recorded_cases": 20,
+        "repeats": 1,
+        "run_id": "5bd5ef7d579c4882bfdff254a13b357f",
+        "runtime": {
+          "episode_seconds": {
+            "count": 20,
+            "max": 139.786748,
+            "mean": 63.99184721,
+            "median": 58.00159635,
+            "min": 36.2325383,
+            "sample_std": 27.16946429261521,
+            "total": 1279.8369442
+          },
+          "initialization_seconds": {
+            "count": 20,
+            "max": 1.9302038,
+            "mean": 1.70578048,
+            "median": 1.6954831,
+            "min": 1.4994415,
+            "sample_std": 0.10844798649815396,
+            "total": 34.1156096
+          },
+          "policy_construction_seconds": {
+            "count": 20,
+            "max": 0.0177291,
+            "mean": 0.0118449,
+            "median": 0.0114559,
+            "min": 0.008929,
+            "sample_std": 0.002017331376635454,
+            "total": 0.236898
+          },
+          "policy_seconds": {
+            "count": 20,
+            "max": 9.705364000000017,
+            "mean": 4.491885275000001,
+            "median": 4.1088269000000075,
+            "min": 2.7639666000000087,
+            "sample_std": 1.720862112727178,
+            "total": 89.83770550000003
+          },
+          "simulation_seconds": {
+            "count": 20,
+            "max": 87.44059839999991,
+            "mean": 41.661946734999994,
+            "median": 37.20236760000002,
+            "min": 22.71760549999994,
+            "sample_std": 18.64810777725455,
+            "total": 833.2389346999998
+          }
+        },
+        "schema_version": 2,
+        "score": {
+          "count": 20,
+          "max": 1061.5826337875371,
+          "mean": 641.4438603659114,
+          "median": 606.4834585137265,
+          "min": 405.02153816779384,
+          "sample_std": 200.60107203018174
+        },
+        "sim_time": {
+          "count": 20,
+          "max": 1052.9000000001379,
+          "mean": 623.8000000000717,
+          "median": 573.2500000000618,
+          "min": 379.0000000000177,
+          "sample_std": 197.83384575530064
+        },
+        "status": "complete",
+        "successful_cases": 20,
+        "suite": "standard",
+        "survival_seconds": {
+          "count": 20,
+          "max": 1052.9000000001379,
+          "mean": 623.8000000000717,
+          "median": 573.2500000000618,
+          "min": 379.0000000000177,
+          "sample_std": 197.83384575530064
+        },
+        "ticks": {
+          "count": 20,
+          "max": 10529,
+          "mean": 6238.0,
+          "median": 5732.5,
+          "min": 3790,
+          "sample_std": 1978.3384575525945
+        },
+        "timing_scope": "all_recorded_attempts",
+        "truncated_cases": 0,
+        "warnings": [
+          "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+        ],
+        "world_count": 20
+      }
+    }
+  ],
+  "objective": "survival-v1",
+  "reference_key": "reference",
+  "reference_label": "ref",
+  "repeats": 1,
+  "runs": [
+    {
+      "batch_mean_ms": [
+        0.7955281751387013,
+        0.6123436778290993,
+        0.6166751264027623,
+        0.7674137439613526,
+        0.7682014593077643,
+        0.6135047598060819,
+        0.7294712589073633,
+        0.643074482875551,
+        0.9218620820668693,
+        0.8881584224841341,
+        0.6132630461247125,
+        0.7267623360287512,
+        0.7697949704788979,
+        0.6344108933806512,
+        0.6785397148200093,
+        0.682060701125386,
+        0.6282696120689656,
+        0.7355716529429703,
+        0.7203389495225102,
+        0.7832686124623581
+      ],
+      "case_ids": [
+        "world-1-repeat-0",
+        "world-17-repeat-0",
+        "world-42-repeat-0",
+        "world-101-repeat-0",
+        "world-202-repeat-0",
+        "world-303-repeat-0",
+        "world-404-repeat-0",
+        "world-505-repeat-0",
+        "world-606-repeat-0",
+        "world-707-repeat-0",
+        "world-808-repeat-0",
+        "world-909-repeat-0",
+        "world-1001-repeat-0",
+        "world-1337-repeat-0",
+        "world-2026-repeat-0",
+        "world-4096-repeat-0",
+        "world-8191-repeat-0",
+        "world-104729-repeat-0",
+        "world-271828-repeat-0",
+        "world-314159-repeat-0"
+      ],
+      "key": "reference",
+      "label": "ref",
+      "manifest": {
+        "cases": [
+          {
+            "case_id": "world-1-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1
+          },
+          {
+            "case_id": "world-17-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 17
+          },
+          {
+            "case_id": "world-42-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 42
+          },
+          {
+            "case_id": "world-101-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 101
+          },
+          {
+            "case_id": "world-202-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 202
+          },
+          {
+            "case_id": "world-303-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 303
+          },
+          {
+            "case_id": "world-404-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 404
+          },
+          {
+            "case_id": "world-505-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 505
+          },
+          {
+            "case_id": "world-606-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 606
+          },
+          {
+            "case_id": "world-707-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 707
+          },
+          {
+            "case_id": "world-808-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 808
+          },
+          {
+            "case_id": "world-909-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 909
+          },
+          {
+            "case_id": "world-1001-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1001
+          },
+          {
+            "case_id": "world-1337-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1337
+          },
+          {
+            "case_id": "world-2026-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 2026
+          },
+          {
+            "case_id": "world-4096-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 4096
+          },
+          {
+            "case_id": "world-8191-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 8191
+          },
+          {
+            "case_id": "world-104729-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 104729
+          },
+          {
+            "case_id": "world-314159-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 314159
+          },
+          {
+            "case_id": "world-271828-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 271828
+          }
+        ],
+        "created_at": "2026-09-20T13:00:38.510017+00:00",
+        "execution": "processes",
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "max_steps": null,
+        "policy": {
+          "config": {
+            "checkpoint": null,
+            "checkpoint_sha256": null,
+            "device": "cpu",
+            "heuristic": {
+              "backend": "hierarchical",
+              "breeder_fraction": 0.25,
+              "breeding_age": 58.157631064637584,
+              "breeding_energy": 253.4105475704165,
+              "breeding_reserve": 58.24716164884594,
+              "danger_weight": 4.221954232890617,
+              "directions": 16,
+              "emergency_spawn_distance": 35.0,
+              "energy_weight": 0.15,
+              "escape_strategy": "direct_wall_aware",
+              "exploration_move_fraction": 0.35,
+              "exploration_weight": 0.3,
+              "food_weight": 2.0,
+              "fruit_contact_radius": 10.0,
+              "high_population_breeding_energy": 330.0,
+              "low_population_breeding_energy": 185.0,
+              "max_population": 16,
+              "max_turn": 0.45,
+              "min_population": 7,
+              "patch_capacity": 2,
+              "patch_move_fraction": 0.65,
+              "patch_radius": 28.0,
+              "patch_tolerance": 8.0,
+              "predator_face_turn": 1.2,
+              "scan_turn": 0.12,
+              "scout_fraction": 0.2,
+              "sprint_distance": 45.0,
+              "target_population": 12,
+              "target_population_breeding_energy": 255.0,
+              "threat_distance": 127.44741865848646,
+              "wall_margin": 12.0,
+              "wall_weight": 4.0
+            },
+            "policy": "heuristic",
+            "torch_threads": 1,
+            "version": 1
+          },
+          "label": "ref",
+          "reference": "src.policies.runtime:create_policy"
+        },
+        "protocol_version": "local-benchmark-v2",
+        "provenance": {
+          "artifacts": {
+            "files": {
+              "src\\training\\workers.py": "3c798cf38e6a5e3512d29be42eb13b5cc348ea78078003fa03c1ab8dd8585f94"
+            },
+            "sha256": "d67e65facf5f2deeb0f9d3424884f9f5277d087fb2b16582fbeb8f364edc2a32"
+          },
+          "engine": {
+            "files": {
+              "src\\core.py": "2ad02095e83945ffbcea87b95bc1b8a3341fe7d63dfd7a3be9190e9b4cff49cd",
+              "src\\elements\\agent.py": "dc4f2dd1822e37194f1eeed9a744a2158d1a0f1f5ea9a22e743481a1c4941202",
+              "src\\elements\\biome.py": "eb7aeb35a2fb35c60db57fc08195ae4ea8b48d3a53484c4b36f774102318ad4d",
+              "src\\elements\\creature.py": "6f87ff503354040aae4d0ece2540336ead532a269a985521a3cc78d73b455383",
+              "src\\elements\\environment.py": "a8b44da3361cce8e1d985525d130b66b1a3094656cdc9550d04e51a21f016813",
+              "src\\elements\\fruit.py": "070306871872585dfc9784455adb95bb0a3fec2c7649c5fa76a0d7eb1e84fb2d",
+              "src\\elements\\obstacle.py": "5a01e5a890d1ab99f74ddf0fc7999c11fe015ef5c6a7ef7ab730c294965d620a",
+              "src\\elements\\predator.py": "6035f4e088a09d47fcacc15d913b5075c25c6b734eed4f16ab080f6769c041e3",
+              "src\\elements\\tree.py": "97943fec031efddb18522630cd3eb2dbc84b5f6c5021a6a6816f966f065d9031",
+              "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+              "src\\utils\\sensing.py": "7522e83490f9e5891830a44ff05cbfe29a039bc265b0e1f63d2cb95a48ca0a44",
+              "src\\utils\\simulation.py": "c567f00770af857b4ec9427765c41627c1fffec8ca0c5e929583a96feb315f5b"
+            },
+            "sha256": "8c7209c2b8c0f02b5e800c8010d2893a3f6934632845b9f36b5920f0e135fe3a"
+          },
+          "git": {
+            "dirty": true,
+            "revision": "af36a9c90678b3f7f801e0f479b04c35525232c8",
+            "status": " M survival-simulator/README.md\n M survival-simulator/benchmark.py\n M survival-simulator/docs/policy-architecture.md\n M survival-simulator/src/benchmarking/artifacts.py\n M survival-simulator/src/benchmarking/comparison.py\n M survival-simulator/src/benchmarking/config.py\n M survival-simulator/src/benchmarking/http.py\n M survival-simulator/src/benchmarking/runner.py\n M survival-simulator/src/elements/environment.py\n M survival-simulator/src/policies/config.py\n M survival-simulator/src/policies/heuristic.py\n M survival-simulator/src/policies/hierarchical.py\n M survival-simulator/src/training/artifacts.py\n M survival-simulator/src/training/search.py\n M survival-simulator/tests/test_benchmark_artifacts.py\n M survival-simulator/tests/test_benchmark_http.py\n M survival-simulator/train.py\n?? survival-simulator/configs/controller-population.json\n?? survival-simulator/configs/search-population.json\n?? survival-simulator/population_experiments.py\n?? survival-simulator/requirements-search.txt\n?? survival-simulator/src/benchmarking/jobs.py\n?? survival-simulator/src/benchmarking/progress.py\n?? survival-simulator/src/benchmarking/survival.py\n?? survival-simulator/src/benchmarking/telemetry.py\n?? survival-simulator/src/policies/population.py\n?? survival-simulator/tests/test_population_jobs.py\n?? survival-simulator/tests/test_population_mechanics.py\n?? survival-simulator/tests/test_population_policy.py\n?? survival-simulator/tests/test_population_ranking.py\n?? survival-simulator/tests/test_population_study.py\n?? survival-simulator/tests/test_population_telemetry.py"
+          },
+          "policy": {
+            "files": {
+              "src\\benchmarking\\__init__.py": "04d7052c0ead7ba1320a9f68c994d8d5df827c50af8bee5c99ebe9798a70fdd8",
+              "src\\benchmarking\\artifacts.py": "fd51b4486b4ba23a28e0739548a45351d2568b8f11dc10a196fea0d9b3273cf7",
+              "src\\benchmarking\\config.py": "0f1f8031b52e4f501fa57f7901d535019c7b30f13a8814f9fafaeb724290db96",
+              "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+              "src\\policies\\__init__.py": "82e80e72f4ef90e11f5711ce753250edd2c66ae9e8ea1828773e9ca04a731e60",
+              "src\\policies\\actions.py": "421df52934332568df61d5a44024d3cd92afe7f189a433d7160201654dfe4a96",
+              "src\\policies\\config.py": "e37997789e6639a595b2df6935ae0ad770681b8d5e069d975518ff235e69e5c2",
+              "src\\policies\\features.py": "38d44c3db2036eee89de790ac5ac86867366c84d7cc169b1f2010bee5ea952e4",
+              "src\\policies\\geometry.py": "09793a9d45e6925fc0eba040cb3251206ffdd7c31b4068b3f57f8187a222a82a",
+              "src\\policies\\heuristic.py": "421f05c67368c57cb7be5934fc0901bf4e5256c16f1c84ac8b751e3581ef4375",
+              "src\\policies\\hierarchical.py": "f950e6f197823b914b8e78a4a20c1a98894a01cf7642b21d1c2f74cbdcee8453",
+              "src\\policies\\memory.py": "a575770f5fd0385798964cae22ee2e90c4f4240cc7b61490d01b43e412109e25",
+              "src\\policies\\networks.py": "ea6a292f81b2bd0462ca53c447df2ad5b1bf760b35001dff1810e9f8485871c7",
+              "src\\policies\\neural.py": "72833561a27518eb9d8179b41a45ee14d0288b05fa64fac7b60d3e7f3e16c9af",
+              "src\\policies\\population.py": "19953e6a5b888b9133e3116ecd64de6d08489f4db2a3bf886ddebed6251748a5",
+              "src\\policies\\runtime.py": "9147c88265a4050b6b9c0d8fa3ad906c9f536df18102f5528daa39b568280904",
+              "src\\policies\\turnaway.py": "b1df5bf57cad19f51ffaf50516b8d2990cefcf6491d5b5a82ce0d1a3a8b72dd4",
+              "src\\policies\\vectorized.py": "f14cf6592d47e587c6f852376cbdf26cd2f362cba0b128cf57e607170304a47a",
+              "src\\training\\__init__.py": "8f97b01ee1142db201ff3ce0a42b076e1de46a7849e2dfa643487b7be310feea",
+              "src\\training\\artifacts.py": "0cc436217a7aa3e2df21097ce7c913cccd3524cbdda0770d4d5a263a48a09fee",
+              "src\\training\\teacher.py": "effa3728ce0590f9785b64b086a25064604c8bfa875fe9a9b9fb57e0226b555c",
+              "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+              "src\\utils\\controllers\\dummy_agent_policy.py": "5d3f8bb1cb5865d5f73b7329efa3516ffafa55d3516741714595345efeb64b4e"
+            },
+            "sha256": "cc1e26ca86ab7cc6e50bc04c7719dcac8b41bb82b5912103d9c89bc4621d6900"
+          },
+          "reporting": {
+            "files": {
+              "benchmark.py": "f9f4599ec67789fea34a9d6a581238d066351aeb441c933fbda4053b7c45edb4",
+              "src\\benchmarking\\artifacts.py": "fd51b4486b4ba23a28e0739548a45351d2568b8f11dc10a196fea0d9b3273cf7",
+              "src\\benchmarking\\comparison.py": "0b69a8598af65d2c994b875d0d7d1a50a4c785a2735f3a49ad0279879db00c1c",
+              "src\\benchmarking\\plots.py": "8f3470e1eaa5a9772bb171e39c46aa58417fb0dbc9ecaf59a25af3356750ebbe",
+              "src\\benchmarking\\progress.py": "7320a69ec8c82439e275f800e7c6c7505762758d49c33634b1d1d05279455e58",
+              "src\\benchmarking\\survival.py": "ad2eaf0a4411985247f3c15d36020ad6e4a1ba5c6dea55b4c268d077a053efde"
+            },
+            "sha256": "df8f8677cc2f835f92b4d4f5398ceaf85c18b6733ce225681ef1db03c41c5283"
+          },
+          "runner": {
+            "files": {
+              "src\\benchmarking\\config.py": "0f1f8031b52e4f501fa57f7901d535019c7b30f13a8814f9fafaeb724290db96",
+              "src\\benchmarking\\jobs.py": "1a2ea16e1fe96fdea9f6c429fef39e78a1b3c5e441578bcafe46a7cd8f180950",
+              "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+              "src\\benchmarking\\runner.py": "6abfce02ef9ef503c3299b56aa4153ac7884a9c5f7fbdeb090fc823a6b1fb42e",
+              "src\\benchmarking\\telemetry.py": "702f7f5631f30fefda5a3f09b1133ad6284a6a833ade115d422cd5dfd922685e"
+            },
+            "sha256": "4ce110080b1aeec22677fd428dee9c9e64facd64bea112cff2687595761384a8"
+          },
+          "runtime": {
+            "architecture": "AMD64-64bit",
+            "dependencies": {
+              "Shapely": "2.1.2",
+              "numpy": "2.3.5",
+              "pydantic": "2.12.4",
+              "pydantic_core": "2.41.5",
+              "pygame": "2.6.1",
+              "scipy": "1.16.3"
+            },
+            "implementation": "CPython",
+            "native_libraries": {
+              "GEOS": "3.13.1",
+              "GEOS_CAPI": "3.13.1-CAPI-1.19.2",
+              "SDL": "2.28.4",
+              "SDL_image": "2.0.5",
+              "SDL_ttf": "2.20.1",
+              "libc": "unavailable",
+              "numpy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+              "numpy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+              "scipy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}",
+              "scipy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}"
+            },
+            "os": "Windows",
+            "os_release": "11 (10.0.26200)",
+            "python_version": "3.12.10"
+          },
+          "timing_context": {
+            "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+            "cpu_affinity": null,
+            "episode_watchdog_seconds": 1800.0,
+            "episode_workers": 4,
+            "hostname": "szasz",
+            "logical_cpu_count": 20,
+            "population_telemetry": true,
+            "progress_plots": true,
+            "python_compiler": "MSC v.1943 64 bit (AMD64)",
+            "python_executable": "C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\.venv\\Scripts\\python.exe",
+            "telemetry_sample_every": 10,
+            "thread_environment": {
+              "BLIS_NUM_THREADS": null,
+              "MKL_DYNAMIC": null,
+              "MKL_NUM_THREADS": "1",
+              "NUMEXPR_NUM_THREADS": null,
+              "OMP_DYNAMIC": null,
+              "OMP_NUM_THREADS": "1",
+              "OPENBLAS_NUM_THREADS": "1",
+              "VECLIB_MAXIMUM_THREADS": null
+            },
+            "timer": {
+              "adjustable": false,
+              "implementation": "QueryPerformanceCounter()",
+              "monotonic": true,
+              "name": "perf_counter_ns",
+              "resolution_seconds": 1e-07
+            }
+          }
+        },
+        "repeats": 1,
+        "run_id": "5bd5ef7d579c4882bfdff254a13b357f",
+        "schema_version": 2,
+        "seed_version": "sha256-policy-seed-v1",
+        "simulation": {
+          "chunk_size": 400,
+          "dt": 0.1,
+          "env_height": 1200,
+          "env_width": 1600,
+          "starting_agents": 5,
+          "starting_fruits": 32,
+          "starting_predators": 0,
+          "starting_trees": 50,
+          "time_limit": 3000.0
+        },
+        "status": "complete",
+        "suite": {
+          "name": "standard",
+          "seeds": [
+            1,
+            17,
+            42,
+            101,
+            202,
+            303,
+            404,
+            505,
+            606,
+            707,
+            808,
+            909,
+            1001,
+            1337,
+            2026,
+            4096,
+            8191,
+            104729,
+            314159,
+            271828
+          ],
+          "version": 1
+        },
+        "suite_sha256": "4fb205b8a0a1211ee9c2df9a8df7102e4fe23ddb8aa1f60bcaca4d6c631bb034"
+      },
+      "path": "C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc2\\ref",
+      "run_id": "5bd5ef7d579c4882bfdff254a13b357f",
+      "scores": [
+        662.4812422432352,
+        722.3944602971594,
+        817.2065595775775,
+        440.3229290000885,
+        539.0159555872671,
+        468.875647455341,
+        405.02153816779384,
+        628.7862238320989,
+        1061.5826337875371,
+        561.9446503435246,
+        760.9059294573981,
+        584.1806931953541,
+        943.4763077144349,
+        635.4507963225901,
+        437.69272117972787,
+        1057.082825037598,
+        515.2811105937338,
+        669.8568762277292,
+        473.63603620243055,
+        443.68207109560853
+      ],
+      "summary": {
+        "aggregate_scope": "full_run",
+        "completion": {
+          "completed": 0,
+          "count": 20,
+          "fraction": 0.0
+        },
+        "expected_cases": 20,
+        "failed_cases": 0,
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "interrupted_cases": 0,
+        "is_complete": true,
+        "label": "ref",
+        "measurement_scope": "ok_and_truncated_episodes",
+        "missing_case_ids": [],
+        "missing_cases": 0,
+        "policy_latency": {
+          "batch_call_unit": "all_current_agents",
+          "batch_max_ms": {
+            "count": 20,
+            "max": 36.7037,
+            "mean": 20.325754999999997,
+            "median": 24.9035,
+            "min": 3.0387999999999997,
+            "sample_std": 12.630472107293993
+          },
+          "batch_mean_ms": {
+            "count": 20,
+            "max": 0.9218620820668693,
+            "mean": 0.7164256838867445,
+            "median": 0.7235506427756306,
+            "min": 0.6123436778290993,
+            "sample_std": 0.09053125018511979
+          },
+          "batch_p50_ms": {
+            "count": 20,
+            "max": 0.8627,
+            "mean": 0.65381,
+            "median": 0.6556500000000001,
+            "min": 0.5202,
+            "sample_std": 0.10180594233509575
+          },
+          "batch_p95_ms": {
+            "count": 20,
+            "max": 1.7896999999999994,
+            "mean": 1.3908587499999996,
+            "median": 1.3691349999999987,
+            "min": 1.133745,
+            "sample_std": 0.16839796116151548
+          },
+          "policy_calls": {
+            "count": 20,
+            "max": 10528,
+            "mean": 6237.0,
+            "median": 5731.5,
+            "min": 3789,
+            "sample_std": 1978.3384575525945
+          },
+          "pooled_batch_mean_ms": 0.7201996592913261,
+          "pooled_percentiles_available": false,
+          "summary_unit": "episode",
+          "total_policy_calls": 124740
+        },
+        "population": {
+          "final": {
+            "count": 20,
+            "max": 0,
+            "mean": 0.0,
+            "median": 0.0,
+            "min": 0,
+            "sample_std": 0.0
+          },
+          "initial": {
+            "count": 20,
+            "max": 5,
+            "mean": 5.0,
+            "median": 5.0,
+            "min": 5,
+            "sample_std": 0.0
+          },
+          "mean": {
+            "count": 20,
+            "max": 9.394602698650674,
+            "mean": 7.31173907560634,
+            "median": 7.261298005707614,
+            "min": 5.405595946243666,
+            "sample_std": 0.9940809192209289
+          },
+          "peak": {
+            "count": 20,
+            "max": 16,
+            "mean": 12.7,
+            "median": 12.0,
+            "min": 8,
+            "sample_std": 1.688973528196155
+          }
+        },
+        "rankable": true,
+        "recorded_cases": 20,
+        "repeats": 1,
+        "run_id": "5bd5ef7d579c4882bfdff254a13b357f",
+        "runtime": {
+          "episode_seconds": {
+            "count": 20,
+            "max": 139.786748,
+            "mean": 63.99184721,
+            "median": 58.00159635,
+            "min": 36.2325383,
+            "sample_std": 27.16946429261521,
+            "total": 1279.8369442
+          },
+          "initialization_seconds": {
+            "count": 20,
+            "max": 1.9302038,
+            "mean": 1.70578048,
+            "median": 1.6954831,
+            "min": 1.4994415,
+            "sample_std": 0.10844798649815396,
+            "total": 34.1156096
+          },
+          "policy_construction_seconds": {
+            "count": 20,
+            "max": 0.0177291,
+            "mean": 0.0118449,
+            "median": 0.0114559,
+            "min": 0.008929,
+            "sample_std": 0.002017331376635454,
+            "total": 0.236898
+          },
+          "policy_seconds": {
+            "count": 20,
+            "max": 9.705364000000017,
+            "mean": 4.491885275000001,
+            "median": 4.1088269000000075,
+            "min": 2.7639666000000087,
+            "sample_std": 1.720862112727178,
+            "total": 89.83770550000003
+          },
+          "simulation_seconds": {
+            "count": 20,
+            "max": 87.44059839999991,
+            "mean": 41.661946734999994,
+            "median": 37.20236760000002,
+            "min": 22.71760549999994,
+            "sample_std": 18.64810777725455,
+            "total": 833.2389346999998
+          }
+        },
+        "schema_version": 2,
+        "score": {
+          "count": 20,
+          "max": 1061.5826337875371,
+          "mean": 641.4438603659114,
+          "median": 606.4834585137265,
+          "min": 405.02153816779384,
+          "sample_std": 200.60107203018174
+        },
+        "sim_time": {
+          "count": 20,
+          "max": 1052.9000000001379,
+          "mean": 623.8000000000717,
+          "median": 573.2500000000618,
+          "min": 379.0000000000177,
+          "sample_std": 197.83384575530064
+        },
+        "status": "complete",
+        "successful_cases": 20,
+        "suite": "standard",
+        "survival_seconds": {
+          "count": 20,
+          "max": 1052.9000000001379,
+          "mean": 623.8000000000717,
+          "median": 573.2500000000618,
+          "min": 379.0000000000177,
+          "sample_std": 197.83384575530064
+        },
+        "ticks": {
+          "count": 20,
+          "max": 10529,
+          "mean": 6238.0,
+          "median": 5732.5,
+          "min": 3790,
+          "sample_std": 1978.3384575525945
+        },
+        "timing_scope": "all_recorded_attempts",
+        "truncated_cases": 0,
+        "warnings": [
+          "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+        ],
+        "world_count": 20
+      }
+    },
+    {
+      "batch_mean_ms": [
+        4.282774792424667,
+        2.3604052499776405,
+        2.727111607571827,
+        3.387627044649185,
+        3.1118053651266764,
+        1.6059814354190958,
+        2.69775155663916,
+        2.296102754213947,
+        2.5622574104618288,
+        2.4765595037660613,
+        4.220042467285539,
+        5.110038349045201,
+        5.296136856800958,
+        3.3619028555045873,
+        2.985675322263491,
+        4.3134239014182745,
+        2.6226051544363562,
+        3.8573168882813467,
+        3.8325810539645433,
+        3.8798368502254923
+      ],
+      "case_ids": [
+        "world-1-repeat-0",
+        "world-17-repeat-0",
+        "world-42-repeat-0",
+        "world-101-repeat-0",
+        "world-202-repeat-0",
+        "world-303-repeat-0",
+        "world-404-repeat-0",
+        "world-505-repeat-0",
+        "world-606-repeat-0",
+        "world-707-repeat-0",
+        "world-808-repeat-0",
+        "world-909-repeat-0",
+        "world-1001-repeat-0",
+        "world-1337-repeat-0",
+        "world-2026-repeat-0",
+        "world-4096-repeat-0",
+        "world-8191-repeat-0",
+        "world-104729-repeat-0",
+        "world-271828-repeat-0",
+        "world-314159-repeat-0"
+      ],
+      "key": "candidate-1",
+      "label": "standard",
+      "manifest": {
+        "cases": [
+          {
+            "case_id": "world-1-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1
+          },
+          {
+            "case_id": "world-17-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 17
+          },
+          {
+            "case_id": "world-42-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 42
+          },
+          {
+            "case_id": "world-101-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 101
+          },
+          {
+            "case_id": "world-202-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 202
+          },
+          {
+            "case_id": "world-303-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 303
+          },
+          {
+            "case_id": "world-404-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 404
+          },
+          {
+            "case_id": "world-505-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 505
+          },
+          {
+            "case_id": "world-606-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 606
+          },
+          {
+            "case_id": "world-707-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 707
+          },
+          {
+            "case_id": "world-808-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 808
+          },
+          {
+            "case_id": "world-909-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 909
+          },
+          {
+            "case_id": "world-1001-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1001
+          },
+          {
+            "case_id": "world-1337-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 1337
+          },
+          {
+            "case_id": "world-2026-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 2026
+          },
+          {
+            "case_id": "world-4096-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 4096
+          },
+          {
+            "case_id": "world-8191-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 8191
+          },
+          {
+            "case_id": "world-104729-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 104729
+          },
+          {
+            "case_id": "world-314159-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 314159
+          },
+          {
+            "case_id": "world-271828-repeat-0",
+            "policy_seed": 1,
+            "policy_seed_mode": "fixed",
+            "repeat_index": 0,
+            "world_seed": 271828
+          }
+        ],
+        "created_at": "2026-09-20T13:06:21.767051+00:00",
+        "execution": "processes",
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "max_steps": null,
+        "policy": {
+          "config": {
+            "checkpoint": null,
+            "checkpoint_sha256": null,
+            "device": "cpu",
+            "heuristic": {
+              "backend": "population",
+              "birth_spacing": 3.124121275673408,
+              "breeder_fraction": 0.25,
+              "breeding_age": 46.392036305091,
+              "breeding_energy": 240.0,
+              "breeding_reserve": 65.0,
+              "capacity_feedback": true,
+              "danger_weight": 5.0,
+              "directions": 16,
+              "dispersion": true,
+              "elder_decoys": true,
+              "emergency_spawn_distance": 35.0,
+              "energy_weight": 0.15,
+              "escape_strategy": "predictive_wall_aware",
+              "exploration_move_fraction": 0.38666477805875743,
+              "exploration_weight": 0.3,
+              "food_weight": 2.0,
+              "fruit_contact_radius": 10.0,
+              "high_population_breeding_energy": 330.0,
+              "low_population_breeding_energy": 185.0,
+              "max_population": 16,
+              "max_turn": 0.45,
+              "min_population": 1,
+              "patch_capacity": 2,
+              "patch_memory": true,
+              "patch_memory_seconds": 30.0,
+              "patch_move_fraction": 0.65,
+              "patch_radius": 20.0,
+              "patch_tolerance": 8.0,
+              "population_hysteresis": 0.2,
+              "population_reserve": 15.004701529920448,
+              "population_safety": 0.934386354708094,
+              "population_scan_ticks": 30,
+              "predator_face_turn": 1.2,
+              "scan_turn": 0.12,
+              "scout_fraction": 0.2,
+              "sprint_distance": 60.0,
+              "target_population": 12,
+              "target_population_breeding_energy": 255.0,
+              "threat_distance": 150.0,
+              "wall_margin": 12.0,
+              "wall_weight": 4.0
+            },
+            "policy": "heuristic",
+            "torch_threads": 1,
+            "version": 1
+          },
+          "label": "standard",
+          "reference": "src.policies.runtime:create_policy"
+        },
+        "protocol_version": "local-benchmark-v2",
+        "provenance": {
+          "artifacts": {
+            "files": {
+              "src\\training\\workers.py": "3c798cf38e6a5e3512d29be42eb13b5cc348ea78078003fa03c1ab8dd8585f94"
+            },
+            "sha256": "d67e65facf5f2deeb0f9d3424884f9f5277d087fb2b16582fbeb8f364edc2a32"
+          },
+          "engine": {
+            "files": {
+              "src\\core.py": "2ad02095e83945ffbcea87b95bc1b8a3341fe7d63dfd7a3be9190e9b4cff49cd",
+              "src\\elements\\agent.py": "dc4f2dd1822e37194f1eeed9a744a2158d1a0f1f5ea9a22e743481a1c4941202",
+              "src\\elements\\biome.py": "eb7aeb35a2fb35c60db57fc08195ae4ea8b48d3a53484c4b36f774102318ad4d",
+              "src\\elements\\creature.py": "6f87ff503354040aae4d0ece2540336ead532a269a985521a3cc78d73b455383",
+              "src\\elements\\environment.py": "a8b44da3361cce8e1d985525d130b66b1a3094656cdc9550d04e51a21f016813",
+              "src\\elements\\fruit.py": "070306871872585dfc9784455adb95bb0a3fec2c7649c5fa76a0d7eb1e84fb2d",
+              "src\\elements\\obstacle.py": "5a01e5a890d1ab99f74ddf0fc7999c11fe015ef5c6a7ef7ab730c294965d620a",
+              "src\\elements\\predator.py": "6035f4e088a09d47fcacc15d913b5075c25c6b734eed4f16ab080f6769c041e3",
+              "src\\elements\\tree.py": "97943fec031efddb18522630cd3eb2dbc84b5f6c5021a6a6816f966f065d9031",
+              "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+              "src\\utils\\sensing.py": "7522e83490f9e5891830a44ff05cbfe29a039bc265b0e1f63d2cb95a48ca0a44",
+              "src\\utils\\simulation.py": "c567f00770af857b4ec9427765c41627c1fffec8ca0c5e929583a96feb315f5b"
+            },
+            "sha256": "8c7209c2b8c0f02b5e800c8010d2893a3f6934632845b9f36b5920f0e135fe3a"
+          },
+          "git": {
+            "dirty": true,
+            "revision": "af36a9c90678b3f7f801e0f479b04c35525232c8",
+            "status": " M survival-simulator/README.md\n M survival-simulator/benchmark.py\n M survival-simulator/docs/policy-architecture.md\n M survival-simulator/src/benchmarking/artifacts.py\n M survival-simulator/src/benchmarking/comparison.py\n M survival-simulator/src/benchmarking/config.py\n M survival-simulator/src/benchmarking/http.py\n M survival-simulator/src/benchmarking/runner.py\n M survival-simulator/src/elements/environment.py\n M survival-simulator/src/policies/config.py\n M survival-simulator/src/policies/heuristic.py\n M survival-simulator/src/policies/hierarchical.py\n M survival-simulator/src/training/artifacts.py\n M survival-simulator/src/training/search.py\n M survival-simulator/tests/test_benchmark_artifacts.py\n M survival-simulator/tests/test_benchmark_http.py\n M survival-simulator/train.py\n?? survival-simulator/configs/controller-population.json\n?? survival-simulator/configs/search-population.json\n?? survival-simulator/population_experiments.py\n?? survival-simulator/requirements-search.txt\n?? survival-simulator/src/benchmarking/jobs.py\n?? survival-simulator/src/benchmarking/progress.py\n?? survival-simulator/src/benchmarking/survival.py\n?? survival-simulator/src/benchmarking/telemetry.py\n?? survival-simulator/src/policies/population.py\n?? survival-simulator/tests/test_population_jobs.py\n?? survival-simulator/tests/test_population_mechanics.py\n?? survival-simulator/tests/test_population_policy.py\n?? survival-simulator/tests/test_population_ranking.py\n?? survival-simulator/tests/test_population_study.py\n?? survival-simulator/tests/test_population_telemetry.py"
+          },
+          "policy": {
+            "files": {
+              "src\\benchmarking\\__init__.py": "04d7052c0ead7ba1320a9f68c994d8d5df827c50af8bee5c99ebe9798a70fdd8",
+              "src\\benchmarking\\artifacts.py": "fd51b4486b4ba23a28e0739548a45351d2568b8f11dc10a196fea0d9b3273cf7",
+              "src\\benchmarking\\config.py": "0f1f8031b52e4f501fa57f7901d535019c7b30f13a8814f9fafaeb724290db96",
+              "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+              "src\\policies\\__init__.py": "82e80e72f4ef90e11f5711ce753250edd2c66ae9e8ea1828773e9ca04a731e60",
+              "src\\policies\\actions.py": "421df52934332568df61d5a44024d3cd92afe7f189a433d7160201654dfe4a96",
+              "src\\policies\\config.py": "e37997789e6639a595b2df6935ae0ad770681b8d5e069d975518ff235e69e5c2",
+              "src\\policies\\features.py": "38d44c3db2036eee89de790ac5ac86867366c84d7cc169b1f2010bee5ea952e4",
+              "src\\policies\\geometry.py": "09793a9d45e6925fc0eba040cb3251206ffdd7c31b4068b3f57f8187a222a82a",
+              "src\\policies\\heuristic.py": "421f05c67368c57cb7be5934fc0901bf4e5256c16f1c84ac8b751e3581ef4375",
+              "src\\policies\\hierarchical.py": "f950e6f197823b914b8e78a4a20c1a98894a01cf7642b21d1c2f74cbdcee8453",
+              "src\\policies\\memory.py": "a575770f5fd0385798964cae22ee2e90c4f4240cc7b61490d01b43e412109e25",
+              "src\\policies\\networks.py": "ea6a292f81b2bd0462ca53c447df2ad5b1bf760b35001dff1810e9f8485871c7",
+              "src\\policies\\neural.py": "72833561a27518eb9d8179b41a45ee14d0288b05fa64fac7b60d3e7f3e16c9af",
+              "src\\policies\\population.py": "19953e6a5b888b9133e3116ecd64de6d08489f4db2a3bf886ddebed6251748a5",
+              "src\\policies\\runtime.py": "9147c88265a4050b6b9c0d8fa3ad906c9f536df18102f5528daa39b568280904",
+              "src\\policies\\turnaway.py": "b1df5bf57cad19f51ffaf50516b8d2990cefcf6491d5b5a82ce0d1a3a8b72dd4",
+              "src\\policies\\vectorized.py": "f14cf6592d47e587c6f852376cbdf26cd2f362cba0b128cf57e607170304a47a",
+              "src\\training\\__init__.py": "8f97b01ee1142db201ff3ce0a42b076e1de46a7849e2dfa643487b7be310feea",
+              "src\\training\\artifacts.py": "0cc436217a7aa3e2df21097ce7c913cccd3524cbdda0770d4d5a263a48a09fee",
+              "src\\training\\teacher.py": "effa3728ce0590f9785b64b086a25064604c8bfa875fe9a9b9fb57e0226b555c",
+              "src\\utils\\DTOs.py": "63fd25f3050ed45993531c599ffc1ef4c5ef699728f8bf9b88ccda3f050c884e",
+              "src\\utils\\controllers\\dummy_agent_policy.py": "5d3f8bb1cb5865d5f73b7329efa3516ffafa55d3516741714595345efeb64b4e"
+            },
+            "sha256": "faa83707a20d39ae65c9ebd285cd285c3416e8a611781c79db42d458d3c837a2"
+          },
+          "reporting": {
+            "files": {
+              "benchmark.py": "f9f4599ec67789fea34a9d6a581238d066351aeb441c933fbda4053b7c45edb4",
+              "src\\benchmarking\\artifacts.py": "fd51b4486b4ba23a28e0739548a45351d2568b8f11dc10a196fea0d9b3273cf7",
+              "src\\benchmarking\\comparison.py": "0b69a8598af65d2c994b875d0d7d1a50a4c785a2735f3a49ad0279879db00c1c",
+              "src\\benchmarking\\plots.py": "8f3470e1eaa5a9772bb171e39c46aa58417fb0dbc9ecaf59a25af3356750ebbe",
+              "src\\benchmarking\\progress.py": "7320a69ec8c82439e275f800e7c6c7505762758d49c33634b1d1d05279455e58",
+              "src\\benchmarking\\survival.py": "ad2eaf0a4411985247f3c15d36020ad6e4a1ba5c6dea55b4c268d077a053efde"
+            },
+            "sha256": "df8f8677cc2f835f92b4d4f5398ceaf85c18b6733ce225681ef1db03c41c5283"
+          },
+          "runner": {
+            "files": {
+              "src\\benchmarking\\config.py": "0f1f8031b52e4f501fa57f7901d535019c7b30f13a8814f9fafaeb724290db96",
+              "src\\benchmarking\\jobs.py": "1a2ea16e1fe96fdea9f6c429fef39e78a1b3c5e441578bcafe46a7cd8f180950",
+              "src\\benchmarking\\policies.py": "97e13de9d5c25109de757824133bf25fffc6be6d7de7875267425ba94705ae23",
+              "src\\benchmarking\\runner.py": "6abfce02ef9ef503c3299b56aa4153ac7884a9c5f7fbdeb090fc823a6b1fb42e",
+              "src\\benchmarking\\telemetry.py": "702f7f5631f30fefda5a3f09b1133ad6284a6a833ade115d422cd5dfd922685e"
+            },
+            "sha256": "4ce110080b1aeec22677fd428dee9c9e64facd64bea112cff2687595761384a8"
+          },
+          "runtime": {
+            "architecture": "AMD64-64bit",
+            "dependencies": {
+              "Shapely": "2.1.2",
+              "numpy": "2.3.5",
+              "pydantic": "2.12.4",
+              "pydantic_core": "2.41.5",
+              "pygame": "2.6.1",
+              "scipy": "1.16.3"
+            },
+            "implementation": "CPython",
+            "native_libraries": {
+              "GEOS": "3.13.1",
+              "GEOS_CAPI": "3.13.1-CAPI-1.19.2",
+              "SDL": "2.28.4",
+              "SDL_image": "2.0.5",
+              "SDL_ttf": "2.20.1",
+              "libc": "unavailable",
+              "numpy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+              "numpy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.30  USE64BITINT DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.30\"}",
+              "scipy.blas": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}",
+              "scipy.lapack": "{\"name\":\"scipy-openblas\",\"openblas configuration\":\"OpenBLAS 0.3.29.dev DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=24\",\"version\":\"0.3.29.dev\"}"
+            },
+            "os": "Windows",
+            "os_release": "11 (10.0.26200)",
+            "python_version": "3.12.10"
+          },
+          "timing_context": {
+            "cpu": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel",
+            "cpu_affinity": null,
+            "episode_watchdog_seconds": 1800.0,
+            "episode_workers": 4,
+            "hostname": "szasz",
+            "logical_cpu_count": 20,
+            "population_telemetry": true,
+            "progress_plots": true,
+            "python_compiler": "MSC v.1943 64 bit (AMD64)",
+            "python_executable": "C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\.venv\\Scripts\\python.exe",
+            "telemetry_sample_every": 10,
+            "thread_environment": {
+              "BLIS_NUM_THREADS": null,
+              "MKL_DYNAMIC": null,
+              "MKL_NUM_THREADS": "1",
+              "NUMEXPR_NUM_THREADS": null,
+              "OMP_DYNAMIC": null,
+              "OMP_NUM_THREADS": "1",
+              "OPENBLAS_NUM_THREADS": "1",
+              "VECLIB_MAXIMUM_THREADS": null
+            },
+            "timer": {
+              "adjustable": false,
+              "implementation": "QueryPerformanceCounter()",
+              "monotonic": true,
+              "name": "perf_counter_ns",
+              "resolution_seconds": 1e-07
+            }
+          }
+        },
+        "repeats": 1,
+        "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+        "schema_version": 2,
+        "seed_version": "sha256-policy-seed-v1",
+        "simulation": {
+          "chunk_size": 400,
+          "dt": 0.1,
+          "env_height": 1200,
+          "env_width": 1600,
+          "starting_agents": 5,
+          "starting_fruits": 32,
+          "starting_predators": 0,
+          "starting_trees": 50,
+          "time_limit": 3000.0
+        },
+        "status": "complete",
+        "suite": {
+          "name": "standard",
+          "seeds": [
+            1,
+            17,
+            42,
+            101,
+            202,
+            303,
+            404,
+            505,
+            606,
+            707,
+            808,
+            909,
+            1001,
+            1337,
+            2026,
+            4096,
+            8191,
+            104729,
+            314159,
+            271828
+          ],
+          "version": 1
+        },
+        "suite_sha256": "4fb205b8a0a1211ee9c2df9a8df7102e4fe23ddb8aa1f60bcaca4d6c631bb034"
+      },
+      "path": "C:\\Users\\t-cszasz\\orca\\workspaces\\nordic-ai-cup-2026-amigos\\csongor-survival-simulator-EVOLUTIONARY\\survival-simulator\\benchmark-results\\pc2\\standard",
+      "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+      "scores": [
+        1123.970655479533,
+        1146.6008948253016,
+        1086.6035332519161,
+        736.6168252233226,
+        916.1146473887958,
+        793.0710492890946,
+        551.6747087294735,
+        963.536109572248,
+        900.1931647309983,
+        937.3133909306912,
+        954.087586586365,
+        868.9319434193508,
+        782.3096003308198,
+        909.0968365149032,
+        945.0113934502214,
+        1336.2114837991362,
+        531.4539148408453,
+        829.5125530198869,
+        1089.0397880491416,
+        872.0358916636271
+      ],
+      "summary": {
+        "aggregate_scope": "full_run",
+        "completion": {
+          "completed": 0,
+          "count": 20,
+          "fraction": 0.0
+        },
+        "expected_cases": 20,
+        "failed_cases": 0,
+        "failure": null,
+        "fixed_policy_seed": 1,
+        "interrupted_cases": 0,
+        "is_complete": true,
+        "label": "standard",
+        "measurement_scope": "ok_and_truncated_episodes",
+        "missing_case_ids": [],
+        "missing_cases": 0,
+        "policy_latency": {
+          "batch_call_unit": "all_current_agents",
+          "batch_max_ms": {
+            "count": 20,
+            "max": 63.97899999999999,
+            "mean": 32.11797,
+            "median": 33.8635,
+            "min": 7.5144,
+            "sample_std": 15.035275938661192
+          },
+          "batch_mean_ms": {
+            "count": 20,
+            "max": 5.296136856800958,
+            "mean": 3.3493968209737934,
+            "median": 3.236854110315632,
+            "min": 1.6059814354190958,
+            "sample_std": 0.9803320912379466
+          },
+          "batch_p50_ms": {
+            "count": 20,
+            "max": 4.64935,
+            "mean": 2.9935025,
+            "median": 2.884925,
+            "min": 1.7029,
+            "sample_std": 0.8505794276589218
+          },
+          "batch_p95_ms": {
+            "count": 20,
+            "max": 12.607800000000001,
+            "mean": 7.314758499999999,
+            "median": 6.9984449999999985,
+            "min": 3.3069799999999985,
+            "sample_std": 2.3067159050545962
+          },
+          "policy_calls": {
+            "count": 20,
+            "max": 12903,
+            "mean": 8753.2,
+            "median": 8721.5,
+            "min": 5083,
+            "sample_std": 1834.3766358371618
+          },
+          "pooled_batch_mean_ms": 3.3816633202714446,
+          "pooled_percentiles_available": false,
+          "summary_unit": "episode",
+          "total_policy_calls": 175064
+        },
+        "population": {
+          "final": {
+            "count": 20,
+            "max": 0,
+            "mean": 0.0,
+            "median": 0.0,
+            "min": 0,
+            "sample_std": 0.0
+          },
+          "initial": {
+            "count": 20,
+            "max": 5,
+            "mean": 5.0,
+            "median": 5.0,
+            "min": 5,
+            "sample_std": 0.0
+          },
+          "mean": {
+            "count": 20,
+            "max": 13.241138059701493,
+            "mean": 11.480491633387476,
+            "median": 11.549094867810911,
+            "min": 8.162225004471471,
+            "sample_std": 1.4628439646363138
+          },
+          "peak": {
+            "count": 20,
+            "max": 16,
+            "mean": 16.0,
+            "median": 16.0,
+            "min": 16,
+            "sample_std": 0.0
+          }
+        },
+        "rankable": true,
+        "recorded_cases": 20,
+        "repeats": 1,
+        "run_id": "4609fc5e29a94ea6b1de391e5fbd8da3",
+        "runtime": {
+          "episode_seconds": {
+            "count": 20,
+            "max": 392.7628323,
+            "mean": 200.48444639,
+            "median": 202.55683555000002,
+            "min": 85.6232147,
+            "sample_std": 71.80000373664983,
+            "total": 4009.6889278
+          },
+          "initialization_seconds": {
+            "count": 20,
+            "max": 2.5441371,
+            "mean": 1.9091620150000002,
+            "median": 1.80500675,
+            "min": 1.3149973,
+            "sample_std": 0.3639390931412017,
+            "total": 38.1832403
+          },
+          "policy_construction_seconds": {
+            "count": 20,
+            "max": 0.0247685,
+            "mean": 0.017744455,
+            "median": 0.0167822,
+            "min": 0.0098692,
+            "sample_std": 0.004331270529104534,
+            "total": 0.3548891
+          },
+          "policy_seconds": {
+            "count": 20,
+            "max": 55.656108599999946,
+            "mean": 29.60037537500001,
+            "median": 27.85596120000007,
+            "min": 12.396570699999987,
+            "sample_std": 11.289363510573137,
+            "total": 592.0075075000002
+          },
+          "simulation_seconds": {
+            "count": 20,
+            "max": 221.90773770000024,
+            "mean": 121.10933172999998,
+            "median": 128.89158685,
+            "min": 50.15064300000004,
+            "sample_std": 41.239116426034656,
+            "total": 2422.1866345999997
+          }
+        },
+        "schema_version": 2,
+        "score": {
+          "count": 20,
+          "max": 1336.2114837991362,
+          "mean": 913.6692985547836,
+          "median": 912.6057419518495,
+          "min": 531.4539148408453,
+          "sample_std": 191.20802176796062
+        },
+        "sim_time": {
+          "count": 20,
+          "max": 1290.3999999999219,
+          "mean": 875.4200000001061,
+          "median": 872.2500000001298,
+          "min": 508.4000000000471,
+          "sample_std": 183.4376635837102
+        },
+        "status": "complete",
+        "successful_cases": 20,
+        "suite": "standard",
+        "survival_seconds": {
+          "count": 20,
+          "max": 1290.3999999999219,
+          "mean": 875.4200000001061,
+          "median": 872.2500000001298,
+          "min": 508.4000000000471,
+          "sample_std": 183.4376635837102
+        },
+        "ticks": {
+          "count": 20,
+          "max": 12904,
+          "mean": 8754.2,
+          "median": 8722.5,
+          "min": 5084,
+          "sample_std": 1834.3766358371618
+        },
+        "timing_scope": "all_recorded_attempts",
+        "truncated_cases": 0,
+        "warnings": [
+          "Latency summaries describe per-episode batch-call statistics, not pooled latency percentiles."
+        ],
+        "world_count": 20
+      }
+    }
+  ],
+  "schema_version": 1,
+  "suite": {
+    "name": "standard",
+    "seeds": [
+      1,
+      17,
+      42,
+      101,
+      202,
+      303,
+      404,
+      505,
+      606,
+      707,
+      808,
+      909,
+      1001,
+      1337,
+      2026,
+      4096,
+      8191,
+      104729,
+      314159,
+      271828
+    ],
+    "version": 1
+  },
+  "suite_sha256": "4fb205b8a0a1211ee9c2df9a8df7102e4fe23ddb8aa1f60bcaca4d6c631bb034",
+  "survival": {
+    "candidate-1": {
+      "cases": 20,
+      "completed_worlds": 0,
+      "completion_fraction": 0.0,
+      "extinct_worlds": 20,
+      "iid_extinction_upper95": 1.0,
+      "lower_tail_fraction": 0.05,
+      "lower_tail_seconds": 508.4000000000471,
+      "mean_native_score": 913.6692985547836,
+      "median_seconds": 872.2500000001298,
+      "objective_version": "survival-v1",
+      "rank": [
+        0,
+        508.4000000000471,
+        508.4000000000471,
+        0,
+        0.0,
+        913.6692985547836
+      ],
+      "renewal_min": 0,
+      "reserve_min": 0.0,
+      "uncertainty_assumption": "The probability bound requires independently sampled audit worlds; it is not an assurance for tuned, fixed-development, or adversarial suites. Repeated cases are collapsed to the worst outcome per world.",
+      "worlds": 20,
+      "worst_seconds": 508.4000000000471
+    },
+    "reference": {
+      "cases": 20,
+      "completed_worlds": 0,
+      "completion_fraction": 0.0,
+      "extinct_worlds": 20,
+      "iid_extinction_upper95": 1.0,
+      "lower_tail_fraction": 0.05,
+      "lower_tail_seconds": 379.0000000000177,
+      "mean_native_score": 641.4438603659114,
+      "median_seconds": 573.2500000000618,
+      "objective_version": "survival-v1",
+      "rank": [
+        0,
+        379.0000000000177,
+        379.0000000000177,
+        0,
+        0.0,
+        641.4438603659114
+      ],
+      "renewal_min": 0,
+      "reserve_min": 0.0,
+      "uncertainty_assumption": "The probability bound requires independently sampled audit worlds; it is not an assurance for tuned, fixed-development, or adversarial suites. Repeated cases are collapsed to the worst outcome per world.",
+      "worlds": 20,
+      "worst_seconds": 379.0000000000177
+    }
+  },
+  "tie_tolerance": 1e-09,
+  "timing_compatible": true,
+  "warnings": [
+    "Rankings are descriptive; confidence intervals are not automatic significance claims.",
+    "Survival ordering precedes native score."
+  ],
+  "world_count": 20
+}

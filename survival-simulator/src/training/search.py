@@ -1,0 +1,212 @@
+"""Budgeted maximization over validated heuristic settings, with no world selection."""
+
+import math
+import random
+import statistics
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from numbers import Real
+from typing import Literal
+
+from src.policies.config import HeuristicConfig, SearchConfig
+
+Objective = float | tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class SearchTrial:
+    index: int
+    config: HeuristicConfig
+    score: Objective
+
+    @property
+    def parameters(self) -> dict[str, float | int | str]:
+        """A fresh full parameter dictionary, including settings not searched."""
+        return self.config.model_dump(mode="json")
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    best_config: HeuristicConfig
+    best_score: Objective
+    trials: tuple[SearchTrial, ...]
+    method: Literal["random", "cma"]
+
+
+@dataclass(frozen=True)
+class WorldScore:
+    mean: float
+    lower_tail: float
+    objective: float
+
+
+def aggregate_world_scores(
+    scores: Sequence[float], *, lower_tail_fraction: float = 0.25,
+    lower_tail_weight: float = 0.0,
+) -> WorldScore:
+    if (
+        not scores or not math.isfinite(lower_tail_fraction)
+        or not 0 < lower_tail_fraction <= 1
+        or not math.isfinite(lower_tail_weight)
+        or not 0 <= lower_tail_weight <= 1
+    ):
+        raise ValueError("World-score aggregation requires scores and valid tail settings.")
+    values = []
+    for value in scores:
+        if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value):
+            raise ValueError("World scores must be finite real numbers.")
+        values.append(float(value))
+    mean = statistics.mean(values)
+    tail_count = max(1, math.ceil(len(values) * lower_tail_fraction))
+    lower_tail = statistics.mean(sorted(values)[:tail_count])
+    objective = (1.0 - lower_tail_weight) * mean + lower_tail_weight * lower_tail
+    return WorldScore(mean, lower_tail, objective)
+
+
+def _evaluate(
+    config: HeuristicConfig, index: int, evaluate: Callable[[HeuristicConfig], Objective],
+) -> SearchTrial:
+    try:
+        score = evaluate(config)
+    except Exception as error:
+        error.add_note(f"Controller search candidate {index}: {config.model_dump(mode='json')}")
+        raise
+    values = score if isinstance(score, tuple) else (score,)
+    if not values or any(isinstance(v, bool) or not isinstance(v, Real) or not math.isfinite(v) for v in values):
+        raise ValueError(
+            f"Controller search candidate {index} must return a finite real score, got {score!r}; "
+            f"parameters={config.model_dump(mode='json')}"
+        )
+    return SearchTrial(index, config, tuple(float(v) for v in score) if isinstance(score, tuple) else float(score))
+
+
+def optimize_controller(
+    base: HeuristicConfig, search: SearchConfig, seed: int,
+    evaluate: Callable[[HeuristicConfig], Objective],
+    *,
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None = None,
+) -> SearchResult:
+    """Evaluate the unmodified baseline first, then maximize within the evaluation budget.
+
+    Bounds apply to proposals, not the baseline. CMA works in normalized coordinates,
+    adapting only after complete populations of at least three. A final partial
+    population is evaluated without ``tell``; budgets of two or three only sample
+    the initial distribution. A budget of one never imports CMA. ``method`` names
+    the requested sampler, not a claim of convergence or completed generations.
+    """
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise ValueError("Controller search seed must be an integer.")
+    if not isinstance(base, HeuristicConfig) or not isinstance(search, SearchConfig):
+        raise TypeError("Controller search requires validated HeuristicConfig and SearchConfig values.")
+    bounds = tuple(sorted(search.parameters.items()))
+    parameters = base.model_dump(mode="json")
+    trials = []
+    if search.method == "random":
+        rng = random.Random(seed)
+        proposals = [base]
+        while len(proposals) < search.candidates:
+            proposal = parameters | {
+                name: rng.uniform(lower, upper) for name, (lower, upper) in bounds
+            }
+            config = HeuristicConfig.model_validate(proposal)
+            proposals.append(config)
+        trials.extend(_evaluate_group(proposals, 0, evaluate, evaluate_many))
+    else:
+        if evaluate_many is None or search.candidates == 1:
+            trials.append(_evaluate(base, 0, evaluate))
+        if len(trials) < search.candidates:
+            _cma_trials(base, search, seed, bounds, parameters, evaluate, trials, evaluate_many)
+    if len({isinstance(trial.score, tuple) for trial in trials}) != 1:
+        raise ValueError("Search objectives cannot mix scalar and lexicographic results.")
+    best = max(trials, key=lambda trial: (trial.score, -trial.index))
+    return SearchResult(best.config, best.score, tuple(trials), search.method)
+
+
+def _evaluate_group(
+    configurations: Sequence[HeuristicConfig], start: int,
+    evaluate: Callable[[HeuristicConfig], Objective],
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None,
+) -> list[SearchTrial]:
+    if evaluate_many is None:
+        return [_evaluate(config, start + index, evaluate) for index, config in enumerate(configurations)]
+    try:
+        scores = list(evaluate_many(configurations))
+    except Exception as error:
+        error.add_note(f"Controller search candidate batch {start}-{start + len(configurations) - 1}.")
+        raise
+    if len(scores) != len(configurations):
+        raise ValueError("Batch evaluation must return one score per candidate in input order.")
+    return [
+        _evaluate(config, start + index, lambda _, value=score: value)
+        for index, (config, score) in enumerate(zip(configurations, scores, strict=True))
+    ]
+
+
+def _cma_trials(
+    base: HeuristicConfig, search: SearchConfig, seed: int,
+    bounds: tuple[tuple[str, tuple[float, float]], ...],
+    parameters: dict[str, float | int | str], evaluate: Callable[[HeuristicConfig], Objective],
+    trials: list[SearchTrial],
+    evaluate_many: Callable[[Sequence[HeuristicConfig]], Sequence[Objective]] | None = None,
+) -> None:
+    try:
+        import cma
+    except ModuleNotFoundError as error:
+        if error.name != "cma":
+            raise
+        raise ModuleNotFoundError(
+            "CMA controller search requires cma; install the training requirements "
+            "(python -m pip install cma==4.4.4).",
+            name="cma",
+        ) from error
+    import numpy as np
+
+    remaining = search.candidates - len(trials) - int(not trials)
+    population = min(search.candidates, max(3, min(remaining, 4 + int(3 * math.log(len(bounds))))))
+    initial = [
+        max(0.0, min(1.0, (getattr(base, name) - lower) / (upper - lower)))
+        for name, (lower, upper) in bounds
+    ]
+    rng = np.random.RandomState(seed % 2**32)
+    options = {
+        "bounds": [0.0, 1.0],
+        # The supplied sampler is explicitly seeded; disable CMA's global NumPy seeding.
+        "seed": np.nan,
+        "randn": rng.randn,
+        "popsize": population,
+        "CMA_mirrors": 0,
+        "verbose": -9,
+        "verb_disp": 0,
+        "verb_log": 0,
+        "verb_plot": 0,
+    }
+    if len(bounds) == 1:
+        # CMA's scalar diagonal scaling cannot clip a single coordinate's std.
+        # The boundary transform still enforces [0, 1] on every proposed value.
+        options["maxstd"] = math.inf
+    strategy = cma.CMAEvolutionStrategy(initial, search.sigma, options)
+    while len(trials) < search.candidates:
+        include_baseline = not trials
+        count = min(population, search.candidates - len(trials) - int(include_baseline))
+        solutions = strategy.ask(number=count)
+        proposals = [base] if include_baseline else []
+        for solution in solutions:
+            proposal = parameters.copy()
+            for coordinate, (name, (lower, upper)) in zip(solution, bounds, strict=True):
+                if not math.isfinite(coordinate) or not 0.0 <= coordinate <= 1.0:
+                    raise ValueError(f"CMA candidate {len(trials)} has an invalid normalized {name}.")
+                proposal[name] = max(lower, min(upper, lower + float(coordinate) * (upper - lower)))
+            config = HeuristicConfig.model_validate(proposal)
+            proposals.append(config)
+        evaluated = _evaluate_group(proposals, len(trials), evaluate, evaluate_many)
+        trials.extend(evaluated)
+        objectives = [trial.score for trial in evaluated[int(include_baseline):]]
+        if any(isinstance(value, tuple) for value in objectives):
+            if not all(isinstance(value, tuple) for value in objectives):
+                raise ValueError("CMA objectives cannot mix scalar and lexicographic results.")
+            ordered = sorted(set(objectives))
+            scores = [-float(ordered.index(value)) for value in objectives]
+        else:
+            scores = [-value for value in objectives]
+        if count == population and count >= 3:
+            strategy.tell(solutions, scores)
