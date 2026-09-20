@@ -80,6 +80,42 @@ inference (960+1280 = 237 ms on the laptop, 960+1600 = 320 ms; the VM ran 960+12
 ~247 ms against a 333 ms frame interval). Not deployed: +0.008 is not worth risking dropped frames without
 measuring on the VM first.
 
+## What to submit (2026-09-20 morning)
+
+**Submit the model that is already serving.** Deploy command, unchanged since 0.5171:
+
+```bash
+bash vm_up.sh          # if the VM is deallocated; prints the IP
+bash deploy_vm.sh 9.160.106.215 runs/synth400_11s_neighbours_0919-1604/weights/epoch15_int8_openvino_model \
+     DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1
+# submit http://9.160.106.215:9053/predict
+```
+
+Four live validations, the only measurement that can rank models:
+
+| served | live |
+|---|---|
+| **neighbours e15, 1280 small pass** | **0.5171** |
+| bigbg e15 (240 sharp Danish backgrounds) | 0.4953 |
+| allbg last | 0.4926 |
+| neighbours e15 + 1600 small pass | 0.4594 |
+
+Every challenger lands in 0.46-0.50; the incumbent is alone at 0.5171, and the 0.022 gap to
+the next best is wider than the spread among the challengers.
+
+Dead ends closed with measurements, do not redo them:
+- **Bigger models**: 11s and 11m on one recipe gave tune 0.410 and 0.411, no effect from size.
+  The VM cannot be scaled either -- the DSv2 quota is 4 vCPUs and all 4 are in use.
+  Measured cost ratio 11m/11s on one machine is 1.95x, so against the VM's known 183 ms for
+  960+1280: 11m with the small pass is ~357 ms (over the 333 ms interval), 11m without it
+  ~145 ms (fits). So 11m is servable only by dropping the small pass, which is two changes at
+  once and gives up the launcher classes the pass exists for.
+- **Serving from a laptop GPU** (port-forward, no tunnel): 0.3453. Not compute -- localhost
+  round-trip was 63 ms against the VM's 180. Each request is a 1.5 MB base64 PNG, so 3 fps
+  needs ~36 Mbit/s sustained; the line measured 112 Mbit/s to one host and 18 to another.
+- **The 1600 small pass**: genuinely better offline, 836 ms per request on the VM, two frames
+  in three skipped.
+
 ## The offline score is too noisy to rank models. Read this before chasing a number.
 
 `oldgen` re-ran the live model's **exact generator code** (git 510418e) with its exact recipe.
