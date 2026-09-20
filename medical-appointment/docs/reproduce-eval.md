@@ -33,13 +33,47 @@ ASR (faster-whisper large-v3-turbo, int8, word timestamps)
 The calibration artifact is provenance-bound: it is only accepted when the ASR
 config hash (`e75a7f6e`), the model revision, and `variant=base` all match.
 
-## 1. Environment (IDUN)
+## 1. Environment and prerequisites (IDUN)
+
+**IDUN is the NTNU (Norwegian University of Science and Technology) HPC
+cluster** this build was run on; the module/conda/SLURM commands below target
+it. An equivalent single 80 GB GPU host works too, but the environment lines are
+IDUN-specific.
+
+Create the `nordic` environment (also pre-downloads some models):
 
 ```bash
-conda activate nordic            # transformers/torch/faster-whisper env
-# model weights and ASR caches must be present; serving runs offline
-# (HF_HUB_OFFLINE=1). See idun/setup_env.sh and idun/cache_model.py.
+bash idun/setup_env.sh          # run on a login node (compute nodes may lack internet)
 ```
+
+The serving path then runs offline (`HF_HUB_OFFLINE=1`), so **all weights must
+be cached in advance**. `setup_env.sh` alone is not enough for this build —
+you also need:
+
+1. **Gemma-4 26B-A4B weights (pinned revision, ~49 GB):**
+   ```bash
+   python idun/cache_model.py \
+     --model google/gemma-4-26b-a4b-it \
+     --revision 4d7ae4984b7db7de8f8457170b3f1a419ee76d52 \
+     --max-bytes 60000000000
+   ```
+2. **The turbo ASR model.** The served ASR is `large-v3-turbo`; `setup_env.sh`
+   only pre-fetches `large-v3`. Fetch turbo once on a login node:
+   ```bash
+   python -c "from faster_whisper import WhisperModel; WhisperModel('large-v3-turbo', device='cpu', compute_type='int8')"
+   ```
+3. **Training transcripts for the few-shot demonstrations.** The prompt includes
+   demonstrations drawn from the supplied training conversations, and the
+   answerer loads all 39 training transcripts at start-up from `transcripts/`
+   (gitignored). Populate that cache by running the pipeline once over the
+   training audio:
+   ```bash
+   python dev_eval.py            # transcribes data/audio/... and caches transcripts/
+   ```
+   Start-up fails closed (`MEDAPP_REQUIRE_WARMUP=1`) if these are missing.
+
+The NLI, MiniLM and ModernBERT downloads in `setup_env.sh` are only used by the
+other answerers; this build uses `MEDAPP_ANSWERER=llm`.
 
 ## 2. Sync the code
 
