@@ -9,7 +9,7 @@ from answerers.llm_client import StubClient
 from answerers.llm_prompt import build_l1_messages
 from prepare_prompt_round import prompt_hash, round_split
 from probe_prompt_round import (
-    definition_hash, localization_strata, records_for, run_variants, selected_tids, semantic_changes,
+    ORDER_CONTROL_EXTENSION, definition_hash, localization_strata, records_for, run_variants, selected_tids, semantic_changes,
     validate_confirmation, validate_inputs,
 )
 
@@ -149,6 +149,28 @@ def test_confirmation_requires_frozen_development_and_explicit_semantic_review()
     ):
         with pytest.raises(ValueError, match="Confirmation"):
             validate_confirmation(changed, development, manifest, signature, source)
+    order_selection = {**selection, "variant": "claim", "definition_sha256": definition_hash("claim")}
+    order_development = {
+        **development, "definition_sha256": {"claim": definition_hash("claim")},
+        "variants": {"base": {"failed_questions": 0}, "claim": {"failed_questions": 0}},
+    }
+    with pytest.raises(ValueError, match="Confirmation"):
+        validate_confirmation(order_selection, order_development, manifest, signature, source)
+    order_development["protocol_extension"] = ORDER_CONTROL_EXTENSION
+    assert validate_confirmation(order_selection, order_development, manifest, signature, source) == ["base", "claim"]
+
+
+def test_answer_order_control_is_a_separate_frozen_pair(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEDAPP_SPAN_CALIBRATION", raising=False)
+    client = Client([json.dumps({"answers": [{"id": "q01", "answer": "yes", "evidence_quote": "The result is normal."}]})])
+    results = run_variants(
+        {"s": [ROW]}, {"s": TRANSCRIPT}, {"s": {"few_shot": [], "demonstration_tids": []}},
+        ["s"], client, ["base", "claim"], tmp_path, 60.0,
+    )
+    assert results["base"]["score"] == results["claim"]["score"]
+    assert client.calls[0][-1] == client.calls[1][-1]
+    with pytest.raises(ValueError, match="separate"):
+        run_variants({}, {}, {}, [], client, ["base", "claim", "v1"], tmp_path, 60.0)
 
 
 def test_metric_strata_are_fixed_by_the_qualified_control_not_the_candidate():

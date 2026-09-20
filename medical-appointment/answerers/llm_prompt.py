@@ -27,12 +27,34 @@ SYSTEM_PROMPT = (
 VARIANT = os.environ.get("MEDAPP_LLM_PROMPT", "base")
 VARIANTS = (
     "base", "v1", "v2", "v3", "scoped", "full_context", "two_positive", "no_timestamps",
-    "final_statement", "v1_claim",
+    "final_statement", "v1_claim", "claim",
 )
 EVIDENCE_FIRST_VARIANTS = ("v1", "v1_claim")
 EVIDENCE_FIRST_RULE = (
     "Work evidence-first: for each question, find the exact supporting span in "
     "the transcript first, and only then decide the answer.\n"
+)
+CLAIM_RULES = (
+    "- Match the exact claim, including its subject, quantities, polarity "
+    "and clinical status. A related topic alone does not establish it.\n"
+    "- Distinguish a patient's report or wish from a clinician's finding, "
+    "recommendation or action. Use the speaker and statement appropriate "
+    "to the question, not an always-clinician preference.\n"
+    "- When asked whether something happened, prefer an explicit result "
+    "or confirmation of completion over an earlier plan when that "
+    "confirmation is available. An unanswered question is not a "
+    "confirmation. Check for corrections or changes of decision.\n"
+    "- Cite one occurrence that directly establishes the requested claim. "
+    "Do not prefer an occurrence solely because it is first or last, or "
+    "because its wording resembles the question.\n"
+    "- Keep every requested fact and necessary qualifier, but omit "
+    "additional advice, measurements or other claims not needed for this "
+    "question. A complete meaning can be a clause inside a longer "
+    "sentence; transcript line boundaries are not citation boundaries.\n"
+    "- Surrounding dialogue may resolve a pronoun or short reply without "
+    "being quoted. Include more dialogue when it is needed to establish "
+    "a requested attribute; do not cut away relevant qualifiers merely "
+    "to make the quote shorter.\n"
 )
 
 SCHEMA_HINT = (
@@ -56,28 +78,8 @@ def system_prompt(variant: str) -> str:
             "different meaning or an unspecific acknowledgement.\n"
         ),
         "v1": EVIDENCE_FIRST_RULE,
-        "v1_claim": EVIDENCE_FIRST_RULE + (
-            "- Match the exact claim, including its subject, quantities, polarity "
-            "and clinical status. A related topic alone does not establish it.\n"
-            "- Distinguish a patient's report or wish from a clinician's finding, "
-            "recommendation or action. Use the speaker and statement appropriate "
-            "to the question, not an always-clinician preference.\n"
-            "- When asked whether something happened, prefer an explicit result "
-            "or confirmation of completion over an earlier plan when that "
-            "confirmation is available. An unanswered question is not a "
-            "confirmation. Check for corrections or changes of decision.\n"
-            "- Cite one occurrence that directly establishes the requested claim. "
-            "Do not prefer an occurrence solely because it is first or last, or "
-            "because its wording resembles the question.\n"
-            "- Keep every requested fact and necessary qualifier, but omit "
-            "additional advice, measurements or other claims not needed for this "
-            "question. A complete meaning can be a clause inside a longer "
-            "sentence; transcript line boundaries are not citation boundaries.\n"
-            "- Surrounding dialogue may resolve a pronoun or short reply without "
-            "being quoted. Include more dialogue when it is needed to establish "
-            "a requested attribute; do not cut away relevant qualifiers merely "
-            "to make the quote shorter.\n"
-        ),
+        "v1_claim": EVIDENCE_FIRST_RULE + CLAIM_RULES,
+        "claim": CLAIM_RULES,
         "v2": (
             "- evidence_quote must be the SHORTEST contiguous span that fully "
             "establishes the answer; do not include surrounding context that is not "
@@ -134,7 +136,7 @@ def example_answer_entry(qid, answer, quote, variant):
 
 def reformat_frozen_demonstrations(examples, variant):
     """Change only the output-order convention of already verified examples."""
-    if variant == "base":
+    if variant in ("base", "claim"):
         return list(examples)
     if variant not in EVIDENCE_FIRST_VARIANTS:
         raise ValueError("Frozen prompt-round demonstrations support only the declared variants.")

@@ -5,6 +5,8 @@ import json
 import pytest
 
 from answerers.llm_prompt import (
+    CLAIM_RULES,
+    EVIDENCE_FIRST_RULE,
     SYSTEM_PROMPT,
     build_few_shot,
     build_l0_messages,
@@ -138,6 +140,23 @@ def test_frozen_demo_reformatting_rejects_unverified_shapes():
         reformat_frozen_demonstrations([("changed", '{"answers":[]}')], "v1")
     with pytest.raises(ValueError, match="declared variants"):
         reformat_frozen_demonstrations([], "v2")
+
+
+def test_answer_first_control_reuses_identical_rules_and_unchanged_demo_fields():
+    import hashlib
+
+    assert system_prompt("v1_claim") == system_prompt("claim").replace(
+        "Rules:\n", "Rules:\n" + EVIDENCE_FIRST_RULE, 1,
+    )
+    assert system_prompt("claim") == SYSTEM_PROMPT.replace("Rules:\n", "Rules:\n" + CLAIM_RULES, 1)
+    assert hashlib.sha256((system_prompt("v1_claim") + "\n" + schema_hint("v1_claim")).encode()).hexdigest() == (
+        "02bdeb48424b47da69e18e886d0454903b10cb87721b959041f36266e0120aee"
+    )
+    example = render_example(make_transcript("x"), "Q?", True, "dose", (1.5, 2.9), "base")
+    assert reformat_frozen_demonstrations([example], "claim") == [example]
+    assert schema_hint("claim") == schema_hint("base")
+    changed = render_example(make_transcript("x"), "Q?", True, "dose", (1.5, 2.9), "claim")
+    assert changed == example
 
 
 def test_build_few_shot_balanced_and_loco_safe():

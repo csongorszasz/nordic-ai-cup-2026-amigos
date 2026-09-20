@@ -23,7 +23,11 @@ from benchmark_alignment import baseline_prediction, load_inputs
 from prepare_prompt_round import prompt_hash, round_split, stratum
 
 
-ARMS = ("base", "v1", "v1_claim")
+ARMS = ("base", "v1", "v1_claim", "claim")
+ORDER_CONTROL_EXTENSION = (
+    "Development-only extension after the first pilot's semantic failures: test the identical claim rules "
+    "with the original answer-first schema/demonstrations. No new rule wording or confirmation feedback."
+)
 PIPELINE_FILES = (
     "answerers/llm_prompt.py", "answerers/llm_client.py", "answerers/llm.py",
     "answerers/llm_parse.py", "answerers/align.py", "answerers/base.py", "answerers/boundaries.py",
@@ -33,7 +37,7 @@ PIPELINE_FILES = (
 
 def definition_hash(variant):
     if variant not in ARMS:
-        raise ValueError("This prompt round permits only its two declared candidates and control.")
+        raise ValueError("This prompt round permits only its declared arms and the documented order control.")
     return hashlib.sha256((system_prompt(variant) + "\n" + schema_hint(variant)).encode()).hexdigest()
 
 
@@ -87,6 +91,7 @@ def validate_confirmation(selection, development, manifest, signature, source_ha
         or development.get("phase") != "development" or development.get("complete") is not True
         or development.get("selected_tids") != manifest["development_tids"]
         or development.get("signature") != signature or development.get("pipeline_source_sha256") != source_hashes
+        or (variant == "claim" and development.get("protocol_extension") != ORDER_CONTROL_EXTENSION)
         or development.get("definition_sha256", {}).get(variant) != definition_hash(variant)
         or variant not in development.get("variants", {}) or "base" not in development.get("variants", {})
         or development["variants"][variant].get("failed_questions") != 0
@@ -176,7 +181,9 @@ def run_variants(grouped, transcripts, frozen, tids, client, variants, output, b
     if not math.isfinite(budget_s) or budget_s <= 0:
         raise ValueError("The explicit offline conversation budget must be positive.")
     if not variants or variants[0] != "base" or len(variants) != len(set(variants)) or not set(variants).issubset(ARMS):
-        raise ValueError("Use the control first and at most the two preregistered prompt candidates.")
+        raise ValueError("Use the control first and only the declared prompt arms.")
+    if "claim" in variants and variants != ["base", "claim"]:
+        raise ValueError("Run the documented answer-order control as a separate base/claim pair.")
     if os.environ.get("MEDAPP_SPAN_CALIBRATION"):
         raise ValueError("The prompt probe applies its fixed correction once; inherited calibration is prohibited.")
     results = {}
@@ -290,6 +297,7 @@ def main():
         "complete": False, "phase": args.phase, "selected_tids": tids, "signature": signature,
         "pipeline_source_sha256": source_hashes,
         "definition_sha256": {variant: definition_hash(variant) for variant in variants},
+        "protocol_extension": ORDER_CONTROL_EXTENSION if "claim" in variants else None,
         "diagnostic_only": True, "deployment_qualified": False, "serving_artifact_written": False,
         "runtime": runtime,
         "cpu_threads": threads, "variants": {},

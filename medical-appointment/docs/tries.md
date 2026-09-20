@@ -1716,3 +1716,37 @@ never a candidate's outcome. Reference-hidden change packets expose both
 answers/citations and the full dialogue for semantic review; they do not expose
 the annotation coordinates. No changes to prompt definitions were made in
 response to feasibility timing or partial generations.
+
+### Complete first prompt pilot: semantic gate rejects the apparent gain
+
+`prompt-qwen4b-pilot-e6075a85`, CPU job `25408413`, completed all three arms
+on the fixed 30 questions / 11 positives:
+
+| Arm | Composite | mIoU | Accuracy | Grounding failures |
+| --- | --- | --- | --- | --- |
+| Qwen base | 0.702600 | 0.504333 | 30/30 | 0 |
+| Qwen v1 | 0.709789 | 0.560760 | 28/30 | 0 |
+| Qwen v1_claim | 0.656664 | 0.472219 | 28/30 | 1 |
+| Qualified Gemma reference (different model/runtime) | 0.888534 | 0.814223 | 30/30 | 0 |
+
+The apparent `v1` delta of **+0.007190** has interval
+**[-0.080000, +0.146094]** and is not acceptable semantically: it answers yes
+to severe tenderness while quoting "slight tenderness", and yes to fever
+while quoting "No fever". `v1_claim` also produces the latter contradiction
+and stitches two noncontiguous statements into a quote; strict grounding
+rejects that quote and retains the failed question in the score. Exit code 1
+records this explicit failure, not a missing conversation.
+
+Both candidates are rejected for selection/deployment. Do not choose the
+slightly higher point score at the cost of plainly wrong answers. Nor does
+this pilot establish that output order alone caused every error: the missing
+answer-first-with-claim-rules arm is needed to distinguish those effects.
+
+**Declared development-only extension:** add exactly one `claim` order control
+using the **identical claim rules**, but the original base schema and unchanged
+answer-first demonstrations. This is a post-pilot mechanism check, not part of
+the original preregistered two-candidate comparison. No medical examples,
+sample-specific wording, or confirmation feedback are added. It runs only as
+the separate `base`/`claim` pair, and any later confirmation must record this
+protocol extension and a completed semantic review. The original reference
+labels, prompt definitions, scores, and failures remain unchanged in the ledger.

@@ -342,6 +342,13 @@ with `--dtype float32 --device cpu --tokenization template --disable-thinking`.
 Use the same round artifacts and prompt arms. A small-model prompt gain must
 not be presented as a demonstrated gain for the larger Gemma service.
 
+After the first pilot's semantic failures, one explicitly documented mechanism
+control is allowed: `--variants base claim`. It uses the unchanged claim-rule
+text with the original answer-first schema and demonstrations. Run it as a
+separate pair, not an expanded sweep. Reports record the post-pilot protocol
+extension, and confirmation rejects an unrecorded extension. The original
+two candidates and their failed results are not replaced or relabeled.
+
 Serve `/predict` from this box (GTX 1650, WSL) and expose it via cloudflared.
 Decision and evidence: ADR-0002. Latency budget: ~35 s mean, worst ~47 s, of the
 60 s limit.
