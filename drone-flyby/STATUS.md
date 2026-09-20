@@ -124,6 +124,46 @@ at conf 0.87-0.92 -- but it reports only 131 boxes above 0.25 across 249 views, 
 aircraft classes. Since mAP is macro-averaged over classes present, ~0.9 on four aircraft classes
 and near zero on the rest lands at ~0.22. The failure is class-specific, not terrain.
 
+## THE DECISION (2026-09-20 ~10:40 CEST)
+
+**Submit allbg_e25** -- `runs/synth400_11s_allbg_0919-2339/weights/epoch25_int8_openvino_model`,
+settings `DRONE_SMALL_IMGSZ=1280 V2_TRUNC=1 DRONE_MEMORY_LEAD=0.1`. Verify with
+`bash preflight.sh <that path>` before pressing submit.
+
+Not because it is provably best. Nothing is. Because it is in the top group on every piece of
+evidence we trust, and it is already deployed -- and with options we cannot tell apart, the
+tiebreaker is not churning a working production system. There has already been one unexplained
+deploy today (07:35, by nobody who has admitted to it).
+
+**What we know, and would defend:**
+- The live validation cannot distinguish any of the seven candidates. sharp_e10 over 5 runs:
+  mean 0.4830, sd 0.0339, range 0.0848. A single run must differ from that mean by >0.073 to
+  mean anything; the widest gap in the whole table is 0.036.
+- sharp_e10 is blind to hangar on woodland: 0 detections where 9-12 are visible and every other
+  model finds them. Direct count, no consensus involved. Also 0 medium_launcher, 0 condor.
+  12 classes seen against 14 for the rest.
+- dk_e15 is clearly worst on woodland: 0.585 recall, 44 misses of 106.
+
+**What we do NOT know, despite earlier confident phrasing in this file:**
+- Any ranking among bigbg_e15, allbg_e25 and allbg_last. All cover 14 classes; their consensus
+  recalls reorder when the consensus pool changes (allbg_last went 0.833 -> 0.906 purely by
+  adding two models to the pool); and the per-class counts that would separate them depend on
+  class labels we cannot verify at 30 px. The "condor" detections that first tipped this call
+  toward allbg_e25 could equally be misclassified medium_planes -- compare
+  `datasets/model_sprites/condor` (pale, straight-winged, four engines) against
+  `medium_plane` (dark olive, single propeller). At the transmitted resolution they are
+  not separable by eye.
+
+**Two retractions, so nobody rebuilds an argument on them:**
+1. "Live validation is precise to +/-0.006" -- wrong, generalised from two runs that agreed.
+   It is sd 0.034.
+2. "bigbg_e15 is the pick on class coverage" -- overstated. Its condor coverage is 1 detection
+   at conf>0.25 and 0 above 0.5, so it is arguably the one with a zero class, not the others.
+
+**If the organisers say the evaluation runs the woodland scene**, this call does not change:
+allbg_e25 is a 14-class model there. **If they say it runs the old motorway scene**, it still
+does not change, because nothing is distinguishable there either.
+
 ## The live validation cannot rank models either. Measured, 2026-09-20.
 
 sharp_e10, byte-identical model, one container (`StartedAt` 08:09:13, no restart between runs),
